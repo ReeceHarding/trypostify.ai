@@ -475,9 +475,19 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
         { tag: 'force-sync' },
       )
     },
-    onError: (error) => {
-      console.error('Failed to post tweet:', error)
-      toast.error('Failed to post tweet')
+    onError: (error: any) => {
+      console.error('[postTweetMutation] Error:', error)
+      
+      // Check if it's a rate limit error (429)
+      const errorMessage = error?.message || error?.data?.message || 'Failed to post tweet'
+      
+      if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate limit')) {
+        toast.error('Twitter rate limit reached. You\'ve posted too many tweets today. Please try again later.')
+      } else if (errorMessage.includes('reconnect')) {
+        toast.error('Please reconnect your Twitter account')
+      } else {
+        toast.error(errorMessage)
+      }
     },
   })
 

@@ -116,8 +116,19 @@ export default function ThreadTweetEditor({
         window.open(data.threadUrl, '_blank')
       }
     },
-    onError: () => {
-      toast.error('Failed to post thread')
+    onError: (error: any) => {
+      console.error('[postThreadMutation] Error:', error)
+      
+      // Check if it's a rate limit error (429)
+      const errorMessage = error?.message || error?.data?.message || 'Failed to post thread'
+      
+      if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate limit')) {
+        toast.error('Twitter rate limit reached. You\'ve posted too many tweets today. Please try again later.')
+      } else if (errorMessage.includes('reconnect')) {
+        toast.error('Please reconnect your Twitter account')
+      } else {
+        toast.error(errorMessage)
+      }
     },
   })
 
