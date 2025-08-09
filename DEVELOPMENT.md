@@ -7,7 +7,7 @@
     <img src="./public/favicon.ico" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">Contentport</h3>
+<h3 align="center">Postify</h3>
 
   <p align="center">
     The content engine for software companies
@@ -32,13 +32,13 @@
 
 ## **Prerequisites**
 
-Contentport needs [Bun](https://bun.com/) installation.
+Postify needs [Bun](https://bun.com/) installation.
 
 ## **Setup environment**
 
 ### AI
 
-Contentport uses the [OpenRouter](https://github.com/OpenRouterTeam/ai-sdk-provider) provider, which supports hundreds of models. Choose your preferred AI model and add your API key to the .env file:
+Postify uses the [OpenRouter](https://github.com/OpenRouterTeam/ai-sdk-provider) provider, which supports hundreds of models. Choose your preferred AI model and add your API key to the .env file:
 
 ```bash
 # AI
