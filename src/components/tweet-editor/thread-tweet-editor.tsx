@@ -21,20 +21,6 @@ interface ThreadTweetData {
   }>
 }
 
-interface ThreadTweetFromAPI {
-  id: string
-  content: string
-  media: Array<{
-    url: string
-    s3Key: string
-    media_id: string
-    type: 'image' | 'gif' | 'video'
-    uploaded: boolean
-    uploading: boolean
-    file: null
-  }>
-}
-
 interface ThreadTweetEditorProps {
   className?: string
   editMode?: boolean
@@ -50,11 +36,11 @@ export default function ThreadTweetEditor({
   const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
     { id: crypto.randomUUID(), content: '', media: [] },
   ])
-  const [fullMediaData, setFullMediaData] = useState<Record<string, any[]>>({})
   const router = useRouter()
   const { fire } = useConfetti()
-
-  console.log('[ThreadTweetEditor] Render - isThreadMode:', isThreadMode, 'tweets:', threadTweets.length, 'editMode:', editMode)
+  
+  // Store the current tweet content in real-time
+  const currentContentRef = useRef<string>('')
 
   // If we arrive in edit mode, enable thread mode immediately to avoid a single-tweet flash
   useEffect(() => {
@@ -88,19 +74,7 @@ export default function ThreadTweetEditor({
   // Initialize thread data when loaded
   useEffect(() => {
     if (threadData?.tweets && threadData.tweets.length > 0) {
-      console.log('[ThreadTweetEditor] Loading thread data:', threadData.tweets.length, 'tweets')
-      // Already true if editMode, but keep for safety when switching modes dynamically
       setIsThreadMode(true)
-      
-      // Store full media data separately
-      const mediaDataMap: Record<string, any[]> = {}
-      threadData.tweets.forEach((tweet: any) => {
-        if (tweet.media && tweet.media.length > 0) {
-          mediaDataMap[tweet.id] = tweet.media
-        }
-      })
-      setFullMediaData(mediaDataMap)
-      
       setThreadTweets(threadData.tweets.map((tweet: any) => ({
         id: tweet.id,
         content: tweet.content,
@@ -112,13 +86,9 @@ export default function ThreadTweetEditor({
     }
   }, [threadData])
 
-  // While loading thread in edit mode, render nothing for the editor list to prevent empty state flash
-  const isHydratingEdit = editMode && (loadingThread || (isThreadMode && threadTweets.length <= 1))
-
   // Create thread mutation
   const createThreadMutation = useMutation({
     mutationFn: async (tweets: Array<{ content: string; media: any[]; delayMs: number }>) => {
-      console.log('[ThreadTweetEditor] Creating thread with tweets:', tweets)
       const res = await client.tweet.createThread.$post({
         tweets,
       })
@@ -135,7 +105,7 @@ export default function ThreadTweetEditor({
   // Post thread immediately mutation
   const postThreadNowMutation = useMutation({
     mutationFn: async (threadId: string) => {
-      console.log('[ThreadTweetEditor] Posting thread immediately:', threadId)
+
       const res = await client.tweet.postThreadNow.$post({
         threadId,
       })
@@ -148,7 +118,7 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] Thread posted successfully:', data)
+
       toast.success('Thread posted successfully!')
       fire()
       
@@ -165,7 +135,7 @@ export default function ThreadTweetEditor({
   // Schedule thread mutation
   const scheduleThreadMutation = useMutation({
     mutationFn: async ({ threadId, scheduledUnix }: { threadId: string; scheduledUnix: number }) => {
-      console.log('[ThreadTweetEditor] Scheduling thread:', threadId, 'for:', new Date(scheduledUnix * 1000))
+
       const res = await client.tweet.scheduleThread.$post({
         threadId,
         scheduledUnix,
@@ -179,7 +149,7 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] Thread scheduled successfully:', data)
+
       toast.success('Thread scheduled successfully!')
       
       // Clear the thread
@@ -193,7 +163,7 @@ export default function ThreadTweetEditor({
   // Enqueue thread mutation
   const enqueueThreadMutation = useMutation({
     mutationFn: async ({ threadId, userNow, timezone }: { threadId: string; userNow: Date; timezone: string }) => {
-      console.log('[ThreadTweetEditor] Enqueueing thread:', threadId)
+
       const res = await client.tweet.enqueueThread.$post({
         threadId,
         userNow,
@@ -208,7 +178,7 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] Thread queued successfully:', data)
+
       toast.success(
         <div className="flex gap-1.5 items-center">
           <p>Thread queued!</p>
@@ -238,7 +208,7 @@ export default function ThreadTweetEditor({
     mutationFn: async ({ tweets }: { tweets: ThreadTweetData[] }) => {
       if (!threadData?.threadId) throw new Error('No thread ID found')
       
-      console.log('[ThreadTweetEditor] Updating thread:', threadData.threadId)
+
       const res = await client.tweet.updateThread.$post({
         threadId: threadData.threadId,
         tweets: tweets.map((tweet, index) => ({
@@ -257,21 +227,22 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: () => {
-      console.log('[ThreadTweetEditor] Thread updated successfully')
+
       toast.success('Thread updated successfully!')
       router.push('/studio/scheduled')
     },
   })
 
   const handleToggleMode = () => {
-    console.log('[ThreadTweetEditor] Toggling mode from:', isThreadMode, 'to:', !isThreadMode)
-    console.log('[ThreadTweetEditor] Current tweets:', threadTweets)
     if (!isThreadMode) {
-      // Entering thread mode - keep existing tweet and add a second one
-      const existingTweet = threadTweets[0] || { id: crypto.randomUUID(), content: '', media: [] }
-      console.log('[ThreadTweetEditor] Preserving tweet:', existingTweet.id, 'with content:', existingTweet.content)
+      // Entering thread mode - use the ref content which is always up to date
+      const firstTweet = threadTweets[0] ? { 
+        id: threadTweets[0].id, 
+        content: currentContentRef.current || threadTweets[0].content,
+        media: threadTweets[0].media 
+      } : { id: crypto.randomUUID(), content: '', media: [] }
       setThreadTweets([
-        existingTweet,
+        firstTweet,
         { id: crypto.randomUUID(), content: '', media: [] },
       ])
     } else {
@@ -282,36 +253,28 @@ export default function ThreadTweetEditor({
   }
 
   const handleAddTweet = () => {
-    console.log('[ThreadTweetEditor] Adding new tweet to thread')
-    // Use a special prefix for new tweets in edit mode
-    const newId = editMode ? `new-${crypto.randomUUID()}` : crypto.randomUUID()
-    setThreadTweets([...threadTweets, { id: newId, content: '', media: [] }])
+    setThreadTweets([...threadTweets, { id: crypto.randomUUID(), content: '', media: [] }])
   }
 
   const handleRemoveTweet = (id: string) => {
-    console.log('[ThreadTweetEditor] Removing tweet:', id)
     setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
   }
 
   const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
-    console.log('[ThreadTweetEditor] Tweet updated:', id, 'content:', content)
-    setThreadTweets(prevTweets => {
-      // Check if the tweet still exists in the array before updating
-      const tweetExists = prevTweets.some(tweet => tweet.id === id)
-      if (!tweetExists) {
-        console.log('[ThreadTweetEditor] Ignoring update for removed tweet:', id)
-        return prevTweets
-      }
-      const updated = prevTweets.map(tweet =>
+    // Update ref immediately for single tweet mode
+    if (!isThreadMode && threadTweets[0]?.id === id) {
+      currentContentRef.current = content
+    }
+    
+    setThreadTweets(prevTweets => 
+      prevTweets.map(tweet =>
         tweet.id === id ? { ...tweet, content, media } : tweet
       )
-      console.log('[ThreadTweetEditor] Updated tweets state:', updated)
-      return updated
-    })
+    )
   }
 
   const handlePostThread = async () => {
-    console.log('[ThreadTweetEditor] Starting thread post process')
+
     
     // Validate all tweets have content
     const emptyTweets = threadTweets.filter(t => !t.content.trim())
@@ -357,7 +320,7 @@ export default function ThreadTweetEditor({
   }
 
   const handleScheduleThread = async (scheduledDate: Date) => {
-    console.log('[ThreadTweetEditor] Scheduling thread for:', scheduledDate)
+
     
     // Validate all tweets have content
     const emptyTweets = threadTweets.filter(t => !t.content.trim())
@@ -400,7 +363,7 @@ export default function ThreadTweetEditor({
   }
 
   const handleQueueThread = async () => {
-    console.log('[ThreadTweetEditor] Queueing thread')
+
     
     // Validate all tweets have content
     const emptyTweets = threadTweets.filter(t => !t.content.trim())
@@ -452,7 +415,7 @@ export default function ThreadTweetEditor({
   }
 
   const handleUpdateThread = async () => {
-    console.log('[ThreadTweetEditor] Updating thread')
+
     
     // Validate all tweets have content
     const emptyTweets = threadTweets.filter(t => !t.content.trim())
@@ -524,7 +487,7 @@ export default function ThreadTweetEditor({
                   isPosting={isPosting}
                   onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
                   initialContent={tweet.content}
-                  initialMedia={fullMediaData[tweet.id] || []}
+                  initialMedia={[]}
                 />
               </div>
             ))}
@@ -551,7 +514,7 @@ export default function ThreadTweetEditor({
               isPosting={false}
               onUpdate={(content, media) => handleTweetUpdate(threadTweets[0]?.id || '', content, media)}
               initialContent={threadTweets[0]?.content || ''}
-              initialMedia={fullMediaData[threadTweets[0]?.id || ''] || []}
+              initialMedia={[]}
             />
             
             {/* Create thread link - don't show in edit mode */}

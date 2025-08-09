@@ -434,54 +434,54 @@ export default function TweetList({
                           // Render single tweet
                           item.tweets.map((tweet: any) => (
                             <div key={tweet.id} className="grid gap-3" style={{ gridTemplateColumns: 'auto 1fr auto' }}>
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-2 mt-2">
-                                  <div className="flex items-center gap-2 w-[100px]">
-                                    <Clock className="size-4 text-stone-500" />
-                                    <span className="font-medium text-sm text-stone-700">
-                                      {tweet.updatedAt
-                                        ? format(new Date(tweet.updatedAt), 'h:mm aaa')
-                                        : '--:-- --'}
-                                    </span>
-                                  </div>
-                                  <div className="flex w-[80px] items-start justify-center gap-2">
-                                    <DuolingoBadge variant="green" className="text-xs px-2">
-                                      Published
-                                    </DuolingoBadge>
-                                  </div>
-                                </div>
-                              </div>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2 w-[100px]">
+                              <Clock className="size-4 text-stone-500" />
+                              <span className="font-medium text-sm text-stone-700">
+                                {tweet.updatedAt
+                                  ? format(new Date(tweet.updatedAt), 'h:mm aaa')
+                                  : '--:-- --'}
+                              </span>
+                            </div>
+                            <div className="flex w-[80px] items-start justify-center gap-2">
+                              <DuolingoBadge variant="green" className="text-xs px-2">
+                                Published
+                              </DuolingoBadge>
+                            </div>
+                          </div>
+                        </div>
 
-                              <div className="px-4 py-3 rounded-lg border bg-white border-stone-200 shadow-sm">
-                                <div className="space-y-2">
-                                  <div className="text-stone-900 text-sm leading-relaxed">
-                                    <LexicalComposer
-                                      initialConfig={{ ...initialConfig, editable: false }}
-                                    >
-                                      <PlainTextPlugin
-                                        contentEditable={
-                                          <ContentEditable className="w-full resize-none leading-relaxed text-stone-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
-                                        }
-                                        ErrorBoundary={LexicalErrorBoundary}
-                                      />
-                                      <InitialContentPlugin content={tweet.content} />
-                                    </LexicalComposer>
-                                  </div>
+                        <div className="px-4 py-3 rounded-lg border bg-white border-stone-200 shadow-sm">
+                          <div className="space-y-2">
+                            <div className="text-stone-900 text-sm leading-relaxed">
+                              <LexicalComposer
+                                initialConfig={{ ...initialConfig, editable: false }}
+                              >
+                                <PlainTextPlugin
+                                  contentEditable={
+                                    <ContentEditable className="w-full resize-none leading-relaxed text-stone-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
+                                  }
+                                  ErrorBoundary={LexicalErrorBoundary}
+                                />
+                                <InitialContentPlugin content={tweet.content} />
+                              </LexicalComposer>
+                            </div>
 
                                   {tweet.media && tweet.media.length > 0 && (
-                                    <div className="mt-2">
-                                      <MediaDisplay
+                              <div className="mt-2">
+                                <MediaDisplay
                                         mediaFiles={tweet.media.map((media: any) => ({
-                                          ...media,
-                                          uploading: false,
-                                          media_id: media.media_id,
-                                          s3Key: media.s3Key,
-                                          type: media.type as 'image' | 'gif' | 'video',
-                                        }))}
-                                        removeMediaFile={() => {}}
-                                      />
-                                    </div>
-                                  )}
+                                    ...media,
+                                    uploading: false,
+                                    media_id: media.media_id,
+                                    s3Key: media.s3Key,
+                                    type: media.type as 'image' | 'gif' | 'video',
+                                  }))}
+                                  removeMediaFile={() => {}}
+                                />
+                              </div>
+                            )}
 
                                   {/* Analytics for single tweets */}
                                   {tweet.twitterId && (
@@ -515,30 +515,30 @@ export default function TweetList({
                                       </div>
                                     </div>
                                   )}
-                                </div>
-                              </div>
+                          </div>
+                        </div>
 
                               <div className="flex items-center gap-2">
                                 {tweet.twitterId && account?.username && (
-                                  <Link
-                                    className={cn(
-                                      buttonVariants({
-                                        variant: 'outline',
-                                        size: 'icon',
-                                        className: 'size-8'
+                          <Link
+                            className={cn(
+                              buttonVariants({
+                                variant: 'outline',
+                                size: 'icon',
+                                className: 'size-8'
                                       })
                                     )}
                                     href={`https://x.com/${account.username}/status/${tweet.twitterId}`}
-                                    target="_blank"
-                                  >
-                                    <Eye className="size-4" />
-                                    <span className="sr-only">View on Twitter</span>
-                                  </Link>
+                            target="_blank"
+                          >
+                            <Eye className="size-4" />
+                            <span className="sr-only">View on Twitter</span>
+                          </Link>
                                 )}
                                 {tweet.twitterId && (
                                   <DuolingoButton
-                                    variant="secondary"
-                                    size="icon"
+                            variant="secondary"
+                            size="icon"
                                     className="size-8"
                                     onClick={() => fetchMetrics({ tweetIds: [tweet.id] })}
                                     disabled={isFetchingMetrics}
@@ -551,7 +551,7 @@ export default function TweetList({
                             </div>
                           ))
                         )}
-                      </div>
+                        </div>
                     ))}
                   </div>
                 </CardContent>
