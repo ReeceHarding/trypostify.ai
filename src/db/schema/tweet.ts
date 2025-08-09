@@ -26,10 +26,12 @@ export const tweets = pgTable('tweets', {
   s3Keys: json('s3_keys').$type<string[]>().default([]),
   qstashId: text('qstash_id'),
   twitterId: text('twitter_id'),
-  // Optional thread grouping. All items in the same thread share the same threadId.
-  threadId: text('thread_id'),
-  // One based position of the item in the thread sequence.
-  threadPosition: integer('thread_position'),
+  // Thread support fields
+  threadId: text('thread_id'), // Groups tweets into threads
+  position: integer('position').default(0), // Order within thread (0 = first tweet)
+  replyToTweetId: text('reply_to_tweet_id'), // Previous tweet's Twitter ID for reply chain
+  isThreadStart: boolean('is_thread_start').default(false), // Marks the first tweet in a thread
+  delayMs: integer('delay_ms').default(0), // Delay in milliseconds from previous tweet
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
