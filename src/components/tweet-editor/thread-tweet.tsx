@@ -972,11 +972,11 @@ function ThreadTweetContent({
           </div>
         </div>
 
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent centered>
           <DrawerHeader>
             <DrawerTitle>Choose from library</DrawerTitle>
           </DrawerHeader>
-          <div className="h-[calc(85vh-5rem)] custom-scrollbar">
+          <div className="h-[calc(70vh-5rem)] custom-scrollbar">
             <MediaLibrary
               onSelect={handleMediaLibrarySelect}
               maxSelection={MAX_MEDIA_COUNT - mediaFiles.length}
