@@ -267,11 +267,11 @@ body {
 }
 
 .addition-node {
-  @apply text-emerald-700 bg-green-50 underline underline-offset-2 decoration-2 decoration-emerald-700;
+  @apply text-success-700 bg-success-50 underline underline-offset-2 decoration-2 decoration-success-700;
 }
 
 .deletion-node {
-  @apply text-rose-700 bg-rose-50 underline underline-offset-2 decoration-2 decoration-rose-700;
+  @apply text-error-700 bg-error-50 underline underline-offset-2 decoration-2 decoration-error-700;
 }
 
 .replacement-node {
@@ -279,7 +279,7 @@ body {
 }
 
 .unchanged-node {
-  @apply text-gray-900;
+  @apply text-neutral-900;
 }
 
 [data-lexical-editor] [contenteditable='true']:empty::before {
@@ -294,7 +294,7 @@ body {
 }
 
 .show-placeholder::before {
-  @apply text-stone-400;
+  @apply text-neutral-400;
 }
 
 .show-placeholder::before {
@@ -480,16 +480,16 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: hsl(var(--neutral-300));
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: hsl(var(--neutral-400));
 }
 
 /* Firefox scrollbar styling */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #d1d5db transparent;
+  scrollbar-color: hsl(var(--neutral-300)) transparent;
 }

@@ -50,7 +50,7 @@ export const WebsiteMockup = memo(
         variants={isLoading ? containerVariants : undefined}
         initial={isLoading ? 'hidden' : false}
         animate={isLoading ? 'visible' : false}
-        className="w-full min-w-80 rounded-2xl border border-black border-opacity-[0.01] bg-clip-padding group isolate bg-white shadow-[0_1px_1px_rgba(0,0,0,0.05),0_4px_6px_rgba(34,42,53,0.04),0_24px_68px_rgba(47,48,55,0.05),0_2px_3px_rgba(0,0,0,0.04)] overflow-hidden"
+        className="w-full min-w-80 rounded-2xl border border-black border-opacity-[0.01] bg-clip-padding group isolate bg-white shadow-[var(--shadow-twitter)] overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200/50">
           <div className="flex items-center gap-2">

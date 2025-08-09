@@ -268,10 +268,10 @@ const ChatInput = ({
           )}
           <div className="relative">
             <div
-              className={`rounded-xl bg-white border-2 shadow-[0_2px_0_#E5E7EB] font-medium transition-all duration-300 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-600 ${
+              className={`rounded-xl bg-white border-2 shadow-[0_2px_0_hsl(var(--neutral-200))] font-medium transition-all duration-300 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary ${
                 isDragging
-                  ? 'border-indigo-200 shadow-[0_4px_12px_rgba(99,102,241,0.15)]'
-                  : 'border-gray-200'
+                  ? 'border-primary/20 shadow-[var(--shadow-md)]'
+                  : 'border-neutral-200'
               }`}
             >
               <PlainTextPlugin

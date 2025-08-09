@@ -1076,8 +1076,8 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
         <EditModeWrapper>
           <div
             className={cn(
-              'relative bg-white p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[0_1px_1px_rgba(0,0,0,0.05),0_4px_6px_rgba(34,42,53,0.04),0_24px_68px_rgba(47,48,55,0.05),0_2px_3px_rgba(0,0,0,0.04)]  transition-colors',
-              isDragging && 'border-indigo-600 border-dashed',
+              'relative bg-white p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)]  transition-colors',
+              isDragging && 'border-primary border-dashed',
             )}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
