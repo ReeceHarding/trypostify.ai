@@ -128,13 +128,13 @@ const Page = async () => {
 
               <>
                 <Script
-                  src="https://widget.senja.io/widget/72519276-9e16-4bc4-9911-49ffb12b73b4/platform.js"
+                  src="https://widget.senja.io/widget/01600cf0-5fa6-455a-9364-d3f7bf7b7ef9/platform.js"
                   type="text/javascript"
                   async
                 ></Script>
                 <div
                   className="senja-embed block w-full mt-20"
-                  data-id="72519276-9e16-4bc4-9911-49ffb12b73b4"
+                  data-id="01600cf0-5fa6-455a-9364-d3f7bf7b7ef9"
                   data-mode="shadow"
                   data-lazyload="false"
                 ></div>

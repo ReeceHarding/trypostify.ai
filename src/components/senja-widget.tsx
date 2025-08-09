@@ -7,7 +7,7 @@ export const SenjaWidget = ({ className }: { className?: string }) => {
   useEffect(() => {
     const script = document.createElement('script')
     script.src =
-      'https://widget.senja.io/widget/80f6bf95-1c4d-42b3-b4a7-0b0c8c0d7a38/platform.js'
+      'https://widget.senja.io/widget/01600cf0-5fa6-455a-9364-d3f7bf7b7ef9/platform.js'
     script.async = true
     document.body.appendChild(script)
 
@@ -18,7 +18,7 @@ export const SenjaWidget = ({ className }: { className?: string }) => {
 
   return (
     <div
-      data-id="80f6bf95-1c4d-42b3-b4a7-0b0c8c0d7a38"
+      data-id="01600cf0-5fa6-455a-9364-d3f7bf7b7ef9"
       data-mode="shadow"
       data-lazyload="false"
       className={cn('senja-embed block w-full', className)}
