@@ -366,7 +366,7 @@ export default function ThreadTweetEditor({
                   canDelete={index > 0}
                   editMode={editMode}
                   onRemove={() => handleRemoveTweet(tweet.id)}
-                  onAddToThread={index === threadTweets.length - 1 ? handleAddTweet : undefined}
+
                   onPostThread={index === 0 && !editMode ? handlePostThread : undefined}
                   onScheduleThread={index === 0 && !editMode ? handleScheduleThread : undefined}
                   onUpdateThread={index === 0 && editMode ? handleUpdateThread : undefined}
@@ -378,17 +378,14 @@ export default function ThreadTweetEditor({
               </div>
             ))}
             
-            {/* Back to single tweet link - don't show in edit mode */}
-            {!editMode && (
-              <div className="text-center">
-                <button
-                  onClick={handleToggleMode}
-                  className="text-sm text-blue-500 hover:text-blue-600 hover:underline transition-colors"
-                >
-                  Back to single tweet
-                </button>
-              </div>
-            )}
+            {/* Add tweet button */}
+            <button
+              onClick={handleAddTweet}
+              className="w-full p-3 border-2 border-dashed border-stone-300 hover:border-stone-400 rounded-lg flex items-center justify-center gap-2 text-stone-500 hover:text-stone-700 transition-colors"
+            >
+              <span className="text-sm font-medium">Add another tweet to this thread</span>
+            </button>
+
           </>
         ) : (
           // Single tweet mode

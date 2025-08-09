@@ -66,7 +66,6 @@ interface ThreadTweetProps {
   canDelete: boolean
   editMode?: boolean
   onRemove?: () => void
-  onAddToThread?: () => void
   onPostThread?: () => void
   onScheduleThread?: (date: Date) => void
   onUpdateThread?: () => void
@@ -98,7 +97,6 @@ function ThreadTweetContent({
   canDelete,
   editMode = false,
   onRemove,
-  onAddToThread,
   onPostThread,
   onScheduleThread,
   onUpdateThread,
@@ -705,49 +703,25 @@ function ThreadTweetContent({
                     </Tooltip>
                   </TooltipProvider>
 
-                  {/* Show delete button only for non-first tweets in thread */}
-                  {isThread && canDelete && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <DuolingoButton
-                            variant="secondary"
-                            size="icon"
-                            className="rounded-md"
-                            onClick={onRemove}
-                          >
-                            <Trash2 className="size-4" />
-                            <span className="sr-only">Remove tweet</span>
-                          </DuolingoButton>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Remove from thread</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-
-                  {/* Show clear button for single tweets and first tweet in thread */}
-                  {(!isThread || isFirstTweet) && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <DuolingoButton
-                            variant="secondary"
-                            size="icon"
-                            className="rounded-md"
-                            onClick={handleClearTweet}
-                          >
-                            <Trash2 className="size-4" />
-                            <span className="sr-only">Clear tweet</span>
-                          </DuolingoButton>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Clear tweet</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                  {/* Show delete/clear button */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DuolingoButton
+                          variant="secondary"
+                          size="icon"
+                          className="rounded-md"
+                          onClick={isThread && canDelete ? onRemove : handleClearTweet}
+                        >
+                          <Trash2 className="size-4" />
+                          <span className="sr-only">{isThread && canDelete ? 'Remove tweet' : 'Clear tweet'}</span>
+                        </DuolingoButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isThread && canDelete ? 'Remove from thread' : 'Clear tweet'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
 
                   <div className="w-px h-4 bg-stone-300 mx-2" />
 
@@ -875,15 +849,7 @@ function ThreadTweetContent({
                     </>
                   )}
 
-                  {/* Show add to thread button only on last tweet */}
-                  {isThread && isLastTweet && onAddToThread && (
-                    <DuolingoButton
-                      className="h-11"
-                      onClick={onAddToThread}
-                    >
-                      <span className="text-sm">Add to thread</span>
-                    </DuolingoButton>
-                  )}
+
                 </div>
               </div>
             </div>
