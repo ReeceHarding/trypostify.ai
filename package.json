@@ -3,14 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "sh -c 'PIDS=$(lsof -n -P -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true); if [ -n \"$PIDS\" ]; then echo \"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Killing port 3000 PIDs: $PIDS\"; kill -9 $PIDS >/dev/null 2>&1 || true; fi; echo \"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Starting Next on port 3000\"; NEXT_TELEMETRY_DISABLED=1 next dev -p 3000'",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node scripts/logger.js --clear \"sh -c 'PIDS=$(lsof -n -P -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true); if [ -n \\\"$PIDS\\\" ]; then echo \\\"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Killing port 3000 PIDs: $PIDS\\\"; kill -9 $PIDS >/dev/null 2>&1 || true; fi; echo \\\"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Starting Next on port 3000\\\"; NEXT_TELEMETRY_DISABLED=1 next dev -p 3000'\"",
+    "dev-no-log": "sh -c 'PIDS=$(lsof -n -P -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true); if [ -n \"$PIDS\" ]; then echo \"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Killing port 3000 PIDs: $PIDS\"; kill -9 $PIDS >/dev/null 2>&1 || true; fi; echo \"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Starting Next on port 3000\"; NEXT_TELEMETRY_DISABLED=1 next dev -p 3000'",
+    "build": "node scripts/logger.js \"next build\"",
+    "build-no-log": "next build",
+    "start": "node scripts/logger.js \"next start\"",
+    "start-no-log": "next start",
     "lint": "next lint",
     "seed-stripe": "tsx seed-stripe.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "clear-logs": "echo '' > log.txt && echo 'Log file cleared' || echo 'No log file to clear'",
+    "view-logs": "tail -f log.txt",
+    "view-recent-logs": "tail -100 log.txt",
+    "rotate-logs": "node scripts/log-rotator.js",
+    "rotate-logs-force": "node scripts/log-rotator.js --force",
+    "log-status": "node scripts/log-rotator.js --help && echo '' && echo 'Current log size:' && ls -lh log.txt 2>/dev/null || echo 'No log file found'"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
