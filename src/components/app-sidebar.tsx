@@ -106,6 +106,19 @@ const ChatInput = ({
       if (!exists) addKnowledgeAttachment(doc)
       setIsChooserOpen(false)
       setChooserQuery('')
+      // Remove the trailing "@/query" trigger text from the editor after selection
+      editor.update(() => {
+        const root = $getRoot()
+        const textNodes = root.getAllTextNodes()
+        const lastText = textNodes[textNodes.length - 1]
+        if (lastText) {
+          const current = lastText.getTextContent()
+          const cleaned = current.replace(/@\/([^\s]*)$/, '')
+          if (cleaned !== current) {
+            lastText.setTextContent(cleaned)
+          }
+        }
+      })
     },
     [attachments, addKnowledgeAttachment],
   )
