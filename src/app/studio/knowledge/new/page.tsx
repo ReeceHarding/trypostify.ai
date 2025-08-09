@@ -30,6 +30,26 @@ export default function NewKnowledgePage() {
   const [isDragging, setIsDragging] = useState(false)
   const [uploadState, setUploadState] = useState<UploadState | null>(null)
 
+  // Normalize a user-entered URL so that host-only inputs like "example.com"
+  // become valid absolute URLs by adding an implicit https:// scheme.
+  const normalizeUrlInput = (raw: string): string => {
+    const value = (raw || '').trim()
+    if (!value) return ''
+    // If the user already provided a scheme, leave it as-is.
+    if (/^https?:\/\//i.test(value)) return value
+    // Prepend https:// to host-only or schemeless inputs.
+    try {
+      const normalized = `https://${value}`
+      // Validate via URL constructor; if it throws, fall back to original with https://
+      // This guards against obviously invalid inputs without breaking UX.
+      // eslint-disable-next-line no-new
+      new URL(normalized)
+      return normalized
+    } catch {
+      return `https://${value}`
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (getDisabled()) return
@@ -38,7 +58,11 @@ export default function NewKnowledgePage() {
       if (data) processFile({ ...data, title })
     }
     if (type === 'url') {
-      if (url) importUrl(url)
+      if (url) {
+        const cleaned = normalizeUrlInput(url)
+        setUrl(cleaned)
+        importUrl(cleaned)
+      }
     }
   }
 
@@ -395,6 +419,7 @@ export default function NewKnowledgePage() {
           placeholder="https://example.com/article"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
+          onBlur={(e) => setUrl(normalizeUrlInput(e.target.value))}
           className="flex-1 w-full"
         />
       </div>

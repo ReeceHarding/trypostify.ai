@@ -107,7 +107,17 @@ export const knowledgeRouter = j.router({
     }),
 
   importUrl: privateProcedure
-    .input(z.object({ url: z.string().url() }))
+    .input(
+      z.object({
+        // Accept host-only inputs and prepend https:// if missing before URL validation
+        url: z.preprocess((val) => {
+          const raw = typeof val === 'string' ? val.trim() : ''
+          if (!raw) return raw
+          if (/^https?:\/\//i.test(raw)) return raw
+          return `https://${raw}`
+        }, z.string().url()),
+      })
+    )
     .mutation(async ({ c, ctx, input }) => {
       const { user } = ctx
 
