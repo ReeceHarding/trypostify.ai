@@ -27,6 +27,23 @@ interface ThreadTweetEditorProps {
   editTweetId?: string | null
 }
 
+// Validation helper
+function validateThreadTweets(tweets: ThreadTweetData[]): { valid: boolean; error?: string } {
+  // Check for empty tweets
+  const emptyTweets = tweets.filter(t => !t.content.trim())
+  if (emptyTweets.length > 0) {
+    return { valid: false, error: 'All tweets in the thread must have content' }
+  }
+
+  // Check character limits
+  const oversizedTweets = tweets.filter(t => t.content.length > 280)
+  if (oversizedTweets.length > 0) {
+    return { valid: false, error: 'All tweets must be 280 characters or less' }
+  }
+
+  return { valid: true }
+}
+
 export default function ThreadTweetEditor({
   className,
   editMode = false,
@@ -74,10 +91,10 @@ export default function ThreadTweetEditor({
     }
   }, [threadData])
 
-  // Create thread mutation
-  const createThreadMutation = useMutation({
+  // Post thread mutation - combines create and post
+  const postThreadMutation = useMutation({
     mutationFn: async (tweets: Array<{ content: string; media: any[]; delayMs: number }>) => {
-      const res = await client.tweet.createThread.$post({
+      const res = await client.tweet.postThreadNow.$post({
         tweets,
       })
 
@@ -88,35 +105,19 @@ export default function ThreadTweetEditor({
 
       return res.json()
     },
-  })
-
-  // Post thread immediately mutation
-  const postThreadNowMutation = useMutation({
-    mutationFn: async (threadId: string) => {
-
-      const res = await client.tweet.postThreadNow.$post({
-        threadId,
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new HTTPException(res.status as any, { message: (error as any).message })
-      }
-
-      return res.json()
-    },
     onSuccess: (data) => {
-
       toast.success('Thread posted successfully!')
       fire()
       
       // Clear the thread
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
-
       
       if (data.threadUrl) {
         window.open(data.threadUrl, '_blank')
       }
+    },
+    onError: () => {
+      toast.error('Failed to post thread')
     },
   })
 
@@ -186,7 +187,7 @@ export default function ThreadTweetEditor({
       router.push('/studio/scheduled')
     },
     onError: (error: HTTPException) => {
-      console.error('[ThreadTweetEditor] Failed to queue thread:', error)
+      // console.error('[ThreadTweetEditor] Failed to queue thread:', error)
       toast.error(error.message || 'Failed to queue thread')
     },
   })
@@ -240,108 +241,82 @@ export default function ThreadTweetEditor({
   }
 
   const handlePostThread = async () => {
-
-    
-    // Validate all tweets have content
-    const emptyTweets = threadTweets.filter(t => !t.content.trim())
-    if (emptyTweets.length > 0) {
-      toast.error('All tweets in the thread must have content')
-      return
-    }
-
-    // Check character limits
-    const oversizedTweets = threadTweets.filter(t => t.content.length > 280)
-    if (oversizedTweets.length > 0) {
-      toast.error('All tweets must be 280 characters or less')
+    // Validate tweets
+    const validation = validateThreadTweets(threadTweets)
+    if (!validation.valid) {
+      toast.error(validation.error!)
       return
     }
 
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
     try {
-      // Create thread first
-      const createResult = await createThreadMutation.mutateAsync(
+      // Post thread immediately with combined mutation
+      const result = await postThreadMutation.mutateAsync(
         threadTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
         }))
       )
-
-      if (!createResult.threadId) {
-        throw new Error('Failed to create thread')
-      }
-
-      // Post thread immediately
-      await postThreadNowMutation.mutateAsync(createResult.threadId)
       
       posthog.capture('thread_posted', {
         tweet_count: threadTweets.length,
-        thread_id: createResult.threadId,
+        thread_id: result.threadId,
       })
     } catch (error) {
-      console.error('[ThreadTweetEditor] Error in post thread process:', error)
-      toast.error('Failed to post thread')
+      // Already handled by mutation onError
     }
   }
 
   const handleScheduleThread = async (scheduledDate: Date) => {
-
-    
-    // Validate all tweets have content
-    const emptyTweets = threadTweets.filter(t => !t.content.trim())
-    if (emptyTweets.length > 0) {
-      toast.error('All tweets in the thread must have content')
+    // Validate tweets
+    const validation = validateThreadTweets(threadTweets)
+    if (!validation.valid) {
+      toast.error(validation.error!)
       return
     }
 
     posthog.capture('thread_schedule_started', { tweet_count: threadTweets.length })
 
     try {
-      // Create thread first
-      const createResult = await createThreadMutation.mutateAsync(
-        threadTweets.map((tweet, index) => ({
+      // First create the thread
+      const createResult = await client.tweet.createThread.$post({
+        tweets: threadTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
         }))
-      )
+      })
 
-      if (!createResult.threadId) {
+      if (!createResult.ok) {
         throw new Error('Failed to create thread')
       }
+      
+      const { threadId } = await createResult.json()
 
       // Schedule the thread
       await scheduleThreadMutation.mutateAsync({
-        threadId: createResult.threadId,
+        threadId,
         scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),
       })
       
       posthog.capture('thread_scheduled', {
         tweet_count: threadTweets.length,
-        thread_id: createResult.threadId,
+        thread_id: threadId,
         scheduled_for: scheduledDate.toISOString(),
       })
     } catch (error) {
-      console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
+      // console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
       toast.error('Failed to schedule thread')
     }
   }
 
   const handleQueueThread = async () => {
-
-    
-    // Validate all tweets have content
-    const emptyTweets = threadTweets.filter(t => !t.content.trim())
-    if (emptyTweets.length > 0) {
-      toast.error('All tweets in the thread must have content')
-      return
-    }
-
-    // Check character limits
-    const oversizedTweets = threadTweets.filter(t => t.content.length > 280)
-    if (oversizedTweets.length > 0) {
-      toast.error('All tweets must be 280 characters or less')
+    // Validate tweets
+    const validation = validateThreadTweets(threadTweets)
+    if (!validation.valid) {
+      toast.error(validation.error!)
       return
     }
 
@@ -349,34 +324,36 @@ export default function ThreadTweetEditor({
 
     try {
       // Create thread first
-      const createResult = await createThreadMutation.mutateAsync(
-        threadTweets.map((tweet, index) => ({
+      const createResult = await client.tweet.createThread.$post({
+        tweets: threadTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
         }))
-      )
+      })
       
-      if (!createResult.threadId) {
+      if (!createResult.ok) {
         throw new Error('Failed to create thread')
       }
+      
+      const { threadId } = await createResult.json()
 
       // Get user's timezone
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
       
       // Queue the thread
       await enqueueThreadMutation.mutateAsync({
-        threadId: createResult.threadId,
+        threadId,
         userNow: new Date(),
         timezone,
       })
       
       posthog.capture('thread_queued', {
-        thread_id: createResult.threadId,
+        thread_id: threadId,
         tweet_count: threadTweets.length,
       })
     } catch (error) {
-      console.error('[ThreadTweetEditor] Failed to queue thread:', error)
+      // console.error('[ThreadTweetEditor] Failed to queue thread:', error)
     }
   }
 
@@ -400,7 +377,7 @@ export default function ThreadTweetEditor({
         thread_id: threadData?.threadId,
       })
     } catch (error) {
-      console.error('[ThreadTweetEditor] Error updating thread:', error)
+      // console.error('[ThreadTweetEditor] Error updating thread:', error)
       toast.error('Failed to update thread')
     }
   }
@@ -409,7 +386,7 @@ export default function ThreadTweetEditor({
     router.push('/studio/scheduled')
   }
 
-  const isPosting = createThreadMutation.isPending || postThreadNowMutation.isPending || scheduleThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
+  const isPosting = postThreadMutation.isPending || scheduleThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
 
   // Show loading state while loading thread data
   if (loadingThread) {

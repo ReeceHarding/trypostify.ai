@@ -81,7 +81,7 @@ async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
           file: null,
         }
       } catch (error) {
-        console.error('Failed to fetch media from S3:', error)
+        // console.error('Failed to fetch media from S3:', error)
         throw new Error('Failed to fetch media from S3')
       }
     }),
@@ -566,7 +566,7 @@ export const tweetRouter = j.router({
     })
 
     if (!account || !account.accessToken) {
-      console.log('no account')
+      // console.log('no account')
       throw new HTTPException(400, {
         message: 'Twitter account not connected or access token missing',
       })
@@ -598,11 +598,11 @@ export const tweetRouter = j.router({
       }
 
       try {
-        console.log('ℹ️ tweet payload', JSON.stringify(tweetPayload, null, 2))
+        // console.log('ℹ️ tweet payload', JSON.stringify(tweetPayload, null, 2))
         const res = await client.v2.tweet(tweetPayload)
-        res.errors?.map((error) =>
-          console.error('⚠️ Twitter error:', JSON.stringify(error, null, 2)),
-        )
+        // res.errors?.map((error) =>
+        //   console.error('⚠️ Twitter error:', JSON.stringify(error, null, 2)),
+        // )
 
         await db
           .update(tweets)
@@ -614,14 +614,14 @@ export const tweetRouter = j.router({
           })
           .where(eq(tweets.id, tweetId))
       } catch (err) {
-        console.error('🔴 Twitter error:', JSON.stringify(err, null, 2))
+        // console.error('🔴 Twitter error:', JSON.stringify(err, null, 2))
 
         throw new HTTPException(500, {
           message: 'Failed to post tweet to Twitter',
         })
       }
     } catch (error) {
-      console.error('Failed to post tweet:', error)
+      // console.error('Failed to post tweet:', error)
       throw new HTTPException(500, {
         message: 'Failed to post tweet to Twitter',
       })
@@ -736,7 +736,7 @@ export const tweetRouter = j.router({
           accountUsername: account.username, // Username of the twitter (x) user, use for correct tweet urls
         })
       } catch (error) {
-        console.error('Failed to post tweet:', error)
+        // console.error('Failed to post tweet:', error)
         throw new HTTPException(500, {
           message: 'Failed to post tweet to Twitter',
         })
@@ -823,7 +823,7 @@ export const tweetRouter = j.router({
           accountUsername: account.username, // Username of the twitter (x) user, use for correct tweet urls
         })
       } catch (error) {
-        console.error('Failed to post tweet:', error)
+        // console.error('Failed to post tweet:', error)
         throw new HTTPException(500, {
           message: 'Failed to post tweet to Twitter',
         })
@@ -1124,7 +1124,7 @@ export const tweetRouter = j.router({
 
       const nextSlot = getNextAvailableSlot({ userNow, timezone, maxDaysAhead: 90 })
 
-      console.log({ nextSlot })
+      // console.log({ nextSlot })
 
       if (!nextSlot) {
         throw new HTTPException(409, {
@@ -1382,28 +1382,27 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { tweets: threadTweets } = input
 
-      console.log('[createThread] Starting thread creation for user:', user.id)
-      console.log('[createThread] Number of tweets in thread:', threadTweets.length)
+
 
       const account = await getAccount({
         email: user.email,
       })
 
       if (!account?.id) {
-        console.log('[createThread] No active account found')
+
         throw new HTTPException(400, {
           message: 'Please connect your Twitter account',
         })
       }
 
       const threadId = crypto.randomUUID()
-      console.log('[createThread] Generated threadId:', threadId)
+
 
       // Create all thread tweets in the database
       const createdTweets = await Promise.all(
         threadTweets.map(async (tweet, index) => {
           const tweetId = crypto.randomUUID()
-          console.log(`[createThread] Creating tweet ${index + 1}/${threadTweets.length}, id: ${tweetId}`)
+
 
           const [created] = await db
             .insert(tweets)
@@ -1422,12 +1421,12 @@ export const tweetRouter = j.router({
             })
             .returning()
 
-          console.log(`[createThread] Tweet ${index + 1} created successfully`)
+
           return created
         }),
       )
 
-      console.log('[createThread] All thread tweets created successfully')
+
       return c.json({ 
         success: true, 
         threadId, 
@@ -1459,8 +1458,8 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, tweets: updatedTweets } = input
 
-      console.log('[updateThread] Updating thread:', threadId)
-      console.log('[updateThread] Number of tweets:', updatedTweets.length)
+      // console.log('[updateThread] Updating thread:', threadId)
+      // console.log('[updateThread] Number of tweets:', updatedTweets.length)
 
       // Get existing thread tweets
       const existingTweets = await db.query.tweets.findMany({
@@ -1471,14 +1470,14 @@ export const tweetRouter = j.router({
         orderBy: asc(tweets.position),
       })
 
-      console.log('[updateThread] Found existing tweets:', existingTweets.length)
+      // console.log('[updateThread] Found existing tweets:', existingTweets.length)
 
       // Delete tweets that are no longer in the updated list
       const updatedIds = updatedTweets.filter(t => t.id).map(t => t.id)
       const toDelete = existingTweets.filter(t => !updatedIds.includes(t.id))
       
       for (const tweet of toDelete) {
-        console.log('[updateThread] Deleting tweet:', tweet.id)
+        // console.log('[updateThread] Deleting tweet:', tweet.id)
         await db.delete(tweets).where(eq(tweets.id, tweet.id))
       }
 
@@ -1487,7 +1486,7 @@ export const tweetRouter = j.router({
         updatedTweets.map(async (tweet, index) => {
           if (tweet.id) {
             // Update existing tweet
-            console.log(`[updateThread] Updating tweet ${index + 1}, id: ${tweet.id}`)
+            // console.log(`[updateThread] Updating tweet ${index + 1}, id: ${tweet.id}`)
             const [updated] = await db
               .update(tweets)
               .set({
@@ -1503,7 +1502,7 @@ export const tweetRouter = j.router({
           } else {
             // Create new tweet
             const tweetId = crypto.randomUUID()
-            console.log(`[updateThread] Creating new tweet ${index + 1}, id: ${tweetId}`)
+            // console.log(`[updateThread] Creating new tweet ${index + 1}, id: ${tweetId}`)
             // Get account ID from existing tweets
             if (!existingTweets[0]) {
               throw new HTTPException(400, { message: 'Cannot add tweets to empty thread' })
@@ -1531,7 +1530,7 @@ export const tweetRouter = j.router({
         }),
       )
 
-      console.log('[updateThread] Thread updated successfully')
+      // console.log('[updateThread] Thread updated successfully')
       return c.json({ 
         success: true, 
         tweets: results,
@@ -1542,81 +1541,98 @@ export const tweetRouter = j.router({
   postThreadNow: privateProcedure
     .input(
       z.object({
-        threadId: z.string(),
+        tweets: z.array(
+          z.object({
+            content: z.string().min(1).max(280),
+            media: z.array(
+              z.object({
+                media_id: z.string(),
+                s3Key: z.string(),
+              }),
+            ).optional(),
+            delayMs: z.number().default(0),
+          }),
+        ),
       }),
     )
     .post(async ({ c, ctx, input }) => {
       const { user } = ctx
-      const { threadId } = input
-
-      console.log('[postThreadNow] Starting immediate thread posting for threadId:', threadId)
+      const { tweets: threadTweets } = input
 
       const account = await getAccount({
         email: user.email,
       })
 
       if (!account?.id) {
-        console.log('[postThreadNow] No active account found')
         throw new HTTPException(400, {
           message: 'Please connect your Twitter account',
         })
       }
 
+      const threadId = crypto.randomUUID()
+
+      // Create all thread tweets in the database
+      const createdTweets = await Promise.all(
+        threadTweets.map(async (tweet, index) => {
+          const tweetId = crypto.randomUUID()
+
+          const [created] = await db
+            .insert(tweets)
+            .values({
+              id: tweetId,
+              accountId: account.id,
+              userId: user.id,
+              content: tweet.content,
+              media: tweet.media || [],
+              threadId,
+              position: index,
+              isThreadStart: index === 0,
+              delayMs: tweet.delayMs || 0,
+              isScheduled: false,
+              isPublished: false,
+            })
+            .returning()
+
+          return created
+        }),
+      )
+
+      // Get account with tokens
       const dbAccount = await db.query.account.findFirst({
-        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
+        where: eq(accountSchema.id, account.id),
       })
 
-      if (!dbAccount || !dbAccount.accessToken) {
-        console.log('[postThreadNow] No access token found')
+      if (!dbAccount?.accessToken || !dbAccount?.accessSecret) {
         throw new HTTPException(400, {
-          message: 'Twitter account not connected or access token missing',
+          message: 'Please reconnect your Twitter account',
         })
       }
 
-      // Get all tweets in the thread
-      const threadTweets = await db.query.tweets.findMany({
-        where: and(
-          eq(tweets.threadId, threadId),
-          eq(tweets.userId, user.id),
-        ),
-        orderBy: asc(tweets.position),
-      })
-
-      if (threadTweets.length === 0) {
-        console.log('[postThreadNow] No tweets found in thread')
-        throw new HTTPException(404, { message: 'Thread not found' })
-      }
-
-      console.log('[postThreadNow] Found tweets in thread:', threadTweets.length)
-
       const client = new TwitterApi({
-        appKey: consumerKey as string,
-        appSecret: consumerSecret as string,
-        accessToken: dbAccount.accessToken as string,
-        accessSecret: dbAccount.accessSecret as string,
+        appKey: consumerKey,
+        appSecret: consumerSecret,
+        accessToken: dbAccount.accessToken,
+        accessSecret: dbAccount.accessSecret,
       })
 
       let previousTweetId: string | null = null
-      const postedTweets: Array<{ id: string; twitterId: string }> = []
+      const postedTweets = []
 
-      // Post each tweet in sequence
-      for (const [index, tweet] of threadTweets.entries()) {
-        console.log(`[postThreadNow] Posting tweet ${index + 1}/${threadTweets.length}`)
-
+      for (const [index, tweet] of createdTweets.entries()) {
+        if (!tweet) continue
+        
         try {
-          // Wait for delay if specified (except for first tweet)
+          // Add delay between tweets
           if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
-            console.log(`[postThreadNow] Waiting ${tweet.delayMs}ms before posting`)
-            await new Promise(resolve => setTimeout(resolve, tweet.delayMs!))
+            await new Promise(resolve => setTimeout(resolve, tweet.delayMs || 0))
           }
 
           const tweetPayload: SendTweetV2Params = {
             text: tweet.content,
           }
 
-          // Add reply_to for subsequent tweets in the thread
+          // Add reply reference for thread continuation
           if (previousTweetId && index > 0) {
-            console.log('[postThreadNow] Setting reply_to:', previousTweetId)
             tweetPayload.reply = {
               in_reply_to_tweet_id: previousTweetId,
             }
@@ -1624,23 +1640,14 @@ export const tweetRouter = j.router({
 
           // Add media if present
           if (tweet.media && tweet.media.length > 0) {
-            console.log('[postThreadNow] Adding media:', tweet.media.length, 'items')
             tweetPayload.media = {
-              // @ts-expect-error tuple type vs. string[]
-              media_ids: tweet.media.map((media) => media.media_id),
+              media_ids: tweet.media.map((media: any) => media.media_id) as any,
             }
           }
 
-          console.log('[postThreadNow] Tweet payload:', JSON.stringify(tweetPayload, null, 2))
           const res = await client.v2.tweet(tweetPayload)
-          
-          if (res.errors) {
-            console.error('[postThreadNow] Twitter API errors:', JSON.stringify(res.errors, null, 2))
-          }
 
-          console.log('[postThreadNow] Tweet posted successfully, Twitter ID:', res.data.id)
-
-          // Update the tweet in the database
+          // Update database with Twitter ID
           await db
             .update(tweets)
             .set({
@@ -1652,29 +1659,23 @@ export const tweetRouter = j.router({
             .where(eq(tweets.id, tweet.id))
 
           previousTweetId = res.data.id
-          postedTweets.push({ id: tweet.id, twitterId: res.data.id })
+          postedTweets.push(res.data)
         } catch (error) {
-          console.error(`[postThreadNow] Failed to post tweet ${index + 1}:`, error)
           throw new HTTPException(500, {
             message: `Failed to post tweet ${index + 1} in thread`,
           })
         }
       }
 
-      const threadUrl = postedTweets[0]?.twitterId
-        ? `https://twitter.com/${account.username}/status/${postedTweets[0].twitterId}`
+      const threadUrl = postedTweets[0]
+        ? `https://twitter.com/${account.username}/status/${postedTweets[0].id}`
         : undefined
-      console.log('[postThreadNow] Thread posted successfully:', threadUrl)
 
-      return c.json({
-        success: true,
+      return c.json({ 
+        success: true, 
         threadId,
-        postedTweets,
         threadUrl,
-        accountId: account.id,
-        accountName: account.name,
-        accountUsername: account.username,
-        message: `Thread posted successfully with ${postedTweets.length} tweets`,
+        message: `Thread posted successfully with ${threadTweets.length} tweets`,
       })
     }),
 
@@ -1689,7 +1690,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, scheduledUnix } = input
 
-      console.log('[scheduleThread] Scheduling thread:', threadId, 'for:', new Date(scheduledUnix * 1000))
+      // console.log('[scheduleThread] Scheduling thread:', threadId, 'for:', new Date(scheduledUnix * 1000))
 
       const account = await getAccount({
         email: user.email,
@@ -1724,7 +1725,7 @@ export const tweetRouter = j.router({
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
-      console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
+      // console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
 
       const baseUrl =
         process.env.NODE_ENV === 'development'
@@ -1753,7 +1754,7 @@ export const tweetRouter = j.router({
           eq(tweets.userId, user.id),
         ))
 
-      console.log('[scheduleThread] Thread scheduled successfully')
+      // console.log('[scheduleThread] Thread scheduled successfully')
 
       return c.json({
         success: true,
@@ -1776,15 +1777,15 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, userNow, timezone } = input
 
-      console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
-      console.log('[enqueueThread] User timezone:', timezone)
+      // console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
+      // console.log('[enqueueThread] User timezone:', timezone)
 
       const account = await getAccount({
         email: user.email,
       })
 
       if (!account?.id) {
-        console.log('[enqueueThread] No active account found')
+        // console.log('[enqueueThread] No active account found')
         throw new HTTPException(400, {
           message: 'Please connect your Twitter account',
         })
@@ -1795,7 +1796,7 @@ export const tweetRouter = j.router({
       })
 
       if (!dbAccount || !dbAccount.accessToken) {
-        console.log('[enqueueThread] No access token found')
+        // console.log('[enqueueThread] No access token found')
         throw new HTTPException(400, {
           message: 'Twitter account not connected or access token missing',
         })
@@ -1811,11 +1812,11 @@ export const tweetRouter = j.router({
       })
 
       if (threadTweets.length === 0) {
-        console.log('[enqueueThread] No tweets found in thread')
+        // console.log('[enqueueThread] No tweets found in thread')
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
-      console.log('[enqueueThread] Found tweets in thread:', threadTweets.length)
+      // console.log('[enqueueThread] Found tweets in thread:', threadTweets.length)
 
       // Get all scheduled tweets to check for conflicts
       const scheduledTweets = await db.query.tweets.findMany({
@@ -1858,7 +1859,7 @@ export const tweetRouter = j.router({
 
       const nextSlot = getNextAvailableSlot({ userNow, timezone, maxDaysAhead: 90 })
 
-      console.log('[enqueueThread] Next available slot:', nextSlot)
+      // console.log('[enqueueThread] Next available slot:', nextSlot)
 
       if (!nextSlot) {
         throw new HTTPException(409, {
@@ -1880,7 +1881,7 @@ export const tweetRouter = j.router({
         notBefore: scheduledUnix / 1000, // needs to be in seconds
       })
 
-      console.log('[enqueueThread] QStash message created:', messageId)
+      // console.log('[enqueueThread] QStash message created:', messageId)
 
       try {
         // Update all tweets in the thread to queued
@@ -1899,16 +1900,16 @@ export const tweetRouter = j.router({
             eq(tweets.userId, user.id),
           ))
 
-        console.log('[enqueueThread] Thread queued successfully')
+        // console.log('[enqueueThread] Thread queued successfully')
       } catch (err) {
-        console.error('[enqueueThread] Database error:', err)
+        // console.error('[enqueueThread] Database error:', err)
         const messages = qstash.messages
 
         try {
           await messages.delete(messageId)
         } catch (err) {
           // fail silently
-          console.error('[enqueueThread] Failed to delete QStash message:', err)
+          // console.error('[enqueueThread] Failed to delete QStash message:', err)
         }
 
         throw new HTTPException(500, { message: 'Problem with database' })
@@ -1934,7 +1935,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId } = input
 
-      console.log('[getThread] Fetching thread:', threadId)
+      // console.log('[getThread] Fetching thread:', threadId)
 
       const threadTweets = await db.query.tweets.findMany({
         where: and(
@@ -1944,7 +1945,7 @@ export const tweetRouter = j.router({
         orderBy: asc(tweets.position),
       })
 
-      console.log('[getThread] Found tweets:', threadTweets.length)
+      // console.log('[getThread] Found tweets:', threadTweets.length)
 
       // Fetch media URLs for each tweet
       const tweetsWithMedia = await Promise.all(
@@ -1966,7 +1967,7 @@ export const tweetRouter = j.router({
   getThreads: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
 
-    console.log('[getThreads] Fetching all threads for user:', user.id)
+    // console.log('[getThreads] Fetching all threads for user:', user.id)
 
     // Get all tweets that are thread starts
     const threadStarts = await db.query.tweets.findMany({
@@ -1977,7 +1978,7 @@ export const tweetRouter = j.router({
       orderBy: desc(tweets.createdAt),
     })
 
-    console.log('[getThreads] Found thread starts:', threadStarts.length)
+    // console.log('[getThreads] Found thread starts:', threadStarts.length)
 
     // Get full thread data for each thread
     const threads = await Promise.all(
@@ -2002,7 +2003,7 @@ export const tweetRouter = j.router({
       }),
     )
 
-    console.log('[getThreads] Returning threads:', threads.length)
+    // console.log('[getThreads] Returning threads:', threads.length)
     return c.json({ threads })
   }),
 
@@ -2016,7 +2017,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId } = input
 
-      console.log('[deleteThread] Deleting thread:', threadId)
+      // console.log('[deleteThread] Deleting thread:', threadId)
 
       // Get all tweets in the thread
       const threadTweets = await db.query.tweets.findMany({
@@ -2030,17 +2031,17 @@ export const tweetRouter = j.router({
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
-      console.log('[deleteThread] Found tweets to delete:', threadTweets.length)
+      // console.log('[deleteThread] Found tweets to delete:', threadTweets.length)
 
       // Cancel any scheduled QStash jobs
       const messages = qstash.messages
       for (const tweet of threadTweets) {
         if (tweet.qstashId) {
-          console.log('[deleteThread] Cancelling QStash job:', tweet.qstashId)
+          // console.log('[deleteThread] Cancelling QStash job:', tweet.qstashId)
           try {
             await messages.delete(tweet.qstashId)
           } catch (err) {
-            console.error('[deleteThread] Failed to cancel QStash job:', err)
+            // console.error('[deleteThread] Failed to cancel QStash job:', err)
           }
         }
       }
@@ -2053,7 +2054,7 @@ export const tweetRouter = j.router({
           eq(tweets.userId, user.id),
         ))
 
-      console.log('[deleteThread] Thread deleted successfully')
+      // console.log('[deleteThread] Thread deleted successfully')
       return c.json({ 
         success: true,
         message: `Thread deleted with ${threadTweets.length} tweets`,
@@ -2082,7 +2083,7 @@ export const tweetRouter = j.router({
       accountId: string
     }
 
-    console.log('[postThread] Processing scheduled thread:', threadId)
+    // console.log('[postThread] Processing scheduled thread:', threadId)
 
     // Get all tweets in the thread
     const threadTweets = await db.query.tweets.findMany({
@@ -2094,7 +2095,7 @@ export const tweetRouter = j.router({
     })
 
     if (threadTweets.length === 0) {
-      console.log('[postThread] No unpublished tweets found')
+      // console.log('[postThread] No unpublished tweets found')
       return c.json({ success: true })
     }
 
@@ -2106,7 +2107,7 @@ export const tweetRouter = j.router({
     })
 
     if (!account || !account.accessToken) {
-      console.log('[postThread] No account or access token')
+      // console.log('[postThread] No account or access token')
       throw new HTTPException(400, {
         message: 'Twitter account not connected or access token missing',
       })
@@ -2123,12 +2124,12 @@ export const tweetRouter = j.router({
 
     // Post each tweet in sequence
     for (const [index, tweet] of threadTweets.entries()) {
-      console.log(`[postThread] Posting tweet ${index + 1}/${threadTweets.length}`)
+      // console.log(`[postThread] Posting tweet ${index + 1}/${threadTweets.length}`)
 
       try {
         // Wait for delay if specified (except for first tweet)
         if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
-          console.log(`[postThread] Waiting ${tweet.delayMs}ms`)
+          // console.log(`[postThread] Waiting ${tweet.delayMs}ms`)
           await new Promise(resolve => setTimeout(resolve, tweet.delayMs!))
         }
 
@@ -2138,7 +2139,7 @@ export const tweetRouter = j.router({
 
         // Add reply_to for subsequent tweets
         if (previousTweetId && index > 0) {
-          console.log('[postThread] Adding reply_to:', previousTweetId)
+          // console.log('[postThread] Adding reply_to:', previousTweetId)
           tweetPayload.reply = {
             in_reply_to_tweet_id: previousTweetId,
           }
@@ -2153,7 +2154,7 @@ export const tweetRouter = j.router({
         }
 
         const res = await client.v2.tweet(tweetPayload)
-        console.log('[postThread] Tweet posted, ID:', res.data.id)
+        // console.log('[postThread] Tweet posted, ID:', res.data.id)
 
         // Update the tweet in the database
         await db
@@ -2169,14 +2170,14 @@ export const tweetRouter = j.router({
 
         previousTweetId = res.data.id
       } catch (error) {
-        console.error(`[postThread] Failed to post tweet ${index + 1}:`, error)
+        // console.error(`[postThread] Failed to post tweet ${index + 1}:`, error)
         throw new HTTPException(500, {
           message: `Failed to post tweet ${index + 1} in thread`,
         })
       }
     }
 
-    console.log('[postThread] Thread posted successfully')
+    // console.log('[postThread] Thread posted successfully')
     return c.json({ success: true })
   }),
 
@@ -2191,7 +2192,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { tweetIds } = input
 
-      console.log('[fetchTweetMetrics] Fetching metrics for tweets:', tweetIds)
+      // console.log('[fetchTweetMetrics] Fetching metrics for tweets:', tweetIds)
 
       const account = await getAccount({
         email: user.email,
@@ -2229,13 +2230,13 @@ export const tweetRouter = j.router({
           ),
         })
 
-        console.log('[fetchTweetMetrics] Found tweets in DB:', dbTweets.length)
+        // console.log('[fetchTweetMetrics] Found tweets in DB:', dbTweets.length)
 
         // Filter to only tweets that have Twitter IDs
         const tweetsWithTwitterIds = dbTweets.filter(t => t.twitterId)
         
         if (tweetsWithTwitterIds.length === 0) {
-          console.log('[fetchTweetMetrics] No tweets with Twitter IDs found')
+          // console.log('[fetchTweetMetrics] No tweets with Twitter IDs found')
           return c.json({ success: true, updatedCount: 0 })
         }
 
@@ -2247,7 +2248,7 @@ export const tweetRouter = j.router({
           const batch = tweetsWithTwitterIds.slice(i, i + batchSize)
           const twitterIds = batch.map(t => t.twitterId!).filter(Boolean)
 
-          console.log(`[fetchTweetMetrics] Fetching batch ${i / batchSize + 1}, tweets:`, twitterIds.length)
+          // console.log(`[fetchTweetMetrics] Fetching batch ${i / batchSize + 1}, tweets:`, twitterIds.length)
 
           try {
             // Fetch tweet metrics from Twitter API v2
@@ -2255,7 +2256,7 @@ export const tweetRouter = j.router({
               'tweet.fields': ['public_metrics'],
             })
 
-            console.log(`[fetchTweetMetrics] Received metrics for ${twitterResponse.data?.length || 0} tweets`)
+            // console.log(`[fetchTweetMetrics] Received metrics for ${twitterResponse.data?.length || 0} tweets`)
 
             // Update each tweet with its metrics
             if (twitterResponse.data) {
@@ -2279,7 +2280,7 @@ export const tweetRouter = j.router({
               }
             }
           } catch (error) {
-            console.error(`[fetchTweetMetrics] Error fetching batch ${i / batchSize + 1}:`, error)
+            // console.error(`[fetchTweetMetrics] Error fetching batch ${i / batchSize + 1}:`, error)
             // Continue with next batch even if one fails
           }
         }
@@ -2287,7 +2288,7 @@ export const tweetRouter = j.router({
         // Execute all updates
         await Promise.all(updatePromises)
 
-        console.log('[fetchTweetMetrics] Successfully updated metrics for', updatePromises.length, 'tweets')
+        // console.log('[fetchTweetMetrics] Successfully updated metrics for', updatePromises.length, 'tweets')
 
         return c.json({ 
           success: true, 
@@ -2295,7 +2296,7 @@ export const tweetRouter = j.router({
           message: `Updated metrics for ${updatePromises.length} tweets`,
         })
       } catch (error) {
-        console.error('[fetchTweetMetrics] Failed to fetch metrics:', error)
+        // console.error('[fetchTweetMetrics] Failed to fetch metrics:', error)
         throw new HTTPException(500, {
           message: 'Failed to fetch tweet metrics from Twitter',
         })

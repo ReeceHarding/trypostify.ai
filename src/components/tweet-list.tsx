@@ -513,8 +513,8 @@ export default function TweetList({
                                           </span>
                                         )}
                                       </div>
-                                    </div>
-                                  )}
+                              </div>
+                            )}
                           </div>
                         </div>
 
