@@ -56,6 +56,13 @@ export default function ThreadTweetEditor({
 
   console.log('[ThreadTweetEditor] Render - isThreadMode:', isThreadMode, 'tweets:', threadTweets.length, 'editMode:', editMode)
 
+  // If we arrive in edit mode, enable thread mode immediately to avoid a single-tweet flash
+  useEffect(() => {
+    if (editMode && !isThreadMode) {
+      setIsThreadMode(true)
+    }
+  }, [editMode, isThreadMode])
+
   // Load thread data if in edit mode
   const { data: threadData, isLoading: loadingThread } = useQuery({
     queryKey: ['thread', editTweetId],
@@ -82,6 +89,7 @@ export default function ThreadTweetEditor({
   useEffect(() => {
     if (threadData?.tweets && threadData.tweets.length > 0) {
       console.log('[ThreadTweetEditor] Loading thread data:', threadData.tweets.length, 'tweets')
+      // Already true if editMode, but keep for safety when switching modes dynamically
       setIsThreadMode(true)
       
       // Store full media data separately
@@ -103,6 +111,9 @@ export default function ThreadTweetEditor({
       })))
     }
   }, [threadData])
+
+  // While loading thread in edit mode, render nothing for the editor list to prevent empty state flash
+  const isHydratingEdit = editMode && (loadingThread || (isThreadMode && threadTweets.length <= 1))
 
   // Create thread mutation
   const createThreadMutation = useMutation({

@@ -123,22 +123,24 @@ function ThreadTweetContent({
     setSkipPostConfirmation(localStorage.getItem('skipPostConfirmation') === 'true')
   }, [])
 
-  // Initialize content
+  // Initialize content - only on first mount to avoid overwriting user input
   useEffect(() => {
-    if (initialContent && shadowEditor) {
+    if (shadowEditor) {
       shadowEditor.update(() => {
         const root = $getRoot()
-        root.clear()
-        const paragraph = $createParagraphNode()
-        const text = $createTextNode(initialContent)
-        paragraph.append(text)
-        root.append(paragraph)
+        // Only set initial content if the editor is empty
+        if (root.getTextContent() === '' && initialContent) {
+          root.clear()
+          const paragraph = $createParagraphNode()
+          const text = $createTextNode(initialContent)
+          paragraph.append(text)
+          root.append(paragraph)
+          // Also update char count
+          setCharCount(initialContent.length)
+        }
       }, { tag: 'initialization' })
-      
-      // Also update char count
-      setCharCount(initialContent.length)
     }
-  }, [initialContent, shadowEditor])
+  }, [shadowEditor]) // Remove initialContent from deps to avoid re-initialization
 
   // Initialize media files when editing
   useEffect(() => {
