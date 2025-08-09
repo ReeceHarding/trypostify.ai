@@ -53,7 +53,7 @@ OPENROUTER_API_KEY=<YOUR_API_KEY>
 
 - Click **Create Database**.
 
-- Enter a **Name** for your database (e.g., contentport-redis).
+- Enter a **Name** for your database (e.g., postify-redis).
 
 - Click **Create** to provision the database.
 
