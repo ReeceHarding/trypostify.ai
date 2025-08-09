@@ -368,7 +368,7 @@ export default function ThreadTweetEditor({
                 )}
                 
                 <ThreadTweet
-                  isThread={true}
+                  isThread={threadTweets.length > 1}
                   isFirstTweet={index === 0}
                   isLastTweet={index === threadTweets.length - 1}
                   canDelete={index > 0}
