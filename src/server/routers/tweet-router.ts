@@ -1416,11 +1416,17 @@ export const tweetRouter = j.router({
             // Create new tweet
             const tweetId = crypto.randomUUID()
             console.log(`[updateThread] Creating new tweet ${index + 1}, id: ${tweetId}`)
+            // Get account ID from existing tweets
+            if (!existingTweets[0]) {
+              throw new HTTPException(400, { message: 'Cannot add tweets to empty thread' })
+            }
+            const accountId = existingTweets[0].accountId
+            
             const [created] = await db
               .insert(tweets)
               .values({
                 id: tweetId,
-                accountId: existingTweets[0].accountId,
+                accountId,
                 userId: user.id,
                 content: tweet.content,
                 media: tweet.media || [],
@@ -1511,9 +1517,9 @@ export const tweetRouter = j.router({
 
         try {
           // Wait for delay if specified (except for first tweet)
-          if (index > 0 && tweet.delayMs > 0) {
+          if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
             console.log(`[postThreadNow] Waiting ${tweet.delayMs}ms before posting`)
-            await new Promise(resolve => setTimeout(resolve, tweet.delayMs))
+            await new Promise(resolve => setTimeout(resolve, tweet.delayMs!))
           }
 
           const tweetPayload: SendTweetV2Params = {
@@ -1567,7 +1573,9 @@ export const tweetRouter = j.router({
         }
       }
 
-      const threadUrl = `https://twitter.com/${account.username}/status/${postedTweets[0].twitterId}`
+      const threadUrl = postedTweets[0]?.twitterId
+        ? `https://twitter.com/${account.username}/status/${postedTweets[0].twitterId}`
+        : undefined
       console.log('[postThreadNow] Thread posted successfully:', threadUrl)
 
       return c.json({
@@ -1871,9 +1879,9 @@ export const tweetRouter = j.router({
 
       try {
         // Wait for delay if specified (except for first tweet)
-        if (index > 0 && tweet.delayMs > 0) {
+        if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
           console.log(`[postThread] Waiting ${tweet.delayMs}ms`)
-          await new Promise(resolve => setTimeout(resolve, tweet.delayMs))
+          await new Promise(resolve => setTimeout(resolve, tweet.delayMs!))
         }
 
         const tweetPayload: SendTweetV2Params = {

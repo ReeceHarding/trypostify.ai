@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { DatePicker } from './date-picker'
+import { Calendar20 as DatePicker } from './date-picker'
 import TweetEditor from './tweet-editor'
 import { useConfetti } from '@/hooks/use-confetti'
 
@@ -111,7 +111,7 @@ export default function ThreadTweetEditor({
 
       if (!res.ok) {
         const error = await res.json()
-        throw new HTTPException(res.status, { message: (error as any).message })
+        throw new HTTPException(res.status as any, { message: (error as any).message })
       }
 
       return res.json()
@@ -136,7 +136,7 @@ export default function ThreadTweetEditor({
 
       if (!res.ok) {
         const error = await res.json()
-        throw new HTTPException(res.status, { message: (error as any).message })
+        throw new HTTPException(res.status as any, { message: (error as any).message })
       }
 
       return res.json()
@@ -173,7 +173,7 @@ export default function ThreadTweetEditor({
 
       if (!res.ok) {
         const error = await res.json()
-        throw new HTTPException(res.status, { message: (error as any).message })
+        throw new HTTPException(res.status as any, { message: (error as any).message })
       }
 
       return res.json()
@@ -442,7 +442,9 @@ export default function ThreadTweetEditor({
 
                         {/* Media upload */}
                         <input
-                          ref={(el) => fileInputRefs.current[tweet.id] = el}
+                          ref={(el) => {
+                            if (el) fileInputRefs.current[tweet.id] = el
+                          }}
                           type="file"
                           accept="image/*,video/*"
                           multiple
@@ -504,7 +506,7 @@ export default function ThreadTweetEditor({
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                               <DatePicker
-                                onSelect={(date) => date && handleScheduleThread(date)}
+                                onSchedule={(date: Date) => date && handleScheduleThread(date)}
                                 disabled={isPosting}
                               />
                             </PopoverContent>
