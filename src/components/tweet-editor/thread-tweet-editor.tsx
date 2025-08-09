@@ -2,32 +2,22 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { AccountAvatar, AccountHandle, AccountName, useAccount } from '@/hooks/account-ctx'
 import { client } from '@/lib/client'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import posthog from 'posthog-js'
-import {
-  ImagePlus,
-  Trash2,
-  Plus,
-  X,
-  Upload,
-  Loader2,
-  Check,
-} from 'lucide-react'
-import DuolingoButton from '../ui/duolingo-button'
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
-import { Calendar20 as DatePicker } from './date-picker'
-import TweetEditor from './tweet-editor'
 import { useConfetti } from '@/hooks/use-confetti'
+import ThreadTweet from './thread-tweet'
 
-interface ThreadTweet {
+interface ThreadTweetData {
   id: string
   content: string
-  media: File[]
+  media: Array<{
+    s3Key: string
+    media_id: string
+  }>
 }
 
 interface ThreadTweetEditorProps {
@@ -36,70 +26,54 @@ interface ThreadTweetEditorProps {
   editTweetId?: string | null
 }
 
-// Character counter component with circular progress
-function CharacterCounter({ length, maxLength = 280 }: { length: number; maxLength?: number }) {
-  const percentage = (length / maxLength) * 100
-  const isWarning = length >= 260 && length < 280
-  const isError = length >= 280
-
-  return (
-    <div className="relative w-8 h-8">
-      <svg className="w-8 h-8 transform -rotate-90">
-        <circle
-          cx="16"
-          cy="16"
-          r="14"
-          stroke="currentColor"
-          strokeWidth="2"
-          fill="none"
-          className="text-stone-200"
-        />
-        <circle
-          cx="16"
-          cy="16"
-          r="14"
-          stroke="currentColor"
-          strokeWidth="2"
-          fill="none"
-          strokeDasharray={`${2 * Math.PI * 14}`}
-          strokeDashoffset={`${2 * Math.PI * 14 * (1 - percentage / 100)}`}
-          className={cn(
-            "transition-all duration-200",
-            isError ? "text-red-500" : isWarning ? "text-yellow-500" : "text-blue-500"
-          )}
-        />
-      </svg>
-      {length > 260 && (
-        <span className={cn(
-          "absolute inset-0 flex items-center justify-center text-xs font-medium",
-          isError ? "text-red-500" : "text-yellow-500"
-        )}>
-          {280 - length}
-        </span>
-      )}
-    </div>
-  )
-}
-
 export default function ThreadTweetEditor({
   className,
   editMode = false,
   editTweetId,
 }: ThreadTweetEditorProps) {
   const [isThreadMode, setIsThreadMode] = useState(false)
-  const [threadTweets, setThreadTweets] = useState<ThreadTweet[]>([
-    { id: crypto.randomUUID(), content: '', media: [] },
+  const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
     { id: crypto.randomUUID(), content: '', media: [] },
   ])
-  const [isPosting, setIsPosting] = useState(false)
-  const [showSchedulePopover, setShowSchedulePopover] = useState(false)
-  const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null)
-  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({})
   const router = useRouter()
   const { fire } = useConfetti()
-  const { account } = useAccount()
 
-  console.log('[ThreadTweetEditor] Render - isThreadMode:', isThreadMode, 'tweets:', threadTweets.length)
+  console.log('[ThreadTweetEditor] Render - isThreadMode:', isThreadMode, 'tweets:', threadTweets.length, 'editMode:', editMode)
+
+  // Load thread data if in edit mode
+  const { data: threadData, isLoading: loadingThread } = useQuery({
+    queryKey: ['thread', editTweetId],
+    enabled: editMode && !!editTweetId,
+    queryFn: async () => {
+      if (!editTweetId) return null
+      
+      // First get the tweet to find its threadId
+      const tweetRes = await client.tweet.getTweet.$get({ tweetId: editTweetId })
+      if (!tweetRes.ok) throw new Error('Failed to load tweet')
+      
+      const { tweet } = await tweetRes.json()
+      if (!tweet?.threadId) return null
+      
+      // Then get all tweets in the thread
+      const threadRes = await client.tweet.getThread.$get({ threadId: tweet.threadId })
+      if (!threadRes.ok) throw new Error('Failed to load thread')
+      
+      return threadRes.json()
+    },
+  })
+
+  // Initialize thread data when loaded
+  useEffect(() => {
+    if (threadData?.tweets && threadData.tweets.length > 0) {
+      console.log('[ThreadTweetEditor] Loading thread data:', threadData.tweets.length, 'tweets')
+      setIsThreadMode(true)
+      setThreadTweets(threadData.tweets.map(tweet => ({
+        id: tweet.id,
+        content: tweet.content,
+        media: tweet.media || [],
+      })))
+    }
+  }, [threadData])
 
   // Create thread mutation
   const createThreadMutation = useMutation({
@@ -115,14 +89,6 @@ export default function ThreadTweetEditor({
       }
 
       return res.json()
-    },
-    onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] Thread created successfully:', data)
-      return data
-    },
-    onError: (error) => {
-      console.error('[ThreadTweetEditor] Error creating thread:', error)
-      toast.error(error.message || 'Failed to create thread')
     },
   })
 
@@ -147,18 +113,12 @@ export default function ThreadTweetEditor({
       fire()
       
       // Clear the thread
-      setThreadTweets([
-        { id: crypto.randomUUID(), content: '', media: [] },
-        { id: crypto.randomUUID(), content: '', media: [] },
-      ])
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      setIsThreadMode(false)
       
       if (data.threadUrl) {
         window.open(data.threadUrl, '_blank')
       }
-    },
-    onError: (error) => {
-      console.error('[ThreadTweetEditor] Error posting thread:', error)
-      toast.error(error.message || 'Failed to post thread')
     },
   })
 
@@ -183,36 +143,63 @@ export default function ThreadTweetEditor({
       toast.success('Thread scheduled successfully!')
       
       // Clear the thread
-      setThreadTweets([
-        { id: crypto.randomUUID(), content: '', media: [] },
-        { id: crypto.randomUUID(), content: '', media: [] },
-      ])
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      setIsThreadMode(false)
       
       router.push('/studio/scheduled')
     },
-    onError: (error) => {
-      console.error('[ThreadTweetEditor] Error scheduling thread:', error)
-      toast.error(error.message || 'Failed to schedule thread')
+  })
+
+  // Update thread mutation (for edit mode)
+  const updateThreadMutation = useMutation({
+    mutationFn: async ({ tweets }: { tweets: ThreadTweetData[] }) => {
+      if (!threadData?.threadId) throw new Error('No thread ID found')
+      
+      console.log('[ThreadTweetEditor] Updating thread:', threadData.threadId)
+      const res = await client.tweet.updateThread.$post({
+        threadId: threadData.threadId,
+        tweets: tweets.map((tweet, index) => ({
+          id: tweet.id.startsWith('new-') ? undefined : tweet.id,
+          content: tweet.content,
+          media: tweet.media,
+          delayMs: index > 0 ? 1000 : 0,
+        })),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new HTTPException(res.status as any, { message: (error as any).message })
+      }
+
+      return res.json()
+    },
+    onSuccess: () => {
+      console.log('[ThreadTweetEditor] Thread updated successfully')
+      toast.success('Thread updated successfully!')
+      router.push('/studio/scheduled')
     },
   })
 
   const handleToggleMode = () => {
     console.log('[ThreadTweetEditor] Toggling mode from:', isThreadMode, 'to:', !isThreadMode)
-    setIsThreadMode(!isThreadMode)
     if (!isThreadMode) {
-      // Entering thread mode - ensure we have at least 2 tweets
-      if (threadTweets.length < 2) {
-        setThreadTweets([
-          { id: crypto.randomUUID(), content: '', media: [] },
-          { id: crypto.randomUUID(), content: '', media: [] },
-        ])
-      }
+      // Entering thread mode - add a second tweet
+      setThreadTweets([
+        { id: crypto.randomUUID(), content: '', media: [] },
+        { id: crypto.randomUUID(), content: '', media: [] },
+      ])
+    } else {
+      // Leaving thread mode - keep only first tweet
+      setThreadTweets([threadTweets[0] || { id: crypto.randomUUID(), content: '', media: [] }])
     }
+    setIsThreadMode(!isThreadMode)
   }
 
   const handleAddTweet = () => {
     console.log('[ThreadTweetEditor] Adding new tweet to thread')
-    setThreadTweets([...threadTweets, { id: crypto.randomUUID(), content: '', media: [] }])
+    // Use a special prefix for new tweets in edit mode
+    const newId = editMode ? `new-${crypto.randomUUID()}` : crypto.randomUUID()
+    setThreadTweets([...threadTweets, { id: newId, content: '', media: [] }])
   }
 
   const handleRemoveTweet = (id: string) => {
@@ -220,30 +207,10 @@ export default function ThreadTweetEditor({
     setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
   }
 
-  const handleTweetChange = (id: string, content: string) => {
-    console.log('[ThreadTweetEditor] Tweet content changed:', id, 'length:', content.length)
+  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
+    console.log('[ThreadTweetEditor] Tweet updated:', id)
     setThreadTweets(threadTweets.map(tweet =>
-      tweet.id === id ? { ...tweet, content } : tweet
-    ))
-  }
-
-  const handleMediaUpload = async (id: string, files: FileList) => {
-    console.log('[ThreadTweetEditor] Media upload for tweet:', id, 'files:', files.length)
-    const tweet = threadTweets.find(t => t.id === id)
-    if (!tweet) return
-
-    const newMedia = Array.from(files)
-    setThreadTweets(threadTweets.map(t =>
-      t.id === id ? { ...t, media: [...t.media, ...newMedia] } : t
-    ))
-  }
-
-  const handleRemoveMedia = (tweetId: string, mediaIndex: number) => {
-    console.log('[ThreadTweetEditor] Removing media:', tweetId, 'index:', mediaIndex)
-    setThreadTweets(threadTweets.map(tweet =>
-      tweet.id === tweetId
-        ? { ...tweet, media: tweet.media.filter((_, i) => i !== mediaIndex) }
-        : tweet
+      tweet.id === id ? { ...tweet, content, media } : tweet
     ))
   }
 
@@ -264,7 +231,6 @@ export default function ThreadTweetEditor({
       return
     }
 
-    setIsPosting(true)
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
     try {
@@ -272,7 +238,7 @@ export default function ThreadTweetEditor({
       const createResult = await createThreadMutation.mutateAsync(
         threadTweets.map((tweet, index) => ({
           content: tweet.content,
-          media: [], // TODO: Implement media upload
+          media: tweet.media,
           delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
         }))
       )
@@ -290,8 +256,7 @@ export default function ThreadTweetEditor({
       })
     } catch (error) {
       console.error('[ThreadTweetEditor] Error in post thread process:', error)
-    } finally {
-      setIsPosting(false)
+      toast.error('Failed to post thread')
     }
   }
 
@@ -305,7 +270,6 @@ export default function ThreadTweetEditor({
       return
     }
 
-    setIsPosting(true)
     posthog.capture('thread_schedule_started', { tweet_count: threadTweets.length })
 
     try {
@@ -313,7 +277,7 @@ export default function ThreadTweetEditor({
       const createResult = await createThreadMutation.mutateAsync(
         threadTweets.map((tweet, index) => ({
           content: tweet.content,
-          media: [], // TODO: Implement media upload
+          media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
         }))
       )
@@ -335,210 +299,124 @@ export default function ThreadTweetEditor({
       })
     } catch (error) {
       console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
-    } finally {
-      setIsPosting(false)
-      setShowSchedulePopover(false)
+      toast.error('Failed to schedule thread')
     }
   }
 
-  const handleCopyText = (tweetId: string, text: string) => {
-    console.log('[ThreadTweetEditor] Copying text for tweet:', tweetId)
-    navigator.clipboard.writeText(text)
-    setCopiedButtonId(tweetId)
-    toast.success('Copied to clipboard')
+  const handleUpdateThread = async () => {
+    console.log('[ThreadTweetEditor] Updating thread')
     
-    setTimeout(() => {
-      setCopiedButtonId(null)
-    }, 1500)
+    // Validate all tweets have content
+    const emptyTweets = threadTweets.filter(t => !t.content.trim())
+    if (emptyTweets.length > 0) {
+      toast.error('All tweets in the thread must have content')
+      return
+    }
+
+    posthog.capture('thread_update_started', { tweet_count: threadTweets.length })
+
+    try {
+      await updateThreadMutation.mutateAsync({ tweets: threadTweets })
+      
+      posthog.capture('thread_updated', {
+        tweet_count: threadTweets.length,
+        thread_id: threadData?.threadId,
+      })
+    } catch (error) {
+      console.error('[ThreadTweetEditor] Error updating thread:', error)
+      toast.error('Failed to update thread')
+    }
   }
 
-  // If not in thread mode, render the regular TweetEditor
-  if (!isThreadMode) {
+  const handleCancelEdit = () => {
+    router.push('/studio/scheduled')
+  }
+
+  const isPosting = createThreadMutation.isPending || postThreadNowMutation.isPending || scheduleThreadMutation.isPending || updateThreadMutation.isPending
+
+  // Show loading state while loading thread data
+  if (loadingThread) {
     return (
-      <div className={cn('relative z-10 w-full rounded-lg font-sans', className)}>
-        <TweetEditor editMode={editMode} editTweetId={editTweetId} />
-        <div className="mt-4 text-center">
-          <button
-            onClick={handleToggleMode}
-            className="text-sm text-blue-500 hover:text-blue-600 hover:underline transition-colors"
-          >
-            Create a thread instead
-          </button>
-        </div>
+      <div className="flex items-center justify-center p-8">
+        <div className="text-stone-500">Loading thread...</div>
       </div>
     )
   }
 
-  // Thread mode UI
+  // Render the tweets
   return (
     <div className={cn('relative z-10 w-full rounded-lg font-sans', className)}>
       <div className="space-y-4 w-full">
-        {threadTweets.map((tweet, index) => (
-          <div key={tweet.id} className="relative">
-            {/* Connecting line between tweets */}
-            {index < threadTweets.length - 1 && (
-              <div
-                className="absolute left-[30px] top-[60px] bottom-[-16px] w-[2px] bg-stone-300 z-0"
-              />
-            )}
-
-            {/* Tweet card */}
-            <div className="relative bg-white rounded-lg border border-stone-200 shadow-sm z-10">
-              <div className="p-4">
-                {/* Account info */}
-                <div className="flex items-start gap-3">
-                  <AccountAvatar className="flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1 text-sm">
-                      <AccountName className="font-semibold text-stone-900" />
-                      <AccountHandle className="text-stone-500" />
-                    </div>
-
-                    {/* Textarea */}
-                    <textarea
-                      value={tweet.content}
-                      onChange={(e) => handleTweetChange(tweet.id, e.target.value)}
-                      placeholder={index === 0 ? "What's happening?" : "Add another tweet..."}
-                      className="w-full mt-2 p-0 text-sm text-stone-900 placeholder-stone-500 border-none outline-none resize-none min-h-[80px]"
-                      style={{ fontFamily: 'inherit' }}
-                    />
-
-                    {/* Media preview */}
-                    {tweet.media.length > 0 && (
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {tweet.media.map((file, mediaIndex) => (
-                          <div key={mediaIndex} className="relative group">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt=""
-                              className="w-full h-32 object-cover rounded-lg"
-                            />
-                            <button
-                              onClick={() => handleRemoveMedia(tweet.id, mediaIndex)}
-                              className="absolute top-1 right-1 p-1 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="w-4 h-4 text-white" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="mt-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {/* Copy button */}
-                        <button
-                          onClick={() => handleCopyText(tweet.id, tweet.content)}
-                          className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-all"
-                          title="Copy text"
-                        >
-                          {copiedButtonId === tweet.id ? (
-                            <Check className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Upload className="w-4 h-4" />
-                          )}
-                        </button>
-
-                        {/* Media upload */}
-                        <input
-                          ref={(el) => {
-                            if (el) fileInputRefs.current[tweet.id] = el
-                          }}
-                          type="file"
-                          accept="image/*,video/*"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => e.target.files && handleMediaUpload(tweet.id, e.target.files)}
-                        />
-                        <button
-                          onClick={() => fileInputRefs.current[tweet.id]?.click()}
-                          className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-all"
-                          title="Add media"
-                        >
-                          <ImagePlus className="w-4 h-4" />
-                        </button>
-
-                        {/* Delete tweet (not for first tweet) */}
-                        {index > 0 && (
-                          <button
-                            onClick={() => handleRemoveTweet(tweet.id)}
-                            className="p-2 text-stone-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="Remove tweet"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Character counter */}
-                      <CharacterCounter length={tweet.content.length} />
-                    </div>
-
-                    {/* Post/Schedule buttons (only on first tweet) */}
-                    {index === 0 && (
-                      <div className="mt-4 pt-4 border-t border-stone-200 flex items-center justify-between">
-                        <div className="flex gap-2">
-                          <DuolingoButton
-                            onClick={handlePostThread}
-                            disabled={isPosting || threadTweets.some(t => !t.content.trim())}
-                            size="sm"
-                          >
-                            {isPosting ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Posting...
-                              </>
-                            ) : (
-                              'Post Thread'
-                            )}
-                          </DuolingoButton>
-
-                          <Popover open={showSchedulePopover} onOpenChange={setShowSchedulePopover}>
-                            <PopoverTrigger asChild>
-                              <DuolingoButton
-                                variant="secondary"
-                                size="sm"
-                                disabled={isPosting || threadTweets.some(t => !t.content.trim())}
-                              >
-                                Queue
-                              </DuolingoButton>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <DatePicker
-                                onSchedule={(date: Date) => date && handleScheduleThread(date)}
-                                disabled={isPosting}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+        {isThreadMode ? (
+          // Thread mode - render multiple tweets
+          <>
+            {threadTweets.map((tweet, index) => (
+              <div key={tweet.id} className="relative">
+                {/* Connecting line between tweets */}
+                {index < threadTweets.length - 1 && (
+                  <div
+                    className="absolute left-[30px] top-[72px] bottom-[-16px] w-[2px] bg-stone-300 z-0"
+                  />
+                )}
+                
+                <ThreadTweet
+                  isThread={true}
+                  isFirstTweet={index === 0}
+                  isLastTweet={index === threadTweets.length - 1}
+                  canDelete={index > 0}
+                  editMode={editMode}
+                  onRemove={() => handleRemoveTweet(tweet.id)}
+                  onAddToThread={index === threadTweets.length - 1 ? handleAddTweet : undefined}
+                  onPostThread={index === 0 && !editMode ? handlePostThread : undefined}
+                  onScheduleThread={index === 0 && !editMode ? handleScheduleThread : undefined}
+                  onUpdateThread={index === 0 && editMode ? handleUpdateThread : undefined}
+                  onCancelEdit={index === 0 && editMode ? handleCancelEdit : undefined}
+                  isPosting={isPosting}
+                  onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
+                  initialContent={tweet.content}
+                />
               </div>
-            </div>
-          </div>
-        ))}
-
-        {/* Add tweet button */}
-        <button
-          onClick={handleAddTweet}
-          className="w-full p-3 border-2 border-dashed border-stone-300 hover:border-stone-400 rounded-lg flex items-center justify-center gap-2 text-stone-500 hover:text-stone-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="text-sm font-medium">Add to thread</span>
-        </button>
-
-        {/* Back to single tweet link */}
-        <div className="text-center">
-          <button
-            onClick={handleToggleMode}
-            className="text-sm text-blue-500 hover:text-blue-600 hover:underline transition-colors"
-          >
-            Back to single tweet
-          </button>
-        </div>
+            ))}
+            
+            {/* Back to single tweet link - don't show in edit mode */}
+            {!editMode && (
+              <div className="text-center">
+                <button
+                  onClick={handleToggleMode}
+                  className="text-sm text-blue-500 hover:text-blue-600 hover:underline transition-colors"
+                >
+                  Back to single tweet
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          // Single tweet mode
+          <>
+            <ThreadTweet
+              isThread={false}
+              isFirstTweet={true}
+              isLastTweet={true}
+              canDelete={false}
+              editMode={editMode}
+              isPosting={false}
+              onUpdate={(content, media) => handleTweetUpdate(threadTweets[0]?.id || '', content, media)}
+              initialContent={threadTweets[0]?.content || ''}
+            />
+            
+            {/* Create thread link - don't show in edit mode */}
+            {!editMode && (
+              <div className="text-center">
+                <button
+                  onClick={handleToggleMode}
+                  className="text-sm text-blue-500 hover:text-blue-600 hover:underline transition-colors"
+                >
+                  Create a thread instead
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
