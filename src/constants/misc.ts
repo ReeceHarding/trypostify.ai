@@ -1,1 +1,1 @@
-export const GITHUB_REPO = 'joschan21/contentport'
+export const GITHUB_REPO = 'ReeceHarding/trypostify.ai'

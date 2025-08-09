@@ -3,7 +3,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://www.contentport.io/">
+  <a href="https://trypostify.ai/">
     <img src="./public/favicon.ico" alt="Logo" width="80" height="80">
   </a>
 
@@ -12,11 +12,11 @@
   <p align="center">
     The content engine for software companies
     <br />
-    <a href="https://www.contentport.io/">View Demo</a>
+    <a href="https://trypostify.ai/">View Demo</a>
     ·
-    <a href="https://github.com/joschan21/contentport/issues">Report Bug</a>
+    <a href="https://github.com/ReeceHarding/trypostify.ai/issues">Report Bug</a>
     ·
-    <a href="https://github.com/joschan21/contentport/issues">Request Feature</a>
+    <a href="https://github.com/ReeceHarding/trypostify.ai/issues">Request Feature</a>
   </p>
 
 ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
