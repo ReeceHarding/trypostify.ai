@@ -58,9 +58,9 @@ export function EnhancedSlider({
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2">
               {icon && <span className="text-muted-foreground">{icon}</span>}
-              {label && <span className="block font-medium text-xs text-stone-700">{label}</span>}
+              {label && <span className="block font-medium text-xs text-neutral-700">{label}</span>}
             </div>
-            <div className="text-xs px-0.5 rounded text-stone-400 font-medium">
+            <div className="text-xs px-0.5 rounded text-neutral-400 font-medium">
               {value}{unit}
             </div>
           </div>
@@ -69,7 +69,7 @@ export function EnhancedSlider({
             disabled={disabled || value === defaultValue}
             className={cn(
               "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors",
-              "bg-stone-25 text-stone-600 hover:bg-stone-100",
+              "bg-neutral-25 text-neutral-600 hover:bg-neutral-100",
               "disabled:pointer-events-none disabled:opacity-50"
             )}
             type="button"
@@ -89,7 +89,7 @@ export function EnhancedSlider({
           disabled={disabled || value <= min}
           className={cn(
             "flex size-6 shrink-0 aspect-square items-center justify-center rounded-md transition-colors",
-            "bg-stone-100 text-stone-600 hover:bg-stone-200",
+            "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
             "disabled:pointer-events-none disabled:opacity-50"
           )}
           type="button"
@@ -110,12 +110,12 @@ export function EnhancedSlider({
           step={step}
           disabled={disabled}
         >
-          <SliderPrimitive.Track className="relative h-2 w-full grow rounded-full bg-stone-200">
-            <SliderPrimitive.Range className="absolute h-full rounded-full bg-indigo-500" />
+          <SliderPrimitive.Track className="relative h-2 w-full grow rounded-full bg-neutral-200">
+            <SliderPrimitive.Range className="absolute h-full rounded-full bg-primary-500" />
           </SliderPrimitive.Track>
           <SliderPrimitive.Thumb
             className={cn(
-              "block size-5 rounded-sm bg-indigo-500 shadow-sm",
+              "block size-5 rounded-sm bg-primary-500 shadow-sm",
               "border-2 border-white",
               "transition-all hover:scale-110",
               "focus-visible:outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500",
@@ -129,7 +129,7 @@ export function EnhancedSlider({
           disabled={disabled || value >= max}
           className={cn(
             "flex size-6 shrink-0 aspect-square items-center justify-center rounded-md transition-colors",
-            "bg-stone-100 text-stone-600 hover:bg-stone-200",
+            "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
             "disabled:pointer-events-none disabled:opacity-50"
           )}
           type="button"

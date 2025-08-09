@@ -13,7 +13,7 @@ const Page = async () => {
 
   return (
     <>
-      <section className="bg-gray-100">
+      <section className="bg-neutral-100">
         <div className="relative max-w-7xl mx-auto">
           <Navbar title={session ? 'Studio' : 'Get Started'} />
         </div>
@@ -35,11 +35,11 @@ const Page = async () => {
             <div className="mx-auto max-w-7xl px-6 lg:px-8 space-y-20">
               <div className="max-w-4xl mx-auto text-center">
                 <div className="flex flex-col justify-center items-center">
-                  <h1 className="text-5xl font-semibold tracking-tight text-balance text-gray-900 sm:text-6xl">
-                    Your <span className="text-indigo-600">content engine </span> for
+                  <h1 className="text-5xl font-semibold tracking-tight text-balance text-neutral-900 sm:text-6xl">
+                    Your <span className="text-primary-600">content engine </span> for
                     growing on Twitter
                   </h1>
-                  <p className="mt-8 text-gray-500 text-base text-pretty sm:text-xl/8 max-w-2xl">
+                  <p className="mt-8 text-neutral-500 text-base text-pretty sm:text-xl/8 max-w-2xl">
                     <span className="">Postify helps you </span>
                     <span className="text-black">
                       create, schedule & manage twitter content
@@ -106,16 +106,16 @@ const Page = async () => {
                             </svg>
                           ))}
                         </div>
-                        <p className="text-base text-gray-600">
+                        <p className="text-base text-neutral-600">
                           Trusted by{' '}
-                          <span className="font-medium text-gray-900">1.140</span> founders
+                          <span className="font-medium text-neutral-900">1.140</span> founders
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="relative flex items-center h-fit -m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-gray-900/10 ring-inset lg:-m-4 lg:rounded-2xl lg:p-4 shadow-2xl">
+              <div className="relative flex items-center h-fit -m-2 rounded-xl bg-neutral-900/5 p-2 ring-1 ring-gray-900/10 ring-inset lg:-m-4 lg:rounded-2xl lg:p-4 shadow-2xl">
                 <MuxPlayer
                   accentColor="hsl(var(--primary))"
                   style={{ aspectRatio: 16 / 9 }}
@@ -157,33 +157,33 @@ const Page = async () => {
       </section>
 
       {/* <div className="text-left w-full max-w-md sm:max-w-2xl space-y-3 sm:space-y-2 text-sm sm:text-base px-4 sm:px-0">
-                      <div className="flex items-start gap-3 sm:gap-2 text-gray-500">
+                      <div className="flex items-start gap-3 sm:gap-2 text-neutral-500">
                         <span className="text-lg sm:text-base sm:mt-0">✅</span>
-                        <p className="text-gray-800 leading-relaxed">
+                        <p className="text-neutral-800 leading-relaxed">
                           Turn ideas, company updates, or insights into content
                         </p>
                       </div>
-                      <div className="flex items-start gap-3 sm:gap-2 text-gray-500">
+                      <div className="flex items-start gap-3 sm:gap-2 text-neutral-500">
                         <span className="text-lg sm:text-base sm:mt-0">✅</span>
-                        <p className="text-gray-800 leading-relaxed">
+                        <p className="text-neutral-800 leading-relaxed">
                           Plan & schedule a week of content at once
                         </p>
                       </div>
-                      <div className="flex items-start gap-3 sm:gap-2 text-gray-500">
+                      <div className="flex items-start gap-3 sm:gap-2 text-neutral-500">
                         <span className="text-lg sm:text-base sm:mt-0">✅</span>
-                        <p className="text-gray-800 leading-relaxed">
+                        <p className="text-neutral-800 leading-relaxed">
                           Create beautiful visuals (no design skills needed)
                         </p>
                       </div>
                     </div> */}
 
-      {/* <section className="bg-gray-50 py-24 sm:py-32">
+      {/* <section className="bg-neutral-50 py-24 sm:py-32">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto flex flex-col items-center max-w-3xl text-center mb-16">
-            <h2 className="text-4xl text-balance font-semibold tracking-tight text-gray-900 sm:text-5xl mb-6">
+            <h2 className="text-4xl text-balance font-semibold tracking-tight text-neutral-900 sm:text-5xl mb-6">
               Create weeks worth of content at once
             </h2>
-            <p className="max-w-xl text-base text-pretty text-gray-500 sm:text-xl/8 text-center">
+            <p className="max-w-xl text-base text-pretty text-neutral-500 sm:text-xl/8 text-center">
               A built-in AI assistant that helps you put your ideas into clear words
               people care about.
               

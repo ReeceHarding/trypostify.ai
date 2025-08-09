@@ -44,7 +44,7 @@ export function SuggestionCard({
 
   return (
     <div
-      className="px-3 py-2 bg-white border border-stone-200 bg-clip-padding rounded-lg"
+      className="px-3 py-2 bg-white border border-neutral-200 bg-clip-padding rounded-lg"
       tabIndex={0}
       aria-label={`Suggestion: ${label}`}
       onKeyDown={(e) => {
@@ -58,7 +58,7 @@ export function SuggestionCard({
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <span className="text-sm mr-2">{icon}</span>
-          <span className="text-stone-700 text-sm">{actionLabel}</span>
+          <span className="text-neutral-700 text-sm">{actionLabel}</span>
           <ChevronRight
             className={`w-4 h-4 ml-2 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
           />
@@ -83,33 +83,33 @@ export function SuggestionCard({
           className={cn(
             'mt-3 text-sm leading-relaxed px-2 py-2 rounded  whitespace-pre-wrap',
             {
-              'bg-emerald-50': diff.type === 1,
-              'bg-rose-50': diff.type === -1,
-              'bg-teal-50': diff.type === 2,
+              'bg-success-50': diff.type === 1,
+              'bg-error-50': diff.type === -1,
+              'bg-primary-50': diff.type === 2,
             },
           )}
         >
           {diff.contextBefore && (
-            <span className="text-stone-700">{diff.contextBefore.trim()} </span>
+            <span className="text-neutral-700">{diff.contextBefore.trim()} </span>
           )}
           {diff.type === -1 ? (
-            <span className="line-through font-medium text-stone-400">
+            <span className="line-through font-medium text-neutral-400">
               {diff.text.startsWith(' ') ? null : ' '}
               {diff.text}
               {diff.text.endsWith(' ') ? null : ' '}
             </span>
           ) : diff.type === 1 ? (
-            <span className="text-emerald-700 font-medium">
+            <span className="text-success-700 font-medium">
               {/* {diff.text.startsWith(" ") ? null : " "} */}
               {diff.text.trim()}
             </span>
           ) : diff.type === 2 ? (
             <>
               {' '}
-              <span className="line-through font-medium text-stone-400">
+              <span className="line-through font-medium text-neutral-400">
                 {diff.text.trimEnd()}
               </span>
-              <span className="text-emerald-700 font-medium">
+              <span className="text-success-700 font-medium">
                 {' '}
                 {diff.replacement?.trimEnd()}
               </span>{' '}
@@ -126,7 +126,7 @@ export function SuggestionCard({
 
 function ContextAfter({ diff, text }: { diff: DiffWithReplacement; text: string }) {
   if (diff.type === 2 && diff.text.endsWith('\n')) return null
-  return <span className="text-stone-700"> {text.trim()}</span>
+  return <span className="text-neutral-700"> {text.trim()}</span>
 }
 
 interface Draft {
@@ -219,7 +219,7 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
   return (
     <div className="relative w-full space-y-3">
       <div className="relative rounded-lg w-full">
-        <div className="relative text-left rounded-md bg-white border border-gray-200 shadow-md bg-clip-padding overflow-hidden">
+        <div className="relative text-left rounded-md bg-white border border-neutral-200 shadow-md bg-clip-padding overflow-hidden">
           <div className="flex items-start gap-3 p-6">
             <AccountAvatar />
             <div className="flex flex-col flex-1">
@@ -248,7 +248,7 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
                 >
                   <ChevronLeft className="size-3" />
                 </DuolingoButton>
-                <span className="text-xs text-stone-500 px-2">
+                <span className="text-xs text-neutral-500 px-2">
                   {selectedDraftIndex + 1}/{drafts.length}
                 </span>
                 <DuolingoButton
@@ -291,7 +291,7 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
 
       {draftDecisionMade === 'applied' && (
         <div className="w-full flex items-center justify-center pt-2">
-          <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg">
+          <div className="flex items-center gap-2 text-success-600 bg-success-50 px-3 py-2 rounded-lg">
             <Check className="size-4" />
             <span className="text-sm font-medium">Draft applied</span>
           </div>
@@ -300,7 +300,7 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
 
       {draftDecisionMade === 'rejected' && (
         <div className="w-full flex items-center justify-center pt-4">
-          <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-2 rounded-lg">
+          <div className="flex items-center gap-2 text-neutral-600 bg-neutral-50 px-3 py-2 rounded-lg">
             <Trash className="size-4" />
             <span className="text-sm font-medium">All drafts rejected</span>
           </div>

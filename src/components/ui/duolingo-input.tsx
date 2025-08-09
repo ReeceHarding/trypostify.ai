@@ -66,13 +66,13 @@ const DuolingoInput = forwardRef<HTMLInputElement, DuolingoInputProps>(
     // Determine text color for helper text based on variant
     const helperTextClassName = cn(
       "mt-1.5 text-sm",
-      variant === "default" && "text-gray-500",
-      variant === "error" && "text-red-500",
-      variant === "success" && "text-green-500"
+      variant === "default" && "text-neutral-500",
+      variant === "error" && "text-error-500",
+      variant === "success" && "text-success-500"
     )
 
     // Determine label styles
-    const labelClassName = "block text-sm font-medium text-gray-700 mb-1.5"
+    const labelClassName = "block text-sm font-medium text-neutral-700 mb-1.5"
 
     return (
       <div className={cn("relative", fullWidth ? "w-full" : "max-w-sm")}>
@@ -81,11 +81,11 @@ const DuolingoInput = forwardRef<HTMLInputElement, DuolingoInputProps>(
           {icon && (
             <div
               className={cn(
-                "absolute top-1/2 -translate-y-1/2 text-gray-400",
+                "absolute top-1/2 -translate-y-1/2 text-neutral-400",
                 iconPosition === "left" && "left-3",
                 iconPosition === "right" && "right-3",
-                variant === "error" && "text-red-400",
-                variant === "success" && "text-green-400"
+                variant === "error" && "text-error-400",
+                variant === "success" && "text-success-400"
               )}
             >
               {icon}

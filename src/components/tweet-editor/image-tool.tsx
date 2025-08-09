@@ -460,9 +460,9 @@ export function ImageTool({
         return (
           <div className="flex items-center w-full px-4 py-[10px] rounded-t-lg bg-white/80">
             <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-400 rounded-full" />
-              <div className="w-3 h-3 bg-yellow-300 rounded-full" />
-              <div className="w-3 h-3 bg-green-500 rounded-full" />
+              <div className="w-3 h-3 bg-error-400 rounded-full" />
+              <div className="w-3 h-3 bg-warning-300 rounded-full" />
+              <div className="w-3 h-3 bg-success-500 rounded-full" />
             </div>
           </div>
         )
@@ -470,9 +470,9 @@ export function ImageTool({
         return (
           <div className="flex items-center w-full px-4 py-[10px] rounded-t-lg bg-black/40">
             <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-400 rounded-full" />
-              <div className="w-3 h-3 bg-yellow-300 rounded-full" />
-              <div className="w-3 h-3 bg-green-500 rounded-full" />
+              <div className="w-3 h-3 bg-error-400 rounded-full" />
+              <div className="w-3 h-3 bg-warning-300 rounded-full" />
+              <div className="w-3 h-3 bg-success-500 rounded-full" />
             </div>
           </div>
         )
@@ -573,11 +573,11 @@ export function ImageTool({
         <div
           className={cn(
             'relative w-full flex-1 flex items-start justify-center min-h-[500px] h-full rounded-lg',
-            'bg-light-gray border border-stone-200 bg-[size:10px_10px] bg-fixed transition-all duration-200',
+            'bg-light-gray border border-neutral-200 bg-[size:10px_10px] bg-fixed transition-all duration-200',
             {
               'items-center h-[80vh]': !Boolean(blob.src),
               'max-w-[calc(72rem-330px)] h-[80vh]': Boolean(blob.src),
-              'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50/50':
+              'ring-2 ring-indigo-500 ring-offset-2 bg-primary-50/50':
                 isDragging && !blob.src,
               'bg-[image:repeating-linear-gradient(315deg,rgba(209,213,219,0.4)_0,rgba(209,213,219,0.4)_1px,_transparent_0,_transparent_50%)]':
                 !isDragging || blob.src,
@@ -804,7 +804,7 @@ export function ImageTool({
                   tabIndex={0}
                   role="slider"
                   aria-label="Resize canvas"
-                  className="absolute bottom-2 right-2 size-4 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center cursor-nwse-resize z-50 shadow-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                  className="absolute bottom-2 right-2 size-4 rounded-full bg-white border-2 border-neutral-300 flex items-center justify-center cursor-nwse-resize z-50 shadow-md hover:bg-neutral-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
                   style={{ touchAction: 'none', userSelect: 'none' }}
                   onMouseDown={(e) => {
                     e.preventDefault()
@@ -835,7 +835,7 @@ export function ImageTool({
           ) : (
             <div
               className={cn(
-                'flex flex-col items-center justify-center p-12 border bg-white border-stone-200 rounded-xl cursor-pointer hover:border-stone-300 transition-all duration-300 backdrop-blur-sm',
+                'flex flex-col items-center justify-center p-12 border bg-white border-neutral-200 rounded-xl cursor-pointer hover:border-neutral-300 transition-all duration-300 backdrop-blur-sm',
               )}
               onClick={(e) => e.stopPropagation()}
             >
@@ -843,19 +843,19 @@ export function ImageTool({
                 <div className="flex flex-col items-center text-center space-y-3">
                   <div className="relative">
                     <ImagePlus
-                      className={cn('size-6 text-stone-300', {
-                        'text-indigo-500': isDragging,
+                      className={cn('size-6 text-neutral-300', {
+                        'text-primary-500': isDragging,
                       })}
                     />
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="text-xl font-medium text-stone-800">
+                    <h3 className="text-xl font-medium text-neutral-800">
                       {isDragging ? 'Drop your image here' : 'Add an image'}
                     </h3>
-                    <p className="text-sm text-stone-500 max-w-sm">
+                    <p className="text-sm text-neutral-500 max-w-sm">
                       Tweets perform better with{' '}
-                      <span className="text-indigo-600 font-medium">
+                      <span className="text-primary-600 font-medium">
                         clear, beautiful visuals
                       </span>
                       . <br />
@@ -864,7 +864,7 @@ export function ImageTool({
                   </div>
 
                   <div className="flex flex-col items-center gap-3">
-                    <div className="flex items-center gap-2 text-xs text-stone-400">
+                    <div className="flex items-center gap-2 text-xs text-neutral-400">
                       <span className="px-2 py-1 rounded-md bg-light-gray bg-opacity-75">
                         ⌘V
                       </span>
@@ -899,8 +899,8 @@ export function ImageTool({
               <div className="space-y-6">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Grip className="size-4 text-stone-500" />
-                    <span className="block font-medium text-xs text-stone-700">
+                    <Grip className="size-4 text-neutral-500" />
+                    <span className="block font-medium text-xs text-neutral-700">
                       Image Settings
                     </span>
                   </div>
@@ -910,23 +910,23 @@ export function ImageTool({
                 <Popover>
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-1">
-                      <span className="block text-xs font-medium text-gray-700">
+                      <span className="block text-xs font-medium text-neutral-700">
                         Frame
                       </span>
                     </div>
                     <PopoverTrigger asChild>
                       <button
                         aria-label="Edit frame"
-                        className="w-20 h-14 rounded-md border border-gray-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400"
+                        className="w-20 h-14 rounded-md border border-neutral-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400"
                       >
                         <div className="w-full h-full rounded-sm relative overflow-hidden bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
                           {options.frame === 'none' && (
-                            <div className="w-10 h-8 bg-white border border-gray-300 rounded-sm" />
+                            <div className="w-10 h-8 bg-white border border-neutral-300 rounded-sm" />
                           )}
                           {options.frame === 'arc' && (
                             <div className="relative">
                               <div
-                                className="w-10 h-8 bg-white border border-gray-300"
+                                className="w-10 h-8 bg-white border border-neutral-300"
                                 style={{
                                   borderRadius: '5px',
                                   boxShadow: 'var(--glass-shadow)',
@@ -967,7 +967,7 @@ export function ImageTool({
                                 })}
                               </div>
                               <div className="relative z-10">
-                                <div className="w-10 h-8 bg-white border border-gray-300 rounded-sm" />
+                                <div className="w-10 h-8 bg-white border border-neutral-300 rounded-sm" />
                               </div>
                             </div>
                           )}
@@ -990,7 +990,7 @@ export function ImageTool({
                       onMouseUp={(e) => e.stopPropagation()}
                       className="pointer-events-auto"
                     >
-                      <span className="block font-medium text-sm text-gray-900 mb-2">
+                      <span className="block font-medium text-sm text-neutral-900 mb-2">
                         Frame Style
                       </span>
                       <div className="grid grid-cols-3 gap-2">
@@ -1013,19 +1013,19 @@ export function ImageTool({
                           >
                             <div
                               className={cn(
-                                'w-full h-14 rounded-md border border-gray-200 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-indigo-600 overflow-hidden',
+                                'w-full h-14 rounded-md border border-neutral-200 flex items-center justify-center bg-gradient-to-br from-indigo-500 to-indigo-600 overflow-hidden',
                                 {
                                   'ring-2 ring-blue-400': frame.type === options.frame,
                                 },
                               )}
                             >
                               {frame.type === 'none' && (
-                                <div className="w-10 h-8 bg-white border border-gray-300 rounded-sm" />
+                                <div className="w-10 h-8 bg-white border border-neutral-300 rounded-sm" />
                               )}
                               {frame.type === 'arc' && (
                                 <div className="relative">
                                   <div
-                                    className="w-10 h-8 bg-white border border-gray-300"
+                                    className="w-10 h-8 bg-white border border-neutral-300"
                                     style={{
                                       borderRadius: '5px',
                                       boxShadow: 'var(--glass-shadow)',
@@ -1066,12 +1066,12 @@ export function ImageTool({
                                     })}
                                   </div>
                                   <div className="relative z-10">
-                                    <div className="w-10 h-8 bg-white border border-gray-300 rounded-sm" />
+                                    <div className="w-10 h-8 bg-white border border-neutral-300 rounded-sm" />
                                   </div>
                                 </div>
                               )}
                             </div>
-                            <span className="text-xs text-gray-600">{frame.label}</span>
+                            <span className="text-xs text-neutral-600">{frame.label}</span>
                           </div>
                         ))}
                       </div>
@@ -1131,7 +1131,7 @@ export function ImageTool({
 
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-1">
-                    <span className="block text-xs font-medium text-gray-700">
+                    <span className="block text-xs font-medium text-neutral-700">
                       Inset color
                     </span>
                   </div>
@@ -1140,20 +1140,20 @@ export function ImageTool({
                       type="color"
                       value={outlineColor}
                       onChange={(e) => setOutlineColor(e.target.value)}
-                      className="w-8 h-8 rounded-md border border-gray-300 cursor-pointer transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400"
+                      className="w-8 h-8 rounded-md border border-neutral-300 cursor-pointer transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="space-y-6">
-                <Separator className="bg-gray-200" />
+                <Separator className="bg-neutral-200" />
 
                 <div className="flex flex-col gap-6 items-center justify-between">
                   <div className="w-full flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Grip className="size-4 text-stone-500" />
-                      <span className="block font-medium text-xs text-stone-700">
+                      <Grip className="size-4 text-neutral-500" />
+                      <span className="block font-medium text-xs text-neutral-700">
                         Background Settings
                       </span>
                     </div>
@@ -1179,10 +1179,10 @@ export function ImageTool({
                   <Popover>
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-1">
-                        <span className="block text-xs font-medium text-gray-700">
+                        <span className="block text-xs font-medium text-neutral-700">
                           Background
                         </span>
-                        {/* <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500 w-fit font-mono">
+                        {/* <span className="text-xs px-2 py-0.5 rounded bg-neutral-100 text-neutral-500 w-fit font-mono">
                         {options.theme.includes("gradient")
                           ? "Gradient"
                           : options.theme.includes("white")
@@ -1193,7 +1193,7 @@ export function ImageTool({
                       <PopoverTrigger asChild>
                         <button
                           aria-label="Edit background"
-                          className="size-8 rounded-md border border-gray-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400"
+                          className="size-8 rounded-md border border-neutral-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400"
                         >
                           <div
                             className={cn('size-7 rounded-sm', options.theme)}
@@ -1224,7 +1224,7 @@ export function ImageTool({
                         onMouseUp={(e) => e.stopPropagation()}
                         className="pointer-events-auto"
                       >
-                        <span className="block font-medium text-sm text-gray-900 mb-2">
+                        <span className="block font-medium text-sm text-neutral-900 mb-2">
                           Background Presets
                         </span>
                         <div className="grid grid-cols-5 gap-2">
@@ -1269,7 +1269,7 @@ export function ImageTool({
                   <Popover>
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-1">
-                        <span className="block text-xs font-medium text-gray-700">
+                        <span className="block text-xs font-medium text-neutral-700">
                           Pattern
                         </span>
                       </div>
@@ -1277,7 +1277,7 @@ export function ImageTool({
                         <button
                           aria-label="Edit pattern overlay"
                           className={cn(
-                            'size-8 rounded-md border border-gray-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400',
+                            'size-8 rounded-md border border-neutral-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-gray-400',
                             options.pattern.enabled ? 'opacity-100' : 'opacity-50',
                           )}
                         >
@@ -1298,7 +1298,7 @@ export function ImageTool({
                                 }}
                               />
                             ) : (
-                              <span className="text-gray-400 text-xs">Off</span>
+                              <span className="text-neutral-400 text-xs">Off</span>
                             )}
                           </div>
                         </button>
@@ -1319,7 +1319,7 @@ export function ImageTool({
                         onMouseUp={(e) => e.stopPropagation()}
                         className="pointer-events-auto"
                       >
-                        <span className="block font-medium text-sm text-gray-900 mb-2">
+                        <span className="block font-medium text-sm text-neutral-900 mb-2">
                           Pattern Options
                         </span>
                         <div className="grid grid-cols-3 gap-2">
@@ -1349,7 +1349,7 @@ export function ImageTool({
                             >
                               <div
                                 className={cn(
-                                  'w-full h-14 rounded-md border border-gray-200 flex items-center justify-center bg-white overflow-hidden',
+                                  'w-full h-14 rounded-md border border-neutral-200 flex items-center justify-center bg-white overflow-hidden',
                                   {
                                     'ring-2 ring-blue-400':
                                       pattern.type === options.pattern.type,
@@ -1379,7 +1379,7 @@ export function ImageTool({
                                   />
                                 ) : null}
                               </div>
-                              <span className="text-xs text-gray-600">
+                              <span className="text-xs text-neutral-600">
                                 {pattern.label}
                               </span>
                             </div>
@@ -1449,7 +1449,7 @@ export function ImageTool({
             </div>
           </div>
 
-          <div className="p-6 pt-6 border-t border-gray-200">
+          <div className="p-6 pt-6 border-t border-neutral-200">
             <div className="flex gap-3">
               <Button
                 className="flex-1 gap-2 h-11"

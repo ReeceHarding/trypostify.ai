@@ -78,7 +78,7 @@ export default function DuolingoButton({
 export function LoadingSpinner({ variant }: { variant: string }) {
   const spinnerColor =
     variant === 'secondary' || variant === 'dashedOutline'
-      ? 'text-gray-300'
+      ? 'text-neutral-300'
       : 'text-white'
 
   return (

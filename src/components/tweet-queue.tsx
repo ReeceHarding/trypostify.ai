@@ -104,7 +104,7 @@ export default function TweetQueue() {
             target="_blank"
             rel="noreferrer"
             href={`https://x.com/${data.accountUsername}/status/${data.tweetId}`}
-            className="text-base text-indigo-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
           >
             See tweet
           </Link>
@@ -133,7 +133,7 @@ export default function TweetQueue() {
       <div className="space-y-6">
         <div className="flex flex-col items-center justify-center text-center py-12">
           <Loader variant="classic" />
-          <p className="text-sm text-stone-600 mt-4">Loading queue...</p>
+          <p className="text-sm text-neutral-600 mt-4">Loading queue...</p>
         </div>
       </div>
     )
@@ -180,8 +180,8 @@ export default function TweetQueue() {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2 mt-2">
                           <div className="flex items-center gap-2 w-[100px]">
-                            <Clock className="size-4 text-stone-500" />
-                            <span className="font-medium text-sm text-stone-700">
+                            <Clock className="size-4 text-neutral-500" />
+                            <span className="font-medium text-sm text-neutral-700">
                               {format(unix, "hh:mmaaaaa'm'")}
                             </span>
                           </div>
@@ -206,17 +206,17 @@ export default function TweetQueue() {
                         className={cn(
                           'px-4 py-3 rounded-lg border',
                           tweet
-                            ? 'bg-white border-stone-200 shadow-sm'
-                            : 'bg-stone-50 border-dashed border-stone-300',
+                            ? 'bg-white border-neutral-200 shadow-sm'
+                            : 'bg-neutral-50 border-dashed border-neutral-300',
                         )}
                       >
                         {tweet ? (
                           <div className="space-y-2">
-                            <p className="text-stone-900 whitespace-pre-line text-sm leading-relaxed">
+                            <p className="text-neutral-900 whitespace-pre-line text-sm leading-relaxed">
                               {tweet.content || 'No content'}
                             </p>
                             {tweet.media && tweet.media.length > 0 && (
-                              <div className="text-xs text-stone-500 flex items-center gap-1">
+                              <div className="text-xs text-neutral-500 flex items-center gap-1">
                                 <Paperclip className="size-3" />
                                 {tweet.media.length} media file
                                 {tweet.media.length > 1 ? 's' : ''}
@@ -224,7 +224,7 @@ export default function TweetQueue() {
                             )}
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 text-stone-500">
+                          <div className="flex items-center gap-2 text-neutral-500">
                             <span className="text-sm">Empty slot</span>
                           </div>
                         )}
@@ -277,7 +277,7 @@ export default function TweetQueue() {
                                   <Edit className="size-4 mr-1" />
                                   <div className="flex flex-col">
                                     <p>Edit</p>
-                                    <p className="text-xs text-stone-500">
+                                    <p className="text-xs text-neutral-500">
                                       Open this tweet in the editor.
                                     </p>
                                   </div>
@@ -290,7 +290,7 @@ export default function TweetQueue() {
                                     <Send className="size-4 mr-1" />
                                     <div className="flex items-start flex-col">
                                       <p>Post Now</p>
-                                      <p className="text-xs text-stone-500">
+                                      <p className="text-xs text-neutral-500">
                                         {skipPostConfirmation
                                           ? 'Tweet will be posted immediately'
                                           : 'A confirmation model will open.'}
@@ -306,10 +306,10 @@ export default function TweetQueue() {
                                   className="mt-1 w-full"
                                   onClick={() => deleteTweet(tweet!.id)}
                                 >
-                                  <Trash2 className="size-4 mr-1 text-red-600" />
-                                  <div className="flex text-red-600  flex-col">
+                                  <Trash2 className="size-4 mr-1 text-error-600" />
+                                  <div className="flex text-error-600  flex-col">
                                     <p>Delete</p>
-                                    <p className="text-xs text-red-600">
+                                    <p className="text-xs text-error-600">
                                       Delete this tweet from the queue.
                                     </p>
                                   </div>
@@ -318,7 +318,7 @@ export default function TweetQueue() {
                             </DropdownMenu>
 
                             <DialogContent className="bg-white rounded-2xl p-6">
-                              <div className="size-12 bg-gray-100 rounded-full flex items-center justify-center">
+                              <div className="size-12 bg-neutral-100 rounded-full flex items-center justify-center">
                                 <Icons.twitter className="size-6" />
                               </div>
                               <DialogHeader className="py-2">
@@ -387,7 +387,7 @@ export default function TweetQueue() {
       {/* Scheduled Threads Section */}
       {scheduledData?.items && scheduledData.items.filter(item => item.isThread).length > 0 && (
         <div className="mt-6 space-y-4">
-          <h2 className="text-lg font-semibold text-stone-900">Scheduled Threads</h2>
+          <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
           <div className="space-y-4">
             {scheduledData.items
               .filter(item => item.isThread)
@@ -396,14 +396,14 @@ export default function TweetQueue() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <MessageSquare className="size-5 text-stone-600" />
+                        <MessageSquare className="size-5 text-neutral-600" />
                         <CardTitle className="text-base">
                           Thread ({thread.tweets.length} tweets)
                         </CardTitle>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="size-4 text-stone-500" />
-                        <span className="text-sm text-stone-600">
+                        <Clock className="size-4 text-neutral-500" />
+                        <span className="text-sm text-neutral-600">
                           {thread.scheduledFor && format(new Date(thread.scheduledFor), 'MMM d, h:mm a')}
                         </span>
                       </div>
@@ -414,22 +414,22 @@ export default function TweetQueue() {
                       <div key={tweet.id} className="relative">
                         {/* Connect tweets with a line */}
                         {index < thread.tweets.length - 1 && (
-                          <div className="absolute left-5 top-12 bottom-[-12px] w-[2px] bg-stone-200" />
+                          <div className="absolute left-5 top-12 bottom-[-12px] w-[2px] bg-neutral-200" />
                         )}
                         
                         <div className="flex gap-3">
                           <div className="flex-shrink-0">
-                            <div className="size-10 rounded-full bg-stone-200 flex items-center justify-center text-sm font-medium text-stone-700">
+                            <div className="size-10 rounded-full bg-neutral-200 flex items-center justify-center text-sm font-medium text-neutral-700">
                               {index + 1}
                             </div>
                           </div>
                           
-                          <div className="flex-1 bg-white rounded-lg border border-stone-200 p-3">
-                            <p className="text-sm text-stone-900 whitespace-pre-line">
+                          <div className="flex-1 bg-white rounded-lg border border-neutral-200 p-3">
+                            <p className="text-sm text-neutral-900 whitespace-pre-line">
                               {tweet.content}
                             </p>
                             {tweet.media && tweet.media.length > 0 && (
-                              <div className="mt-2 text-xs text-stone-500 flex items-center gap-1">
+                              <div className="mt-2 text-xs text-neutral-500 flex items-center gap-1">
                                 <Paperclip className="size-3" />
                                 {tweet.media.length} media file{tweet.media.length > 1 ? 's' : ''}
                               </div>

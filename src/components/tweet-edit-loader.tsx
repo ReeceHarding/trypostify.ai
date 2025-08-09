@@ -17,9 +17,9 @@ export default function TweetEditLoader() {
   }, [])
 
   return (
-    <div className="flex items-center justify-center p-3 rounded-full bg-white border border-gray-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] select-none">
+    <div className="flex items-center justify-center p-3 rounded-full bg-white border border-neutral-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] select-none">
       {/* X logo */}
-      <div className="relative mr-3 text-gray-800">
+      <div className="relative mr-3 text-neutral-800">
         <svg
           width="18"
           height="18"
@@ -32,7 +32,7 @@ export default function TweetEditLoader() {
       </div>
 
       {/* Elegant progress bar */}
-      <div className="w-16 h-[3px] bg-gray-100 rounded-full overflow-hidden">
+      <div className="w-16 h-[3px] bg-neutral-100 rounded-full overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full"
           style={{
@@ -43,7 +43,7 @@ export default function TweetEditLoader() {
       </div>
 
       {/* Minimal label */}
-      <span className="ml-3 text-xs font-medium text-gray-500">Editing</span>
+      <span className="ml-3 text-xs font-medium text-neutral-500">Editing</span>
     </div>
   )
 }

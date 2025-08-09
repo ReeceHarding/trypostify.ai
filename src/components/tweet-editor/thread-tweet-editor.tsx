@@ -173,7 +173,7 @@ export default function ThreadTweetEditor({
           <p>Thread queued!</p>
           <Link
             href="/studio/scheduled"
-            className="text-base text-indigo-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
           >
             See queue
           </Link>
@@ -392,7 +392,7 @@ export default function ThreadTweetEditor({
   if (loadingThread) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-stone-500">Loading thread...</div>
+        <div className="text-neutral-500">Loading thread...</div>
       </div>
     )
   }
@@ -406,7 +406,7 @@ export default function ThreadTweetEditor({
             {/* Connecting line between tweets */}
             {index < threadTweets.length - 1 && (
               <div
-                className="absolute left-[30px] top-[72px] bottom-[-16px] w-[2px] bg-stone-300 z-0"
+                className="absolute left-[30px] top-[72px] bottom-[-16px] w-[2px] bg-neutral-300 z-0"
               />
             )}
             
@@ -436,7 +436,7 @@ export default function ThreadTweetEditor({
         {threadTweets.length === 1 && threadTweets[0]?.content?.trim() && (
           <button
             onClick={handleAddTweet}
-            className="w-full p-3 border-2 border-dashed border-stone-300 hover:border-stone-400 rounded-lg flex items-center justify-center gap-2 text-stone-500 hover:text-stone-700 transition-colors"
+            className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
           >
             <span className="text-sm font-medium">Add another tweet to this thread</span>
           </button>
@@ -446,7 +446,7 @@ export default function ThreadTweetEditor({
         {threadTweets.length > 1 && (
           <button
             onClick={handleAddTweet}
-            className="w-full p-3 border-2 border-dashed border-stone-300 hover:border-stone-400 rounded-lg flex items-center justify-center gap-2 text-stone-500 hover:text-stone-700 transition-colors"
+            className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
           >
             <span className="text-sm font-medium">Add another tweet to this thread</span>
           </button>

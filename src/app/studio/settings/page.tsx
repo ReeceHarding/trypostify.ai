@@ -102,8 +102,8 @@ const Page = () => {
               </Avatar>
             </div> */}
             <div className="mb-1 flex flex-col items-center">
-              <p className="text-2xl font-semibold text-gray-900">{data?.user.name}</p>
-              <p className="text-sm text-gray-500">{data?.user.email}</p>
+              <p className="text-2xl font-semibold text-neutral-900">{data?.user.name}</p>
+              <p className="text-sm text-neutral-500">{data?.user.email}</p>
             </div>
             <DuolingoBadge className="mb-6 px-3">
               {data?.user.plan === 'free' ? 'Free Plan' : 'Pro Plan'}
@@ -113,8 +113,8 @@ const Page = () => {
           {/* usage card */}
           <div className="bg-white shadow-sm rounded-xl p-3 w-full">
             {/* <div className="flex flex-col justify-between text-sm mb-3">
-              <span className="font-medium text-gray-900">Message Usage</span>
-              <span className="text-xs text-gray-400 mt-1">
+              <span className="font-medium text-neutral-900">Message Usage</span>
+              <span className="text-xs text-neutral-400 mt-1">
                 {limit?.reset ? formatResetTime(Number(limit.reset)) : 'Loading...'}
               </span>
             </div>
@@ -128,7 +128,7 @@ const Page = () => {
                 }
               />
             </div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-neutral-400">
               {typeof limit?.remaining === 'number'
                 ? `${limit.remaining}/20 messages remaining`
                 : '- messages remaining'}
@@ -156,7 +156,7 @@ const Page = () => {
         <div className="flex justify-center mt-4">
           <p
             onClick={handleLogout}
-            className="underline cursor-pointer underline-offset-2 text-gray-600 hover:text-gray-800"
+            className="underline cursor-pointer underline-offset-2 text-neutral-600 hover:text-neutral-800"
           >
             Sign out
           </p>

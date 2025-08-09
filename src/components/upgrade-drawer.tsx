@@ -115,11 +115,11 @@ export const UpgradeDrawer = () => {
                             viewBox="0 0 12 12"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
-                            className="text-indigo-500"
+                            className="text-primary-500"
                           >
                             <circle cx="4" cy="4" r="4" fill="currentColor" />
                           </svg>
-                          <p className='text-gray-700'>{feature.name}</p>
+                          <p className='text-neutral-700'>{feature.name}</p>
                         </li>
                       ))
                     ) : (

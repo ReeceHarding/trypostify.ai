@@ -43,9 +43,9 @@ interface Document {
 }
 
 const categoryColors = {
-  url: 'bg-blue-100 text-blue-800 border-blue-200',
-  file: 'bg-green-100 text-green-800 border-green-200',
-  manual: 'bg-purple-100 text-purple-800 border-purple-200',
+  url: 'bg-primary-100 text-primary-800 border-primary-200',
+  file: 'bg-success-100 text-success-800 border-success-200',
+  manual: 'bg-primary-100 text-primary-800 border-primary-200',
 }
 
 const categoryBadgeVariants = {
@@ -86,10 +86,10 @@ const TweetListing = ({ tweetMetadata }: { tweetMetadata: TweetMetadata }) => {
         </Avatar>
         <div className="flex flex-col">
           <p className="text-sm font-medium leading-none">{tweetMetadata.author.name}</p>
-          <p className="text-xs text-gray-500 leading-none">@{tweetMetadata.author.username}</p>
+          <p className="text-xs text-neutral-500 leading-none">@{tweetMetadata.author.username}</p>
         </div>
       </div>
-      <p className="mt-3 text-sm text-gray-500 leading-relaxed">{tweetMetadata.tweet.text}</p>
+      <p className="mt-3 text-sm text-neutral-500 leading-relaxed">{tweetMetadata.tweet.text}</p>
     </div>
   )
 }
@@ -163,12 +163,12 @@ const Page = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl font-bold text-gray-900">Knowledge Base</h1>
+                <h1 className="text-4xl font-bold text-neutral-900">Knowledge Base</h1>
                 <DuolingoBadge variant="achievement" className="px-2" size="md">
                   {documents.filter((d) => !d.isDeleted).length}
                 </DuolingoBadge>
               </div>
-              <p className="text-lg text-gray-600 max-w-prose">
+              <p className="text-lg text-neutral-600 max-w-prose">
                 Teach Postify new knowledge by uploading assets (e.g., product
                 details, business bio) and reference specific content so it always writes
                 factually.
@@ -190,13 +190,13 @@ const Page = () => {
                         pathname: '/studio/knowledge/new',
                         search: '?type=upload',
                       }}
-                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
+                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-primary-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
                     >
-                      <div className="flex-shrink-0 size-10 bg-gray-100 border border-gray-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
-                        <FolderOpen className="size-5 text-gray-600 transition-colors" />
+                      <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
+                        <FolderOpen className="size-5 text-neutral-600 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-gray-900 group-hover:text-blue-900 transition-colors">
+                        <h4 className="font-semibold text-neutral-900 group-hover:text-primary-900 transition-colors">
                           Upload Document
                         </h4>
                         <p className="text-sm opacity-60 leading-relaxed">
@@ -212,13 +212,13 @@ const Page = () => {
                         pathname: '/studio/knowledge/new',
                         search: '?type=url',
                       }}
-                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
+                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-primary-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
                     >
-                      <div className="flex-shrink-0 size-10 bg-gray-100 border border-gray-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
-                        <Globe className="size-5 text-gray-600 transition-colors" />
+                      <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
+                        <Globe className="size-5 text-neutral-600 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-gray-900 group-hover:text-blue-900 transition-colors">
+                        <h4 className="font-semibold text-neutral-900 group-hover:text-primary-900 transition-colors">
                           Add from Website
                         </h4>
                         <p className="text-sm opacity-60 leading-relaxed">
@@ -234,25 +234,25 @@ const Page = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 size-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 size-5" />
               <input
                 type="text"
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-colors bg-white shadow-sm"
+                className="w-full pl-10 pr-4 py-3 border-2 border-neutral-200 rounded-xl focus:border-primary-500 focus:outline-none transition-colors bg-white shadow-sm"
               />
             </div>
 
             <div className="flex gap-2">
-              <div className="flex border-2 border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+              <div className="flex border-2 border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={cn(
                     'p-3 transition-colors',
                     viewMode === 'grid'
-                      ? 'bg-indigo-100 text-indigo-600'
-                      : 'text-gray-400 hover:text-gray-600',
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'text-neutral-400 hover:text-neutral-600',
                   )}
                 >
                   <Grid className="size-5" />
@@ -262,8 +262,8 @@ const Page = () => {
                   className={cn(
                     'p-3 transition-colors',
                     viewMode === 'list'
-                      ? 'bg-indigo-100 text-indigo-600'
-                      : 'text-gray-400 hover:text-gray-600',
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'text-neutral-400 hover:text-neutral-600',
                   )}
                 >
                   <List className="size-5" />
@@ -295,13 +295,13 @@ const Page = () => {
 
         {documents.filter((d) => !d.isDeleted).length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-              <FileText className="size-12 text-gray-400" />
+            <div className="w-24 h-24 mx-auto mb-6 bg-neutral-100 rounded-full flex items-center justify-center">
+              <FileText className="size-12 text-neutral-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-xl font-semibold text-neutral-900 mb-2">
               {isPending ? 'Loading documents...' : 'No knowledge yet'}
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-neutral-600 mb-6">
               {isPending
                 ? ''
                 : searchQuery
@@ -340,7 +340,7 @@ const Page = () => {
                   >
                     <div
                       className={cn(
-                        'bg-white rounded-2xl border-2 border-gray-200 hover:border-indigo-300 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 p-6',
+                        'bg-white rounded-2xl border-2 border-neutral-200 hover:border-primary-300 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 p-6',
                         viewMode === 'list'
                           ? 'flex items-center gap-6'
                           : 'h-full flex flex-col justify-between',
@@ -374,7 +374,7 @@ const Page = () => {
                           <>
                             <h3
                               className={cn(
-                                'font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors',
+                                'font-semibold text-neutral-900 group-hover:text-primary-600 transition-colors',
                                 viewMode === 'list'
                                   ? 'text-lg mb-1 line-clamp-1'
                                   : 'text-xl mb-3 line-clamp-2',
@@ -383,7 +383,7 @@ const Page = () => {
                               {doc.title}
                             </h3>
 
-                            <p className="text-sm text-gray-500 line-clamp-4 leading-relaxed">
+                            <p className="text-sm text-neutral-500 line-clamp-4 leading-relaxed">
                               {doc.description}
                             </p>
                           </>
@@ -391,7 +391,7 @@ const Page = () => {
 
                         {doc.type === 'image' ? (
                           <img
-                            className="w-full bg-[size:10px_10px] border border-gray-200 bg-fixed bg-[image:repeating-linear-gradient(315deg,rgba(209,213,219,0.4)_0,rgba(209,213,219,0.4)_1px,_transparent_0,_transparent_50%)] max-h-40 object-contain rounded-md"
+                            className="w-full bg-[size:10px_10px] border border-neutral-200 bg-fixed bg-[image:repeating-linear-gradient(315deg,rgba(209,213,219,0.4)_0,rgba(209,213,219,0.4)_1px,_transparent_0,_transparent_50%)] max-h-40 object-contain rounded-md"
                             src={`https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${doc.s3Key}`}
                           />
                         ) : null}
@@ -399,7 +399,7 @@ const Page = () => {
 
                       <div
                         className={cn(
-                          'flex items-center gap-5 text-sm text-gray-500',
+                          'flex items-center gap-5 text-sm text-neutral-500',
                           viewMode === 'list'
                             ? 'flex-shrink-0 flex-col items-end gap-1'
                             : 'mt-auto pt-4',

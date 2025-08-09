@@ -106,7 +106,7 @@ function DocumentAttachment({ attachment, onRemove, className }: DocumentReferen
   return (
     <div
       className={cn(
-        'flex w-fit items-center gap-2 bg-stone-200 px-3 py-2 rounded-lg',
+        'flex w-fit items-center gap-2 bg-neutral-200 px-3 py-2 rounded-lg',
         className,
       )}
     >
@@ -122,13 +122,13 @@ function DocumentAttachment({ attachment, onRemove, className }: DocumentReferen
           )}
         </div>
         {'title' in attachment ? (
-          <span className="text-sm text-stone-700 font-medium max-w-[120px] truncate">
+          <span className="text-sm text-neutral-700 font-medium max-w-[120px] truncate">
             {attachment.title}
           </span>
         ) : null}
       </Link>
       {onRemove && (
-        <button onClick={onRemove} className="hover:bg-stone-300 rounded-full p-1 ml-1">
+        <button onClick={onRemove} className="hover:bg-neutral-300 rounded-full p-1 ml-1">
           <X className="size-3" />
         </button>
       )}
@@ -160,7 +160,7 @@ function ImageAttachment({ attachment, onRemove, className }: ImageReferenceProp
   return (
     <div
       className={cn(
-        'flex flex-col gap-2 bg-stone-200 rounded-lg size-32 relative',
+        'flex flex-col gap-2 bg-neutral-200 rounded-lg size-32 relative',
         className,
       )}
     >

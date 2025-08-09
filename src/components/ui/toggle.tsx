@@ -23,18 +23,18 @@ export const Toggle = ({
     <div className={cn("w-full", className)} {...props}>
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <span className="block text-xs font-medium text-gray-700">
+          <span className="block text-xs font-medium text-neutral-700">
             {label}
           </span>
           {description && (
-            <p className="text-xs text-gray-500">{description}</p>
+            <p className="text-xs text-neutral-500">{description}</p>
           )}
         </div>
         <Switch checked={checked} onCheckedChange={onCheckedChange} />
       </div>
 
       {checked && children && (
-        <div className="relative mt-4 bg-gray-50 px-4 py-4 transition-all duration-200 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-[2px] before:rounded-full before:bg-indigo-500">
+        <div className="relative mt-4 bg-neutral-50 px-4 py-4 transition-all duration-200 before:absolute before:bottom-0 before:left-0 before:top-0 before:w-[2px] before:rounded-full before:bg-primary-500">
           {children}
         </div>
       )}

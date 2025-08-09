@@ -13,8 +13,8 @@ export function SettingsSection({ children, className, icon: Icon, title }: Sett
   return (
     <div className={cn("space-y-6", className)}>
       <div className="flex items-center gap-2">
-        {Icon && <Icon className="h-5 w-5 text-gray-500" />}
-        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        {Icon && <Icon className="h-5 w-5 text-neutral-500" />}
+        <h3 className="text-lg font-medium text-neutral-900">{title}</h3>
       </div>
       {children}
     </div>

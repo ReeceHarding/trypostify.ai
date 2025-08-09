@@ -239,7 +239,7 @@ export default function NewKnowledgePage() {
       <div className="relative border-2 border-neutral-200 shadow-[0_2px_0_hsl(var(--neutral-200))] rounded-2xl p-6 bg-white">
         <div className="flex items-center gap-4">
           {isImage && localUrl ? (
-            <div className="relative size-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+            <div className="relative size-16 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
               <img
                 src={localUrl}
                 alt={file.name}
@@ -250,7 +250,7 @@ export default function NewKnowledgePage() {
                   <div className="relative size-8">
                     <svg className="size-8 transform" viewBox="0 0 36 36">
                       <path
-                        className="text-gray-300"
+                        className="text-neutral-300"
                         stroke="currentColor"
                         strokeWidth="3"
                         fill="none"
@@ -271,21 +271,21 @@ export default function NewKnowledgePage() {
               )}
             </div>
           ) : (
-            <div className="relative size-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-              <FileText className="size-8 text-gray-400" />
+            <div className="relative size-16 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+              <FileText className="size-8 text-neutral-400" />
               {!isUploadDone && (
                 <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
                   <div className="relative size-8">
                     <svg className="size-8 transform -rotate-90" viewBox="0 0 36 36">
                       <path
-                        className="text-gray-300"
+                        className="text-neutral-300"
                         stroke="currentColor"
                         strokeWidth="3"
                         fill="none"
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
                       <path
-                        className="text-indigo-600"
+                        className="text-primary-600"
                         stroke="currentColor"
                         strokeWidth="3"
                         strokeDasharray={`${uploadProgress}, 100`}
@@ -302,7 +302,7 @@ export default function NewKnowledgePage() {
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-semibold text-gray-900 truncate">
+              <h3 className="text-lg font-semibold text-neutral-900 truncate">
                 {file.name}
               </h3>
               {isUploadDone && (
@@ -312,11 +312,11 @@ export default function NewKnowledgePage() {
                 </DuolingoBadge>
               )}
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-neutral-600">
               {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
             </p>
             {!isUploadDone && (
-              <p className="text-sm text-indigo-600 mt-1">
+              <p className="text-sm text-primary-600 mt-1">
                 Uploading... {Math.round(uploadProgress)}%
               </p>
             )}
@@ -361,11 +361,11 @@ export default function NewKnowledgePage() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <FolderOpen className="mx-auto size-16 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <FolderOpen className="mx-auto size-16 text-neutral-400 mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
               Drag n' drop or browse
             </h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-neutral-600 mb-4">
               pdf, docx, txt and images up to 10MB
             </p>
             <div className="w-full flex justify-center">
@@ -416,7 +416,7 @@ export default function NewKnowledgePage() {
         <DuolingoInput
           autoFocus
           fullWidth
-          icon={<Link className="size-5 text-gray-400" />}
+          icon={<Link className="size-5 text-neutral-400" />}
           placeholder="https://example.com/article"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -468,7 +468,7 @@ export default function NewKnowledgePage() {
           Back to Knowledge Base
         </DuolingoButton>
 
-        <div className="bg-white p-6 space-y-4 rounded-3xl border-2 border-gray-200 shadow-xl">
+        <div className="bg-white p-6 space-y-4 rounded-3xl border-2 border-neutral-200 shadow-xl">
           <div>
             {type === 'upload' && renderUploadView()}
             {type === 'url' && renderUrlView()}

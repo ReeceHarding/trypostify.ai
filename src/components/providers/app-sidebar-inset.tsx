@@ -17,7 +17,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarInset className="w-full flex-1 overflow-x-hidden bg-stone-100 border border-gray-200">
+    <SidebarInset className="w-full flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200">
       {/* Dot Pattern Background */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"
@@ -57,7 +57,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
                     </div>
                   </DuolingoButton>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-stone-800 text-white ">
+                <TooltipContent side="bottom" className="bg-neutral-800 text-white ">
                   Toggle Sidebar
                 </TooltipContent>
               </Tooltip>

@@ -604,14 +604,14 @@ function ThreadTweetContent({
                 <AccountHandle />
               </div>
 
-              <div className="text-stone-800 leading-relaxed">
+              <div className="text-neutral-800 leading-relaxed">
                 <PlainTextPlugin
                   contentEditable={
                     <ContentEditable
                       spellCheck={false}
                       onPaste={handlePaste}
                       className={cn(
-                        'w-full !min-h-16 resize-none text-base/7 leading-relaxed text-stone-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
+                        'w-full !min-h-16 resize-none text-base/7 leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
                       )}
                     />
                   }
@@ -628,7 +628,7 @@ function ThreadTweetContent({
                 <div className="mt-3">
                   {mediaFiles.length === 1 && mediaFiles[0] && (
                     <div className="relative group">
-                      <div className="relative overflow-hidden rounded-2xl border border-stone-200">
+                      <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
                         {mediaFiles[0].type === 'video' ? (
                           <video
                             src={mediaFiles[0].url}
@@ -648,7 +648,7 @@ function ThreadTweetContent({
                   )}
 
                   {mediaFiles.length === 2 && (
-                    <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-stone-200">
+                    <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200">
                       {mediaFiles.map((mediaFile, index) => (
                         <div key={mediaFile.url} className="relative group">
                           <div className="relative overflow-hidden h-[254px]">
@@ -673,7 +673,7 @@ function ThreadTweetContent({
                   )}
 
                   {mediaFiles.length === 3 && mediaFiles[0] && (
-                    <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-stone-200 h-[254px]">
+                    <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200 h-[254px]">
                       <div className="relative group">
                         <div className="relative overflow-hidden h-full">
                           {mediaFiles[0].type === 'video' ? (
@@ -718,7 +718,7 @@ function ThreadTweetContent({
                   )}
 
                   {mediaFiles.length === 4 && (
-                    <div className="grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-stone-200 h-[254px]">
+                    <div className="grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200 h-[254px]">
                       {mediaFiles.map((mediaFile, index) => (
                         <div key={mediaFile.url} className="relative group">
                           <div className="relative overflow-hidden h-full">
@@ -744,10 +744,10 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-stone-200 flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between">
                 <div
                   className={cn(
-                    'flex items-center gap-1.5 bg-stone-100 p-1.5 rounded-lg',
+                    'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
                   )}
                 >
                   <TooltipProvider>
@@ -824,7 +824,7 @@ function ThreadTweetContent({
                     </Tooltip>
                   </TooltipProvider>
 
-                  <div className="w-px h-4 bg-stone-300 mx-2" />
+                  <div className="w-px h-4 bg-neutral-300 mx-2" />
 
                   <ContentLengthIndicator length={charCount} />
                 </div>

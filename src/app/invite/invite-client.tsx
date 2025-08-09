@@ -35,26 +35,26 @@ export default function InviteClient({ isInvalid, inviteId, inviterName }: Props
   })
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl bg-clip-padding border border-stone-900 border-opacity-10 p-8 text-center">
+        <div className="bg-white rounded-2xl shadow-xl bg-clip-padding border border-neutral-900 border-opacity-10 p-8 text-center">
           {isInvalid ? (
             <div>
-              <div className="inline-flex items-center justify-center w-12 h-12 bg-red-50 rounded-full mb-6">
-                <X className="size-6 text-red-600" />
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-error-50 rounded-full mb-6">
+                <X className="size-6 text-error-600" />
               </div>
             </div>
           ) : (
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-50 rounded-full mb-6">
-              <UserPlus className="size-6 text-indigo-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-primary-50 rounded-full mb-6">
+              <UserPlus className="size-6 text-primary-600" />
             </div>
           )}
 
-          <h1 className="text-2xl font-bold text-stone-900 mb-2">
+          <h1 className="text-2xl font-bold text-neutral-900 mb-2">
             {isInvalid ? 'Invalid Invite' : "You've been invited!"}
           </h1>
 
-          <p className="text-stone-600 mb-8 leading-relaxed">
+          <p className="text-neutral-600 mb-8 leading-relaxed">
             {isInvalid ? (
               <span>
                 This invite is invalid or has expired. Please ask the sender to send you a
@@ -80,7 +80,7 @@ export default function InviteClient({ isInvalid, inviteId, inviterName }: Props
                 Connect Twitter Account
               </DuolingoButton>
 
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-neutral-500">
                 You'll be redirected to Twitter to authorize your account
               </p>
             </div>
@@ -89,13 +89,13 @@ export default function InviteClient({ isInvalid, inviteId, inviterName }: Props
 
         {!isInvalid && (
           <div className="mt-6 text-center">
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-neutral-500">
               Make sure you're already logged in to the right Twitter account:{' '}
               <a
                 href="https://x.com/account/switch"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-600 hover:text-indigo-700 underline underline-offset-2"
+                className="text-primary-600 hover:text-primary-700 underline underline-offset-2"
               >
                 switch accounts
               </a>

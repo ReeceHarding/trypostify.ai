@@ -164,7 +164,7 @@ export default function MediaLibrary({
       <div className="p-4 border-b">
         <div className="flex items-center gap-3 mb-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-stone-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-400" />
             <Input
               value={search}
               onChange={(e) => {
@@ -211,12 +211,12 @@ export default function MediaLibrary({
             <Loader className="size-8" />
           </div>
         ) : isError ? (
-          <div className="flex flex-col items-center justify-center h-64 text-stone-500">
+          <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
             <AlertCircle className="size-12 mb-2" />
             <p>Failed to load media library</p>
           </div>
         ) : !data?.items.length ? (
-          <div className="flex flex-col items-center justify-center h-64 text-stone-500">
+          <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
             <ImageIcon className="size-12 mb-2" />
             <p>No media found</p>
             {search && <p className="text-sm">Try adjusting your search</p>}
@@ -233,13 +233,13 @@ export default function MediaLibrary({
                   className={cn(
                     'relative group rounded-lg overflow-hidden border-2 cursor-pointer transition-all',
                     isSelected
-                      ? 'border-indigo-600 shadow-lg'
-                      : 'border-stone-200 hover:border-stone-300'
+                      ? 'border-primary-600 shadow-lg'
+                      : 'border-neutral-200 hover:border-neutral-300'
                   )}
                   onClick={() => handleToggleSelect(item)}
                 >
                   {/* Media preview */}
-                  <div className="aspect-square bg-stone-100">
+                  <div className="aspect-square bg-neutral-100">
                     {item.mediaType === 'video' ? (
                       <video
                         src={item.url}
@@ -258,7 +258,7 @@ export default function MediaLibrary({
 
                   {/* Selection indicator */}
                   {isSelected && (
-                    <div className="absolute top-2 right-2 bg-indigo-600 text-white rounded-full p-1">
+                    <div className="absolute top-2 right-2 bg-primary-600 text-white rounded-full p-1">
                       <Check className="size-4" />
                     </div>
                   )}
@@ -279,7 +279,7 @@ export default function MediaLibrary({
                           e.stopPropagation()
                           toggleStarMutation.mutate(item.id)
                         }}
-                        className="p-2 bg-white rounded hover:bg-stone-100 transition-colors"
+                        className="p-2 bg-white rounded hover:bg-neutral-100 transition-colors"
                       >
                         <Star className={cn('size-4', isStarred && 'fill-current text-yellow-500')} />
                       </button>
@@ -288,17 +288,17 @@ export default function MediaLibrary({
                           e.stopPropagation()
                           setDeleteId(item.id)
                         }}
-                        className="p-2 bg-white rounded hover:bg-stone-100 transition-colors ml-auto"
+                        className="p-2 bg-white rounded hover:bg-neutral-100 transition-colors ml-auto"
                       >
-                        <Trash2 className="size-4 text-red-500" />
+                        <Trash2 className="size-4 text-error-500" />
                       </button>
                     </div>
                   </div>
 
                   {/* File info */}
                   <div className="p-2">
-                    <p className="text-xs text-stone-600 truncate">{item.filename}</p>
-                    <p className="text-xs text-stone-400">
+                    <p className="text-xs text-neutral-600 truncate">{item.filename}</p>
+                    <p className="text-xs text-neutral-400">
                       {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                     </p>
                   </div>
@@ -312,7 +312,7 @@ export default function MediaLibrary({
       {/* Pagination */}
       {data && totalPages > 1 && (
         <div className="border-t p-4 flex items-center justify-between">
-          <p className="text-sm text-stone-600">
+          <p className="text-sm text-neutral-600">
             Showing {offset + 1}-{Math.min(offset + ITEMS_PER_PAGE, data.total)} of {data.total}
           </p>
           <div className="flex gap-2">
@@ -338,7 +338,7 @@ export default function MediaLibrary({
 
       {/* Footer */}
       <div className="border-t p-4 flex items-center justify-between">
-        <p className="text-sm text-stone-600">
+        <p className="text-sm text-neutral-600">
           {selected.size} of {maxSelection} selected
         </p>
         <div className="flex gap-2">

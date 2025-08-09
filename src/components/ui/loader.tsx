@@ -73,7 +73,7 @@ export function ClassicLoader({
         {[...Array(12)].map((_, i) => (
           <div
             key={i}
-            className="bg-gray-800 absolute animate-[spinner-fade_1.2s_linear_infinite] rounded-full"
+            className="bg-neutral-800 absolute animate-[spinner-fade_1.2s_linear_infinite] rounded-full"
             style={{
               backgroundColor: 'currentColor',
               top: '0',

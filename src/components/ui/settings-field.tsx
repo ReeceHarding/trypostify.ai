@@ -31,10 +31,10 @@ export function SettingsField({
     >
       <div className="w-fit h-full">
         {label && (
-          <Label className="mb-2 block text-xs text-gray-700">{label}</Label>
+          <Label className="mb-2 block text-xs text-neutral-700">{label}</Label>
         )}
         {description && (
-          <p className="mb-2 text-xs text-gray-500">{description}</p>
+          <p className="mb-2 text-xs text-neutral-500">{description}</p>
         )}
       </div>
       <div className={layout === "row" ? "flex-1" : ""}>{children}</div>

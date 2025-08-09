@@ -55,8 +55,8 @@ export const MessageWrapper = memo(
           )}
         >
           {!isUser && (
-            <div className="flex-shrink-0 col-start-1 mt-1.5 size-10 bg-gray-100 rounded-full flex items-center justify-center">
-              <AnimatedLogo isAnimating={animateLogo} className="size-7 text-gray-500" />
+            <div className="flex-shrink-0 col-start-1 mt-1.5 size-10 bg-neutral-100 rounded-full flex items-center justify-center">
+              <AnimatedLogo isAnimating={animateLogo} className="size-7 text-neutral-500" />
             </div>
           )}
           <div className="w-full col-start-2 flex-1 space-y-2">
@@ -64,8 +64,8 @@ export const MessageWrapper = memo(
               className={cn(
                 'space-y-4 rounded-2xl',
                 isUser
-                  ? 'bg-stone-800 p-3.5  w-fit justify-self-end text-white rounded-br-sm'
-                  : 'text-gray-800 pt-3.5 rounded-bl-sm',
+                  ? 'bg-neutral-800 p-3.5  w-fit justify-self-end text-white rounded-br-sm'
+                  : 'text-neutral-800 pt-3.5 rounded-bl-sm',
               )}
             >
               {children}
@@ -78,8 +78,8 @@ export const MessageWrapper = memo(
                     className={cn(
                       'flex items-center justify-center size-7 rounded-lg transition-all duration-200 group',
                       vote === 'up'
-                        ? 'text-green-600 bg-green-100'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
+                        ? 'text-success-600 bg-success-100'
+                        : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100',
                     )}
                   >
                     <ThumbsUp className="size-3.5 transition-transform duration-200" />
@@ -89,13 +89,13 @@ export const MessageWrapper = memo(
                     className={cn(
                       'flex items-center justify-center size-7 rounded-lg transition-all duration-200 group',
                       vote === 'down'
-                        ? 'text-red-600 bg-red-100'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
+                        ? 'text-error-600 bg-error-100'
+                        : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100',
                     )}
                   >
                     <ThumbsDown className="size-3.5 transition-transform duration-200" />
                   </button>
-                  <button className="flex items-center justify-center size-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200 group">
+                  <button className="flex items-center justify-center size-7 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-all duration-200 group">
                     <RotateCcw
                       onClick={() => {
                         regenerate({ messageId: id })

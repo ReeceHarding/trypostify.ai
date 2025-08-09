@@ -91,7 +91,7 @@ export function AccountAvatar({ className }: { className?: string }) {
           onError={() => setImageError(true)}
         />
       ) : (
-        <div className="flex size-full items-center justify-center bg-stone-200 text-stone-600 font-semibold">
+        <div className="flex size-full items-center justify-center bg-neutral-200 text-neutral-600 font-semibold">
           {(account?.name?.[0] || account?.username?.[0] || '?').toUpperCase()}
         </div>
       )}
@@ -163,7 +163,7 @@ export function AccountHandle({ className }: { className?: string }) {
   if (isLoading || !account) {
     return <Skeleton className={cn('h-4 w-16 rounded', className)} />
   }
-  return <span className={cn('text-stone-400', className)}>@{account.username}</span>
+  return <span className={cn('text-neutral-400', className)}>@{account.username}</span>
 }
 
 export function AccountVerifiedBadge({ className }: { className?: string }) {

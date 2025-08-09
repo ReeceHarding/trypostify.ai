@@ -446,7 +446,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
             target="_blank"
             rel="noreferrer"
             href={`https://x.com/${data.accountUsername}/status/${data.tweetId}`}
-            className="text-base text-indigo-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
           >
             See tweet
           </Link>
@@ -555,7 +555,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
               <p>Tweet scheduled!</p>
               <Link
                 href="/studio/scheduled"
-                className="text-base text-indigo-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+                className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
               >
                 See schedule
               </Link>
@@ -837,7 +837,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
           <p>Queued {isToday(scheduledDate) ? timeText : `for ${timeText}`}!</p>
           <Link
             href="/studio/scheduled"
-            className="text-base text-indigo-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
           >
             See queue
           </Link>
@@ -1092,14 +1092,14 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                   <AccountHandle />
                 </div>
 
-                <div className="text-stone-800 leading-relaxed">
+                <div className="text-neutral-800 leading-relaxed">
                   <PlainTextPlugin
                     contentEditable={
                       <ContentEditable
                         spellCheck={false}
                         onPaste={handlePaste}
                         className={cn(
-                          'w-full !min-h-16 resize-none text-base/7 leading-relaxed text-stone-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
+                          'w-full !min-h-16 resize-none text-base/7 leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
                         )}
                       />
                     }
@@ -1118,7 +1118,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                   <div className="mt-3">
                     {mediaFiles.length === 1 && mediaFiles[0] && (
                       <div className="relative group">
-                        <div className="relative overflow-hidden rounded-2xl border border-stone-200">
+                        <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
                           {mediaFiles[0].type === 'video' ? (
                             <video
                               src={mediaFiles[0].url}
@@ -1138,7 +1138,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                     )}
 
                     {mediaFiles.length === 2 && (
-                      <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-stone-200">
+                      <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200">
                         {mediaFiles.map((mediaFile, index) => (
                           <div key={mediaFile.url} className="relative group">
                             <div className="relative overflow-hidden h-[254px]">
@@ -1163,7 +1163,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                     )}
 
                     {mediaFiles.length === 3 && mediaFiles[0] && (
-                      <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-stone-200 h-[254px]">
+                      <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200 h-[254px]">
                         <div className="relative group">
                           <div className="relative overflow-hidden h-full">
                             {mediaFiles[0].type === 'video' ? (
@@ -1208,7 +1208,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                     )}
 
                     {mediaFiles.length === 4 && (
-                      <div className="grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-stone-200 h-[254px]">
+                      <div className="grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200 h-[254px]">
                         {mediaFiles.map((mediaFile, index) => (
                           <div key={mediaFile.url} className="relative group">
                             <div className="relative overflow-hidden h-full">
@@ -1234,7 +1234,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                   </div>
                 )}
 
-                <div className="mt-3 pt-3 border-t border-stone-200 flex items-center justify-between">
+                <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between">
                   <div
                     className={cn(
                       'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
@@ -1496,7 +1496,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                   size="icon"
                   className="absolute right-4 top-4 rounded-full p-2"
                 >
-                  <X className="h-4 w-4 text-stone-500" />
+                  <X className="h-4 w-4 text-neutral-500" />
                 </DuolingoButton>
               </DrawerClose>
             </div>

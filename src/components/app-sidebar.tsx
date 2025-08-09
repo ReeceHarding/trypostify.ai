@@ -256,12 +256,12 @@ const ChatInput = ({
           }`}
         >
           {isDragging && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50/90 to-blue-50/90 backdrop-blur-md rounded-xl z-20 border-2 border-dashed border-indigo-300">
-              <div className="flex items-center gap-2 text-indigo-700">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50/90 to-blue-50/90 backdrop-blur-md rounded-xl z-20 border-2 border-dashed border-primary-300">
+              <div className="flex items-center gap-2 text-primary-700">
                 <Paperclip className="size-5" />
                 <p className="font-medium">Drop files to attach</p>
               </div>
-              <p className="text-sm text-indigo-500 mt-1">
+              <p className="text-sm text-primary-500 mt-1">
                 Supports images, documents, and more
               </p>
             </div>
@@ -293,7 +293,7 @@ const ChatInput = ({
                 <div className="flex gap-1.5 items-center">
                   <FileUploadTrigger asChild>
                     <DuolingoButton type="button" variant="secondary" size="icon">
-                      <Paperclip className="text-stone-600 size-5" />
+                      <Paperclip className="text-neutral-600 size-5" />
                     </DuolingoButton>
                   </FileUploadTrigger>
 

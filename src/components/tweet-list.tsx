@@ -256,12 +256,12 @@ export default function TweetList({
       <div className="container max-w-4xl mx-auto p-6">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-stone-800">{title}</h1>
+            <h1 className="text-2xl font-bold text-neutral-800">{title}</h1>
           </div>
-          <div className="animate-pulse bg-stone-100 h-16 rounded-lg" />
+          <div className="animate-pulse bg-neutral-100 h-16 rounded-lg" />
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="animate-pulse bg-stone-100 h-16 rounded-lg" />
+              <div key={i} className="animate-pulse bg-neutral-100 h-16 rounded-lg" />
             ))}
           </div>
         </div>
@@ -273,12 +273,12 @@ export default function TweetList({
     <div className="relative z-10 p-2">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-stone-800">{title}</h1>
+          <h1 className="text-2xl font-bold text-neutral-800">{title}</h1>
         </div>
 
         {mode === 'scheduled' && scheduledCount > 0 && getLastScheduledDate() && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-emerald-800">
+          <div className="bg-success-50 border border-emerald-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-success-800">
               <CheckCircle2 className="size-4" />
               <span className="text-sm">
                 You have {scheduledCount} tweets scheduled. The last one will be published
@@ -292,8 +292,8 @@ export default function TweetList({
           <Card className="p-12 text-center">
             <div className="flex flex-col gap-4">
               {emptyStateIcon}
-              <h3 className="text-lg font-medium text-stone-800">{emptyStateTitle}</h3>
-              <p className="text-stone-600">{emptyStateDescription}</p>
+              <h3 className="text-lg font-medium text-neutral-800">{emptyStateTitle}</h3>
+              <p className="text-neutral-600">{emptyStateDescription}</p>
               <DuolingoButton
                 onClick={() => router.push('/studio')}
                 className="w-fit mx-auto"
@@ -327,7 +327,7 @@ export default function TweetList({
                         {item.isThread ? (
                           // Render thread
                           <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-stone-600 font-medium">
+                            <div className="flex items-center gap-2 text-sm text-neutral-600 font-medium">
                               <MessageSquare className="size-4" />
                               <span>Thread ({item.tweets.length} tweets)</span>
                             </div>
@@ -335,25 +335,25 @@ export default function TweetList({
                               <div key={tweet.id} className="relative">
                                 {/* Connect tweets with a line */}
                                 {index < item.tweets.length - 1 && (
-                                  <div className="absolute left-5 top-12 bottom-[-12px] w-[2px] bg-stone-200" />
+                                  <div className="absolute left-5 top-12 bottom-[-12px] w-[2px] bg-neutral-200" />
                                 )}
                                 
                                 <div className="flex gap-3">
                                   <div className="flex-shrink-0">
-                                    <div className="size-10 rounded-full bg-stone-200 flex items-center justify-center text-sm font-medium text-stone-700">
+                                    <div className="size-10 rounded-full bg-neutral-200 flex items-center justify-center text-sm font-medium text-neutral-700">
                                       {index + 1}
                                     </div>
                                   </div>
                                   
-                                  <div className="flex-1 px-4 py-3 rounded-lg border bg-white border-stone-200 shadow-sm">
+                                  <div className="flex-1 px-4 py-3 rounded-lg border bg-white border-neutral-200 shadow-sm">
                                     <div className="space-y-2">
-                                      <div className="text-stone-900 text-sm leading-relaxed">
+                                      <div className="text-neutral-900 text-sm leading-relaxed">
                                         <LexicalComposer
                                           initialConfig={{ ...initialConfig, editable: false }}
                                         >
                                           <PlainTextPlugin
                                             contentEditable={
-                                              <ContentEditable className="w-full resize-none leading-relaxed text-stone-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
+                                              <ContentEditable className="w-full resize-none leading-relaxed text-neutral-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
                                             }
                                             ErrorBoundary={LexicalErrorBoundary}
                                           />
@@ -378,30 +378,30 @@ export default function TweetList({
 
                                       {/* Analytics for thread tweets */}
                                       {tweet.twitterId && (
-                                        <div className="mt-3 pt-3 border-t border-stone-100">
+                                        <div className="mt-3 pt-3 border-t border-neutral-100">
                                           <div className="flex items-center justify-between text-sm">
                                             <div className="flex items-center gap-4">
-                                              <div className="flex items-center gap-1 text-stone-600">
+                                              <div className="flex items-center gap-1 text-neutral-600">
                                                 <Heart className="size-3.5" />
                                                 <span>{tweet.likes || 0}</span>
                                               </div>
-                                              <div className="flex items-center gap-1 text-stone-600">
+                                              <div className="flex items-center gap-1 text-neutral-600">
                                                 <Repeat2 className="size-3.5" />
                                                 <span>{tweet.retweets || 0}</span>
                                               </div>
-                                              <div className="flex items-center gap-1 text-stone-600">
+                                              <div className="flex items-center gap-1 text-neutral-600">
                                                 <MessageCircle className="size-3.5" />
                                                 <span>{tweet.replies || 0}</span>
                                               </div>
                                               {tweet.impressions && tweet.impressions > 0 && (
-                                                <div className="flex items-center gap-1 text-stone-600">
+                                                <div className="flex items-center gap-1 text-neutral-600">
                                                   <TrendingUp className="size-3.5" />
                                                   <span>{tweet.impressions}</span>
                                                 </div>
                                               )}
                                             </div>
                                             {tweet.metricsUpdatedAt && (
-                                              <span className="text-xs text-stone-400">
+                                              <span className="text-xs text-neutral-400">
                                                 Updated {format(new Date(tweet.metricsUpdatedAt), 'MMM d')}
                                               </span>
                                             )}
@@ -439,8 +439,8 @@ export default function TweetList({
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2 mt-2">
                             <div className="flex items-center gap-2 w-[100px]">
-                              <Clock className="size-4 text-stone-500" />
-                              <span className="font-medium text-sm text-stone-700">
+                              <Clock className="size-4 text-neutral-500" />
+                              <span className="font-medium text-sm text-neutral-700">
                                 {tweet.updatedAt
                                   ? format(new Date(tweet.updatedAt), 'h:mm aaa')
                                   : '--:-- --'}
@@ -454,15 +454,15 @@ export default function TweetList({
                           </div>
                         </div>
 
-                        <div className="px-4 py-3 rounded-lg border bg-white border-stone-200 shadow-sm">
+                        <div className="px-4 py-3 rounded-lg border bg-white border-neutral-200 shadow-sm">
                           <div className="space-y-2">
-                            <div className="text-stone-900 text-sm leading-relaxed">
+                            <div className="text-neutral-900 text-sm leading-relaxed">
                               <LexicalComposer
                                 initialConfig={{ ...initialConfig, editable: false }}
                               >
                                 <PlainTextPlugin
                                   contentEditable={
-                                    <ContentEditable className="w-full resize-none leading-relaxed text-stone-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
+                                    <ContentEditable className="w-full resize-none leading-relaxed text-neutral-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
                                   }
                                   ErrorBoundary={LexicalErrorBoundary}
                                 />
@@ -487,30 +487,30 @@ export default function TweetList({
 
                                   {/* Analytics for single tweets */}
                                   {tweet.twitterId && (
-                                    <div className="mt-3 pt-3 border-t border-stone-100">
+                                    <div className="mt-3 pt-3 border-t border-neutral-100">
                                       <div className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-4">
-                                          <div className="flex items-center gap-1 text-stone-600">
+                                          <div className="flex items-center gap-1 text-neutral-600">
                                             <Heart className="size-3.5" />
                                             <span>{tweet.likes || 0}</span>
                                           </div>
-                                          <div className="flex items-center gap-1 text-stone-600">
+                                          <div className="flex items-center gap-1 text-neutral-600">
                                             <Repeat2 className="size-3.5" />
                                             <span>{tweet.retweets || 0}</span>
                                           </div>
-                                          <div className="flex items-center gap-1 text-stone-600">
+                                          <div className="flex items-center gap-1 text-neutral-600">
                                             <MessageCircle className="size-3.5" />
                                             <span>{tweet.replies || 0}</span>
                                           </div>
                                           {tweet.impressions && tweet.impressions > 0 && (
-                                            <div className="flex items-center gap-1 text-stone-600">
+                                            <div className="flex items-center gap-1 text-neutral-600">
                                               <TrendingUp className="size-3.5" />
                                               <span>{tweet.impressions}</span>
                                             </div>
                                           )}
                                         </div>
                                         {tweet.metricsUpdatedAt && (
-                                          <span className="text-xs text-stone-400">
+                                          <span className="text-xs text-neutral-400">
                                             Updated {format(new Date(tweet.metricsUpdatedAt), 'MMM d')}
                                           </span>
                                         )}

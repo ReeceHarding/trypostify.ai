@@ -46,10 +46,10 @@ const DuolingoTextarea = forwardRef<HTMLTextAreaElement, DuolingoTextareaProps>(
     )
 
     const helperTextClassName = cn(
-      "mt-1.5 text-sm text-gray-500"
+      "mt-1.5 text-sm text-neutral-500"
     )
 
-    const labelClassName = "block text-sm font-medium text-gray-700 mb-1.5"
+    const labelClassName = "block text-sm font-medium text-neutral-700 mb-1.5"
 
     return (
       <div className={cn("relative", fullWidth ? "w-full" : "max-w-sm")}>

@@ -49,14 +49,14 @@ export const MentionPopover = forwardRef<MentionPopoverRef>((props, ref) => {
 
   return (
     <div
-      className="mention-popover fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-1 text-sm pointer-events-none min-w-56 min-h-14 flex items-center"
+      className="mention-popover fixed z-[9999] bg-white border border-neutral-200 rounded-lg shadow-lg px-3 py-1 text-sm pointer-events-none min-w-56 min-h-14 flex items-center"
       style={{
         left: state.x,
         top: state.y + 3,
       }}
     >
-      <div className="w-full flex items-center justify-between gap-2 hover:bg-gray-500 transition-all">
-        <TooltipPrimitive.Arrow className="bg-gray-800 fill-gray-800 z-50 size-3.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
+      <div className="w-full flex items-center justify-between gap-2 hover:bg-neutral-500 transition-all">
+        <TooltipPrimitive.Arrow className="bg-neutral-800 fill-gray-800 z-50 size-3.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
         <div className="flex gap-2 items-center">
           <Avatar>
             <AvatarImage src={data?.profile_image_url} />

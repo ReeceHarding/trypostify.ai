@@ -60,7 +60,7 @@ const DuolingoCheckbox = forwardRef<HTMLInputElement, DuolingoCheckboxProps>(
         >
           <span>{label}</span>
           {description && (
-            <span className="block text-xs text-gray-500 font-normal mt-0.5">
+            <span className="block text-xs text-neutral-500 font-normal mt-0.5">
               {description}
             </span>
           )}

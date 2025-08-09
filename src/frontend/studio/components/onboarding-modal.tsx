@@ -212,7 +212,7 @@ export const OnboardingModal = ({
           {loading ? (
             <div className="flex flex-col items-center justify-center min-h-[300px]">
               <Loader variant="typing" className="mb-2" />
-              <p className="text-lg text-stone-700">Finishing onboarding...</p>
+              <p className="text-lg text-neutral-700">Finishing onboarding...</p>
             </div>
           ) : (
             <Swiper
@@ -246,19 +246,19 @@ export const OnboardingModal = ({
             >
               <SwiperSlide className="relative space-y-6">
                 <div className="flex flex-col items-center gap-1 text-center">
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-2xl font-semibold text-neutral-900">
                     <div className="flex items-center gap-2">
                       Welcome to Postify
                       <Sparkles className="size-6 text-yellow-500" />
                     </div>
                   </p>
-                  <p className="text-stone-600 text-balance">
+                  <p className="text-neutral-600 text-balance">
                     Just{' '}
-                    <span className="font-medium text-stone-800">2 quick questions</span>{' '}
+                    <span className="font-medium text-neutral-800">2 quick questions</span>{' '}
                     before we write your first tweet!
                   </p>
                 </div>
-                <div className="aspect-video w-full overflow-hidden rounded-lg bg-gray-100">
+                <div className="aspect-video w-full overflow-hidden rounded-lg bg-neutral-100">
                   <img
                     className="h-full w-full object-cover"
                     src="https://media.giphy.com/media/UtzyBJ9trryNO4R3Ee/giphy.gif"
@@ -273,7 +273,7 @@ export const OnboardingModal = ({
                       variant="secondary"
                       size="icon"
                       onClick={handleBack}
-                      className="mr-2 bg-stone-100 hover:bg-stone-100 rounded-full"
+                      className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
                     >
                       <ArrowLeft className="size-5" />
                     </DuolingoButton>
@@ -281,7 +281,7 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-gray-900">
+                    <p className="text-2xl font-semibold text-neutral-900">
                       What brings you here?
                     </p>
                   </div>
@@ -304,7 +304,7 @@ export const OnboardingModal = ({
                       variant="secondary"
                       size="icon"
                       onClick={handleBack}
-                      className="mr-2 bg-stone-100 hover:bg-stone-100 rounded-full"
+                      className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
                     >
                       <ArrowLeft className="size-5" />
                     </DuolingoButton>
@@ -312,7 +312,7 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-gray-900">
+                    <p className="text-2xl font-semibold text-neutral-900">
                       What's your daily posting goal?
                     </p>
                   </div>
@@ -335,7 +335,7 @@ export const OnboardingModal = ({
                       variant="secondary"
                       size="icon"
                       onClick={handleBack}
-                      className="mr-2 bg-stone-100 hover:bg-stone-100 rounded-full"
+                      className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
                     >
                       <ArrowLeft className="size-5" />
                     </DuolingoButton>
@@ -343,10 +343,10 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-gray-900">
+                    <p className="text-2xl font-semibold text-neutral-900">
                       Let's connect your Twitter
                     </p>
-                    <p className="text-center text-gray-600">
+                    <p className="text-center text-neutral-600">
                       This allows you to schedule posts, publish directly, and helps us
                       learn your style.
                     </p>
@@ -365,19 +365,19 @@ export const OnboardingModal = ({
               <SwiperSlide>
                 <div className="flex w-full space-y-6 flex-col items-center justify-center">
                   <div className="flex w-full flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                    <p className="text-2xl font-semibold text-neutral-900 flex items-center gap-2">
                       You're in!
                       <Sparkles className="size-6 text-yellow-500" />
                     </p>
-                    <p className="text-gray-600">
+                    <p className="text-neutral-600">
                       We've analyzed your{' '}
-                      <span className="font-medium text-stone-800">
+                      <span className="font-medium text-neutral-800">
                         20 best recent tweets
                       </span>{' '}
                       - Postify is already learning your style.
                     </p>
                   </div>
-                  <div className="relative w-full aspect-video overflow-hidden rounded-lg bg-gray-100">
+                  <div className="relative w-full aspect-video overflow-hidden rounded-lg bg-neutral-100">
                     <img
                       className="h-full w-full object-cover object-top"
                       src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExbW9udHE4eHg3eng0M3R1Y3kzcndqMjhnc3Jza2FzN2g1NGV1NHk4dCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/DhstvI3zZ598Nb1rFf/giphy.gif"

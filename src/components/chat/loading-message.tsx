@@ -34,16 +34,16 @@ export const LoadingMessage = memo(
         exit={{ opacity: 0, y: -20 }}
         className="flex items-start gap-1"
       >
-        <div className="flex-shrink-0 mt-1.5 size-10 bg-gray-100 rounded-full flex items-center justify-center">
-          <AnimatedLogo isAnimating={isAnimating} className="size-7 text-gray-500" />
+        <div className="flex-shrink-0 mt-1.5 size-10 bg-neutral-100 rounded-full flex items-center justify-center">
+          <AnimatedLogo isAnimating={isAnimating} className="size-7 text-neutral-500" />
         </div>
         <div className="flex-1 space-y-2">
-          <div className="p-3.5 space-y-4 rounded-2xl text-gray-800 rounded-bl-sm">
+          <div className="p-3.5 space-y-4 rounded-2xl text-neutral-800 rounded-bl-sm">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-gray-500 text-sm"
+              className="text-neutral-500 text-sm"
             >
               {message}
             </motion.div>

@@ -61,53 +61,53 @@
 //     theme: {
 //       paragraph: "mb-1",
 //       heading: {
-//         h1: "text-3xl font-bold mb-4 text-gray-900",
-//         h2: "text-2xl font-semibold mb-3 text-gray-900",
-//         h3: "text-xl font-medium mb-2 text-gray-900",
-//         h4: "text-lg font-medium mb-2 text-gray-900",
-//         h5: "text-base font-medium mb-1 text-gray-900",
-//         h6: "text-sm font-medium mb-1 text-gray-900",
+//         h1: "text-3xl font-bold mb-4 text-neutral-900",
+//         h2: "text-2xl font-semibold mb-3 text-neutral-900",
+//         h3: "text-xl font-medium mb-2 text-neutral-900",
+//         h4: "text-lg font-medium mb-2 text-neutral-900",
+//         h5: "text-base font-medium mb-1 text-neutral-900",
+//         h6: "text-sm font-medium mb-1 text-neutral-900",
 //       },
 //       list: {
 //         ul: "list-disc pl-5 mb-2",
 //         ol: "list-decimal pl-5 mb-2",
 //         listitem: "mb-1",
 //       },
-//       quote: "border-l-4 border-gray-300 pl-4 italic text-gray-700 mb-2",
-//       code: "bg-gray-100 px-1 py-0.5 rounded font-mono text-sm",
+//       quote: "border-l-4 border-neutral-300 pl-4 italic text-neutral-700 mb-2",
+//       code: "bg-neutral-100 px-1 py-0.5 rounded font-mono text-sm",
 //       codeHighlight: {
-//         atrule: "text-blue-600",
-//         attr: "text-green-600",
-//         boolean: "text-purple-600",
-//         builtin: "text-purple-600",
-//         cdata: "text-gray-600",
-//         char: "text-green-600",
+//         atrule: "text-primary-600",
+//         attr: "text-success-600",
+//         boolean: "text-primary-600",
+//         builtin: "text-primary-600",
+//         cdata: "text-neutral-600",
+//         char: "text-success-600",
 //         class: "text-yellow-600",
 //         "class-name": "text-yellow-600",
-//         comment: "text-gray-500 italic",
-//         constant: "text-purple-600",
-//         deleted: "text-red-600",
-//         doctype: "text-gray-600",
-//         entity: "text-red-600",
-//         function: "text-blue-600",
-//         important: "text-red-600 font-bold",
-//         inserted: "text-green-600",
-//         keyword: "text-purple-600",
-//         namespace: "text-purple-600",
-//         number: "text-green-600",
-//         operator: "text-gray-700",
-//         prolog: "text-gray-600",
-//         property: "text-green-600",
-//         punctuation: "text-gray-700",
-//         regex: "text-red-600",
-//         selector: "text-blue-600",
-//         string: "text-green-600",
-//         symbol: "text-purple-600",
-//         tag: "text-red-600",
-//         url: "text-blue-600 underline",
-//         variable: "text-red-600",
+//         comment: "text-neutral-500 italic",
+//         constant: "text-primary-600",
+//         deleted: "text-error-600",
+//         doctype: "text-neutral-600",
+//         entity: "text-error-600",
+//         function: "text-primary-600",
+//         important: "text-error-600 font-bold",
+//         inserted: "text-success-600",
+//         keyword: "text-primary-600",
+//         namespace: "text-primary-600",
+//         number: "text-success-600",
+//         operator: "text-neutral-700",
+//         prolog: "text-neutral-600",
+//         property: "text-success-600",
+//         punctuation: "text-neutral-700",
+//         regex: "text-error-600",
+//         selector: "text-primary-600",
+//         string: "text-success-600",
+//         symbol: "text-primary-600",
+//         tag: "text-error-600",
+//         url: "text-primary-600 underline",
+//         variable: "text-error-600",
 //       },
-//       link: "text-blue-600 underline hover:text-blue-800",
+//       link: "text-primary-600 underline hover:text-primary-800",
 //     },
 //     nodes: [
 //       HeadingNode,
@@ -218,7 +218,7 @@
 //           placeholder="Untitled document"
 //           value={storedDoc.title}
 //           onChange={handleTitleChange}
-//           className="text-3xl font-bold text-gray-900 leading-tight w-full focus:outline-none bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 placeholder:text-gray-400"
+//           className="text-3xl font-bold text-neutral-900 leading-tight w-full focus:outline-none bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 p-0 placeholder:text-neutral-400"
 //         />
 
 //         <div className="flex items-center justify-start gap-2">
@@ -245,12 +245,12 @@
 //         </div>
 //       </div>
 
-//       <div className="relative w-full rounded-xl bg-white border-2 border-gray-200 shadow-[0_2px_0_#E5E7EB] focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 transition-all duration-200">
+//       <div className="relative w-full rounded-xl bg-white border-2 border-neutral-200 shadow-[0_2px_0_#E5E7EB] focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 transition-all duration-200">
 //         <div className="p-4 min-h-[200px]">
 //           <LexicalComposer initialConfig={editorConfig}>
 //             <RichTextPlugin
 //               contentEditable={
-//                 <ContentEditable className="w-full min-h-[500px] resize-none text-base leading-relaxed text-gray-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none" />
+//                 <ContentEditable className="w-full min-h-[500px] resize-none text-base leading-relaxed text-neutral-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none" />
 //               }
 //               ErrorBoundary={LexicalErrorBoundary}
 //             />
@@ -262,8 +262,8 @@
 //           </LexicalComposer>
 //         </div>
 
-//         <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-xl">
-//           <div className="flex items-center justify-between text-sm text-gray-600">
+//         <div className="px-4 py-3 border-t border-neutral-100 bg-neutral-50 rounded-b-xl">
+//           <div className="flex items-center justify-between text-sm text-neutral-600">
 //             <span>
 //               {characterCount.toLocaleString()} characters •{" "}
 //               {wordCount.toLocaleString()} words

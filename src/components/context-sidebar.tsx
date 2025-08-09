@@ -64,7 +64,7 @@ export const LeftSidebar = () => {
             )}
           >
             {/* <Icons.logo className="size-4" /> */}
-            <p className={cn('text-sm/6 text-stone-800 ')}>Postify</p>
+            <p className={cn('text-sm/6 text-neutral-800 ')}>Postify</p>
           </div>
         </div>
       </SidebarHeader>
@@ -92,7 +92,7 @@ export const LeftSidebar = () => {
                   className: 'w-full justify-start gap-2 px-3 py-2',
                 }),
                 pathname === '/studio' &&
-                  'bg-stone-200 hover:bg-stone-200 text-accent-foreground',
+                  'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
               )}
             >
               <div className="size-6 flex items-center justify-center flex-shrink-0">
@@ -133,7 +133,7 @@ export const LeftSidebar = () => {
                     className: 'justify-start gap-2 px-3 py-2',
                   }),
                   pathname.includes('/studio/knowledge') &&
-                    'bg-stone-200 hover:bg-stone-200 text-accent-foreground',
+                    'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
                 )}
               >
                 <div className="size-6 flex items-center justify-center flex-shrink-0">
@@ -160,7 +160,7 @@ export const LeftSidebar = () => {
                     className: 'justify-start gap-2 px-3 py-2',
                   }),
                   pathname === '/studio/scheduled' &&
-                    'bg-stone-200 hover:bg-stone-200 text-accent-foreground',
+                    'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
                 )}
               >
                 <div className="size-6 flex items-center justify-center flex-shrink-0">
@@ -187,7 +187,7 @@ export const LeftSidebar = () => {
                     className: 'justify-start gap-2 px-3 py-2',
                   }),
                   pathname === '/studio/posted' &&
-                    'bg-stone-200 hover:bg-stone-200 text-accent-foreground',
+                    'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
                 )}
               >
                 <div className="size-6 flex items-center justify-center flex-shrink-0">
@@ -228,7 +228,7 @@ export const LeftSidebar = () => {
                   className: 'w-full justify-start gap-2 px-3 py-2',
                 }),
                 pathname.includes('/studio/accounts') &&
-                  'bg-stone-200 hover:bg-stone-200 text-accent-foreground',
+                  'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
               )}
             >
               <div className="size-6 flex items-center justify-center flex-shrink-0">
@@ -277,7 +277,7 @@ export const LeftSidebar = () => {
                   <AvatarFallback>{data.user.name?.charAt(0) ?? null}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col items-start min-w-0">
-                  <span className="truncate text-sm font-medium text-stone-800">
+                  <span className="truncate text-sm font-medium text-neutral-800">
                     {data.user.name ?? 'Account'}
                   </span>
 

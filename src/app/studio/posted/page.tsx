@@ -12,8 +12,8 @@ export default function PostedTweetsPage() {
       <div className="flex items-center gap-3">
         <AccountAvatar className="size-10 mb-1 mx-2" />
         <div className="flex flex-col">
-          <h1 className="text-2xl font-semibold text-stone-900">Posted Tweets</h1>
-          <p className="text-sm text-stone-600">
+          <h1 className="text-2xl font-semibold text-neutral-900">Posted Tweets</h1>
+          <p className="text-sm text-neutral-600">
             Your published tweets and their performance.
           </p>
         </div>
@@ -24,7 +24,7 @@ export default function PostedTweetsPage() {
         title=""
         emptyStateTitle="No posted tweets yet"
         emptyStateDescription="Your published tweets will appear here once you start posting."
-        emptyStateIcon={<CheckCircle2 className="size-12 text-stone-400 mx-auto" />}
+        emptyStateIcon={<CheckCircle2 className="size-12 text-neutral-400 mx-auto" />}
       />
     </div>
   )

@@ -93,15 +93,15 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
         </DuolingoButton>
       </PopoverTrigger>
       <PopoverContent align="start" side="top" className="w-[420px] p-0" sideOffset={12}>
-        <Command className="rounded-xl border-stone-200 bg-white">
-          <div className="p-2 border-stone-100 bg-stone-50">
+        <Command className="rounded-xl border-neutral-200 bg-white">
+          <div className="p-2 border-neutral-100 bg-neutral-50">
             <div className="relative">
-              {/* <Search className="absolute z-10 left-3.5 top-1/2 -translate-y-1/2 size-4 text-stone-400" /> */}
+              {/* <Search className="absolute z-10 left-3.5 top-1/2 -translate-y-1/2 size-4 text-neutral-400" /> */}
               <CommandInput
                 placeholder="Search knowledge base..."
                 value={search}
                 onValueChange={setSearch}
-                // className="pl-10 h-10 bg-stone-50 border-stone-200 focus:bg-white transition-colors rounded-lg border"
+                // className="pl-10 h-10 bg-neutral-50 border-neutral-200 focus:bg-white transition-colors rounded-lg border"
               />
             </div>
           </div>
@@ -120,10 +120,10 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
               <>
                 {filteredDocuments.filter((d) => !d.isDeleted).length === 0 ? (
                   <CommandEmpty className="py-12 text-center">
-                    <p className="text-sm font-medium text-stone-800">
+                    <p className="text-sm font-medium text-neutral-800">
                       No documents found
                     </p>
-                    <p className="text-xs text-stone-500 mt-1">
+                    <p className="text-xs text-neutral-500 mt-1">
                       {search
                         ? 'Try a different search term'
                         : 'No documents in your knowledge base yet'}
@@ -138,9 +138,9 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
                           key={doc.id}
                           value={`${doc.title}}`}
                           onSelect={() => handleSelect(doc)}
-                          className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer data-[selected=true]:bg-stone-100"
+                          className="flex items-center gap-3 px-3 py-3 rounded-lg cursor-pointer data-[selected=true]:bg-neutral-100"
                         >
-                          <div className="flex items-center justify-center size-10 rounded-lg bg-stone-200 transition-colors">
+                          <div className="flex items-center justify-center size-10 rounded-lg bg-neutral-200 transition-colors">
                             {doc.type === 'image' ? (
                               <img
                                 src={`https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${doc.s3Key}`}
@@ -159,21 +159,21 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2 mb-0.5">
-                              <p className="font-medium text-sm text-stone-900 truncate">
+                              <p className="font-medium text-sm text-neutral-900 truncate">
                                 {doc.title}
                               </p>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
                                 {doc.isStarred && (
                                   <Star className="size-3.5 fill-yellow-500 text-yellow-500" />
                                 )}
-                                {/* <span className="text-xs text-stone-400">
+                                {/* <span className="text-xs text-neutral-400">
                                 {formatDistanceToNow(new Date(doc.updatedAt), {
                                   addSuffix: false,
                                 })}
                               </span> */}
                               </div>
                             </div>
-                            {/* <p className="text-xs text-stone-500 truncate">
+                            {/* <p className="text-xs text-neutral-500 truncate">
                             {doc.content.replace(/\n/g, " ").trim()}
                           </p> */}
                           </div>

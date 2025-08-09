@@ -118,7 +118,7 @@ export function MentionTooltipPlugin() {
         href={`https://x.com/${mentionText.replace('@', '')}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-full py-2 px-2 flex items-center justify-between gap-2 transition-colors hover:bg-gray-700 rounded-sm"
+        className="w-full py-2 px-2 flex items-center justify-between gap-2 transition-colors hover:bg-neutral-700 rounded-sm"
       >
         <div className="flex justify-start items-center gap-2">
           {/* <Avatar>

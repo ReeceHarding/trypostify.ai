@@ -63,7 +63,7 @@ interface TweetCard {
 const TweetCard = ({ name, username, src, text }: TweetCard) => {
   return (
     <div className="w-full">
-      <div className="text-left rounded-lg bg-white border border-dashed border-stone-200 shadow-sm overflow-hidden">
+      <div className="text-left rounded-lg bg-white border border-dashed border-neutral-200 shadow-sm overflow-hidden">
         <div className="flex items-start gap-3 p-6">
           <Avatar className="h-10 w-10 rounded-full border border-border/30">
             <AvatarImage src={src} alt={`@${username}`} />
@@ -282,8 +282,8 @@ export default function AccountsPage() {
   return (
     <div className="relative z-10 max-w-2xl w-full mx-auto p-6 space-y-8">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-stone-900">Account Management</h1>
-        <p className="text-stone-600">
+        <h1 className="text-2xl font-bold text-neutral-900">Account Management</h1>
+        <p className="text-neutral-600">
           Manage your connected accounts, writing style, and preferences
         </p>
       </div>
@@ -292,10 +292,10 @@ export default function AccountsPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-stone-800">
+            <h2 className="text-lg font-semibold text-neutral-800">
               All Connected Accounts
             </h2>
-            <p className="text-stone-600 text-sm">
+            <p className="text-neutral-600 text-sm">
               Your personal accounts and accounts delegated to you
             </p>
           </div>
@@ -315,7 +315,7 @@ export default function AccountsPage() {
                   <ChevronDown className="size-4 ml-2" />
                 </DuolingoButton>
               </TooltipTrigger>
-              <TooltipContent className="bg-gray-900 text-white border-gray-700">
+              <TooltipContent className="bg-neutral-900 text-white border-neutral-700">
                 <p className="font-medium">Upgrade to Pro to add unlimited accounts</p>
               </TooltipContent>
             </Tooltip>
@@ -335,11 +335,11 @@ export default function AccountsPage() {
                       onClick={() => setShowConnectDialog(true)}
                       className="flex items-center gap-4 p-4 rounded-xl hover:bg-twitter-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
                     >
-                      <div className="flex-shrink-0 size-10 bg-gray-100 border border-gray-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
-                        <Plus className="size-5 text-gray-600 transition-colors" />
+                      <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
+                        <Plus className="size-5 text-neutral-600 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-gray-900 group-hover:text-twitter-900 transition-colors">
+                        <h4 className="font-semibold text-neutral-900 group-hover:text-twitter-900 transition-colors">
                           Personal Account
                         </h4>
                         <p className="text-sm opacity-60 leading-relaxed">
@@ -353,13 +353,13 @@ export default function AccountsPage() {
                     <button
                       onClick={() => createInviteLink()}
                       disabled={isCreatingInviteLink}
-                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm disabled:opacity-50"
+                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-primary-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm disabled:opacity-50"
                     >
-                      <div className="flex-shrink-0 size-10 bg-gray-100 border border-gray-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
-                        <UserPlus className="size-5 text-gray-600 transition-colors" />
+                      <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
+                        <UserPlus className="size-5 text-neutral-600 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-gray-900 group-hover:text-twitter-900 transition-colors">
+                        <h4 className="font-semibold text-neutral-900 group-hover:text-twitter-900 transition-colors">
                           Delegate Access
                         </h4>
                         <p className="text-sm opacity-60 leading-relaxed">
@@ -466,8 +466,8 @@ export default function AccountsPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-lg bg-white border border-dashed border-stone-300 p-8 text-center space-y-4">
-            <p className="text-stone-600">No accounts connected yet</p>
+          <div className="rounded-lg bg-white border border-dashed border-neutral-300 p-8 text-center space-y-4">
+            <p className="text-neutral-600">No accounts connected yet</p>
           </div>
         )}
       </div>
@@ -477,17 +477,17 @@ export default function AccountsPage() {
       {/* Post Settings Section */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-bold text-stone-900">Post Settings</h2>
-          <p className="text-stone-600 mt-1">Configure posting behavior and preferences</p>
+          <h2 className="text-xl font-bold text-neutral-900">Post Settings</h2>
+          <p className="text-neutral-600 mt-1">Configure posting behavior and preferences</p>
         </div>
 
-        <div className="bg-white border border-stone-200 rounded-lg p-4">
+        <div className="bg-white border border-neutral-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <h3 className="text-base font-semibold text-stone-800">
+              <h3 className="text-base font-semibold text-neutral-800">
                 Skip Post Confirmation
               </h3>
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-neutral-600">
                 When enabled, posts will be sent immediately without showing a confirmation modal
               </p>
             </div>
@@ -504,19 +504,19 @@ export default function AccountsPage() {
       {/* Style Settings Section */}
       <div className="space-y-4">
         <div>
-          <h2 className="text-xl font-bold text-stone-900">Style Settings</h2>
-          <p className="text-stone-600 mt-1">Customize AI assistant output</p>
+          <h2 className="text-xl font-bold text-neutral-900">Style Settings</h2>
+          <p className="text-neutral-600 mt-1">Customize AI assistant output</p>
         </div>
 
         <Collapsible open={isStyleSettingsOpen} onOpenChange={setIsStyleSettingsOpen}>
           <CollapsibleTrigger asChild>
             <button className="w-full group">
-              <div className="flex items-center justify-between p-4 rounded-t-lg border border-stone-200 bg-white hover:bg-stone-50 transition-colors">
+              <div className="flex items-center justify-between p-4 rounded-t-lg border border-neutral-200 bg-white hover:bg-neutral-50 transition-colors">
                 <div className="flex items-center gap-3">
                   {account && <AccountAvatar className="size-10" />}
                   <div className="text-left">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-stone-800">
+                      <h3 className="text-lg font-semibold text-neutral-800">
                         Writing Style & References
                       </h3>
                       {/* <DuolingoBadge variant="gray" className="px-3 text-xs">
@@ -530,19 +530,19 @@ export default function AccountsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {isStyleSettingsOpen ? (
-                    <ChevronDown className="size-5 text-stone-500 transition-transform" />
+                    <ChevronDown className="size-5 text-neutral-500 transition-transform" />
                   ) : (
-                    <ChevronRight className="size-5 text-stone-500 transition-transform" />
+                    <ChevronRight className="size-5 text-neutral-500 transition-transform" />
                   )}
                 </div>
               </div>
             </button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="bg-white border border-t-0 border-stone-200 rounded-b-lg space-y-6 pt-4 pb-4">
+          <CollapsibleContent className="bg-white border border-t-0 border-neutral-200 rounded-b-lg space-y-6 pt-4 pb-4">
             {/* Fine-Tune Writing Style */}
             <div className="px-4 space-y-4">
               <div>
-                <h4 className="text-base font-semibold text-stone-800">
+                <h4 className="text-base font-semibold text-neutral-800">
                   Fine-Tune Writing Style
                 </h4>
                 <p className="opacity-60 text-sm">
@@ -574,7 +574,7 @@ export default function AccountsPage() {
             {/* Style Reference Tweets */}
             <div className="px-4 space-y-4">
               <div>
-                <h4 className="text-base font-semibold text-stone-800">
+                <h4 className="text-base font-semibold text-neutral-800">
                   Style Reference Tweets
                 </h4>
                 <p className="opacity-60 text-sm">
@@ -605,7 +605,7 @@ export default function AccountsPage() {
               <div className="">
                 {style?.tweets?.length ? (
                   <div className="space-y-4">
-                    <p className="text-sm font-medium text-stone-700">
+                    <p className="text-sm font-medium text-neutral-700">
                       {style.tweets.length} reference tweet
                       {style.tweets.length > 1 ? 's' : ''}
                     </p>
@@ -636,11 +636,11 @@ export default function AccountsPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Sparkles className="w-10 h-10 text-stone-300 mb-3" />
-                    <p className="text-sm font-medium text-stone-700">
+                    <Sparkles className="w-10 h-10 text-neutral-300 mb-3" />
+                    <p className="text-sm font-medium text-neutral-700">
                       No imported tweets yet
                     </p>
-                    <p className="text-xs text-stone-500 mt-1 max-w-xs">
+                    <p className="text-xs text-neutral-500 mt-1 max-w-xs">
                       Import tweets that match your desired writing style
                     </p>
                   </div>
@@ -664,7 +664,7 @@ export default function AccountsPage() {
                 href="https://x.com/account/switch"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-indigo-600 underline underline-offset-2 hover:underline"
+                className="text-primary-600 underline underline-offset-2 hover:underline"
               >
                 switch accounts
               </a>{' '}
@@ -719,18 +719,18 @@ export default function AccountsPage() {
 
           {isCreatingInviteLink ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="size-6 animate-spin text-stone-500" />
+              <Loader2 className="size-6 animate-spin text-neutral-500" />
             </div>
           ) : (
             <>
               <div className="space-y-4">
-                <div className="flex items-center space-x-2 p-3 bg-stone-50 rounded-lg border">
-                  <LinkIcon className="size-4 text-stone-500 flex-shrink-0" />
+                <div className="flex items-center space-x-2 p-3 bg-neutral-50 rounded-lg border">
+                  <LinkIcon className="size-4 text-neutral-500 flex-shrink-0" />
                   <input
                     type="text"
                     value={inviteLink}
                     readOnly
-                    className="flex-1 bg-transparent text-sm text-stone-700 outline-none"
+                    className="flex-1 bg-transparent text-sm text-neutral-700 outline-none"
                   />
                   <DuolingoButton
                     variant="secondary"
@@ -744,7 +744,7 @@ export default function AccountsPage() {
                     <Copy className="size-4" />
                   </DuolingoButton>
                 </div>
-                <p className="text-xs text-stone-600">This link is valid for 24 hours.</p>
+                <p className="text-xs text-neutral-600">This link is valid for 24 hours.</p>
               </div>
 
               <DialogFooter>
