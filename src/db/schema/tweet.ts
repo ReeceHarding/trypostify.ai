@@ -26,12 +26,6 @@ export const tweets = pgTable('tweets', {
   s3Keys: json('s3_keys').$type<string[]>().default([]),
   qstashId: text('qstash_id'),
   twitterId: text('twitter_id'),
-  // Thread support fields
-  threadId: text('thread_id'), // Groups tweets into threads
-  position: integer('position').default(0), // Order within thread (0 = first tweet)
-  replyToTweetId: text('reply_to_tweet_id'), // Previous tweet's Twitter ID for reply chain
-  isThreadStart: boolean('is_thread_start').default(false), // Marks the first tweet in a thread
-  delayMs: integer('delay_ms').default(0), // Delay in milliseconds from previous tweet
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
@@ -43,6 +37,12 @@ export const tweets = pgTable('tweets', {
   scheduledFor: timestamp('scheduled_for'),
   scheduledUnix: bigint('scheduled_unix', { mode: 'number' }),
   isPublished: boolean('is_published').default(false).notNull(),
+  // Thread-related columns
+  threadId: text('thread_id'), // UUID to group tweets in a thread
+  position: integer('position').default(0), // Order within thread (0-based)
+  replyToTweetId: text('reply_to_tweet_id'), // Twitter ID to reply to
+  isThreadStart: boolean('is_thread_start').default(false), // True for first tweet in thread
+  delayMs: integer('delay_ms').default(0), // Delay before posting this tweet
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

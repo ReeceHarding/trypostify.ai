@@ -7,7 +7,7 @@ import { BUCKET_NAME, s3Client } from '@/lib/s3'
 import { HeadObjectCommand } from '@aws-sdk/client-s3'
 import { Receiver } from '@upstash/qstash'
 import { Ratelimit } from '@upstash/ratelimit'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, asc } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { SendTweetV2Params, TwitterApi, UserV2 } from 'twitter-api-v2'
 import { z } from 'zod'
@@ -543,13 +543,10 @@ export const tweetRouter = j.router({
       throw new HTTPException(403, { message: 'Invalid credentials' })
     }
 
-    const { tweetId, userId, accountId, isThread, threadId, position } = JSON.parse(body) as {
+    const { tweetId, userId, accountId } = JSON.parse(body) as {
       tweetId: string
       userId: string
       accountId: string
-      isThread?: boolean
-      threadId?: string
-      position?: number
     }
 
     const tweet = await db.query.tweets.findFirst({
@@ -600,29 +597,6 @@ export const tweetRouter = j.router({
         }
       }
 
-      // Handle thread replies
-      if (isThread && threadId && position && position > 0) {
-        console.log(`🧵 [post] Handling thread tweet at position ${position}`)
-        
-        // Find the previous tweet in the thread
-        const previousTweet = await db.query.tweets.findFirst({
-          where: and(
-            eq(tweets.threadId, threadId),
-            eq(tweets.position, position - 1),
-            eq(tweets.isPublished, true)
-          ),
-        })
-
-        if (previousTweet && previousTweet.twitterId) {
-          console.log(`↩️ [post] Replying to previous tweet ${previousTweet.twitterId}`)
-          tweetPayload.reply = {
-            in_reply_to_tweet_id: previousTweet.twitterId,
-          }
-        } else {
-          console.error(`⚠️ [post] Previous tweet not found or not published for thread ${threadId} position ${position}`)
-        }
-      }
-
       try {
         console.log('ℹ️ tweet payload', JSON.stringify(tweetPayload, null, 2))
         const res = await client.v2.tweet(tweetPayload)
@@ -637,7 +611,6 @@ export const tweetRouter = j.router({
             isPublished: true,
             updatedAt: new Date(),
             twitterId: res.data.id,
-            replyToTweetId: tweetPayload.reply?.in_reply_to_tweet_id || null,
           })
           .where(eq(tweets.id, tweetId))
       } catch (err) {
@@ -1298,4 +1271,656 @@ export const tweetRouter = j.router({
 
       return c.json({ data })
     }),
+
+  // Thread-related endpoints
+  createThread: privateProcedure
+    .input(
+      z.object({
+        tweets: z.array(
+          z.object({
+            content: z.string().min(1).max(280),
+            media: z.array(
+              z.object({
+                media_id: z.string(),
+                s3Key: z.string(),
+              }),
+            ).optional(),
+            delayMs: z.number().default(0),
+          }),
+        ),
+      }),
+    )
+    .post(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { tweets: threadTweets } = input
+
+      console.log('[createThread] Starting thread creation for user:', user.id)
+      console.log('[createThread] Number of tweets in thread:', threadTweets.length)
+
+      const account = await getAccount({
+        email: user.email,
+      })
+
+      if (!account?.id) {
+        console.log('[createThread] No active account found')
+        throw new HTTPException(400, {
+          message: 'Please connect your Twitter account',
+        })
+      }
+
+      const threadId = crypto.randomUUID()
+      console.log('[createThread] Generated threadId:', threadId)
+
+      // Create all thread tweets in the database
+      const createdTweets = await Promise.all(
+        threadTweets.map(async (tweet, index) => {
+          const tweetId = crypto.randomUUID()
+          console.log(`[createThread] Creating tweet ${index + 1}/${threadTweets.length}, id: ${tweetId}`)
+
+          const [created] = await db
+            .insert(tweets)
+            .values({
+              id: tweetId,
+              accountId: account.id,
+              userId: user.id,
+              content: tweet.content,
+              media: tweet.media || [],
+              threadId,
+              position: index,
+              isThreadStart: index === 0,
+              delayMs: tweet.delayMs || 0,
+              isScheduled: false,
+              isPublished: false,
+            })
+            .returning()
+
+          console.log(`[createThread] Tweet ${index + 1} created successfully`)
+          return created
+        }),
+      )
+
+      console.log('[createThread] All thread tweets created successfully')
+      return c.json({ 
+        success: true, 
+        threadId, 
+        tweets: createdTweets,
+        message: `Thread created with ${createdTweets.length} tweets`
+      })
+    }),
+
+  updateThread: privateProcedure
+    .input(
+      z.object({
+        threadId: z.string(),
+        tweets: z.array(
+          z.object({
+            id: z.string().optional(),
+            content: z.string().min(1).max(280),
+            media: z.array(
+              z.object({
+                media_id: z.string(),
+                s3Key: z.string(),
+              }),
+            ).optional(),
+            delayMs: z.number().default(0),
+          }),
+        ),
+      }),
+    )
+    .post(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { threadId, tweets: updatedTweets } = input
+
+      console.log('[updateThread] Updating thread:', threadId)
+      console.log('[updateThread] Number of tweets:', updatedTweets.length)
+
+      // Get existing thread tweets
+      const existingTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ),
+        orderBy: asc(tweets.position),
+      })
+
+      console.log('[updateThread] Found existing tweets:', existingTweets.length)
+
+      // Delete tweets that are no longer in the updated list
+      const updatedIds = updatedTweets.filter(t => t.id).map(t => t.id)
+      const toDelete = existingTweets.filter(t => !updatedIds.includes(t.id))
+      
+      for (const tweet of toDelete) {
+        console.log('[updateThread] Deleting tweet:', tweet.id)
+        await db.delete(tweets).where(eq(tweets.id, tweet.id))
+      }
+
+      // Update or create tweets
+      const results = await Promise.all(
+        updatedTweets.map(async (tweet, index) => {
+          if (tweet.id) {
+            // Update existing tweet
+            console.log(`[updateThread] Updating tweet ${index + 1}, id: ${tweet.id}`)
+            const [updated] = await db
+              .update(tweets)
+              .set({
+                content: tweet.content,
+                media: tweet.media || [],
+                position: index,
+                delayMs: tweet.delayMs || 0,
+                updatedAt: new Date(),
+              })
+              .where(eq(tweets.id, tweet.id))
+              .returning()
+            return updated
+          } else {
+            // Create new tweet
+            const tweetId = crypto.randomUUID()
+            console.log(`[updateThread] Creating new tweet ${index + 1}, id: ${tweetId}`)
+            const [created] = await db
+              .insert(tweets)
+              .values({
+                id: tweetId,
+                accountId: existingTweets[0].accountId,
+                userId: user.id,
+                content: tweet.content,
+                media: tweet.media || [],
+                threadId,
+                position: index,
+                isThreadStart: index === 0,
+                delayMs: tweet.delayMs || 0,
+                isScheduled: false,
+                isPublished: false,
+              })
+              .returning()
+            return created
+          }
+        }),
+      )
+
+      console.log('[updateThread] Thread updated successfully')
+      return c.json({ 
+        success: true, 
+        tweets: results,
+        message: `Thread updated with ${results.length} tweets`
+      })
+    }),
+
+  postThreadNow: privateProcedure
+    .input(
+      z.object({
+        threadId: z.string(),
+      }),
+    )
+    .post(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { threadId } = input
+
+      console.log('[postThreadNow] Starting immediate thread posting for threadId:', threadId)
+
+      const account = await getAccount({
+        email: user.email,
+      })
+
+      if (!account?.id) {
+        console.log('[postThreadNow] No active account found')
+        throw new HTTPException(400, {
+          message: 'Please connect your Twitter account',
+        })
+      }
+
+      const dbAccount = await db.query.account.findFirst({
+        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
+      })
+
+      if (!dbAccount || !dbAccount.accessToken) {
+        console.log('[postThreadNow] No access token found')
+        throw new HTTPException(400, {
+          message: 'Twitter account not connected or access token missing',
+        })
+      }
+
+      // Get all tweets in the thread
+      const threadTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ),
+        orderBy: asc(tweets.position),
+      })
+
+      if (threadTweets.length === 0) {
+        console.log('[postThreadNow] No tweets found in thread')
+        throw new HTTPException(404, { message: 'Thread not found' })
+      }
+
+      console.log('[postThreadNow] Found tweets in thread:', threadTweets.length)
+
+      const client = new TwitterApi({
+        appKey: consumerKey as string,
+        appSecret: consumerSecret as string,
+        accessToken: dbAccount.accessToken as string,
+        accessSecret: dbAccount.accessSecret as string,
+      })
+
+      let previousTweetId: string | null = null
+      const postedTweets: Array<{ id: string; twitterId: string }> = []
+
+      // Post each tweet in sequence
+      for (const [index, tweet] of threadTweets.entries()) {
+        console.log(`[postThreadNow] Posting tweet ${index + 1}/${threadTweets.length}`)
+
+        try {
+          // Wait for delay if specified (except for first tweet)
+          if (index > 0 && tweet.delayMs > 0) {
+            console.log(`[postThreadNow] Waiting ${tweet.delayMs}ms before posting`)
+            await new Promise(resolve => setTimeout(resolve, tweet.delayMs))
+          }
+
+          const tweetPayload: SendTweetV2Params = {
+            text: tweet.content,
+          }
+
+          // Add reply_to for subsequent tweets in the thread
+          if (previousTweetId && index > 0) {
+            console.log('[postThreadNow] Setting reply_to:', previousTweetId)
+            tweetPayload.reply = {
+              in_reply_to_tweet_id: previousTweetId,
+            }
+          }
+
+          // Add media if present
+          if (tweet.media && tweet.media.length > 0) {
+            console.log('[postThreadNow] Adding media:', tweet.media.length, 'items')
+            tweetPayload.media = {
+              // @ts-expect-error tuple type vs. string[]
+              media_ids: tweet.media.map((media) => media.media_id),
+            }
+          }
+
+          console.log('[postThreadNow] Tweet payload:', JSON.stringify(tweetPayload, null, 2))
+          const res = await client.v2.tweet(tweetPayload)
+          
+          if (res.errors) {
+            console.error('[postThreadNow] Twitter API errors:', JSON.stringify(res.errors, null, 2))
+          }
+
+          console.log('[postThreadNow] Tweet posted successfully, Twitter ID:', res.data.id)
+
+          // Update the tweet in the database
+          await db
+            .update(tweets)
+            .set({
+              isPublished: true,
+              twitterId: res.data.id,
+              replyToTweetId: previousTweetId,
+              updatedAt: new Date(),
+            })
+            .where(eq(tweets.id, tweet.id))
+
+          previousTweetId = res.data.id
+          postedTweets.push({ id: tweet.id, twitterId: res.data.id })
+        } catch (error) {
+          console.error(`[postThreadNow] Failed to post tweet ${index + 1}:`, error)
+          throw new HTTPException(500, {
+            message: `Failed to post tweet ${index + 1} in thread`,
+          })
+        }
+      }
+
+      const threadUrl = `https://twitter.com/${account.username}/status/${postedTweets[0].twitterId}`
+      console.log('[postThreadNow] Thread posted successfully:', threadUrl)
+
+      return c.json({
+        success: true,
+        threadId,
+        postedTweets,
+        threadUrl,
+        accountId: account.id,
+        accountName: account.name,
+        accountUsername: account.username,
+        message: `Thread posted successfully with ${postedTweets.length} tweets`,
+      })
+    }),
+
+  scheduleThread: privateProcedure
+    .input(
+      z.object({
+        threadId: z.string(),
+        scheduledUnix: z.number(),
+      }),
+    )
+    .post(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { threadId, scheduledUnix } = input
+
+      console.log('[scheduleThread] Scheduling thread:', threadId, 'for:', new Date(scheduledUnix * 1000))
+
+      const account = await getAccount({
+        email: user.email,
+      })
+
+      if (!account?.id) {
+        throw new HTTPException(400, {
+          message: 'Please connect your Twitter account',
+        })
+      }
+
+      const dbAccount = await db.query.account.findFirst({
+        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
+      })
+
+      if (!dbAccount || !dbAccount.accessToken) {
+        throw new HTTPException(400, {
+          message: 'Twitter account not connected or access token missing',
+        })
+      }
+
+      // Get all tweets in the thread
+      const threadTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ),
+        orderBy: asc(tweets.position),
+      })
+
+      if (threadTweets.length === 0) {
+        throw new HTTPException(404, { message: 'Thread not found' })
+      }
+
+      console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
+
+      const baseUrl =
+        process.env.NODE_ENV === 'development'
+          ? 'https://sponge-relaxing-separately.ngrok-free.app'
+          : getBaseUrl()
+
+      // Schedule the thread posting with QStash
+      const { messageId } = await qstash.publishJSON({
+        url: baseUrl + '/api/tweet/postThread',
+        body: { threadId, userId: user.id, accountId: dbAccount.id },
+        notBefore: scheduledUnix,
+      })
+
+      // Update all tweets in the thread to scheduled
+      await db
+        .update(tweets)
+        .set({
+          isScheduled: true,
+          scheduledFor: new Date(scheduledUnix * 1000),
+          scheduledUnix: scheduledUnix * 1000,
+          qstashId: messageId,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ))
+
+      console.log('[scheduleThread] Thread scheduled successfully')
+
+      return c.json({
+        success: true,
+        threadId,
+        scheduledFor: new Date(scheduledUnix * 1000),
+        messageId,
+        message: `Thread scheduled with ${threadTweets.length} tweets`,
+      })
+    }),
+
+  getThread: privateProcedure
+    .input(
+      z.object({
+        threadId: z.string(),
+      }),
+    )
+    .get(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { threadId } = input
+
+      console.log('[getThread] Fetching thread:', threadId)
+
+      const threadTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ),
+        orderBy: asc(tweets.position),
+      })
+
+      console.log('[getThread] Found tweets:', threadTweets.length)
+
+      // Fetch media URLs for each tweet
+      const tweetsWithMedia = await Promise.all(
+        threadTweets.map(async (tweet) => {
+          const enrichedMedia = await fetchMediaFromS3(tweet.media || [])
+          return {
+            ...tweet,
+            media: enrichedMedia,
+          }
+        }),
+      )
+
+      return c.json({
+        threadId,
+        tweets: tweetsWithMedia,
+      })
+    }),
+
+  getThreads: privateProcedure.get(async ({ c, ctx }) => {
+    const { user } = ctx
+
+    console.log('[getThreads] Fetching all threads for user:', user.id)
+
+    // Get all tweets that are thread starts
+    const threadStarts = await db.query.tweets.findMany({
+      where: and(
+        eq(tweets.userId, user.id),
+        eq(tweets.isThreadStart, true),
+      ),
+      orderBy: desc(tweets.createdAt),
+    })
+
+    console.log('[getThreads] Found thread starts:', threadStarts.length)
+
+    // Get full thread data for each thread
+    const threads = await Promise.all(
+      threadStarts.map(async (start) => {
+        const threadTweets = await db.query.tweets.findMany({
+          where: and(
+            eq(tweets.threadId, start.threadId!),
+            eq(tweets.userId, user.id),
+          ),
+          orderBy: asc(tweets.position),
+        })
+
+        return {
+          threadId: start.threadId,
+          tweetCount: threadTweets.length,
+          firstTweet: start,
+          isScheduled: start.isScheduled,
+          isPublished: start.isPublished,
+          scheduledFor: start.scheduledFor,
+          createdAt: start.createdAt,
+        }
+      }),
+    )
+
+    console.log('[getThreads] Returning threads:', threads.length)
+    return c.json({ threads })
+  }),
+
+  deleteThread: privateProcedure
+    .input(
+      z.object({
+        threadId: z.string(),
+      }),
+    )
+    .post(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { threadId } = input
+
+      console.log('[deleteThread] Deleting thread:', threadId)
+
+      // Get all tweets in the thread
+      const threadTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ),
+      })
+
+      if (threadTweets.length === 0) {
+        throw new HTTPException(404, { message: 'Thread not found' })
+      }
+
+      console.log('[deleteThread] Found tweets to delete:', threadTweets.length)
+
+      // Cancel any scheduled QStash jobs
+      const messages = qstash.messages
+      for (const tweet of threadTweets) {
+        if (tweet.qstashId) {
+          console.log('[deleteThread] Cancelling QStash job:', tweet.qstashId)
+          try {
+            await messages.delete(tweet.qstashId)
+          } catch (err) {
+            console.error('[deleteThread] Failed to cancel QStash job:', err)
+          }
+        }
+      }
+
+      // Delete all tweets in the thread
+      await db
+        .delete(tweets)
+        .where(and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ))
+
+      console.log('[deleteThread] Thread deleted successfully')
+      return c.json({ 
+        success: true,
+        message: `Thread deleted with ${threadTweets.length} tweets`,
+      })
+    }),
+
+  // New endpoint for posting scheduled threads via QStash
+  postThread: publicProcedure.post(async ({ c }) => {
+    const body = await c.req.text()
+
+    const signature =
+      c.req.header('Upstash-Signature') ?? c.req.header('upstash-signature') ?? ''
+
+    try {
+      await receiver.verify({
+        body,
+        signature,
+      })
+    } catch (err) {
+      throw new HTTPException(403, { message: 'Invalid credentials' })
+    }
+
+    const { threadId, userId, accountId } = JSON.parse(body) as {
+      threadId: string
+      userId: string
+      accountId: string
+    }
+
+    console.log('[postThread] Processing scheduled thread:', threadId)
+
+    // Get all tweets in the thread
+    const threadTweets = await db.query.tweets.findMany({
+      where: and(
+        eq(tweets.threadId, threadId),
+        eq(tweets.isPublished, false),
+      ),
+      orderBy: asc(tweets.position),
+    })
+
+    if (threadTweets.length === 0) {
+      console.log('[postThread] No unpublished tweets found')
+      return c.json({ success: true })
+    }
+
+    const account = await db.query.account.findFirst({
+      where: and(
+        eq(accountSchema.userId, userId),
+        eq(accountSchema.id, accountId),
+      ),
+    })
+
+    if (!account || !account.accessToken) {
+      console.log('[postThread] No account or access token')
+      throw new HTTPException(400, {
+        message: 'Twitter account not connected or access token missing',
+      })
+    }
+
+    const client = new TwitterApi({
+      appKey: consumerKey as string,
+      appSecret: consumerSecret as string,
+      accessToken: account.accessToken as string,
+      accessSecret: account.accessSecret as string,
+    })
+
+    let previousTweetId: string | null = null
+
+    // Post each tweet in sequence
+    for (const [index, tweet] of threadTweets.entries()) {
+      console.log(`[postThread] Posting tweet ${index + 1}/${threadTweets.length}`)
+
+      try {
+        // Wait for delay if specified (except for first tweet)
+        if (index > 0 && tweet.delayMs > 0) {
+          console.log(`[postThread] Waiting ${tweet.delayMs}ms`)
+          await new Promise(resolve => setTimeout(resolve, tweet.delayMs))
+        }
+
+        const tweetPayload: SendTweetV2Params = {
+          text: tweet.content,
+        }
+
+        // Add reply_to for subsequent tweets
+        if (previousTweetId && index > 0) {
+          console.log('[postThread] Adding reply_to:', previousTweetId)
+          tweetPayload.reply = {
+            in_reply_to_tweet_id: previousTweetId,
+          }
+        }
+
+        // Add media if present
+        if (tweet.media && tweet.media.length > 0) {
+          tweetPayload.media = {
+            // @ts-expect-error tuple type vs. string[]
+            media_ids: tweet.media.map((media) => media.media_id),
+          }
+        }
+
+        const res = await client.v2.tweet(tweetPayload)
+        console.log('[postThread] Tweet posted, ID:', res.data.id)
+
+        // Update the tweet in the database
+        await db
+          .update(tweets)
+          .set({
+            isScheduled: false,
+            isPublished: true,
+            twitterId: res.data.id,
+            replyToTweetId: previousTweetId,
+            updatedAt: new Date(),
+          })
+          .where(eq(tweets.id, tweet.id))
+
+        previousTweetId = res.data.id
+      } catch (error) {
+        console.error(`[postThread] Failed to post tweet ${index + 1}:`, error)
+        throw new HTTPException(500, {
+          message: `Failed to post tweet ${index + 1} in thread`,
+        })
+      }
+    }
+
+    console.log('[postThread] Thread posted successfully')
+    return c.json({ success: true })
+  }),
 })

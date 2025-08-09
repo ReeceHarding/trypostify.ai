@@ -107,7 +107,6 @@ export const LeftSidebar = () => {
                 Studio
               </span>
             </Link>
-            
           </SidebarGroupContent>
         </SidebarGroup>
 
