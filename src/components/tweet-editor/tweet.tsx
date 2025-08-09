@@ -1516,13 +1516,13 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
         </Drawer>
       </Drawer>
 
-      {/* Media Library Drawer */}
-      <Drawer modal={false} open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
-        <DrawerContent centered>
-          <DrawerHeader>
-            <DrawerTitle>Choose from library</DrawerTitle>
-          </DrawerHeader>
-          <div className="h-[calc(70vh-5rem)] custom-scrollbar">
+      {/* Media Library Popup */}
+      <Dialog open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle>Choose from library</DialogTitle>
+          </DialogHeader>
+          <div className="h-[calc(80vh-8rem)] px-6 pb-6 overflow-y-auto custom-scrollbar">
             <MediaLibrary
               onSelect={handleMediaLibrarySelect}
               maxSelection={MAX_MEDIA_COUNT - mediaFiles.length}
@@ -1530,8 +1530,8 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
               onClose={() => setMediaLibraryOpen(false)}
             />
           </div>
-        </DrawerContent>
-      </Drawer>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={showPostConfirmModal}

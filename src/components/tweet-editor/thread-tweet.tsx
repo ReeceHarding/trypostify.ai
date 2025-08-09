@@ -54,7 +54,6 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from '../ui/drawer'
 import { Loader } from '../ui/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
@@ -120,6 +119,7 @@ function ThreadTweetContent({
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
   const [open, setOpen] = useState(false)
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllersRef = useRef(new Map<string, AbortController>())
 
@@ -802,16 +802,15 @@ function ThreadTweetContent({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DrawerTrigger asChild>
-                          <DuolingoButton
-                            variant="secondary"
-                            size="icon"
-                            className="rounded-md"
-                          >
-                            <ImagePlus className="size-4" />
-                            <span className="sr-only">Choose from library</span>
-                          </DuolingoButton>
-                        </DrawerTrigger>
+                        <DuolingoButton
+                          variant="secondary"
+                          size="icon"
+                          className="rounded-md"
+                          onClick={() => setMediaLibraryOpen(true)}
+                        >
+                          <ImagePlus className="size-4" />
+                          <span className="sr-only">Choose from library</span>
+                        </DuolingoButton>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Choose from library</p>
@@ -972,20 +971,25 @@ function ThreadTweetContent({
           </div>
         </div>
 
-        <DrawerContent centered>
-          <DrawerHeader>
-            <DrawerTitle>Choose from library</DrawerTitle>
-          </DrawerHeader>
-          <div className="h-[calc(70vh-5rem)] custom-scrollbar">
+
+      </Drawer>
+
+      {/* Media Library Popup */}
+      <Dialog open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle>Choose from library</DialogTitle>
+          </DialogHeader>
+          <div className="h-[calc(80vh-8rem)] px-6 pb-6 overflow-y-auto custom-scrollbar">
             <MediaLibrary
               onSelect={handleMediaLibrarySelect}
               maxSelection={MAX_MEDIA_COUNT - mediaFiles.length}
               selectedMedia={[]}
-              onClose={() => setOpen(false)}
+              onClose={() => setMediaLibraryOpen(false)}
             />
           </div>
-        </DrawerContent>
-      </Drawer>
+        </DialogContent>
+      </Dialog>
 
       {/* Post confirmation modal */}
       <Dialog open={showPostConfirmModal} onOpenChange={setShowPostConfirmModal}>

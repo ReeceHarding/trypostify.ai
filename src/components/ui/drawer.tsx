@@ -37,7 +37,7 @@ function DrawerOverlay({
     <DrawerPrimitive.Overlay
       data-slot="drawer-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-neutral-950/60 backdrop-blur-sm",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm",
         className
       )}
       {...props}
@@ -65,7 +65,7 @@ function DrawerContent({
             ? [
                 "group/drawer-content bg-background fixed z-50 flex h-auto flex-col",
                 // Centered modal sizing and position
-                "left-1/2 -translate-x-1/2 top-[10vh] bottom-auto w-[92vw] max-w-3xl max-h-[70vh] rounded-2xl border shadow-lg",
+                "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-3xl max-h-[70vh] rounded-2xl border shadow-lg",
               ]
             : [
                 "group/drawer-content bg-background fixed z-50 flex h-auto flex-col",
@@ -79,7 +79,9 @@ function DrawerContent({
         )}
         {...props}
       >
-        <div className="bg-muted mx-auto mt-4 hidden h-1.5 w-[72px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        {!centered && (
+          <div className="bg-muted mx-auto mt-4 hidden h-1.5 w-[72px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
+        )}
         {children}
       </DrawerPrimitive.Content>
     </DrawerPortal>
