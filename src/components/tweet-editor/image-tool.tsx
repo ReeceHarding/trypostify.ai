@@ -145,10 +145,10 @@ const Frame = ({ type, borderRadius, backgroundColor, children }: FrameProps) =>
           style={{
             borderRadius: borderRadius + 7,
             boxShadow:
-              'rgba(0, 0, 0, 0.22) 0px 18px 88px -4px, rgba(0, 0, 0, 0.22) 0px 8px 28px -6px',
-            backgroundColor: 'rgba(255, 255, 255, 0.314)',
+              'var(--shadow-lg)',
+            backgroundColor: 'var(--glass-bg)',
             zIndex: 2,
-            border: '1px solid rgba(255, 255, 255, 0.376)',
+            border: '1px solid var(--glass-border)',
             padding: '7px',
           }}
         >
@@ -219,15 +219,15 @@ export function ImageTool({
   } | null>(null)
   const [outlineSize, setOutlineSize] = useState(initialEditorState?.outlineSize || 0)
   const [outlineColor, setOutlineColor] = useState(
-    initialEditorState?.outlineColor || '#292524',
+    initialEditorState?.outlineColor || 'hsl(var(--neutral-700))',
   )
   const [options, setOptions] = useState<Options>(
     initialEditorState?.options || {
       aspectRatio: 'aspect-auto',
       theme: 'bg-gradient-to-br from-cyan-300 to-sky-400',
       customTheme: {
-        colorStart: '#f3f4f6',
-        colorEnd: '#e5e7eb',
+        colorStart: 'hsl(var(--neutral-100))',
+        colorEnd: 'hsl(var(--neutral-200))',
       },
       rounded: 12,
       roundedWrapper: 'rounded-xl',
@@ -246,7 +246,7 @@ export function ImageTool({
       },
       frame: 'arc',
       outlineSize: 8,
-      outlineColor: '#292524',
+      outlineColor: 'hsl(var(--neutral-700))',
     },
   )
   const [userResized, setUserResized] = useState(!!initialEditorState?.canvasWidth)
@@ -545,7 +545,7 @@ export function ImageTool({
 
   const rgbToHex = (rgb: string): string => {
     const result = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(rgb)
-    if (!result) return '#e11d48'
+    if (!result) return 'hsl(var(--error-500))'
 
     return (
       '#' +
@@ -929,9 +929,9 @@ export function ImageTool({
                                 className="w-10 h-8 bg-white border border-gray-300"
                                 style={{
                                   borderRadius: '5px',
-                                  boxShadow: 'rgba(0, 0, 0, 0.15) 0px 4px 12px -2px',
-                                  backgroundColor: 'rgba(255, 255, 255, 0.314)',
-                                  border: '1px solid rgba(255, 255, 255, 0.376)',
+                                  boxShadow: 'var(--glass-shadow)',
+                                  backgroundColor: 'var(--glass-bg)',
+                                  border: '1px solid var(--glass-border)',
                                   padding: '2px',
                                 }}
                               >
@@ -956,7 +956,7 @@ export function ImageTool({
                                         height: '5px',
                                         borderTopLeftRadius: '5px',
                                         borderTopRightRadius: '5px',
-                                        backgroundColor: '#e5e7eb',
+                                        backgroundColor: 'hsl(var(--neutral-200))',
                                         transform: `translateY(${translateY}px) scaleX(${scale})`,
                                         transformOrigin: 'top center',
                                         opacity,
@@ -1028,9 +1028,9 @@ export function ImageTool({
                                     className="w-10 h-8 bg-white border border-gray-300"
                                     style={{
                                       borderRadius: '5px',
-                                      boxShadow: 'rgba(0, 0, 0, 0.15) 0px 4px 12px -2px',
-                                      backgroundColor: 'rgba(255, 255, 255, 0.314)',
-                                      border: '1px solid rgba(255, 255, 255, 0.376)',
+                                      boxShadow: 'var(--glass-shadow)',
+                                      backgroundColor: 'var(--glass-bg)',
+                                      border: '1px solid var(--glass-border)',
                                       padding: '2px',
                                     }}
                                   >
@@ -1055,7 +1055,7 @@ export function ImageTool({
                                             height: '5px',
                                             borderTopLeftRadius: '5px',
                                             borderTopRightRadius: '5px',
-                                            backgroundColor: '#e5e7eb',
+                                            backgroundColor: 'hsl(var(--neutral-200))',
                                             transform: `translateY(${translateY}px) scaleX(${scale})`,
                                             transformOrigin: 'top center',
                                             opacity,
@@ -1253,8 +1253,8 @@ export function ImageTool({
                                   ...options,
                                   theme: theme,
                                   customTheme: {
-                                    colorStart: '#f3f4f6',
-                                    colorEnd: '#e5e7eb',
+                                    colorStart: 'hsl(var(--neutral-100))',
+                                    colorEnd: 'hsl(var(--neutral-200))',
                                   },
                                 })
                               }}

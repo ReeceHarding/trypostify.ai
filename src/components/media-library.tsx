@@ -24,18 +24,16 @@ import DuolingoButton from './ui/duolingo-button'
 import { Input } from './ui/input'
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 import { Loader } from './ui/loader'
-import { ScrollArea } from './ui/scroll-area'
+// Removed ScrollArea import - will use div with overflow
 import { Badge } from './ui/badge'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './ui/alert-dialog'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
 
 interface MediaLibraryProps {
   onSelect: (media: SelectedMedia[]) => void
@@ -207,7 +205,7 @@ export default function MediaLibrary({
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader className="size-8" />
@@ -309,7 +307,7 @@ export default function MediaLibrary({
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Pagination */}
       {data && totalPages > 1 && (
@@ -360,29 +358,35 @@ export default function MediaLibrary({
       </div>
 
       {/* Delete confirmation dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete media?</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete media?</DialogTitle>
+            <DialogDescription>
               This will permanently delete this media from your library. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DuolingoButton
+              variant="secondary"
+              onClick={() => setDeleteId(null)}
+            >
+              Cancel
+            </DuolingoButton>
+            <DuolingoButton
+              variant="destructive"
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-              className="bg-red-500 hover:bg-red-600"
+              disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 'Delete'
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </DuolingoButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

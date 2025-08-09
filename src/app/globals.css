@@ -133,6 +133,53 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Extended Color System */
+    /* Neutral Colors */
+    --neutral-25: 0 0% 98%;
+    --neutral-50: 0 0% 96.1%;
+    --neutral-100: 0 0% 92.5%;
+    --neutral-200: 0 0% 89.8%;
+    --neutral-300: 0 0% 83.1%;
+    --neutral-400: 0 0% 63.9%;
+    --neutral-500: 0 0% 45.1%;
+    --neutral-600: 0 0% 32.5%;
+    --neutral-700: 0 0% 20.9%;
+    --neutral-800: 0 0% 14.9%;
+    --neutral-900: 0 0% 9%;
+    --neutral-950: 0 0% 3.9%;
+    
+    /* Success Colors */
+    --success-50: 151 81% 96%;
+    --success-100: 149 80% 90%;
+    --success-500: 160 84% 39%;
+    --success-600: 158 64% 52%;
+    --success-700: 158 64% 42%;
+    
+    /* Warning Colors */
+    --warning-50: 48 100% 96%;
+    --warning-100: 48 96% 89%;
+    --warning-500: 45 93% 47%;
+    --warning-600: 32 95% 44%;
+    
+    /* Error Colors */
+    --error-50: 0 86% 97%;
+    --error-100: 0 93% 94%;
+    --error-500: 0 84% 60%;
+    --error-600: 0 72% 51%;
+    --error-700: 0 74% 42%;
+    
+    /* Common shadow values */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    --shadow-twitter: 0 1px 1px rgba(0,0,0,0.05), 0 4px 6px rgba(34,42,53,0.04), 0 24px 68px rgba(47,48,55,0.05), 0 2px 3px rgba(0,0,0,0.04);
+    
+    /* Glass effect variables */
+    --glass-bg: rgba(255, 255, 255, 0.314);
+    --glass-border: rgba(255, 255, 255, 0.376);
+    --glass-shadow: rgba(0, 0, 0, 0.15) 0px 4px 12px -2px;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -167,6 +214,33 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Extended Color System - Dark Mode */
+    /* Neutral Colors */
+    --neutral-25: 0 0% 3.9%;
+    --neutral-50: 0 0% 9%;
+    --neutral-100: 0 0% 14.9%;
+    --neutral-200: 0 0% 20.9%;
+    --neutral-300: 0 0% 32.5%;
+    --neutral-400: 0 0% 45.1%;
+    --neutral-500: 0 0% 63.9%;
+    --neutral-600: 0 0% 83.1%;
+    --neutral-700: 0 0% 89.8%;
+    --neutral-800: 0 0% 92.5%;
+    --neutral-900: 0 0% 96.1%;
+    --neutral-950: 0 0% 98%;
+    
+    /* Success Colors - Dark Mode */
+    --success-50: 151 81% 4%;
+    --success-100: 149 80% 10%;
+    --success-500: 160 84% 39%;
+    --success-600: 158 64% 52%;
+    --success-700: 158 64% 62%;
+    
+    /* Glass effect variables - Dark Mode */
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --glass-shadow: rgba(0, 0, 0, 0.3) 0px 4px 12px -2px;
   }
 }
 
@@ -210,7 +284,7 @@ body {
 
 [data-lexical-editor] [contenteditable='true']:empty::before {
   content: attr(placeholder);
-  color: #9ca3af;
+  color: hsl(var(--neutral-400));
   pointer-events: none;
   position: absolute;
 }
@@ -353,8 +427,8 @@ body {
 }
 
 :root {
-  --ceramic-black: #000000; /* Replace with actual color */
-  --ceramic-white: #ffffff; /* Replace with actual color */
+  --ceramic-black: hsl(var(--neutral-950));
+  --ceramic-white: hsl(var(--neutral-25));
 }
 
 @keyframes shimmer {
