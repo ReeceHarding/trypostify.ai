@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Icons } from '@/components/icons'
 import { Account } from '@/server/routers/settings-router'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 
 // export interface ConnectedAccount {
 //   name: string
@@ -37,8 +38,17 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     queryFn: async () => {
       const res = await client.settings.active_account.$get()
       const { account } = await res.json()
+      
+      // Preload the profile image
+      if (account?.profile_image_url) {
+        const img = new window.Image()
+        img.src = account.profile_image_url
+      }
+      
       return account ? mapToConnectedAccount(account) : null
     },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
   })
 
   return (
@@ -56,16 +66,36 @@ export function useAccount() {
 
 export function AccountAvatar({ className }: { className?: string }) {
   const { account, isLoading } = useAccount()
+  const [imageError, setImageError] = useState(false)
+  
   if (isLoading || !account) {
     return <Skeleton className={cn('h-10 w-10 rounded-full', className)} />
   }
+  
+  // Extract size from className if provided
+  const sizeMatch = className?.match(/(?:size|h|w)-(\d+)/)
+  const size = sizeMatch ? parseInt(sizeMatch[1] || '10') * 4 : 40 // Default 40px (h-10)
+  
   return (
-    <Avatar className={cn('h-10 w-10 rounded-full', className)}>
-      <AvatarImage src={account.profile_image_url} alt={account.username} />
-      <AvatarFallback>
-        {(account?.name?.[0] || account?.username?.[0] || '?').toUpperCase()}
-      </AvatarFallback>
-    </Avatar>
+    <div className={cn('relative overflow-hidden rounded-full', className)}>
+      {account.profile_image_url && !imageError ? (
+        <Image
+          src={account.profile_image_url}
+          alt={account.username}
+          width={size}
+          height={size}
+          className="size-full object-cover"
+          loading="eager" // Load immediately for avatars
+          priority // High priority for above-the-fold content
+          unoptimized // Skip Next.js optimization for external images
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <div className="flex size-full items-center justify-center bg-stone-200 text-stone-600 font-semibold">
+          {(account?.name?.[0] || account?.username?.[0] || '?').toUpperCase()}
+        </div>
+      )}
+    </div>
   )
 }
 
