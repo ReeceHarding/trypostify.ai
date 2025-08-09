@@ -1,6 +1,6 @@
 'use client'
 
-import TweetEditor from '@/components/tweet-editor/tweet-editor'
+import ThreadTweetEditor from '@/components/tweet-editor/thread-tweet-editor'
 import { OnboardingModal } from '@/frontend/studio/components/onboarding-modal'
 import { useAccount } from '@/hooks/account-ctx'
 import { useQueryClient } from '@tanstack/react-query'
@@ -49,8 +49,8 @@ const Page = () => {
           loading={onboardingLoading}
         />
       ) : null}
-      <div className="max-w-xl w-full mx-auto">
-        <TweetEditor editMode={isEditMode} editTweetId={editTweetId} />
+      <div className="w-full mx-auto">
+        <ThreadTweetEditor editMode={isEditMode} editTweetId={editTweetId} />
       </div>
     </>
   )

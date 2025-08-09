@@ -107,32 +107,7 @@ export const LeftSidebar = () => {
                 Studio
               </span>
             </Link>
-            <Link
-              href={{
-                pathname: '/studio/threads',
-                search: serialize({ chatId: id }),
-              }}
-              className={cn(
-                buttonVariants({
-                  variant: 'ghost',
-                  className: 'w-full justify-start gap-2 px-3 py-2',
-                }),
-                pathname === '/studio/threads' &&
-                  'bg-stone-200 hover:bg-stone-200 text-accent-foreground',
-              )}
-            >
-              <div className="size-6 flex items-center justify-center flex-shrink-0">
-                <Icons.thread className="size-5" />
-              </div>
-              <span
-                className={cn(
-                  'transition-all opacity-0 duration-200 ease-out delay-200',
-                  isCollapsed ? 'opacity-0 w-0 overflow-hidden hidden' : 'opacity-100',
-                )}
-              >
-                Threads
-              </span>
-            </Link>
+            
           </SidebarGroupContent>
         </SidebarGroup>
 
