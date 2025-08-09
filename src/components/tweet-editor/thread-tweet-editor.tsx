@@ -266,9 +266,10 @@ export default function ThreadTweetEditor({
   const handleToggleMode = () => {
     console.log('[ThreadTweetEditor] Toggling mode from:', isThreadMode, 'to:', !isThreadMode)
     if (!isThreadMode) {
-      // Entering thread mode - add a second tweet
+      // Entering thread mode - keep existing tweet and add a second one
+      const existingTweet = threadTweets[0] || { id: crypto.randomUUID(), content: '', media: [] }
       setThreadTweets([
-        { id: crypto.randomUUID(), content: '', media: [] },
+        existingTweet,
         { id: crypto.randomUUID(), content: '', media: [] },
       ])
     } else {
