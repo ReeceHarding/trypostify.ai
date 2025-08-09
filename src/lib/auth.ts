@@ -13,8 +13,8 @@ const database = drizzleAdapter(db, { provider: 'pg' })
 export const auth = betterAuth({
   trustedOrigins: [
     'http://localhost:3000',
-    'https://contentport.io',
-    'https://www.contentport.io',
+    'https://trypostify.ai',
+    'https://www.trypostify.ai',
   ],
   databaseHooks: {
     user: {

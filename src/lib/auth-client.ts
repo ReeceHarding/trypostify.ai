@@ -4,7 +4,7 @@ import { inferAdditionalFields } from 'better-auth/client/plugins'
 export const authClient = createAuthClient({
   baseURL:
     process.env.NODE_ENV === 'production'
-      ? 'https://www.contentport.io'
+      ? 'https://www.trypostify.ai'
       : 'http://localhost:3000',
   plugins: [
     inferAdditionalFields({

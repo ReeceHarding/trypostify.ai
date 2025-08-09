@@ -58,6 +58,8 @@ import {
 } from '../ui/drawer'
 import { Loader } from '../ui/loader'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import { Textarea } from '../ui/textarea'
+import { Input } from '../ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import ContentLengthIndicator from './content-length-indicator'
 import { Calendar20 } from './date-picker'
@@ -96,9 +98,33 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
   const [imageDrawerOpen, setImageDrawerOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
+  const [threadMode, setThreadMode] = useState(false)
   const [threadItems, setThreadItems] = useState<Array<{ id: string; text: string; delay_ms: number }>>([
     { id: '1', text: '', delay_ms: 0 },
   ])
+
+  const CHAR_LIMIT = Number(process.env.NEXT_PUBLIC_TWITTER_CHAR_LIMIT ?? '280')
+
+  const addThreadItem = () => {
+    setThreadItems((prev) => [
+      ...prev,
+      { id: String(prev.length + 1), text: '', delay_ms: 0 },
+    ])
+  }
+  const removeThreadItem = (index: number) => {
+    setThreadItems((prev) => prev.filter((_, i) => i !== index))
+  }
+  const moveThreadItem = (index: number, direction: 'up' | 'down') => {
+    setThreadItems((prev) => {
+      const next = [...prev]
+      const newIndex = direction === 'up' ? index - 1 : index + 1
+      if (newIndex < 0 || newIndex >= next.length) return prev
+      const removed = next.splice(index, 1)
+      const item = removed[0] as { id: string; text: string; delay_ms: number }
+      next.splice(newIndex, 0, item)
+      return next
+    })
+  }
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
   const [didTogglePostConfirmation, setDidTogglePostConfirmation] = useState(false)
 
@@ -1272,6 +1298,120 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                     <div className="w-px h-4 bg-stone-300 mx-2" />
 
                     <ContentLengthIndicator />
+                  <div className="w-px h-4 bg-stone-300 mx-2" />
+                  {/* Thread composer */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <DuolingoButton variant="secondary" size="sm" className="rounded-md py-1 px-2 h-8">
+                        <MessageSquarePlus className="size-4 mr-1" />
+                        <span className="text-xs">Thread</span>
+                      </DuolingoButton>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[720px] max-h-[70vh] overflow-y-auto p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <DuolingoCheckbox
+                            id="thread-mode"
+                            label="Enable thread mode"
+                            checked={threadMode}
+                            onChange={(e) => setThreadMode(e.target.checked)}
+                          />
+                          <p className="text-xs text-stone-500">
+                            First item can use attached media. Subsequent items ignore current media.
+                          </p>
+                        </div>
+                        <DuolingoButton size="sm" variant="secondary" onClick={addThreadItem}>
+                          Add item
+                        </DuolingoButton>
+                      </div>
+
+                      {threadItems.map((item, idx) => {
+                        const count = item.text.length
+                        const over = count > CHAR_LIMIT
+                        return (
+                          <div key={item.id} className="border rounded-md p-3 space-y-2 bg-white">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">Item {idx + 1}</p>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs ${over ? 'text-red-600' : 'text-stone-500'}`}>
+                                  {count}/{CHAR_LIMIT}
+                                </span>
+                                <DuolingoButton
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => moveThreadItem(idx, 'up')}
+                                  disabled={idx === 0}
+                                >
+                                  Up
+                                </DuolingoButton>
+                                <DuolingoButton
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => moveThreadItem(idx, 'down')}
+                                  disabled={idx === threadItems.length - 1}
+                                >
+                                  Down
+                                </DuolingoButton>
+                                <DuolingoButton
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => removeThreadItem(idx)}
+                                >
+                                  Remove
+                                </DuolingoButton>
+                              </div>
+                            </div>
+                            <Textarea
+                              value={item.text}
+                              onChange={(e) =>
+                                setThreadItems((prev) => {
+                                  const next = [...prev]
+                                  const current = next[idx]
+                                  next[idx] = { id: current.id, delay_ms: current.delay_ms, text: e.target.value }
+                                  return next
+                                })
+                              }
+                              placeholder="Write item text"
+                              className="min-h-24"
+                            />
+                            <div className="flex items-center gap-2">
+                              <label htmlFor={`delay-${idx}`} className="text-xs text-stone-600">
+                                Delay after this item (minutes)
+                              </label>
+                              <Input
+                                id={`delay-${idx}`}
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={Math.floor((item.delay_ms || 0) / 60000)}
+                                onChange={(e) =>
+                                  setThreadItems((prev) => {
+                                    const next = [...prev]
+                                    const mins = Number(e.target.value || 0)
+                                    const current = next[idx]
+                                    next[idx] = { id: current.id, text: current.text, delay_ms: Math.max(0, mins) * 60000 }
+                                    return next
+                                  })
+                                }
+                                className="h-8 w-24"
+                              />
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      <div className="text-xs text-stone-600">
+                        Preview
+                        <div className="mt-2 border rounded-md p-2 max-h-56 overflow-y-auto bg-stone-50">
+                          {threadItems.map((item, idx) => (
+                            <div key={`prev-${item.id}`} className="mb-2">
+                              <p className="text-stone-800 whitespace-pre-wrap">{idx + 1}. {item.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                   </div>
                   <div className="flex items-center gap-2">
                     {editMode ? (

@@ -15,10 +15,10 @@ const api = j
     cors({
       origin: [
         'http://localhost:3000',
-        'https://contentport.io',
-        'https://www.contentport.io',
-        'https://contentport.vercel.app',
-        'https://www.contentport.vercel.app',
+        'https://trypostify.ai',
+        'https://www.trypostify.ai',
+        'https://trypostify.vercel.app',
+        'https://www.trypostify.vercel.app',
       ],
       allowHeaders: ['x-is-superjson', 'Content-Type', 'content-type'],
       exposeHeaders: ['x-is-superjson', 'Content-Type', 'content-type'],
