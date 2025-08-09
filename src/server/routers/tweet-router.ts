@@ -1580,6 +1580,19 @@ export const tweetRouter = j.router({
     .post(async ({ c, ctx, input }) => {
       const { user } = ctx
       const { tweets: threadTweets } = input
+      
+      console.log('[postThreadNow] Starting thread post:', {
+        userId: user.id,
+        tweetCount: threadTweets.length,
+        tweets: threadTweets.map((t, i) => ({
+          index: i,
+          contentLength: t.content.length,
+          hasMedia: !!t.media && t.media.length > 0,
+          mediaCount: t.media?.length || 0,
+          delayMs: t.delayMs,
+        })),
+        timestamp: new Date().toISOString(),
+      })
 
       const account = await getAccount({
         email: user.email,
@@ -1630,6 +1643,14 @@ export const tweetRouter = j.router({
         })
       }
 
+      // Check for Twitter API credentials
+      if (!consumerKey || !consumerSecret) {
+        console.error('[postThreadNow] Missing Twitter API credentials')
+        throw new HTTPException(500, {
+          message: 'Twitter API credentials not configured. Please check TWITTER_CONSUMER_KEY and TWITTER_CONSUMER_SECRET environment variables.',
+        })
+      }
+
       const client = new TwitterApi({
         appKey: consumerKey,
         appSecret: consumerSecret,
@@ -1667,6 +1688,13 @@ export const tweetRouter = j.router({
             }
           }
 
+          console.log(`[postThreadNow] Posting tweet ${index + 1}:`, {
+            content: tweet.content.substring(0, 50) + '...',
+            hasReply: !!tweetPayload.reply,
+            replyTo: previousTweetId,
+            mediaIds: tweetPayload.media?.media_ids,
+          })
+
           const res = await client.v2.tweet(tweetPayload)
 
           // Update database with Twitter ID
@@ -1683,8 +1711,30 @@ export const tweetRouter = j.router({
           previousTweetId = res.data.id
           postedTweets.push(res.data)
         } catch (error) {
+          console.error(`[postThreadNow] Error posting tweet ${index + 1}:`, error)
+          
+          // Extract error details for better debugging
+          let errorMessage = `Failed to post tweet ${index + 1} in thread`
+          
+          if (error instanceof Error) {
+            errorMessage += `: ${error.message}`
+          }
+          
+          // Twitter API errors typically have more detailed information
+          if (error && typeof error === 'object' && 'data' in error) {
+            const apiError = error as any
+            if (apiError.data?.detail) {
+              errorMessage = `Twitter API error: ${apiError.data.detail}`
+            }
+            if (apiError.code === 429) {
+              throw new HTTPException(429, {
+                message: 'Twitter API rate limit exceeded. Please try again later.',
+              })
+            }
+          }
+          
           throw new HTTPException(500, {
-            message: `Failed to post tweet ${index + 1} in thread`,
+            message: errorMessage,
           })
         }
       }
