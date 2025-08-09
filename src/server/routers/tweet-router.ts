@@ -7,7 +7,7 @@ import { BUCKET_NAME, s3Client } from '@/lib/s3'
 import { HeadObjectCommand } from '@aws-sdk/client-s3'
 import { Receiver } from '@upstash/qstash'
 import { Ratelimit } from '@upstash/ratelimit'
-import { and, desc, eq, asc } from 'drizzle-orm'
+import { and, desc, eq, asc, inArray } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { SendTweetV2Params, TwitterApi, UserV2 } from 'twitter-api-v2'
 import { z } from 'zod'
@@ -859,7 +859,52 @@ export const tweetRouter = j.router({
       }),
     )
 
-    return c.superjson({ tweets: tweetsWithMedia })
+    // Group tweets by threadId
+    const threads: Record<string, typeof tweetsWithMedia> = {}
+    const singleTweets: typeof tweetsWithMedia = []
+
+    for (const tweet of tweetsWithMedia) {
+      if (tweet.threadId) {
+        if (!threads[tweet.threadId]) {
+          threads[tweet.threadId] = []
+        }
+        threads[tweet.threadId]!.push(tweet)
+      } else {
+        singleTweets.push(tweet)
+      }
+    }
+
+    // Sort tweets within each thread by position
+    for (const threadId in threads) {
+      threads[threadId]!.sort((a, b) => (a.position || 0) - (b.position || 0))
+    }
+
+    // Convert threads object to array and combine with single tweets
+    const threadsList = Object.entries(threads).map(([threadId, tweets]) => ({
+      threadId,
+      tweets,
+      isThread: true,
+      scheduledFor: tweets[0]?.scheduledFor, // Use first tweet's scheduled time
+      scheduledUnix: tweets[0]?.scheduledUnix,
+    }))
+
+    const allItems = [
+      ...threadsList,
+      ...singleTweets.map(tweet => ({
+        threadId: null,
+        tweets: [tweet],
+        isThread: false,
+        scheduledFor: tweet.scheduledFor,
+        scheduledUnix: tweet.scheduledUnix,
+      })),
+    ].sort((a, b) => {
+      // Sort by scheduled time, newest first
+      const timeA = a.scheduledUnix || 0
+      const timeB = b.scheduledUnix || 0
+      return timeB - timeA
+    })
+
+    return c.superjson({ items: allItems, tweets: tweetsWithMedia })
   }),
 
   getPosted: privateProcedure.get(async ({ c, ctx }) => {
@@ -891,7 +936,50 @@ export const tweetRouter = j.router({
       }),
     )
 
-    return c.superjson({ tweets: tweetsWithMedia, accountId: account.id })
+    // Group tweets by threadId
+    const threads: Record<string, typeof tweetsWithMedia> = {}
+    const singleTweets: typeof tweetsWithMedia = []
+
+    for (const tweet of tweetsWithMedia) {
+      if (tweet.threadId) {
+        if (!threads[tweet.threadId]) {
+          threads[tweet.threadId] = []
+        }
+        threads[tweet.threadId]!.push(tweet)
+      } else {
+        singleTweets.push(tweet)
+      }
+    }
+
+    // Sort tweets within each thread by position
+    for (const threadId in threads) {
+      threads[threadId]!.sort((a, b) => (a.position || 0) - (b.position || 0))
+    }
+
+    // Convert threads object to array and combine with single tweets
+    const threadsList = Object.entries(threads).map(([threadId, tweets]) => ({
+      threadId,
+      tweets,
+      isThread: true,
+      updatedAt: tweets[0]?.updatedAt, // Use first tweet's updated time
+    }))
+
+    const allItems = [
+      ...threadsList,
+      ...singleTweets.map(tweet => ({
+        threadId: null,
+        tweets: [tweet],
+        isThread: false,
+        updatedAt: tweet.updatedAt,
+      })),
+    ].sort((a, b) => {
+      // Sort by updated time, newest first
+      const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
+      const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
+      return timeB - timeA
+    })
+
+    return c.superjson({ items: allItems, tweets: tweetsWithMedia, accountId: account.id })
   }),
 
   getNextQueueSlot: privateProcedure
@@ -1676,6 +1764,166 @@ export const tweetRouter = j.router({
       })
     }),
 
+  enqueueThread: privateProcedure
+    .input(
+      z.object({
+        threadId: z.string(),
+        userNow: z.date(),
+        timezone: z.string(),
+      }),
+    )
+    .mutation(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { threadId, userNow, timezone } = input
+
+      console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
+      console.log('[enqueueThread] User timezone:', timezone)
+
+      const account = await getAccount({
+        email: user.email,
+      })
+
+      if (!account?.id) {
+        console.log('[enqueueThread] No active account found')
+        throw new HTTPException(400, {
+          message: 'Please connect your Twitter account',
+        })
+      }
+
+      const dbAccount = await db.query.account.findFirst({
+        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
+      })
+
+      if (!dbAccount || !dbAccount.accessToken) {
+        console.log('[enqueueThread] No access token found')
+        throw new HTTPException(400, {
+          message: 'Twitter account not connected or access token missing',
+        })
+      }
+
+      // Get all tweets in the thread
+      const threadTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.threadId, threadId),
+          eq(tweets.userId, user.id),
+        ),
+        orderBy: asc(tweets.position),
+      })
+
+      if (threadTweets.length === 0) {
+        console.log('[enqueueThread] No tweets found in thread')
+        throw new HTTPException(404, { message: 'Thread not found' })
+      }
+
+      console.log('[enqueueThread] Found tweets in thread:', threadTweets.length)
+
+      // Get all scheduled tweets to check for conflicts
+      const scheduledTweets = await db.query.tweets.findMany({
+        where: and(eq(tweets.accountId, account.id), eq(tweets.isScheduled, true)),
+        columns: { scheduledUnix: true },
+      })
+
+      function isSpotEmpty(time: Date) {
+        const unix = time.getTime()
+        return !Boolean(scheduledTweets.some((t) => t.scheduledUnix === unix))
+      }
+
+      function getNextAvailableSlot({
+        userNow,
+        timezone,
+        maxDaysAhead,
+      }: {
+        userNow: Date
+        timezone: string
+        maxDaysAhead: number
+      }) {
+        for (let dayOffset = 0; dayOffset <= maxDaysAhead; dayOffset++) {
+          let checkDay: Date | undefined = undefined
+
+          if (dayOffset === 0) checkDay = startOfDay(userNow)
+          else checkDay = startOfDay(addDays(userNow, dayOffset))
+
+          for (const hour of SLOTS) {
+            const localSlotTime = startOfHour(setHours(checkDay, hour))
+            const slotTime = fromZonedTime(localSlotTime, timezone)
+
+            if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
+              return slotTime
+            }
+          }
+        }
+
+        return null // no slot found in next N days
+      }
+
+      const nextSlot = getNextAvailableSlot({ userNow, timezone, maxDaysAhead: 90 })
+
+      console.log('[enqueueThread] Next available slot:', nextSlot)
+
+      if (!nextSlot) {
+        throw new HTTPException(409, {
+          message: 'Queue for the next 3 months is already full!',
+        })
+      }
+
+      const scheduledUnix = nextSlot.getTime()
+
+      const baseUrl =
+        process.env.NODE_ENV === 'development'
+          ? 'https://sponge-relaxing-separately.ngrok-free.app'
+          : getBaseUrl()
+
+      // Schedule the thread posting with QStash
+      const { messageId } = await qstash.publishJSON({
+        url: baseUrl + '/api/tweet/postThread',
+        body: { threadId, userId: user.id, accountId: dbAccount.id },
+        notBefore: scheduledUnix / 1000, // needs to be in seconds
+      })
+
+      console.log('[enqueueThread] QStash message created:', messageId)
+
+      try {
+        // Update all tweets in the thread to queued
+        await db
+          .update(tweets)
+          .set({
+            isScheduled: true,
+            isQueued: true,
+            scheduledFor: new Date(scheduledUnix),
+            scheduledUnix: scheduledUnix,
+            qstashId: messageId,
+            updatedAt: new Date(),
+          })
+          .where(and(
+            eq(tweets.threadId, threadId),
+            eq(tweets.userId, user.id),
+          ))
+
+        console.log('[enqueueThread] Thread queued successfully')
+      } catch (err) {
+        console.error('[enqueueThread] Database error:', err)
+        const messages = qstash.messages
+
+        try {
+          await messages.delete(messageId)
+        } catch (err) {
+          // fail silently
+          console.error('[enqueueThread] Failed to delete QStash message:', err)
+        }
+
+        throw new HTTPException(500, { message: 'Problem with database' })
+      }
+
+      return c.json({
+        success: true,
+        threadId,
+        scheduledUnix: scheduledUnix,
+        accountId: account.id,
+        accountName: account.name,
+        message: `Thread queued with ${threadTweets.length} tweets`,
+      })
+    }),
+
   getThread: privateProcedure
     .input(
       z.object({
@@ -1931,4 +2179,126 @@ export const tweetRouter = j.router({
     console.log('[postThread] Thread posted successfully')
     return c.json({ success: true })
   }),
+
+  // Fetch tweet metrics from Twitter API
+  fetchTweetMetrics: privateProcedure
+    .input(
+      z.object({
+        tweetIds: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { tweetIds } = input
+
+      console.log('[fetchTweetMetrics] Fetching metrics for tweets:', tweetIds)
+
+      const account = await getAccount({
+        email: user.email,
+      })
+
+      if (!account?.id) {
+        throw new HTTPException(400, {
+          message: 'Please connect your Twitter account',
+        })
+      }
+
+      const dbAccount = await db.query.account.findFirst({
+        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
+      })
+
+      if (!dbAccount || !dbAccount.accessToken) {
+        throw new HTTPException(400, {
+          message: 'Twitter account not connected or access token missing',
+        })
+      }
+
+      const client = new TwitterApi({
+        appKey: consumerKey as string,
+        appSecret: consumerSecret as string,
+        accessToken: dbAccount.accessToken as string,
+        accessSecret: dbAccount.accessSecret as string,
+      })
+
+      try {
+        // Get tweets from our database first
+        const dbTweets = await db.query.tweets.findMany({
+          where: and(
+            eq(tweets.userId, user.id),
+            inArray(tweets.id, tweetIds),
+          ),
+        })
+
+        console.log('[fetchTweetMetrics] Found tweets in DB:', dbTweets.length)
+
+        // Filter to only tweets that have Twitter IDs
+        const tweetsWithTwitterIds = dbTweets.filter(t => t.twitterId)
+        
+        if (tweetsWithTwitterIds.length === 0) {
+          console.log('[fetchTweetMetrics] No tweets with Twitter IDs found')
+          return c.json({ success: true, updatedCount: 0 })
+        }
+
+        // Fetch metrics from Twitter API (batch up to 100 tweets at a time)
+        const batchSize = 100
+        const updatePromises = []
+
+        for (let i = 0; i < tweetsWithTwitterIds.length; i += batchSize) {
+          const batch = tweetsWithTwitterIds.slice(i, i + batchSize)
+          const twitterIds = batch.map(t => t.twitterId!).filter(Boolean)
+
+          console.log(`[fetchTweetMetrics] Fetching batch ${i / batchSize + 1}, tweets:`, twitterIds.length)
+
+          try {
+            // Fetch tweet metrics from Twitter API v2
+            const twitterResponse = await client.v2.tweets(twitterIds, {
+              'tweet.fields': ['public_metrics'],
+            })
+
+            console.log(`[fetchTweetMetrics] Received metrics for ${twitterResponse.data?.length || 0} tweets`)
+
+            // Update each tweet with its metrics
+            if (twitterResponse.data) {
+              for (const tweetData of twitterResponse.data) {
+                const dbTweet = batch.find(t => t.twitterId === tweetData.id)
+                if (dbTweet && tweetData.public_metrics) {
+                  const updatePromise = db
+                    .update(tweets)
+                    .set({
+                      likes: tweetData.public_metrics.like_count || 0,
+                      retweets: tweetData.public_metrics.retweet_count || 0,
+                      replies: tweetData.public_metrics.reply_count || 0,
+                      impressions: tweetData.public_metrics.impression_count || 0,
+                      metricsUpdatedAt: new Date(),
+                      updatedAt: new Date(),
+                    })
+                    .where(eq(tweets.id, dbTweet.id))
+
+                  updatePromises.push(updatePromise)
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`[fetchTweetMetrics] Error fetching batch ${i / batchSize + 1}:`, error)
+            // Continue with next batch even if one fails
+          }
+        }
+
+        // Execute all updates
+        await Promise.all(updatePromises)
+
+        console.log('[fetchTweetMetrics] Successfully updated metrics for', updatePromises.length, 'tweets')
+
+        return c.json({ 
+          success: true, 
+          updatedCount: updatePromises.length,
+          message: `Updated metrics for ${updatePromises.length} tweets`,
+        })
+      } catch (error) {
+        console.error('[fetchTweetMetrics] Failed to fetch metrics:', error)
+        throw new HTTPException(500, {
+          message: 'Failed to fetch tweet metrics from Twitter',
+        })
+      }
+    }),
 })

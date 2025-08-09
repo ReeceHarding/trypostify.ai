@@ -67,6 +67,7 @@ interface ThreadTweetProps {
   editMode?: boolean
   onRemove?: () => void
   onPostThread?: () => void
+  onQueueThread?: () => void
   onScheduleThread?: (date: Date) => void
   onUpdateThread?: () => void
   onCancelEdit?: () => void
@@ -98,6 +99,7 @@ function ThreadTweetContent({
   editMode = false,
   onRemove,
   onPostThread,
+  onQueueThread,
   onScheduleThread,
   onUpdateThread,
   onCancelEdit,
@@ -795,9 +797,9 @@ function ThreadTweetContent({
                                     disabled={mediaFiles.some((f) => f.uploading)}
                                     className="h-11 px-3 rounded-r-none border-r-0"
                                     onClick={() => {
-                                      // For threads, we'll queue/schedule the whole thread
-                                      // This is a placeholder - actual implementation depends on your queue logic
-                                      toast.error('Queue functionality for threads coming soon')
+                                      if (onQueueThread) {
+                                        onQueueThread()
+                                      }
                                     }}
                                   >
                                     <Clock className="size-4 mr-2" />

@@ -7,6 +7,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import posthog from 'posthog-js'
 import { useConfetti } from '@/hooks/use-confetti'
 import ThreadTweet from './thread-tweet'
@@ -147,6 +148,49 @@ export default function ThreadTweetEditor({
       setIsThreadMode(false)
       
       router.push('/studio/scheduled')
+    },
+  })
+
+  // Enqueue thread mutation
+  const enqueueThreadMutation = useMutation({
+    mutationFn: async ({ threadId, userNow, timezone }: { threadId: string; userNow: Date; timezone: string }) => {
+      console.log('[ThreadTweetEditor] Enqueueing thread:', threadId)
+      const res = await client.tweet.enqueueThread.$post({
+        threadId,
+        userNow,
+        timezone,
+      })
+      
+      if (!res.ok) {
+        const error = await res.json()
+        throw new HTTPException(res.status as any, { message: (error as any).message })
+      }
+      
+      return res.json()
+    },
+    onSuccess: (data) => {
+      console.log('[ThreadTweetEditor] Thread queued successfully:', data)
+      toast.success(
+        <div className="flex gap-1.5 items-center">
+          <p>Thread queued!</p>
+          <Link
+            href="/studio/scheduled"
+            className="text-base text-indigo-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+          >
+            See queue
+          </Link>
+        </div>
+      )
+      
+      // Clear the thread
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      setIsThreadMode(false)
+      
+      router.push('/studio/scheduled')
+    },
+    onError: (error: HTTPException) => {
+      console.error('[ThreadTweetEditor] Failed to queue thread:', error)
+      toast.error(error.message || 'Failed to queue thread')
     },
   })
 
@@ -311,6 +355,58 @@ export default function ThreadTweetEditor({
     }
   }
 
+  const handleQueueThread = async () => {
+    console.log('[ThreadTweetEditor] Queueing thread')
+    
+    // Validate all tweets have content
+    const emptyTweets = threadTweets.filter(t => !t.content.trim())
+    if (emptyTweets.length > 0) {
+      toast.error('All tweets in the thread must have content')
+      return
+    }
+
+    // Check character limits
+    const oversizedTweets = threadTweets.filter(t => t.content.length > 280)
+    if (oversizedTweets.length > 0) {
+      toast.error('All tweets must be 280 characters or less')
+      return
+    }
+
+    posthog.capture('thread_queue_started', { tweet_count: threadTweets.length })
+
+    try {
+      // Create thread first
+      const createResult = await createThreadMutation.mutateAsync(
+        threadTweets.map((tweet, index) => ({
+          content: tweet.content,
+          media: tweet.media,
+          delayMs: index > 0 ? 1000 : 0,
+        }))
+      )
+      
+      if (!createResult.threadId) {
+        throw new Error('Failed to create thread')
+      }
+
+      // Get user's timezone
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      
+      // Queue the thread
+      await enqueueThreadMutation.mutateAsync({
+        threadId: createResult.threadId,
+        userNow: new Date(),
+        timezone,
+      })
+      
+      posthog.capture('thread_queued', {
+        thread_id: createResult.threadId,
+        tweet_count: threadTweets.length,
+      })
+    } catch (error) {
+      console.error('[ThreadTweetEditor] Failed to queue thread:', error)
+    }
+  }
+
   const handleUpdateThread = async () => {
     console.log('[ThreadTweetEditor] Updating thread')
     
@@ -340,7 +436,7 @@ export default function ThreadTweetEditor({
     router.push('/studio/scheduled')
   }
 
-  const isPosting = createThreadMutation.isPending || postThreadNowMutation.isPending || scheduleThreadMutation.isPending || updateThreadMutation.isPending
+  const isPosting = createThreadMutation.isPending || postThreadNowMutation.isPending || scheduleThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
 
   // Show loading state while loading thread data
   if (loadingThread) {
@@ -376,6 +472,7 @@ export default function ThreadTweetEditor({
                   onRemove={() => handleRemoveTweet(tweet.id)}
 
                   onPostThread={index === 0 && !editMode ? handlePostThread : undefined}
+                  onQueueThread={index === 0 && !editMode ? handleQueueThread : undefined}
                   onScheduleThread={index === 0 && !editMode ? handleScheduleThread : undefined}
                   onUpdateThread={index === 0 && editMode ? handleUpdateThread : undefined}
                   onCancelEdit={index === 0 && editMode ? handleCancelEdit : undefined}

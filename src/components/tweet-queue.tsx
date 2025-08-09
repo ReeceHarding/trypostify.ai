@@ -4,7 +4,7 @@ import { client } from '@/lib/client'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, isThisWeek, isToday, isTomorrow } from 'date-fns'
-import { Clock, Edit, MoreHorizontal, Send, Trash2 } from 'lucide-react'
+import { Clock, Edit, MoreHorizontal, Send, Trash2, MessageSquare } from 'lucide-react'
 
 import { useConfetti } from '@/hooks/use-confetti'
 import { useTweets } from '@/hooks/use-tweets'
@@ -60,6 +60,15 @@ export default function TweetQueue() {
     queryKey: ['queue-slots'],
     queryFn: async () => {
       const res = await client.tweet.get_queue.$get({ timezone, userNow })
+      return await res.json()
+    },
+  })
+
+  // Fetch scheduled threads and tweets
+  const { data: scheduledData, isPending: isLoadingScheduled } = useQuery({
+    queryKey: ['scheduled-and-published-tweets'],
+    queryFn: async () => {
+      const res = await client.tweet.getScheduledAndPublished.$get()
       return await res.json()
     },
   })
@@ -373,6 +382,115 @@ export default function TweetQueue() {
           )
         })}
       </div>
+
+      {/* Scheduled Threads Section */}
+      {scheduledData?.items && scheduledData.items.filter(item => item.isThread).length > 0 && (
+        <div className="mt-6 space-y-4">
+          <h2 className="text-lg font-semibold text-stone-900">Scheduled Threads</h2>
+          <div className="space-y-4">
+            {scheduledData.items
+              .filter(item => item.isThread)
+              .map((thread) => (
+                <Card key={thread.threadId} className="overflow-hidden">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="size-5 text-stone-600" />
+                        <CardTitle className="text-base">
+                          Thread ({thread.tweets.length} tweets)
+                        </CardTitle>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="size-4 text-stone-500" />
+                        <span className="text-sm text-stone-600">
+                          {thread.scheduledFor && format(new Date(thread.scheduledFor), 'MMM d, h:mm a')}
+                        </span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {thread.tweets.map((tweet, index) => (
+                      <div key={tweet.id} className="relative">
+                        {/* Connect tweets with a line */}
+                        {index < thread.tweets.length - 1 && (
+                          <div className="absolute left-5 top-12 bottom-[-12px] w-[2px] bg-stone-200" />
+                        )}
+                        
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0">
+                            <div className="size-10 rounded-full bg-stone-200 flex items-center justify-center text-sm font-medium text-stone-700">
+                              {index + 1}
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 bg-white rounded-lg border border-stone-200 p-3">
+                            <p className="text-sm text-stone-900 whitespace-pre-line">
+                              {tweet.content}
+                            </p>
+                            {tweet.media && tweet.media.length > 0 && (
+                              <div className="mt-2 text-xs text-stone-500">
+                                📎 {tweet.media.length} media file{tweet.media.length > 1 ? 's' : ''}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="pt-3 flex items-center justify-end gap-2">
+                      <DuolingoButton
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          // Navigate to edit thread
+                          router.push(`/studio?edit=${thread.tweets[0]?.id}`)
+                        }}
+                      >
+                        <Edit className="size-3 mr-1" />
+                        Edit Thread
+                      </DuolingoButton>
+                      
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <DuolingoButton
+                            variant="secondary"
+                            size="sm"
+                          >
+                            <Trash2 className="size-3 mr-1" />
+                            Delete
+                          </DuolingoButton>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Delete Thread</DialogTitle>
+                            <DialogDescription>
+                              Are you sure you want to delete this entire thread? This will remove all {thread.tweets.length} tweets.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter>
+                            <DialogClose asChild>
+                              <DuolingoButton variant="secondary">Cancel</DuolingoButton>
+                            </DialogClose>
+                            <DuolingoButton
+                              onClick={() => {
+                                // Delete all tweets in the thread
+                                thread.tweets.forEach(tweet => {
+                                  deleteTweet(tweet.id)
+                                })
+                              }}
+                            >
+                              Delete Thread
+                            </DuolingoButton>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </div>
+      )}
     </>
   )
 }

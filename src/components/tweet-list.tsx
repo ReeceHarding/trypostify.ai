@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
+import Link from 'next/link'
 import {
   format,
   isAfter,
@@ -19,12 +20,21 @@ import {
   AlertCircle,
   ExternalLink,
   Eye,
+  MessageSquare,
+  BarChart3,
+  Heart,
+  Repeat2,
+  MessageCircle,
+  TrendingUp,
+  RefreshCw,
 } from 'lucide-react'
 import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { client } from '@/lib/client'
+import { cn } from '@/lib/utils'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import MediaDisplay from '@/components/media-display'
@@ -44,9 +54,6 @@ import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useRouter } from 'next/navigation'
 import { InferOutput } from '@/server'
-import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 function InitialContentPlugin({ content }: { content: string }) {
   const [editor] = useLexicalComposerContext()
@@ -86,12 +93,11 @@ export default function TweetList({
   const { account } = useAccount()
   const router = useRouter()
 
-  const { data: tweetData, isLoading } = useQuery({
+  const { data: postedData, isLoading } = useQuery({
     queryKey: ['posted-tweets', account?.username],
     queryFn: async () => {
       const res = await client.tweet.getPosted.$get()
-      const { tweets } = await res.json()
-      return tweets
+      return await res.json()
     },
   })
 
@@ -118,37 +124,59 @@ export default function TweetList({
     deleteTweet({ tweetId: id })
   }
 
-  const groupedTweets = (tweetData || []).reduce(
-    (groups, tweet) => {
+  // Fetch metrics mutation
+  const {
+    mutate: fetchMetrics,
+    isPending: isFetchingMetrics,
+  } = useMutation({
+    mutationFn: async ({ tweetIds }: { tweetIds: string[] }) => {
+      const res = await client.tweet.fetchTweetMetrics.$post({ tweetIds })
+      return await res.json()
+    },
+    onSuccess: (data) => {
+      toast.success(`Updated metrics for ${data.updatedCount} tweets`)
+      queryClient.invalidateQueries({
+        queryKey: ['posted-tweets', account?.username],
+      })
+    },
+    onError: () => {
+      toast.error('Failed to fetch tweet metrics')
+    },
+  })
+
+  // Group items by date
+  const groupedItems = (postedData?.items || []).reduce(
+    (groups, item) => {
       let date: string
 
       if (mode === 'posted') {
-        date = format(new Date(tweet.updatedAt || tweet.createdAt), 'yyyy-MM-dd')
-      } else if (tweet.scheduledFor) {
-        date = format(new Date(tweet.scheduledFor), 'yyyy-MM-dd')
+        date = format(new Date(item.updatedAt || item.tweets[0]?.updatedAt || item.tweets[0]?.createdAt || new Date()), 'yyyy-MM-dd')
+      } else if (item.tweets[0]?.scheduledFor) {
+        date = format(new Date(item.tweets[0].scheduledFor || new Date()), 'yyyy-MM-dd')
       } else {
-        date = format(new Date(tweet.createdAt), 'yyyy-MM-dd')
+        date = format(new Date(item.tweets[0]?.createdAt || new Date()), 'yyyy-MM-dd')
       }
 
       if (!groups[date]) {
         groups[date] = []
       }
-      groups[date]?.push(tweet)
+      groups[date]?.push(item)
 
       return groups
     },
-    {} as Record<string, TweetType[]>,
+    {} as Record<string, any[]>,
   )
 
-  Object.keys(groupedTweets).forEach((date) => {
-    groupedTweets[date]?.sort((a, b) => {
+  // Sort items within each date group
+  Object.keys(groupedItems).forEach((date) => {
+    groupedItems[date]?.sort((a, b) => {
       if (mode === 'posted') {
-        const timeA = new Date(a.updatedAt || a.createdAt)
-        const timeB = new Date(b.updatedAt || b.createdAt)
+        const timeA = new Date(a.updatedAt || a.tweets[0]?.updatedAt || a.tweets[0]?.createdAt || new Date())
+        const timeB = new Date(b.updatedAt || b.tweets[0]?.updatedAt || b.tweets[0]?.createdAt || new Date())
         return timeB.getTime() - timeA.getTime()
       } else {
-        const timeA = a.scheduledFor ? new Date(a.scheduledFor) : new Date(a.createdAt)
-        const timeB = b.scheduledFor ? new Date(b.scheduledFor) : new Date(b.createdAt)
+        const timeA = new Date(a.tweets[0]?.scheduledFor || a.tweets[0]?.createdAt || new Date())
+        const timeB = new Date(b.tweets[0]?.scheduledFor || b.tweets[0]?.createdAt || new Date())
         return timeA.getTime() - timeB.getTime()
       }
     })
@@ -176,7 +204,7 @@ export default function TweetList({
     return format(date, 'MMMM d')
   }
 
-  const sortedDateEntries = Object.entries(groupedTweets).sort((a, b) => {
+  const sortedDateEntries = Object.entries(groupedItems).sort((a, b) => {
     const dateA = new Date(a[0])
     const dateB = new Date(b[0])
 
@@ -196,15 +224,15 @@ export default function TweetList({
     return dateA.getTime() - dateB.getTime()
   })
 
-  const totalTweets = Object.keys(groupedTweets).reduce(
-    (acc, key) => acc + (groupedTweets[key]?.length || 0),
+  const totalTweets = Object.keys(groupedItems).reduce(
+    (acc, key) => acc + (groupedItems[key]?.length || 0),
     0,
   )
 
   const getLastScheduledDate = () => {
     if (mode === 'posted') return null
 
-    const scheduled = (tweetData || [])
+    const scheduled = (postedData?.tweets || [])
       .filter((tweet) => !tweet.isPublished && tweet.scheduledFor)
       .sort(
         (a, b) =>
@@ -219,7 +247,7 @@ export default function TweetList({
 
   const scheduledCount =
     mode === 'scheduled'
-      ? (tweetData || []).filter((tweet) => !tweet.isPublished).length
+      ? (postedData?.tweets || []).filter((tweet) => !tweet.isPublished).length
       : 0
 
   if (isLoading) {
@@ -259,7 +287,7 @@ export default function TweetList({
           </div>
         )}
 
-        {Object.keys(groupedTweets).length === 0 ? (
+        {Object.keys(groupedItems).length === 0 ? (
           <Card className="p-12 text-center">
             <div className="flex flex-col gap-4">
               {emptyStateIcon}
@@ -275,7 +303,7 @@ export default function TweetList({
           </Card>
         ) : (
           <div className="space-y-6">
-            {sortedDateEntries.map(([date, tweets]) => (
+            {sortedDateEntries.map(([date, items]) => (
               <Card key={date} className="overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
@@ -291,108 +319,239 @@ export default function TweetList({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div
-                    className="grid gap-3"
-                    style={{ gridTemplateColumns: 'auto 1fr auto' }}
-                  >
-                    {tweets.map((tweet: TweetType) => (
-                      <Fragment key={tweet.id}>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex items-center gap-2 w-[100px]">
-                              <Clock className="size-4 text-stone-500" />
-                              <span className="font-medium text-sm text-stone-700">
-                                {tweet.updatedAt
-                                  ? format(new Date(tweet.updatedAt), 'h:mm aaa')
-                                  : '--:-- --'}
-                              </span>
+                  <div className="space-y-4">
+                    {items.map((item) => (
+                      <div key={item.threadId || item.tweets[0]?.id} className="space-y-3">
+                        {item.isThread ? (
+                          // Render thread
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-sm text-stone-600 font-medium">
+                              <MessageSquare className="size-4" />
+                              <span>Thread ({item.tweets.length} tweets)</span>
                             </div>
-                            <div className="flex w-[80px] items-start justify-center gap-2">
-                              <DuolingoBadge variant="green" className="text-xs px-2">
-                                Published
-                              </DuolingoBadge>
-                            </div>
-                          </div>
-                        </div>
+                            {item.tweets.map((tweet: any, index: number) => (
+                              <div key={tweet.id} className="relative">
+                                {/* Connect tweets with a line */}
+                                {index < item.tweets.length - 1 && (
+                                  <div className="absolute left-5 top-12 bottom-[-12px] w-[2px] bg-stone-200" />
+                                )}
+                                
+                                <div className="flex gap-3">
+                                  <div className="flex-shrink-0">
+                                    <div className="size-10 rounded-full bg-stone-200 flex items-center justify-center text-sm font-medium text-stone-700">
+                                      {index + 1}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex-1 px-4 py-3 rounded-lg border bg-white border-stone-200 shadow-sm">
+                                    <div className="space-y-2">
+                                      <div className="text-stone-900 text-sm leading-relaxed">
+                                        <LexicalComposer
+                                          initialConfig={{ ...initialConfig, editable: false }}
+                                        >
+                                          <PlainTextPlugin
+                                            contentEditable={
+                                              <ContentEditable className="w-full resize-none leading-relaxed text-stone-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
+                                            }
+                                            ErrorBoundary={LexicalErrorBoundary}
+                                          />
+                                          <InitialContentPlugin content={tweet.content} />
+                                        </LexicalComposer>
+                                      </div>
 
-                        <div className="px-4 py-3 rounded-lg border bg-white border-stone-200 shadow-sm">
-                          <div className="space-y-2">
-                            <div className="text-stone-900 text-sm leading-relaxed">
-                              <LexicalComposer
-                                initialConfig={{ ...initialConfig, editable: false }}
-                              >
-                                <PlainTextPlugin
-                                  contentEditable={
-                                    <ContentEditable className="w-full resize-none leading-relaxed text-stone-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
-                                  }
-                                  ErrorBoundary={LexicalErrorBoundary}
-                                />
-                                <InitialContentPlugin content={tweet.content} />
-                              </LexicalComposer>
-                            </div>
+                                      {tweet.media && tweet.media.length > 0 && (
+                                        <div className="mt-2">
+                                          <MediaDisplay
+                                            mediaFiles={tweet.media.map((media: any) => ({
+                                              ...media,
+                                              uploading: false,
+                                              media_id: media.media_id,
+                                              s3Key: media.s3Key,
+                                              type: media.type as 'image' | 'gif' | 'video',
+                                            }))}
+                                            removeMediaFile={() => {}}
+                                          />
+                                        </div>
+                                      )}
 
-                            {tweet.media.length > 0 && (
-                              <div className="mt-2">
-                                <MediaDisplay
-                                  mediaFiles={tweet.media.map((media) => ({
-                                    ...media,
-                                    uploading: false,
-                                    media_id: media.media_id,
-                                    s3Key: media.s3Key,
-                                    type: media.type as 'image' | 'gif' | 'video',
-                                  }))}
-                                  removeMediaFile={() => {}}
-                                />
+                                      {/* Analytics for thread tweets */}
+                                      {tweet.twitterId && (
+                                        <div className="mt-3 pt-3 border-t border-stone-100">
+                                          <div className="flex items-center justify-between text-sm">
+                                            <div className="flex items-center gap-4">
+                                              <div className="flex items-center gap-1 text-stone-600">
+                                                <Heart className="size-3.5" />
+                                                <span>{tweet.likes || 0}</span>
+                                              </div>
+                                              <div className="flex items-center gap-1 text-stone-600">
+                                                <Repeat2 className="size-3.5" />
+                                                <span>{tweet.retweets || 0}</span>
+                                              </div>
+                                              <div className="flex items-center gap-1 text-stone-600">
+                                                <MessageCircle className="size-3.5" />
+                                                <span>{tweet.replies || 0}</span>
+                                              </div>
+                                              {tweet.impressions && tweet.impressions > 0 && (
+                                                <div className="flex items-center gap-1 text-stone-600">
+                                                  <TrendingUp className="size-3.5" />
+                                                  <span>{tweet.impressions}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                            {tweet.metricsUpdatedAt && (
+                                              <span className="text-xs text-stone-400">
+                                                Updated {format(new Date(tweet.metricsUpdatedAt), 'MMM d')}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                            )}
+                            ))}
+                            
+                            {/* Refresh metrics button for threads */}
+                            <div className="mt-3 flex justify-end">
+                              <DuolingoButton
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => {
+                                  const tweetIds = item.tweets.filter((t: any) => t.twitterId).map((t: any) => t.id)
+                                  if (tweetIds.length > 0) {
+                                    fetchMetrics({ tweetIds })
+                                  }
+                                }}
+                                disabled={isFetchingMetrics}
+                              >
+                                <RefreshCw className={cn("size-3 mr-1", isFetchingMetrics && "animate-spin")} />
+                                Refresh Analytics
+                              </DuolingoButton>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          // Render single tweet
+                          item.tweets.map((tweet: any) => (
+                            <div key={tweet.id} className="grid gap-3" style={{ gridTemplateColumns: 'auto 1fr auto' }}>
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2 mt-2">
+                                  <div className="flex items-center gap-2 w-[100px]">
+                                    <Clock className="size-4 text-stone-500" />
+                                    <span className="font-medium text-sm text-stone-700">
+                                      {tweet.updatedAt
+                                        ? format(new Date(tweet.updatedAt), 'h:mm aaa')
+                                        : '--:-- --'}
+                                    </span>
+                                  </div>
+                                  <div className="flex w-[80px] items-start justify-center gap-2">
+                                    <DuolingoBadge variant="green" className="text-xs px-2">
+                                      Published
+                                    </DuolingoBadge>
+                                  </div>
+                                </div>
+                              </div>
 
-                        <div className="flex items-center">
-                          <Link
-                            className={cn(
-                              buttonVariants({
-                                variant: 'outline',
-                                size: 'icon',
-                                className: 'size-8'
-                              }),
-                              {
-                                'opacity-50 cursor-disabled pointer-events-none':
-                                  !tweet.twitterId || !account?.username
-                              }
-                            )}
-                            href={`https://x.com/${account?.username}/status/${tweet.twitterId}`}
-                            target="_blank"
-                          >
-                            <Eye className="size-4" />
-                            <span className="sr-only">View on Twitter</span>
-                          </Link>
-                          {/* <DuolingoButton
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              const url = `https://x.com/${account?.username}/status/${tweet.twitterId}`
-                              window.open(url, '_blank')
-                              // const username = account?.username || 'username'
-                              // const tweetDate = format(
-                              //   new Date(tweet.updatedAt || tweet.createdAt),
-                              //   'yyyy-MM-dd',
-                              // )
-                              // const searchQuery = encodeURIComponent(
-                              //   tweet.content.slice(0, 50),
-                              // )
-                              // window.open(
-                              //   `https://twitter.com/search?q=from%3A${username}%20${searchQuery}%20until%3A${tweetDate}&src=typed_query&f=live`,
-                              //   '_blank',
-                              // )
-                            }}
-                          >
-                            <Eye className="size-4" />
-                            <span className="sr-only">View on Twitter</span>
-                          </DuolingoButton> */}
-                        </div>
-                      </Fragment>
+                              <div className="px-4 py-3 rounded-lg border bg-white border-stone-200 shadow-sm">
+                                <div className="space-y-2">
+                                  <div className="text-stone-900 text-sm leading-relaxed">
+                                    <LexicalComposer
+                                      initialConfig={{ ...initialConfig, editable: false }}
+                                    >
+                                      <PlainTextPlugin
+                                        contentEditable={
+                                          <ContentEditable className="w-full resize-none leading-relaxed text-stone-900 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none pointer-events-none" />
+                                        }
+                                        ErrorBoundary={LexicalErrorBoundary}
+                                      />
+                                      <InitialContentPlugin content={tweet.content} />
+                                    </LexicalComposer>
+                                  </div>
+
+                                  {tweet.media && tweet.media.length > 0 && (
+                                    <div className="mt-2">
+                                      <MediaDisplay
+                                        mediaFiles={tweet.media.map((media: any) => ({
+                                          ...media,
+                                          uploading: false,
+                                          media_id: media.media_id,
+                                          s3Key: media.s3Key,
+                                          type: media.type as 'image' | 'gif' | 'video',
+                                        }))}
+                                        removeMediaFile={() => {}}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Analytics for single tweets */}
+                                  {tweet.twitterId && (
+                                    <div className="mt-3 pt-3 border-t border-stone-100">
+                                      <div className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-4">
+                                          <div className="flex items-center gap-1 text-stone-600">
+                                            <Heart className="size-3.5" />
+                                            <span>{tweet.likes || 0}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1 text-stone-600">
+                                            <Repeat2 className="size-3.5" />
+                                            <span>{tweet.retweets || 0}</span>
+                                          </div>
+                                          <div className="flex items-center gap-1 text-stone-600">
+                                            <MessageCircle className="size-3.5" />
+                                            <span>{tweet.replies || 0}</span>
+                                          </div>
+                                          {tweet.impressions && tweet.impressions > 0 && (
+                                            <div className="flex items-center gap-1 text-stone-600">
+                                              <TrendingUp className="size-3.5" />
+                                              <span>{tweet.impressions}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {tweet.metricsUpdatedAt && (
+                                          <span className="text-xs text-stone-400">
+                                            Updated {format(new Date(tweet.metricsUpdatedAt), 'MMM d')}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {tweet.twitterId && account?.username && (
+                                  <Link
+                                    className={cn(
+                                      buttonVariants({
+                                        variant: 'outline',
+                                        size: 'icon',
+                                        className: 'size-8'
+                                      })
+                                    )}
+                                    href={`https://x.com/${account.username}/status/${tweet.twitterId}`}
+                                    target="_blank"
+                                  >
+                                    <Eye className="size-4" />
+                                    <span className="sr-only">View on Twitter</span>
+                                  </Link>
+                                )}
+                                {tweet.twitterId && (
+                                  <DuolingoButton
+                                    variant="secondary"
+                                    size="icon"
+                                    className="size-8"
+                                    onClick={() => fetchMetrics({ tweetIds: [tweet.id] })}
+                                    disabled={isFetchingMetrics}
+                                  >
+                                    <RefreshCw className={cn("size-4", isFetchingMetrics && "animate-spin")} />
+                                    <span className="sr-only">Refresh analytics</span>
+                                  </DuolingoButton>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     ))}
                   </div>
                 </CardContent>
