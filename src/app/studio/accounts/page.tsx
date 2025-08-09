@@ -306,7 +306,7 @@ export default function AccountsPage() {
                 <DuolingoButton
                   size="sm"
                   onClick={() => {
-                    toast('🔒 Please upgrade to Pro to add unlimited accounts')
+                    toast('Please upgrade to Pro to add unlimited accounts')
                   }}
                   className="w-auto relative z-20 transition-all duration-200"
                 >
@@ -333,13 +333,13 @@ export default function AccountsPage() {
                   <DropdownMenuItem asChild>
                     <button
                       onClick={() => setShowConnectDialog(true)}
-                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
+                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-twitter-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
                     >
                       <div className="flex-shrink-0 size-10 bg-gray-100 border border-gray-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
                         <Plus className="size-5 text-gray-600 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-gray-900 group-hover:text-blue-900 transition-colors">
+                        <h4 className="font-semibold text-gray-900 group-hover:text-twitter-900 transition-colors">
                           Personal Account
                         </h4>
                         <p className="text-sm opacity-60 leading-relaxed">
@@ -359,7 +359,7 @@ export default function AccountsPage() {
                         <UserPlus className="size-5 text-gray-600 transition-colors" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-gray-900 group-hover:text-blue-900 transition-colors">
+                        <h4 className="font-semibold text-gray-900 group-hover:text-twitter-900 transition-colors">
                           Delegate Access
                         </h4>
                         <p className="text-sm opacity-60 leading-relaxed">
@@ -553,7 +553,7 @@ export default function AccountsPage() {
               <DuolingoTextarea
                 fullWidth
                 className="min-h-32"
-                placeholder="My tweets always use this emoji (◆) for bullet points and usually consist of a short, catchy intro hook and three bullet points. I love the 🎉 emoji"
+                placeholder="My tweets always use this symbol (◆) for bullet points and usually consist of a short, catchy intro hook and three bullet points. I love expressing excitement and celebration"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
               />

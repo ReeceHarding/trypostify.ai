@@ -23,6 +23,8 @@ import {
   Plus,
   Search,
   X,
+  Link as LinkIcon,
+  Edit,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -51,9 +53,9 @@ const categoryBadgeVariants = {
 }
 
 const categoryIcons = {
-  url: '🔗',
-  file: '📄',
-  manual: '📝',
+  url: <LinkIcon className="size-4" />,
+  file: <FileText className="size-4" />,
+  manual: <Edit className="size-4" />,
 }
 
 export default function KnowledgePage() {
@@ -156,7 +158,7 @@ export default function KnowledgePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-lg">📁</span>
+                          <FolderOpen className="size-5" />
                           <h4 className="font-bold text-gray-900 group-hover:text-indigo-900 transition-colors">
                             Upload Document
                           </h4>
@@ -178,7 +180,7 @@ export default function KnowledgePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-lg">🌐</span>
+                          <Globe className="size-5" />
                           <h4 className="font-bold text-gray-900 group-hover:text-indigo-900 transition-colors">
                             Add from Website
                           </h4>

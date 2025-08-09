@@ -4,7 +4,7 @@ import { client } from '@/lib/client'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, isThisWeek, isToday, isTomorrow } from 'date-fns'
-import { Clock, Edit, MoreHorizontal, Send, Trash2, MessageSquare } from 'lucide-react'
+import { Clock, Edit, MoreHorizontal, Send, Trash2, MessageSquare, Paperclip } from 'lucide-react'
 
 import { useConfetti } from '@/hooks/use-confetti'
 import { useTweets } from '@/hooks/use-tweets'
@@ -79,7 +79,7 @@ export default function TweetQueue() {
       return await res.json()
     },
     onSuccess: () => {
-      toast.success('🗑️ Tweet deleted & unscheduled')
+      toast.success('Tweet deleted & unscheduled')
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
       queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
     },
@@ -216,8 +216,9 @@ export default function TweetQueue() {
                               {tweet.content || 'No content'}
                             </p>
                             {tweet.media && tweet.media.length > 0 && (
-                              <div className="text-xs text-stone-500">
-                                📎 {tweet.media.length} media file
+                              <div className="text-xs text-stone-500 flex items-center gap-1">
+                                <Paperclip className="size-3" />
+                                {tweet.media.length} media file
                                 {tweet.media.length > 1 ? 's' : ''}
                               </div>
                             )}
@@ -428,8 +429,9 @@ export default function TweetQueue() {
                               {tweet.content}
                             </p>
                             {tweet.media && tweet.media.length > 0 && (
-                              <div className="mt-2 text-xs text-stone-500">
-                                📎 {tweet.media.length} media file{tweet.media.length > 1 ? 's' : ''}
+                              <div className="mt-2 text-xs text-stone-500 flex items-center gap-1">
+                                <Paperclip className="size-3" />
+                                {tweet.media.length} media file{tweet.media.length > 1 ? 's' : ''}
                               </div>
                             )}
                           </div>

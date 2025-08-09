@@ -22,7 +22,7 @@ export const DEFAULT_TWEETS = [
         "https://pbs.twimg.com/profile_images/1899476552464646146/Vooiz1-9_normal.jpg",
     },
     id: "1923640397416288352",
-    text: "just got one of the most cracked engineers to join me in building @postify\n\n◆ cursor, but for content creation\n◆ post great content (tweets, blogs) every day\n◆ 100% open-source\n\nthe world is not ready 👀",
+    text: "just got one of the most cracked engineers to join me in building @postify\n\n◆ cursor, but for content creation\n◆ post great content (tweets, blogs) every day\n◆ 100% open-source\n\nthe world is not ready",
     created_at: "2025-05-17T07:23:04.000Z",
   },
   {
@@ -35,7 +35,7 @@ export const DEFAULT_TWEETS = [
       name: "Josh tried coding",
     },
     id: "1921940637726724310",
-    text: "just onboarded the first 10 users to @postify 🎉\n\nit's like cursor, but for content creation. i wanted a tool like this for years, so now i'm building it myself\n\nexciting times man",
+    text: "just onboarded the first 10 users to @postify!\n\nit's like cursor, but for content creation. i wanted a tool like this for years, so now i'm building it myself\n\nexciting times man",
     created_at: "2025-05-12T14:48:50.000Z",
   },
   {
@@ -72,7 +72,7 @@ export const DEFAULT_TWEETS = [
         "https://pbs.twimg.com/profile_images/1899476552464646146/Vooiz1-9_normal.jpg",
     },
     id: "1920387639770812654",
-    text: "learned how to make clean ui borders yesterday\n\nturns out the secret is in the padding 👀\n\ntiny detail, but makes the design feel a lot nicer",
+    text: "learned how to make clean ui borders yesterday\n\nturns out the secret is in the padding\n\ntiny detail, but makes the design feel a lot nicer",
     created_at: "2025-05-08T07:57:47.000Z",
     author_id: "1645473986757664768",
     edit_history_tweet_ids: ["1920387639770812654"],
@@ -87,7 +87,7 @@ export const DEFAULT_TWEETS = [
       name: "Josh tried coding",
     },
     id: "1917598643197984898",
-    text: "been shipping a lot recently\n\njosh's step-by-step guide on how to ship fast af 🎉\n\n◆ vibe code a basic prototype\n◆ don't add auth, a relational db or payments\n◆ post the idea to social media\n\nfull article soon 👀",
+    text: "been shipping a lot recently\n\njosh's step-by-step guide on how to ship fast af:\n\n◆ vibe code a basic prototype\n◆ don't add auth, a relational db or payments\n◆ post the idea to social media\n\nfull article soon",
     created_at: "2025-04-30T15:15:18.000Z",
   },
   {
@@ -100,7 +100,7 @@ export const DEFAULT_TWEETS = [
       name: "Josh tried coding",
     },
     id: "1920138898983809141",
-    text: "im building the best way to create content with ai @postify\n\nnew: create beautiful tweet visuals in seconds 🎉\n\n◆ zero design skills needed \n◆ drag-and-drop editor\n◆ beautiful presets out of the box",
+    text: "im building the best way to create content with ai @postify\n\nnew: create beautiful tweet visuals in seconds!\n\n◆ zero design skills needed \n◆ drag-and-drop editor\n◆ beautiful presets out of the box",
     created_at: "2025-05-07T15:29:22.000Z",
   },
   {
@@ -118,7 +118,7 @@ export const DEFAULT_TWEETS = [
   },
   {
     id: "1918258222596575569",
-    text: "just published the full article on how i ship projects fast af 🎉\n\n◆ my step-by-step process\n◆ exact tools i use for building and sharing\n◆ things i actively avoid early on\n\nthis approach works super well for me 👇",
+    text: "just published the full article on how i ship projects fast af!\n\n◆ my step-by-step process\n◆ exact tools i use for building and sharing\n◆ things i actively avoid early on\n\nthis approach works super well for me",
     created_at: "2025-05-02T10:56:14.000Z",
     author_id: "1645473986757664768",
     edit_history_tweet_ids: ["1918258222596575569"],
@@ -153,7 +153,7 @@ export const DEFAULT_TWEETS = [
         "https://pbs.twimg.com/profile_images/1899476552464646146/Vooiz1-9_normal.jpg",
     },
     id: "1922631724002902083",
-    text: "a few days ago i posted about moving away from next.js navigation 👀\n\n◆ pages load instantly now\n◆ makes your whole next.js app feel way faster\n◆ takes like 5 min to set up\n\njust published the full post on how i did it 👇",
+    text: "a few days ago i posted about moving away from next.js navigation\n\n◆ pages load instantly now\n◆ makes your whole next.js app feel way faster\n◆ takes like 5 min to set up\n\njust published the full post on how i did it",
   },
   {
     author: {
@@ -178,7 +178,7 @@ export const DEFAULT_TWEETS = [
       username: "upstash",
     },
     id: "1921856641890144682",
-    text: "Introducing llm.txt support for Context7 🎉\n\n◆ Add documentation from any llms.txt file\n◆ We extract up-to-date code snippets\n\nPerfect for closed-source docs that only provide an llms.txt 👀",
+    text: "Introducing llm.txt support for Context7!\n\n◆ Add documentation from any llms.txt file\n◆ We extract up-to-date code snippets\n\nPerfect for closed-source docs that only provide an llms.txt",
     created_at: "2025-05-12T09:15:04.000Z",
   },
   {
@@ -191,7 +191,7 @@ export const DEFAULT_TWEETS = [
       username: "upstash",
     },
     id: "1919405390455849066",
-    text: "Most search products suck - they're bloated, expensive and complicated ❌\n\nWe're working on the best way to build search into your app 🎉\n\n◆ 100% serverless, zero infra to manage\n◆ built-in typo tolerance and fuzzy matching\n◆ search through absolutely massive datasets",
+    text: "Most search products suck - they're bloated, expensive and complicated\n\nWe're working on the best way to build search into your app!\n\n◆ 100% serverless, zero infra to manage\n◆ built-in typo tolerance and fuzzy matching\n◆ search through absolutely massive datasets",
     created_at: "2025-05-05T14:54:40.000Z",
   },
   {
@@ -204,7 +204,7 @@ export const DEFAULT_TWEETS = [
       username: "upstash",
     },
     id: "1916846086146212139",
-    text: "New Quickstart for our DrizzleORM integration! 🎉\n\n◆ Set up caching in seconds\n◆ Great defaults, fully customizable\n◆ Cache auto-updates as data changes\n\nBasically a drop-in package to make Drizzle queries faster 👇",
+    text: "New Quickstart for our DrizzleORM integration!\n\n◆ Set up caching in seconds\n◆ Great defaults, fully customizable\n◆ Cache auto-updates as data changes\n\nBasically a drop-in package to make Drizzle queries faster",
     created_at: "2025-04-28T13:24:54.000Z",
   },
   {
@@ -230,7 +230,7 @@ export const DEFAULT_TWEETS = [
       username: "joshtriedcoding",
     },
     id: "1912804772282843416",
-    text: "how to build durable LLM streams that keep working, even when you:\n\n◆ reload the page\n◆ close the site completely\n◆ view the stream on multiple tabs/devices \n\nnow 100% open-source - step-by-step guide below 👇",
+    text: "how to build durable LLM streams that keep working, even when you:\n\n◆ reload the page\n◆ close the site completely\n◆ view the stream on multiple tabs/devices \n\nnow 100% open-source - step-by-step guide below",
     created_at: "2025-04-17T09:46:10.000Z",
   },
   {
@@ -243,7 +243,7 @@ export const DEFAULT_TWEETS = [
       username: "upstash",
     },
     id: "1907445584006349146",
-    text: "Introducing Context7 – stop Cursor, Claude or any LLM from generating broken, outdated code.\n\nFeed your AI:\n\n◆ Always up-to-date documentation\n◆ Real code examples from official docs\n\nso it writes code that actually works.\n\nPerfect for Next.js, React, Tailwind &amp; more 👇",
+    text: "Introducing Context7 – stop Cursor, Claude or any LLM from generating broken, outdated code.\n\nFeed your AI:\n\n◆ Always up-to-date documentation\n◆ Real code examples from official docs\n\nso it writes code that actually works.\n\nPerfect for Next.js, React, Tailwind &amp; more",
     created_at: "2025-04-02T14:50:40.000Z",
   },
   {
@@ -256,7 +256,7 @@ export const DEFAULT_TWEETS = [
       username: "upstash",
     },
     id: "1910697488631181789",
-    text: "Introducing the Context7 MCP – stop Cursor from generating broken, outdated code.\n\nCursor now automatically adds:\n\n◆ Up-to-date documentation\n◆ Real code examples from official docs\n\nto your prompts - so the code it writes actually works 👇",
+    text: "Introducing the Context7 MCP – stop Cursor from generating broken, outdated code.\n\nCursor now automatically adds:\n\n◆ Up-to-date documentation\n◆ Real code examples from official docs\n\nto your prompts - so the code it writes actually works",
     created_at: "2025-04-11T14:12:34.000Z",
   },
 ]

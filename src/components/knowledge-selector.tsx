@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Brain, FileText, Link, Star, Search } from 'lucide-react'
+import { Brain, FileText, Link as LinkIcon, Star, Search } from 'lucide-react'
 import { client } from '@/lib/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
@@ -89,7 +89,7 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
           onMouseEnter={handlePrefetch}
           onFocus={handlePrefetch}
         >
-          <span className="text-lg">🧠</span>
+          <Brain className="size-5" />
         </DuolingoButton>
       </PopoverTrigger>
       <PopoverContent align="start" side="top" className="w-[420px] p-0" sideOffset={12}>
@@ -154,7 +154,7 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
                             ) : doc.type === 'txt' ? (
                               <Icons.txt className="size-7 -ml-[1px]" />
                             ) : doc.type === 'url' ? (
-                              <span className='text-xl'>🔗</span>
+                              <LinkIcon className='size-5' />
                             ) : null}
                           </div>
                           <div className="flex-1 min-w-0">

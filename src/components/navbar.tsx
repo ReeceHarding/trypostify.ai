@@ -3,11 +3,9 @@
 import * as React from 'react'
 import { Icons } from '@/components/icons'
 import { baseStyles, sizeStyles, variantStyles } from '@/components/ui/duolingo-button'
-import GitHubStarButton from '@/components/ui/github-star-button'
 import { cn } from '@/lib/utils'
 import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
-import { GITHUB_REPO } from '@/constants/misc'
 
 const Logo = ({ className }: { className?: string }) => (
   <Link href="/" className={cn('-m-1.5 p-1.5 flex items-center gap-1.5', className)}>
@@ -26,13 +24,6 @@ const ActionButtons = ({
   title: string
 }) => (
   <div className={cn('flex gap-2 items-center', className)}>
-    <GitHubStarButton
-      className={cn(
-        'whitespace-nowrap',
-        className?.includes('w-full') && 'w-full justify-center',
-      )}
-      repo={GITHUB_REPO}
-    />
     <Link
       className={cn(
         baseStyles,

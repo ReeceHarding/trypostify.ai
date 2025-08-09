@@ -1,0 +1,14 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+## Icons
+
+**Use Lucide only**: All icons in this project must come from the Lucide icon library (https://lucide.dev).
+
+- Consistent stroke-based design
+- 24x24 viewBox with stroke-width="2"
+- Use `lucide` and `lucide-{icon-name}` class naming
+- Never mix with other icon libraries (Heroicons, Feather, etc.)

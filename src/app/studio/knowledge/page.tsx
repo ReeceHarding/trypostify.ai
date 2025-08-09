@@ -25,6 +25,8 @@ import {
   Search,
   User,
   X,
+  Link as LinkIcon,
+  Edit,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -53,9 +55,9 @@ const categoryBadgeVariants = {
 }
 
 const categoryIcons = {
-  url: '🔗',
-  file: '📄',
-  manual: '📝',
+  url: <LinkIcon className="size-4" />,
+  file: <FileText className="size-4" />,
+  manual: <Edit className="size-4" />,
 }
 
 interface TweetMetadata {

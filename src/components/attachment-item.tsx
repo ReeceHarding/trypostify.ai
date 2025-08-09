@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { X } from 'lucide-react'
+import { X, Brain, Paperclip } from 'lucide-react'
 import { useState } from 'react'
 import {
   Dialog,
@@ -114,9 +114,13 @@ function DocumentAttachment({ attachment, onRemove, className }: DocumentReferen
         href={`/studio/knowledge/${attachment.id}`}
         className="flex items-center gap-2"
       >
-        <span className="text-base">
-          {attachment.variant === 'knowledge' ? '🧠' : '📎'}
-        </span>
+        <div className="text-base">
+          {attachment.variant === 'knowledge' ? (
+            <Brain className="size-4" />
+          ) : (
+            <Paperclip className="size-4" />
+          )}
+        </div>
         {'title' in attachment ? (
           <span className="text-sm text-stone-700 font-medium max-w-[120px] truncate">
             {attachment.title}

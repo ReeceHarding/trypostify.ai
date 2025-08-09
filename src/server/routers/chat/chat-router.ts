@@ -266,7 +266,7 @@ export const chatRouter = j.router({
           await redis.set(historyKey, updatedHistory)
         },
         onError(error) {
-          console.log('❌❌❌ ERROR:', JSON.stringify(error, null, 2))
+          console.log('[ERROR] CHAT_ROUTER:', JSON.stringify(error, null, 2))
 
           throw new HTTPException(500, {
             message: error instanceof Error ? error.message : 'Something went wrong.',

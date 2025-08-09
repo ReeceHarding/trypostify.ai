@@ -1,6 +1,6 @@
 import { getBaseUrl } from '@/constants/base-url'
 import { db } from '@/db'
-import { account as accountSchema, tweets } from '@/db/schema'
+import { account as accountSchema, tweets, mediaLibrary } from '@/db/schema'
 import { qstash } from '@/lib/qstash'
 import { redis } from '@/lib/redis'
 import { BUCKET_NAME, s3Client } from '@/lib/s3'
@@ -279,6 +279,28 @@ export const tweetRouter = j.router({
       const mediaId = await client.v1.uploadMedia(mediaBuffer, { mimeType })
 
       const mediaUpload = mediaId
+
+      // Extract filename from s3Key
+      const filename = s3Key.split('/').pop() || 'unknown'
+
+      // Save to media library
+      try {
+        await db.insert(mediaLibrary).values({
+          userId: user.id,
+          s3Key,
+          media_id: mediaUpload,
+          filename,
+          fileType: mimeType,
+          mediaType,
+          sizeBytes: mediaBuffer.length,
+          tags: [],
+          isStarred: false,
+          isDeleted: false,
+        })
+      } catch (error) {
+        console.error('Failed to save media to library:', error)
+        // Don't fail the upload if library save fails
+      }
 
       return c.json({
         media_id: mediaUpload,

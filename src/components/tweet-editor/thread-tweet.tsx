@@ -15,6 +15,8 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical'
 import { initialConfig } from '@/hooks/use-tweets'
+import MediaLibrary from '@/components/media-library'
+import { SelectedMedia } from '@/types/media'
 
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { useAttachments } from '@/hooks/use-attachments'
@@ -24,6 +26,7 @@ import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plug
 
 import { useMutation } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
+import { toast } from 'react-hot-toast'
 import {
   CalendarCog,
   ChevronDown,
@@ -37,7 +40,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { PropsWithChildren } from 'react'
-import { toast } from 'react-hot-toast'
 import { Icons } from '../icons'
 import {
   Dialog,
@@ -512,6 +514,75 @@ function ThreadTweetContent({
     }
   }
 
+  const handleMediaLibrarySelect = (selectedMedia: SelectedMedia[]) => {
+    // Check if we can add more media
+    const remainingSlots = MAX_MEDIA_COUNT - mediaFiles.length
+    
+    if (remainingSlots === 0) {
+      toast.error(`Maximum ${MAX_MEDIA_COUNT} media files allowed per tweet`)
+      return
+    }
+    
+    // Check for media type mixing rules
+    const hasVideo = mediaFiles.some((mf) => mf.type === 'video')
+    const hasGif = mediaFiles.some((mf) => mf.type === 'gif')
+    const hasImage = mediaFiles.some((mf) => mf.type === 'image')
+    
+    // Filter items that can be added based on mixing rules
+    const validItemsToAdd = selectedMedia.filter(media => {
+      if ((hasVideo || hasGif) && mediaFiles.length > 0) {
+        toast.error('Videos and GIFs cannot be combined with other media')
+        return false
+      }
+      
+      if (media.type === 'video' || media.type === 'gif') {
+        if (mediaFiles.length > 0) {
+          toast.error(`${media.type === 'video' ? 'Videos' : 'GIFs'} must be posted alone`)
+          return false
+        }
+      } else if (media.type === 'image') {
+        if (hasVideo || hasGif) {
+          toast.error('Cannot mix images with videos or GIFs')
+          return false
+        }
+      }
+      
+      return true
+    })
+    
+    const itemsToAdd = validItemsToAdd.slice(0, remainingSlots)
+
+    if (itemsToAdd.length < selectedMedia.length) {
+      if (itemsToAdd.length < validItemsToAdd.length) {
+        toast.error(`Can only add ${remainingSlots} more media files`)
+      }
+    }
+
+    const newMediaFiles: MediaFile[] = itemsToAdd.map(media => ({
+      url: media.url,
+      type: media.type,
+      s3Key: media.s3Key,
+      media_id: media.media_id,
+      uploaded: true,
+      uploading: false,
+      file: null,
+    }))
+    
+    setMediaFiles(prev => [...prev, ...newMediaFiles])
+    
+    // Update parent if exists
+    if (onUpdate) {
+      const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
+      const allMedia = [...mediaFiles, ...newMediaFiles].filter(f => f.media_id && f.s3Key).map(f => ({
+        s3Key: f.s3Key!,
+        media_id: f.media_id!,
+      }))
+      onUpdate(content, allMedia)
+    }
+    
+    setOpen(false)
+  }
+
   return (
     <>
       <Drawer modal={false} open={open} onOpenChange={setOpen}>
@@ -886,14 +957,17 @@ function ThreadTweetContent({
           </div>
         </div>
 
-        <DrawerContent>
+        <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
             <DrawerTitle>Choose from library</DrawerTitle>
           </DrawerHeader>
-          <div className="p-4">
-            <p className="text-sm text-muted-foreground">
-              Media library feature coming soon
-            </p>
+          <div className="h-[calc(85vh-5rem)]">
+            <MediaLibrary
+              onSelect={handleMediaLibrarySelect}
+              maxSelection={MAX_MEDIA_COUNT - mediaFiles.length}
+              selectedMedia={[]}
+              onClose={() => setOpen(false)}
+            />
           </div>
         </DrawerContent>
       </Drawer>

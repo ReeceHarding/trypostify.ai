@@ -2,7 +2,7 @@ import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { useTweets } from '@/hooks/use-tweets'
 import { cn, DiffWithReplacement } from '@/lib/utils'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
-import { Check, ChevronLeft, ChevronRight, Trash, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Trash, X, PenTool, Lightbulb } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import DuolingoButton from './ui/duolingo-button'
@@ -15,9 +15,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const ACTION_ICONS: Record<string, React.ReactNode> = {
-  Add: <span>✍️</span>,
-  Remove: <span>❌</span>,
-  Replace: <span>💡</span>,
+  Add: <PenTool className="size-4" />,
+  Remove: <X className="size-4" />,
+  Replace: <Lightbulb className="size-4" />,
 }
 
 type SuggestionCardProps = {

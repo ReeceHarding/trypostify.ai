@@ -15,6 +15,13 @@
       "when": 1754738915106,
       "tag": "0001_white_ultragirl",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1754770057485,
+      "tag": "0002_safe_ezekiel",
+      "breakpoints": true
     }
   ]
 }

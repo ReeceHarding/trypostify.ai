@@ -17,6 +17,8 @@ import { client } from '@/lib/client'
 import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
 import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
 import { ShadowEditorSyncPlugin } from '@/lib/lexical-plugins/sync-plugin'
+import MediaLibrary from '@/components/media-library'
+import { SelectedMedia } from '@/types/media'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, formatDistanceToNow, isToday, isTomorrow } from 'date-fns'
 import { HTTPException } from 'hono/http-exception'
@@ -28,6 +30,7 @@ import {
   Clock,
   Download,
   ImagePlus,
+  Library,
   MessageSquarePlus,
   Pen,
   Save,
@@ -94,6 +97,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [imageDrawerOpen, setImageDrawerOpen] = useState(false)
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
@@ -110,6 +114,64 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
     } else {
       localStorage.removeItem('skipPostConfirmation')
     }
+  }
+
+  const handleMediaLibrarySelect = (selectedMedia: SelectedMedia[]) => {
+    // Check if we can add more media
+    const remainingSlots = MAX_MEDIA_COUNT - mediaFiles.length
+    
+    if (remainingSlots === 0) {
+      toast.error(`Maximum ${MAX_MEDIA_COUNT} media files allowed per tweet`)
+      return
+    }
+    
+    // Check for media type mixing rules
+    const hasVideo = mediaFiles.some((mf) => mf.type === 'video')
+    const hasGif = mediaFiles.some((mf) => mf.type === 'gif')
+    const hasImage = mediaFiles.some((mf) => mf.type === 'image')
+    
+    // Filter items that can be added based on mixing rules
+    const validItemsToAdd = selectedMedia.filter(media => {
+      if ((hasVideo || hasGif) && mediaFiles.length > 0) {
+        toast.error('Videos and GIFs cannot be combined with other media')
+        return false
+      }
+      
+      if (media.type === 'video' || media.type === 'gif') {
+        if (mediaFiles.length > 0) {
+          toast.error(`${media.type === 'video' ? 'Videos' : 'GIFs'} must be posted alone`)
+          return false
+        }
+      } else if (media.type === 'image') {
+        if (hasVideo || hasGif) {
+          toast.error('Cannot mix images with videos or GIFs')
+          return false
+        }
+      }
+      
+      return true
+    })
+    
+    const itemsToAdd = validItemsToAdd.slice(0, remainingSlots)
+
+    if (itemsToAdd.length < selectedMedia.length) {
+      if (itemsToAdd.length < validItemsToAdd.length) {
+        toast.error(`Can only add ${remainingSlots} more media files`)
+      }
+    }
+
+    const newMediaFiles: MediaFile[] = itemsToAdd.map(media => ({
+      url: media.url,
+      type: media.type,
+      s3Key: media.s3Key,
+      media_id: media.media_id,
+      uploaded: true,
+      uploading: false,
+      file: null,
+    }))
+    
+    setMediaFiles(prev => [...prev, ...newMediaFiles])
+    setMediaLibraryOpen(false)
   }
 
   // Add video to chat attachments
@@ -531,7 +593,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
     },
     onError: (error: HTTPException) => {
       if (error.status === 402) {
-        toast(`🔒 ${error.message}`)
+        toast(error.message)
       } else {
         toast.error(error.message)
       }
@@ -1207,6 +1269,22 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                             variant="secondary"
                             size="icon"
                             className="rounded-md"
+                            onClick={() => setMediaLibraryOpen(true)}
+                          >
+                            <Library className="size-4" />
+                            <span className="sr-only">Choose from library</span>
+                          </DuolingoButton>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Choose from library</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DuolingoButton
+                            variant="secondary"
+                            size="icon"
+                            className="rounded-md"
                             onClick={() => setImageDrawerOpen(true)}
                           >
                             <ImagePlus className="size-4" />
@@ -1436,6 +1514,23 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
             </div>
           </DrawerContent>
         </Drawer>
+      </Drawer>
+
+      {/* Media Library Drawer */}
+      <Drawer modal={false} open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle>Choose from library</DrawerTitle>
+          </DrawerHeader>
+          <div className="h-[calc(85vh-5rem)]">
+            <MediaLibrary
+              onSelect={handleMediaLibrarySelect}
+              maxSelection={MAX_MEDIA_COUNT - mediaFiles.length}
+              selectedMedia={[]}
+              onClose={() => setMediaLibraryOpen(false)}
+            />
+          </div>
+        </DrawerContent>
       </Drawer>
 
       <Dialog

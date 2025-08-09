@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { client } from '@/lib/client'
 import { cn } from '@/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, FileText, FolderOpen, Link, Upload, X } from 'lucide-react'
+import { ArrowLeft, FileText, FolderOpen, Link, Upload, X, Check } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import posthog from 'posthog-js'
 import { useCallback, useState } from 'react'
@@ -306,8 +306,9 @@ export default function NewKnowledgePage() {
                 {file.name}
               </h3>
               {isUploadDone && (
-                <DuolingoBadge variant="green" className="px-2 text-xs">
-                  ✔︎ Uploaded
+                <DuolingoBadge variant="green" className="px-2 text-xs flex items-center gap-1">
+                  <Check className="size-3" />
+                  Uploaded
                 </DuolingoBadge>
               )}
             </div>

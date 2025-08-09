@@ -9,7 +9,7 @@ import { useLocalStorage } from '@/hooks/use-local-storage'
 import { client } from '@/lib/client'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -52,10 +52,10 @@ const TWEET_GOALS = [
 ]
 
 const MAIN_FOCUS = [
-  { label: '📈 Grow my audience', value: 'grow' },
-  { label: '🧠 Build a personal brand', value: 'personal_brand' },
-  { label: '💼 Promote my product or business', value: 'promote' },
-  { label: '🧩 Other', value: 'other' },
+  { label: 'Grow my audience', value: 'grow' },
+  { label: 'Build a personal brand', value: 'personal_brand' },
+  { label: 'Promote my product or business', value: 'promote' },
+  { label: 'Other', value: 'other' },
 ]
 
 export const OnboardingModal = ({
@@ -247,7 +247,10 @@ export const OnboardingModal = ({
               <SwiperSlide className="relative space-y-6">
                 <div className="flex flex-col items-center gap-1 text-center">
                   <p className="text-2xl font-semibold text-gray-900">
-                    Welcome to Postify 🎉
+                    <div className="flex items-center gap-2">
+                      Welcome to Postify
+                      <Sparkles className="size-6 text-yellow-500" />
+                    </div>
                   </p>
                   <p className="text-stone-600 text-balance">
                     Just{' '}
@@ -362,7 +365,10 @@ export const OnboardingModal = ({
               <SwiperSlide>
                 <div className="flex w-full space-y-6 flex-col items-center justify-center">
                   <div className="flex w-full flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-gray-900">You're in! 🎉</p>
+                    <p className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                      You're in!
+                      <Sparkles className="size-6 text-yellow-500" />
+                    </p>
                     <p className="text-gray-600">
                       We've analyzed your{' '}
                       <span className="font-medium text-stone-800">

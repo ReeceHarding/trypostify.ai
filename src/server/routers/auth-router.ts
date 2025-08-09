@@ -48,7 +48,7 @@ export const authRouter = j.router({
   createTwitterLink: privateProcedure
     .input(z.object({ action: z.enum(['onboarding', 'add-account']) }))
     .query(async ({ c, input, ctx }) => {
-      console.log('⚠️⚠️⚠️ callback url:', `${getBaseUrl()}/api/auth_router/callback`)
+      console.log('[WARNING] AUTH_ROUTER callback url:', `${getBaseUrl()}/api/auth_router/callback`)
 
       if (input.action === 'add-account' && ctx.user.plan !== 'pro') {
         throw new HTTPException(402, {

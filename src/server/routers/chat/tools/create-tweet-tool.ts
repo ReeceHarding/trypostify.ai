@@ -197,7 +197,7 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
         system: editToolSystemPrompt({ name: account.name }),
         messages: convertToModelMessages(messages),
         onError(error) {
-          console.log('❌❌❌ ERROR:', JSON.stringify(error, null, 2))
+          console.log('[ERROR] CREATE_TWEET_TOOL:', JSON.stringify(error, null, 2))
 
           throw new HTTPException(500, {
             message: error instanceof Error ? error.message : 'Something went wrong.',

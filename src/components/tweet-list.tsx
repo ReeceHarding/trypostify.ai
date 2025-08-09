@@ -27,6 +27,7 @@ import {
   MessageCircle,
   TrendingUp,
   RefreshCw,
+  Edit,
 } from 'lucide-react'
 import DuolingoButton from '@/components/ui/duolingo-button'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -297,7 +298,8 @@ export default function TweetList({
                 onClick={() => router.push('/studio')}
                 className="w-fit mx-auto"
               >
-                Start writing ✏️
+                <Edit className="size-4 mr-1" />
+                Start writing
               </DuolingoButton>
             </div>
           </Card>

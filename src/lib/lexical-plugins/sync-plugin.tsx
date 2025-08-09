@@ -49,7 +49,7 @@ export function ShadowEditorSyncPlugin() {
 
           composerEditor.update(
             () => {
-              console.log('❌ SETTING BAD', tags, serializedState)
+              console.log('[ERROR] SYNC_PLUGIN: Invalid state', tags, serializedState)
               composerEditor.setEditorState(parsedState)
             },
             { tag: 'sync-from-persistent' },

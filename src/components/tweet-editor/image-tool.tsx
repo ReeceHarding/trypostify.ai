@@ -402,7 +402,7 @@ export function ImageTool({
         onUpload(file)
       }
 
-      toast.success('Image added! 🎉', { id: savingToast })
+      toast.success('Image added!', { id: savingToast })
     } catch (error) {
       toast.error('Something went wrong')
     }
@@ -1235,7 +1235,7 @@ export function ImageTool({
                             'bg-gradient-to-br from-rose-300 to-pink-400',
                             'bg-gradient-to-br from-orange-300 to-red-400',
                             'bg-gradient-to-br from-purple-300 to-fuchsia-400',
-                            'bg-gradient-to-br from-blue-300 to-cyan-400',
+                            'bg-gradient-to-br from-twitter-300 to-twitter-400',
                             'bg-gradient-to-br from-yellow-300 to-orange-400',
                             'bg-gradient-to-br from-indigo-300 to-purple-400',
                             'bg-gradient-to-br from-stone-900 to-stone-950',
@@ -1457,7 +1457,7 @@ export function ImageTool({
                 onClick={() => saveImage(1)}
                 disabled={!blob?.src}
               >
-                Add to Tweet 🎉
+                Add to Tweet
               </Button>
             </div>
           </div>
