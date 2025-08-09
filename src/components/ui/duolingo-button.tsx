@@ -23,18 +23,18 @@ export const baseStyles =
 
 export const variantStyles = {
   primary:
-    'bg-indigo-600 text-white border bg-clip-padding border-b-2 border-indigo-700 hover:bg-indigo-500 shadow-[0_3px_0_#3730a3] focus:ring-indigo-600',
+    'bg-primary text-white border bg-clip-padding border-b-2 border-primary hover:bg-primary/90 shadow-[0_3px_0_hsl(var(--primary))] focus:ring-primary',
   secondary:
-    'bg-[#FFFFFF] border bg-clip-padding text-stone-800 border-b-2 border-[#E5E5E5] hover:bg-light-gray shadow-[0_3px_0_#E5E5E5] focus:ring-[#E5E5E5]',
+    'bg-white border bg-clip-padding text-neutral-700 border-b-2 border-neutral-300 hover:bg-neutral-50 shadow-[0_3px_0_hsl(var(--neutral-300))] focus:ring-neutral-300',
   disabled:
-    'bg-[#E5E5E5] text-[#AFAFAF] border-b-2 border-[#CCCCCC] cursor-not-allowed shadow-[0_3px_0_#CCCCCC]',
-  icon: 'bg-indigo-600 text-white border-b-2 border-indigo-700 hover:bg-indigo-500 shadow-[0_3px_0_#4338CA] focus:ring-indigo-600 p-0 flex items-center justify-center',
+    'bg-neutral-200 text-neutral-400 border-b-2 border-neutral-300 cursor-not-allowed shadow-[0_3px_0_hsl(var(--neutral-300))]',
+  icon: 'bg-primary text-white border-b-2 border-primary hover:bg-primary/90 shadow-[0_3px_0_hsl(var(--primary))] focus:ring-primary p-0 flex items-center justify-center',
   destructive:
-    'bg-red-500 text-white border-b-2 border-red-600 hover:bg-red-600 shadow-[0_3px_0_#B91C1C] focus:ring-red-500',
+    'bg-error-500 text-white border-b-2 border-error-600 hover:bg-error-600 shadow-[0_3px_0_hsl(var(--error-600))] focus:ring-error-500',
   dashedOutline:
-    'bg-white text-gray-600 border-2 bg-clip-padding border-dashed border-stone-300 border-b-[4px] hover:bg-stone-50 focus:ring-gray-400',
+    'bg-white text-neutral-600 border-2 bg-clip-padding border-dashed border-neutral-300 border-b-[4px] hover:bg-neutral-50 focus:ring-neutral-400',
   emerald:
-    'bg-emerald-600 text-white border bg-clip-padding border-b-2 border-emerald-700 hover:bg-emerald-500 shadow-[0_3px_0_#065f46] focus:ring-emerald-600',
+    'bg-success-600 text-white border bg-clip-padding border-b-2 border-success-700 hover:bg-success-500 shadow-[0_3px_0_hsl(var(--success-700))] focus:ring-success-600',
 }
 
 export const sizeStyles = {

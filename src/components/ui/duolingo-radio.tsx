@@ -31,8 +31,8 @@ const DuolingoRadioGroup = forwardRef<HTMLDivElement, DuolingoRadioGroupProps>(
               className={cn(
                 'flex items-center justify-between cursor-pointer rounded-xl border-2 transition-all px-4 py-3 font-medium text-base',
                 checked
-                  ? 'border-indigo-600 bg-indigo-50 shadow-[0_2px_0_#E0E7FF] text-indigo-900'
-                  : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700',
+                  ? 'border-primary bg-primary/10 shadow-[0_2px_0_hsl(var(--primary)/0.2)] text-primary'
+                  : 'border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700',
                 disabled && 'opacity-60 cursor-not-allowed',
               )}
             >

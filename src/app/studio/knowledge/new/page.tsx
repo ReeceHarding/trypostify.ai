@@ -236,7 +236,7 @@ export default function NewKnowledgePage() {
     const isImage = file.type.startsWith('image/')
 
     return (
-      <div className="relative border-2 border-gray-200 shadow-[0_2px_0_#E5E7EB] rounded-2xl p-6 bg-white">
+      <div className="relative border-2 border-neutral-200 shadow-[0_2px_0_hsl(var(--neutral-200))] rounded-2xl p-6 bg-white">
         <div className="flex items-center gap-4">
           {isImage && localUrl ? (
             <div className="relative size-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
@@ -354,8 +354,8 @@ export default function NewKnowledgePage() {
         ) : (
           <div
             className={cn(
-              'relative border-2 border-gray-200 shadow-[0_2px_0_#E5E7EB] rounded-2xl p-12 text-center transition-all duration-200',
-              { 'border-indigo-500 bg-indigo-50 scale-[1.01]': isDragging },
+              'relative border-2 border-neutral-200 shadow-[0_2px_0_hsl(var(--neutral-200))] rounded-2xl p-12 text-center transition-all duration-200',
+              { 'border-primary bg-primary/5 scale-[1.01]': isDragging },
             )}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}

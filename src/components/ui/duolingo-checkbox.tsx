@@ -42,8 +42,8 @@ const DuolingoCheckbox = forwardRef<HTMLInputElement, DuolingoCheckboxProps>(
             className={cn(
               'w-5 h-5 rounded border-2 transition-all duration-200 flex items-center justify-center cursor-pointer',
               checked
-                ? 'border-indigo-600 bg-indigo-600 shadow-[0_2px_0_#4F46E5]'
-                : 'border-gray-300 bg-white shadow-[0_2px_0_#E5E7EB] hover:border-gray-400',
+                ? 'border-primary bg-primary shadow-[0_2px_0_hsl(var(--primary))]'
+                : 'border-neutral-300 bg-white shadow-[0_2px_0_hsl(var(--neutral-200))] hover:border-neutral-400',
               disabled && 'opacity-60 cursor-not-allowed',
               className,
             )}

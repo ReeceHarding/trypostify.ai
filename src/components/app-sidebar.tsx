@@ -437,7 +437,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       {children}
 
       <Sidebar side="right" collapsible="offcanvas">
-        <SidebarHeader className="flex flex-col border-b border-stone-200 bg-stone-100 items-center justify-end gap-2 px-4">
+        <SidebarHeader className="flex flex-col border-b border-neutral-200 bg-neutral-100 items-center justify-end gap-2 px-4">
           <div className="w-full flex items-center justify-between">
             <p className="text-sm/6 font-medium">Assistant</p>
             <div className="flex gap-2">
@@ -494,7 +494,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </SidebarHeader>
-        <SidebarContent className="relative h-full py-0 bg-gray-50 bg-opacity-25">
+        <SidebarContent className="relative h-full py-0 bg-neutral-50 bg-opacity-25">
           {messages.length === 0 ? (
             <div className="absolute z-10 p-3 pb-5 inset-x-0 bottom-0">
               <p className="text-sm text-neutral-500 mb-2">Examples</p>

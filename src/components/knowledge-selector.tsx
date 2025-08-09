@@ -110,7 +110,7 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
             {isLoading && allDocuments.filter((d) => !d.isDeleted).length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <TextShimmer
-                  className="text-sm [--base-gradient-color:#78716c]"
+                  className="text-sm [--base-gradient-color:hsl(var(--neutral-600))]"
                   duration={0.7}
                 >
                   Loading knowledge base...

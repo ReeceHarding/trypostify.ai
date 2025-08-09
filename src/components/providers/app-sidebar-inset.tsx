@@ -28,7 +28,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage: `radial-gradient(circle, #d1d5db 1.5px, transparent 1.5px)`,
+            backgroundImage: `radial-gradient(circle, hsl(var(--neutral-300)) 1.5px, transparent 1.5px)`,
             backgroundSize: '20px 20px',
             opacity: 0.5,
           }}

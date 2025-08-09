@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { cva } from "class-variance-authority"
 
 const textareaVariants = cva(
-  "w-full rounded-xl bg-white border-2 font-medium transition-all duration-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 resize-none p-4 border-gray-200 shadow-[0_2px_0_#E5E7EB] focus:ring-indigo-600",
+  "w-full rounded-xl bg-white border-2 font-medium transition-all duration-200 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-offset-2 resize-none p-4 border-neutral-200 shadow-[0_2px_0_hsl(var(--neutral-200))] focus:ring-primary",
   {
     variants: {
       size: {

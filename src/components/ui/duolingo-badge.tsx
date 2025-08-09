@@ -21,20 +21,20 @@ export default function DuolingoBadge({
 
   const variantStyles = {
     achievement:
-      "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white border-2 border-indigo-400 shadow-[0_2px_0_#4338CA,0_4px_6px_-1px_rgba(79,70,229,0.3)]",
+      "bg-gradient-to-b from-primary to-primary text-white border-2 border-primary shadow-[0_2px_0_hsl(var(--primary)),0_4px_6px_-1px_hsl(var(--primary)/0.3)]",
     streak:
-      "bg-gradient-to-b from-orange-400 to-orange-500 text-white border-2 border-orange-300 shadow-[0_2px_0_#EA580C,0_4px_6px_-1px_rgba(249,115,22,0.3)]",
+      "bg-gradient-to-b from-warning-500 to-warning-600 text-white border-2 border-warning-500 shadow-[0_2px_0_hsl(var(--warning-600)),0_4px_6px_-1px_hsl(var(--warning-500)/0.3)]",
     level:
-      "bg-gradient-to-b from-emerald-400 to-emerald-500 text-white border-2 border-emerald-300 shadow-[0_2px_0_#059669,0_4px_6px_-1px_rgba(16,185,129,0.3)]",
-    xp: "bg-gradient-to-b from-blue-400 to-blue-500 text-white border-2 border-blue-300 shadow-[0_2px_0_#1D4ED8,0_4px_6px_-1px_rgba(59,130,246,0.3)]",
+      "bg-gradient-to-b from-success-500 to-success-600 text-white border-2 border-success-500 shadow-[0_2px_0_hsl(var(--success-600)),0_4px_6px_-1px_hsl(var(--success-500)/0.3)]",
+    xp: "bg-gradient-to-b from-primary to-primary text-white border-2 border-primary shadow-[0_2px_0_hsl(var(--primary)),0_4px_6px_-1px_hsl(var(--primary)/0.3)]",
     notification:
-      "bg-gradient-to-b from-red-400 to-red-500 text-white border-2 border-red-300 shadow-[0_2px_0_#DC2626,0_4px_6px_-1px_rgba(239,68,68,0.3)]",
+      "bg-gradient-to-b from-error-500 to-error-600 text-white border-2 border-error-500 shadow-[0_2px_0_hsl(var(--error-600)),0_4px_6px_-1px_hsl(var(--error-500)/0.3)]",
     gray:
-      "bg-gradient-to-b from-gray-400 to-gray-500 text-white border-2 border-gray-300 shadow-[0_2px_0_#6b7280,0_4px_6px_-1px_rgba(107,114,128,0.3)]",
+      "bg-gradient-to-b from-neutral-400 to-neutral-500 text-white border-2 border-neutral-300 shadow-[0_2px_0_hsl(var(--neutral-600)),0_4px_6px_-1px_hsl(var(--neutral-500)/0.3)]",
     green:
-      "bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-2 border-emerald-400 shadow-[0_2px_0_#16A34A,0_4px_6px_-1px_rgba(22,163,74,0.3)]",
+      "bg-gradient-to-b from-success-500 to-success-600 text-white border-2 border-success-500 shadow-[0_2px_0_hsl(var(--success-600)),0_4px_6px_-1px_hsl(var(--success-500)/0.3)]",
     amber:
-      "bg-gradient-to-b from-amber-400 to-amber-500 text-white border-2 border-amber-300 shadow-[0_2px_0_#D97706,0_4px_6px_-1px_rgba(245,158,11,0.3)]",
+      "bg-gradient-to-b from-warning-500 to-warning-600 text-white border-2 border-warning-500 shadow-[0_2px_0_hsl(var(--warning-600)),0_4px_6px_-1px_hsl(var(--warning-500)/0.3)]",
   }
 
   const sizeStyles = {

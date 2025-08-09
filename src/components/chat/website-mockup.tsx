@@ -55,9 +55,9 @@ export const WebsiteMockup = memo(
         <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-neutral-50 to-neutral-100 border-b border-neutral-200/50">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-400/80" />
-              <div className="w-3 h-3 rounded-full bg-yellow-400/80" />
-              <div className="w-3 h-3 rounded-full bg-green-400/80" />
+              <div className="w-3 h-3 rounded-full bg-error-500/80" />
+              <div className="w-3 h-3 rounded-full bg-warning-500/80" />
+              <div className="w-3 h-3 rounded-full bg-success-500/80" />
             </div>
           </div>
 

@@ -5,16 +5,16 @@ import { cn } from "@/lib/utils"
 import { cva } from "class-variance-authority"
 
 const inputVariants = cva(
-  "w-full rounded-xl bg-white border-2 font-medium transition-all duration-200 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2",
+  "w-full rounded-xl bg-white border-2 font-medium transition-all duration-200 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-offset-2",
   {
     variants: {
       variant: {
         default:
-          "border-gray-200 shadow-[0_2px_0_#E5E7EB] focus:ring-indigo-600",
+          "border-neutral-200 shadow-[0_2px_0_hsl(var(--neutral-200))] focus:ring-primary",
         error:
-          "border-red-300 text-red-600 shadow-[0_2px_0_#FCA5A5] focus:border-red-400 focus:ring-red-200 placeholder:text-red-300",
+          "border-error-500 text-error-600 shadow-[0_2px_0_hsl(var(--error-100))] focus:border-error-600 focus:ring-error-100 placeholder:text-error-500",
         success:
-          "border-green-300 text-green-600 shadow-[0_2px_0_#86EFAC] focus:border-green-400 focus:ring-green-200",
+          "border-success-500 text-success-600 shadow-[0_2px_0_hsl(var(--success-100))] focus:border-success-600 focus:ring-success-100",
       },
       size: {
         sm: "text-sm h-9 px-3",

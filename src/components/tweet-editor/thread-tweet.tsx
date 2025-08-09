@@ -407,7 +407,7 @@ function ThreadTweetContent({
         {/* Remove button */}
         <button
           onClick={() => removeMediaFile(index)}
-          className="absolute top-1 right-1 p-1.5 bg-gray-900 bg-opacity-70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-90"
+          className="absolute top-1 right-1 p-1.5 bg-neutral-900 bg-opacity-70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-90"
         >
           <X className="w-4 h-4 text-white" />
         </button>
@@ -420,7 +420,7 @@ function ThreadTweetContent({
         )}
 
         {mediaFile.error && (
-          <div className="absolute inset-0 bg-red-900 bg-opacity-80 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-error-700 bg-opacity-80 flex items-center justify-center p-4">
             <p className="text-white text-sm text-center">{mediaFile.error}</p>
           </div>
         )}

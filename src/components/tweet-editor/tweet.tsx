@@ -1047,8 +1047,8 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
 
     if (editMode)
       return (
-        <div className="border-indigo-600 border-2 bg-clip-padding shadow rounded-[20px] overflow-hidden">
-          <div className="py-1.5 px-6 bg-indigo-600 flex justify-between">
+        <div className="border-primary border-2 bg-clip-padding shadow rounded-[20px] overflow-hidden">
+          <div className="py-1.5 px-6 bg-primary flex justify-between">
             <div className="flex items-center gap-2">
               <Pen className="size-4 text-white" />
               <p className="text-sm/6 font-semibold text-white uppercase">
@@ -1237,7 +1237,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                 <div className="mt-3 pt-3 border-t border-stone-200 flex items-center justify-between">
                   <div
                     className={cn(
-                      'flex items-center gap-1.5 bg-stone-100 p-1.5 rounded-lg',
+                      'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
                     )}
                   >
                     <TooltipProvider>
@@ -1326,7 +1326,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                       </Tooltip>
                     </TooltipProvider>
 
-                    <div className="w-px h-4 bg-stone-300 mx-2" />
+                    <div className="w-px h-4 bg-neutral-300 mx-2" />
 
                     <ContentLengthIndicator />
                   </div>
@@ -1544,7 +1544,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
         }}
       >
         <DialogContent className="bg-white rounded-2xl p-6">
-          <div className="size-12 bg-gray-100 rounded-full flex items-center justify-center">
+          <div className="size-12 bg-neutral-100 rounded-full flex items-center justify-center">
             <Icons.twitter className="size-6" />
           </div>
           <DialogHeader className="py-2">

@@ -295,8 +295,8 @@ const Sidebar = React.forwardRef<
           <div
             data-sidebar="sidebar"
             className={cn(
-              "flex h-full w-full flex-col bg-[#0c0a09] group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow",
-              side === "left" ? "bg-[#0c0a09]/40" : "bg-[#0c0a09]"
+              "flex h-full w-full flex-col bg-neutral-950 group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow",
+              side === "left" ? "bg-neutral-950/40" : "bg-neutral-950"
             )}
           >
             {children}

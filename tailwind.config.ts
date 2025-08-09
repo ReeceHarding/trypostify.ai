@@ -14,8 +14,8 @@ const config: Config = {
         elegant: ["var(--font-elegant)"],
       },
       colors: {
-        "light-gray": "#FBFAF9",
-        "text-gray": "#36322F",
+        "light-gray": "hsl(var(--neutral-25))",
+        "text-gray": "hsl(var(--neutral-700))",
         brand: {
           "25": "#F8FCFF",
           "50": "#EFF9FF",
