@@ -265,9 +265,11 @@ export default function ThreadTweetEditor({
 
   const handleToggleMode = () => {
     console.log('[ThreadTweetEditor] Toggling mode from:', isThreadMode, 'to:', !isThreadMode)
+    console.log('[ThreadTweetEditor] Current tweets:', threadTweets)
     if (!isThreadMode) {
       // Entering thread mode - keep existing tweet and add a second one
       const existingTweet = threadTweets[0] || { id: crypto.randomUUID(), content: '', media: [] }
+      console.log('[ThreadTweetEditor] Preserving tweet:', existingTweet.id, 'with content:', existingTweet.content)
       setThreadTweets([
         existingTweet,
         { id: crypto.randomUUID(), content: '', media: [] },
@@ -292,7 +294,7 @@ export default function ThreadTweetEditor({
   }
 
   const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
-    console.log('[ThreadTweetEditor] Tweet updated:', id)
+    console.log('[ThreadTweetEditor] Tweet updated:', id, 'content:', content)
     setThreadTweets(prevTweets => {
       // Check if the tweet still exists in the array before updating
       const tweetExists = prevTweets.some(tweet => tweet.id === id)
@@ -300,9 +302,11 @@ export default function ThreadTweetEditor({
         console.log('[ThreadTweetEditor] Ignoring update for removed tweet:', id)
         return prevTweets
       }
-      return prevTweets.map(tweet =>
+      const updated = prevTweets.map(tweet =>
         tweet.id === id ? { ...tweet, content, media } : tweet
       )
+      console.log('[ThreadTweetEditor] Updated tweets state:', updated)
+      return updated
     })
   }
 
@@ -504,6 +508,7 @@ export default function ThreadTweetEditor({
                 )}
                 
                 <ThreadTweet
+                  key={tweet.id}
                   isThread={threadTweets.length > 1}
                   isFirstTweet={index === 0}
                   isLastTweet={index === threadTweets.length - 1}
@@ -537,6 +542,7 @@ export default function ThreadTweetEditor({
           // Single tweet mode
           <>
             <ThreadTweet
+              key={threadTweets[0]?.id}
               isThread={false}
               isFirstTweet={true}
               isLastTweet={true}
