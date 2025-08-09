@@ -278,7 +278,7 @@ const ChatInput = ({
                 contentEditable={
                   <ContentEditable
                     autoFocus
-                    className="w-full px-4 py-3 outline-none min-h-[4.5rem] text-base placeholder:text-gray-400"
+                    className="w-full px-4 py-3 outline-none min-h-[4.5rem] text-base placeholder:text-neutral-400"
                     style={{ minHeight: '4.5rem' }}
                     onPaste={handlePaste}
                   />
@@ -323,20 +323,20 @@ const ChatInput = ({
               </div>
 
               {isChooserOpen && filteredDocs.length > 0 ? (
-                <div className="absolute bottom-16 left-3 right-3 z-50 bg-white border-2 border-gray-200 rounded-xl shadow-[0_6px_0_#E5E7EB] p-1">
+                <div className="absolute bottom-16 left-3 right-3 z-50 bg-white border-2 border-neutral-200 rounded-xl shadow-[0_6px_0_hsl(var(--neutral-200))] p-1">
                   <div className="max-h-64 overflow-auto">
                     {filteredDocs.map((doc, idx) => (
                       <button
                         key={doc.id}
                         type="button"
                         className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                          idx === activeIndex ? 'bg-gray-100' : 'bg-white'
+                          idx === activeIndex ? 'bg-neutral-100' : 'bg-white'
                         }`}
                         onMouseEnter={() => setActiveIndex(idx)}
                         onClick={() => commitSelection(doc)}
                       >
                         {doc.title}
-                        <span className="ml-2 text-xs text-gray-400">{doc.type}</span>
+                        <span className="ml-2 text-xs text-neutral-400">{doc.type}</span>
                       </button>
                     ))}
                   </div>
@@ -497,7 +497,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         <SidebarContent className="relative h-full py-0 bg-gray-50 bg-opacity-25">
           {messages.length === 0 ? (
             <div className="absolute z-10 p-3 pb-5 inset-x-0 bottom-0">
-              <p className="text-sm text-gray-500 mb-2">Examples</p>
+              <p className="text-sm text-neutral-500 mb-2">Examples</p>
               <div className="space-y-2">
                 <PromptSuggestion
                   onClick={() => {
@@ -609,7 +609,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="relative p-3 border-t border-t-gray-300 bg-gray-100">
+        <SidebarFooter className="relative p-3 border-t border-t-neutral-300 bg-neutral-100">
           {/* <Improvements /> */}
 
           <FileUpload onFilesAdded={handleFilesAdded}>
@@ -627,7 +627,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
         <DialogContent className="bg-white rounded-2xl p-6 max-w-2xl max-h-[80vh] overflow-hidden">
-          <div className="size-12 bg-gray-100 rounded-full flex items-center justify-center">
+          <div className="size-12 bg-neutral-100 rounded-full flex items-center justify-center">
             <History className="size-6" />
           </div>
           <DialogHeader className="py-2">
@@ -651,15 +651,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     <button
                       key={chat.id}
                       onClick={() => handleChatSelect(chat.id)}
-                      className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                      className="w-full text-left p-4 rounded-lg border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm text-gray-900 truncate">
+                          <h3 className="font-medium text-sm text-neutral-900 truncate">
                             {chat.title}
                           </h3>
                         </div>
-                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                        <span className="text-xs text-neutral-400 whitespace-nowrap">
                           {formatDistanceToNow(new Date(chat.lastUpdated), {
                             addSuffix: true,
                           })}
@@ -668,7 +668,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     </button>
                   ))
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-neutral-500">
                     <p className="text-sm">No chat history yet</p>
                     <p className="text-xs mt-1">Start a conversation to see it here</p>
                   </div>

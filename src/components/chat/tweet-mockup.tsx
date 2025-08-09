@@ -89,21 +89,21 @@ export const TweetMockup = memo(
                     initial={{ opacity: 0, y: 0 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="h-4 bg-gray-200 rounded animate-pulse"
+                    className="h-4 bg-neutral-200 rounded animate-pulse"
                     style={{ width: '85%' }}
                   />
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.2 }}
-                    className="h-4 bg-gray-200 rounded animate-pulse"
+                    className="h-4 bg-neutral-200 rounded animate-pulse"
                     style={{ width: '92%' }}
                   />
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.3 }}
-                    className="h-4 bg-gray-200 rounded animate-pulse"
+                    className="h-4 bg-neutral-200 rounded animate-pulse"
                     style={{ width: '78%' }}
                   />
                 </div>
