@@ -5,13 +5,14 @@ import { cn } from '@/lib/utils'
 import DuolingoButton from '@/components/ui/duolingo-button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
 import { useConfetti } from '@/hooks/use-confetti'
-import { MediaFile, useTweets, TweetProvider } from '@/hooks/use-tweets'
+import { MediaFile, TweetProvider } from '@/hooks/use-tweets'
 import PlaceholderPlugin from '@/lib/placeholder-plugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical'
 import { initialConfig } from '@/hooks/use-tweets'
 
@@ -20,7 +21,7 @@ import { useAttachments } from '@/hooks/use-attachments'
 import { client } from '@/lib/client'
 import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
 import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
-import { ShadowEditorSyncPlugin } from '@/lib/lexical-plugins/sync-plugin'
+
 import { useMutation } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import {
@@ -109,7 +110,8 @@ function ThreadTweetContent({
   initialContent = '',
   initialMedia = [],
 }: ThreadTweetProps) {
-  const { shadowEditor } = useTweets()
+
+  const [editor] = useLexicalComposerContext()
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [charCount, setCharCount] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -125,11 +127,11 @@ function ThreadTweetContent({
 
   // Initialize content - only on first mount to avoid overwriting user input
   useEffect(() => {
-    if (shadowEditor) {
-      shadowEditor.update(() => {
+    if (editor && initialContent) {
+      editor.update(() => {
         const root = $getRoot()
         // Only set initial content if the editor is empty
-        if (root.getTextContent() === '' && initialContent) {
+        if (root.getTextContent() === '') {
           root.clear()
           const paragraph = $createParagraphNode()
           const text = $createTextNode(initialContent)
@@ -140,7 +142,7 @@ function ThreadTweetContent({
         }
       }, { tag: 'initialization' })
     }
-  }, [shadowEditor]) // Remove initialContent from deps to avoid re-initialization
+  }, [editor, initialContent])
 
   // Initialize media files when editing
   useEffect(() => {
@@ -159,8 +161,8 @@ function ThreadTweetContent({
 
   // Update parent when content changes
   useEffect(() => {
-    if (shadowEditor) {
-      const unregister = shadowEditor.registerUpdateListener(({ editorState }) => {
+    if (editor) {
+      const unregister = editor.registerUpdateListener(({ editorState }) => {
         editorState.read(() => {
           const content = $getRoot().getTextContent()
           setCharCount(content.length)
@@ -174,7 +176,7 @@ function ThreadTweetContent({
       })
       return () => unregister()
     }
-  }, [shadowEditor, onUpdate, mediaFiles])
+  }, [editor, onUpdate, mediaFiles])
 
   // Upload mutations
   const uploadToS3Mutation = useMutation({
@@ -367,7 +369,7 @@ function ThreadTweetContent({
 
         // Update parent
         if (onUpdate) {
-          const content = shadowEditor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
+          const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
           onUpdate(content, mediaFiles.filter(f => f.media_id && f.s3Key).map(f => ({
             s3Key: f.s3Key!,
             media_id: f.media_id!,
@@ -471,7 +473,7 @@ function ThreadTweetContent({
     // Clear all controllers
     abortControllersRef.current.clear()
 
-    shadowEditor.update(
+    editor.update(
       () => {
         const root = $getRoot()
         root.clear()
@@ -546,7 +548,6 @@ function ThreadTweetContent({
                 />
                 <PlaceholderPlugin placeholder={isFirstTweet ? "What's happening?" : "Add another tweet..."} />
                 <HistoryPlugin />
-                <ShadowEditorSyncPlugin />
                 <MentionsPlugin />
                 <MentionTooltipPlugin />
               </div>
