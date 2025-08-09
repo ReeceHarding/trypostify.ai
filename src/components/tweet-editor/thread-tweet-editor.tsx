@@ -432,8 +432,8 @@ export default function ThreadTweetEditor({
           </div>
         ))}
         
-        {/* Add tweet button - only show when there's already content in the first tweet */}
-        {threadTweets.length === 1 && threadTweets[0]?.content?.trim() && (
+        {/* Add tweet button - visible by default when there's exactly one tweet */}
+        {threadTweets.length === 1 && (
           <button
             onClick={handleAddTweet}
             className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
