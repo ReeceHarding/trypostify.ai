@@ -15,6 +15,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical'
 import { initialConfig } from '@/hooks/use-tweets'
+import { KeyboardShortcutsPlugin } from '@/lib/lexical-plugins/keyboard-shortcuts-plugin'
 import MediaLibrary from '@/components/media-library'
 import { SelectedMedia } from '@/types/media'
 
@@ -636,6 +637,10 @@ function ThreadTweetContent({
                 <HistoryPlugin />
                 <MentionsPlugin />
                 <MentionTooltipPlugin />
+                <KeyboardShortcutsPlugin 
+                  onPost={handlePostClick}
+                  onQueue={onQueueThread}
+                />
               </div>
 
               {/* Media Files Display */}

@@ -17,6 +17,7 @@ import { client } from '@/lib/client'
 import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
 import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
 import { ShadowEditorSyncPlugin } from '@/lib/lexical-plugins/sync-plugin'
+import { KeyboardShortcutsPlugin } from '@/lib/lexical-plugins/keyboard-shortcuts-plugin'
 import MediaLibrary from '@/components/media-library'
 import { SelectedMedia } from '@/types/media'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -1111,6 +1112,10 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
                   <ShadowEditorSyncPlugin />
                   <MentionsPlugin />
                   <MentionTooltipPlugin />
+                  <KeyboardShortcutsPlugin 
+                    onPost={handlePostTweet}
+                    onQueue={handleAddToQueue}
+                  />
                 </div>
 
                 {/* Media Files Display */}
