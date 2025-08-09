@@ -1,8 +1,114 @@
 ---
-description:
+description: Design system rules and color variables for consistent UI development
 globs:
 alwaysApply: false
 ---
+
+# Design System & Color Variables
+
+## CRITICAL: Always Use Color Variables
+
+**NEVER hardcode colors**. This project uses a comprehensive color variable system that must be used for all color definitions. This ensures consistency and allows for easy theme changes.
+
+### How Our Color System Works
+
+1. **CSS Variables**: Colors are defined as HSL values in CSS custom properties in `src/app/globals.css`
+2. **Tailwind Classes**: Access these colors through Tailwind utility classes
+3. **Theme Support**: The system supports both light and dark modes automatically
+
+## Color Variable Reference
+
+### Neutral Colors (Grayscale)
+Use these for text, backgrounds, borders, and UI elements:
+- `neutral-25`: Nearly white (light mode) / Nearly black (dark mode)
+- `neutral-50`: Lightest gray
+- `neutral-100`: Very light gray
+- `neutral-200`: Light gray  
+- `neutral-300`: Medium-light gray
+- `neutral-400`: Medium gray (often used for muted text)
+- `neutral-500`: True medium gray
+- `neutral-600`: Medium-dark gray
+- `neutral-700`: Dark gray (primary text in light mode)
+- `neutral-800`: Very dark gray
+- `neutral-900`: Nearly black
+- `neutral-950`: Black (light mode) / White (dark mode)
+
+### Semantic Colors
+
+#### Primary (Brand Blue - Twitter Blue)
+- `primary`: Main brand color (#1DA1F2 equivalent)
+- `primary-foreground`: Text color on primary backgrounds
+- Also available: `primary-50` through `primary-950` for shades
+
+#### Success (Green)
+- `success-50`: Lightest green
+- `success-100`: Light green
+- `success-500`: Medium green
+- `success-600`: Dark green
+- `success-700`: Darkest green
+
+#### Warning (Yellow/Amber)
+- `warning-50`: Lightest yellow
+- `warning-100`: Light yellow
+- `warning-500`: Medium yellow
+- `warning-600`: Dark yellow
+
+#### Error (Red)
+- `error-50`: Lightest red
+- `error-100`: Light red
+- `error-500`: Medium red
+- `error-600`: Dark red
+- `error-700`: Darkest red
+
+#### Component-Specific
+- `background`: Page background
+- `foreground`: Default text color
+- `card`: Card backgrounds
+- `card-foreground`: Text on cards
+- `border`: Default borders
+- `input`: Input field borders
+- `ring`: Focus rings
+- `muted`: Muted backgrounds
+- `muted-foreground`: Muted text
+
+## Usage Examples
+
+### ❌ WRONG - Never Do This:
+```jsx
+// Never hardcode colors
+<div className="text-gray-400">
+<div className="bg-stone-100">
+<div className="border-#e5e5e5">
+<div style={{color: '#666'}}>
+```
+
+### ✅ CORRECT - Always Do This:
+```jsx
+// Always use color variables
+<div className="text-neutral-400">
+<div className="bg-neutral-100">
+<div className="border-neutral-200">
+<div className="text-neutral-600">
+```
+
+### Common Patterns:
+- **Primary buttons**: `bg-primary text-primary-foreground`
+- **Secondary buttons**: `bg-neutral-100 text-neutral-700 border-neutral-200`
+- **Muted text**: `text-neutral-400` or `text-muted-foreground`
+- **Error states**: `text-error-500` or `bg-error-50`
+- **Success states**: `text-success-600` or `bg-success-50`
+- **Borders**: `border-neutral-200` (light) or `border-neutral-800` (dark)
+- **Hover states**: Use darker shades, e.g., `hover:bg-neutral-200`
+
+## Design Philosophy
+
+Our design system follows these principles:
+
+1. **Clean & Minimal**: Inspired by Twitter's interface with clean lines and ample whitespace
+2. **Duolingo-Style Buttons**: Buttons have a 3D pressed effect with bottom borders
+3. **Consistent Spacing**: Use Tailwind's spacing scale (p-2, m-4, etc.)
+4. **Rounded Corners**: Use `rounded-md` for most elements, `rounded-lg` for larger components
+5. **Subtle Shadows**: Use `shadow-sm` or `shadow` sparingly for depth
 
 ## Icons
 
@@ -12,3 +118,18 @@ alwaysApply: false
 - 24x24 viewBox with stroke-width="2"
 - Use `lucide` and `lucide-{icon-name}` class naming
 - Never mix with other icon libraries (Heroicons, Feather, etc.)
+
+## Typography
+
+- **Primary font**: System font stack (Arial, Helvetica, sans-serif)
+- **Headings**: Use `font-semibold` or `font-bold`
+- **Body text**: Default weight
+- **Small text**: Use `text-sm` or `text-xs` with appropriate color like `text-neutral-600`
+
+## Best Practices
+
+1. **Always check existing components** before creating new styles
+2. **Use semantic color names** (primary, error, success) over color values
+3. **Maintain consistency** with existing UI patterns
+4. **Test in both light and dark modes** to ensure colors work well
+5. **Prefer Tailwind classes** over inline styles or custom CSS
