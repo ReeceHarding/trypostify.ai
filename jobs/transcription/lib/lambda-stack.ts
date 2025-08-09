@@ -31,7 +31,7 @@ export class TranscriptionStack extends cdk.Stack {
           's3:DeleteObject',
           's3:GetObjectVersion',
         ],
-        resources: ['arn:aws:s3:::contentport/*', 'arn:aws:s3:::*/*'],
+        resources: ['arn:aws:s3:::*/*'],
       })
     )
 
