@@ -354,8 +354,9 @@ function ThreadTweetContent({
           fileUrl: url,
         })
 
-        setMediaFiles((prev) =>
-          prev.map((mf) =>
+        let nextFiles: MediaFile[] = []
+        setMediaFiles((prev) => {
+          nextFiles = prev.map((mf) =>
             mf.url === url
               ? {
                   ...mf,
@@ -366,16 +367,17 @@ function ThreadTweetContent({
                   s3Key: s3Result.fileKey,
                 }
               : mf,
-          ),
-        )
+          )
+          return nextFiles
+        })
 
-        // Update parent
+        // Update parent with the freshly computed media list
         if (onUpdate) {
           const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
-          onUpdate(content, mediaFiles.filter(f => f.media_id && f.s3Key).map(f => ({
-            s3Key: f.s3Key!,
-            media_id: f.media_id!,
-          })))
+          const parentMedia = nextFiles
+            .filter((f) => f.media_id && f.s3Key)
+            .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+          onUpdate(content, parentMedia)
         }
       } catch (error) {
         console.error('[ThreadTweet] Upload error:', error)
@@ -398,7 +400,20 @@ function ThreadTweetContent({
         abortControllersRef.current.delete(mediaFile.url)
       }
     }
-    setMediaFiles((prev) => prev.filter((_, i) => i !== index))
+    let nextFiles: MediaFile[] = []
+    setMediaFiles((prev) => {
+      nextFiles = prev.filter((_, i) => i !== index)
+      return nextFiles
+    })
+
+    // Reflect removal in parent immediately
+    if (onUpdate) {
+      const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
+      const parentMedia = nextFiles
+        .filter((f) => f.media_id && f.s3Key)
+        .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+      onUpdate(content, parentMedia)
+    }
   }
 
   const renderMediaOverlays = (mediaFile: MediaFile, index: number) => {
