@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/logger.js --clear \"sh -c 'PIDS=$(lsof -n -P -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true); if [ -n \\\"$PIDS\\\" ]; then echo \\\"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Killing port 3000 PIDs: $PIDS\\\"; kill -9 $PIDS >/dev/null 2>&1 || true; fi; echo \\\"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Starting Next on port 3000\\\"; NEXT_TELEMETRY_DISABLED=1 next dev -p 3000'\"",
-    "dev-no-log": "sh -c 'PIDS=$(lsof -n -P -tiTCP:3000 -sTCP:LISTEN 2>/dev/null || true); if [ -n \"$PIDS\" ]; then echo \"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Killing port 3000 PIDs: $PIDS\"; kill -9 $PIDS >/dev/null 2>&1 || true; fi; echo \"[dev] $(date +%Y-%m-%dT%H:%M:%S%z) Starting Next on port 3000\"; NEXT_TELEMETRY_DISABLED=1 next dev -p 3000'",
+    "dev": "node scripts/logger.js --clear \"node scripts/dev-server.js\"",
+    "dev-no-log": "node scripts/dev-server.js",
     "build": "node scripts/logger.js \"next build\"",
     "build-no-log": "next build",
     "start": "node scripts/logger.js \"next start\"",
