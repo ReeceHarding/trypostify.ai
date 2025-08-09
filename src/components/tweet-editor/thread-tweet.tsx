@@ -74,6 +74,7 @@ interface ThreadTweetProps {
   isPosting?: boolean
   onUpdate?: (content: string, media: Array<{ s3Key: string; media_id: string }>) => void
   initialContent?: string
+  initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
 }
 
 // Twitter media type validation
@@ -106,6 +107,7 @@ function ThreadTweetContent({
   isPosting = false,
   onUpdate,
   initialContent = '',
+  initialMedia = [],
 }: ThreadTweetProps) {
   const { shadowEditor } = useTweets()
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
@@ -132,8 +134,26 @@ function ThreadTweetContent({
         paragraph.append(text)
         root.append(paragraph)
       }, { tag: 'initialization' })
+      
+      // Also update char count
+      setCharCount(initialContent.length)
     }
-  }, [])
+  }, [initialContent, shadowEditor])
+
+  // Initialize media files when editing
+  useEffect(() => {
+    if (initialMedia && initialMedia.length > 0) {
+      setMediaFiles(initialMedia.map(media => ({
+        url: media.url,
+        type: media.type,
+        s3Key: media.s3Key,
+        media_id: media.media_id,
+        uploaded: true,
+        uploading: false,
+        file: null,
+      })))
+    }
+  }, [initialMedia])
 
   // Update parent when content changes
   useEffect(() => {

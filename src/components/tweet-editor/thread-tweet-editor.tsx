@@ -21,6 +21,20 @@ interface ThreadTweetData {
   }>
 }
 
+interface ThreadTweetFromAPI {
+  id: string
+  content: string
+  media: Array<{
+    url: string
+    s3Key: string
+    media_id: string
+    type: 'image' | 'gif' | 'video'
+    uploaded: boolean
+    uploading: boolean
+    file: null
+  }>
+}
+
 interface ThreadTweetEditorProps {
   className?: string
   editMode?: boolean
@@ -36,6 +50,7 @@ export default function ThreadTweetEditor({
   const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
     { id: crypto.randomUUID(), content: '', media: [] },
   ])
+  const [fullMediaData, setFullMediaData] = useState<Record<string, any[]>>({})
   const router = useRouter()
   const { fire } = useConfetti()
 
@@ -68,10 +83,23 @@ export default function ThreadTweetEditor({
     if (threadData?.tweets && threadData.tweets.length > 0) {
       console.log('[ThreadTweetEditor] Loading thread data:', threadData.tweets.length, 'tweets')
       setIsThreadMode(true)
-      setThreadTweets(threadData.tweets.map(tweet => ({
+      
+      // Store full media data separately
+      const mediaDataMap: Record<string, any[]> = {}
+      threadData.tweets.forEach((tweet: any) => {
+        if (tweet.media && tweet.media.length > 0) {
+          mediaDataMap[tweet.id] = tweet.media
+        }
+      })
+      setFullMediaData(mediaDataMap)
+      
+      setThreadTweets(threadData.tweets.map((tweet: any) => ({
         id: tweet.id,
         content: tweet.content,
-        media: tweet.media || [],
+        media: tweet.media?.map((m: any) => ({
+          s3Key: m.s3Key,
+          media_id: m.media_id,
+        })) || [],
       })))
     }
   }, [threadData])
@@ -479,6 +507,7 @@ export default function ThreadTweetEditor({
                   isPosting={isPosting}
                   onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
                   initialContent={tweet.content}
+                  initialMedia={fullMediaData[tweet.id] || []}
                 />
               </div>
             ))}
@@ -504,6 +533,7 @@ export default function ThreadTweetEditor({
               isPosting={false}
               onUpdate={(content, media) => handleTweetUpdate(threadTweets[0]?.id || '', content, media)}
               initialContent={threadTweets[0]?.content || ''}
+              initialMedia={fullMediaData[threadTweets[0]?.id || ''] || []}
             />
             
             {/* Create thread link - don't show in edit mode */}
