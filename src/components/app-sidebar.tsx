@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowUp, History, Paperclip, Plus, RotateCcw, Square, X } from 'lucide-react'
-import { useCallback, useContext, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 import {
   Sidebar,
@@ -54,11 +54,13 @@ const ChatInput = ({
   onStop,
   disabled,
   handleFilesAdded,
+  knowledgeDocuments,
 }: {
   onSubmit: (text: string, editorContent: string) => void
   onStop: () => void
   disabled: boolean
   handleFilesAdded: (files: File[]) => void
+  knowledgeDocuments?: SelectedKnowledgeDocument[]
 }) => {
   const [editor] = useLexicalComposerContext()
   const { isDragging } = useContext(FileUploadContext)
@@ -67,6 +69,71 @@ const ChatInput = ({
     useAttachments()
 
   const { shadowEditor } = useTweets()
+
+  // Basic "@/" mention support for knowledge documents
+  const [isChooserOpen, setIsChooserOpen] = useState(false)
+  const [chooserQuery, setChooserQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const filteredDocs = useMemo(() => {
+    const docs = (knowledgeDocuments || []).filter((d) => !d.isDeleted)
+    if (!chooserQuery.trim()) return docs.slice(0, 8)
+    const q = chooserQuery.toLowerCase()
+    return docs.filter((d) => d.title?.toLowerCase().includes(q)).slice(0, 8)
+  }, [knowledgeDocuments, chooserQuery])
+
+  useEffect(() => {
+    const remove = editor.registerTextContentListener(() => {
+      editor.getEditorState().read(() => {
+        const content = $getRoot().getTextContent()
+        const match = content.match(/@\/([^\s]*)$/)
+        if (match) {
+          setIsChooserOpen(true)
+          setChooserQuery(match[1] || '')
+          setActiveIndex(0)
+        } else {
+          setIsChooserOpen(false)
+          setChooserQuery('')
+        }
+      })
+    })
+    return () => remove()
+  }, [editor])
+
+  const commitSelection = useCallback(
+    (doc: SelectedKnowledgeDocument) => {
+      const exists = attachments.some((a: any) => a.id === doc.id)
+      if (!exists) addKnowledgeAttachment(doc)
+      setIsChooserOpen(false)
+      setChooserQuery('')
+    },
+    [attachments, addKnowledgeAttachment],
+  )
+
+  useEffect(() => {
+    if (!isChooserOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!isChooserOpen) return
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setActiveIndex((i) => (i + 1) % Math.max(filteredDocs.length, 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setActiveIndex((i) => (i - 1 + Math.max(filteredDocs.length, 1)) % Math.max(filteredDocs.length, 1))
+      } else if (e.key === 'Enter') {
+        if (filteredDocs[activeIndex]) {
+          e.preventDefault()
+          commitSelection(filteredDocs[activeIndex])
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        setIsChooserOpen(false)
+        setChooserQuery('')
+      }
+    }
+    window.addEventListener('keydown', onKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
+  }, [isChooserOpen, filteredDocs, activeIndex, commitSelection])
 
   const handleSubmit = () => {
     const editorContent = shadowEditor.read(() => $getRoot().getTextContent().trim())
@@ -241,6 +308,27 @@ const ChatInput = ({
                   </DuolingoButton>
                 )}
               </div>
+
+              {isChooserOpen && filteredDocs.length > 0 ? (
+                <div className="absolute bottom-16 left-3 right-3 z-50 bg-white border-2 border-gray-200 rounded-xl shadow-[0_6px_0_#E5E7EB] p-1">
+                  <div className="max-h-64 overflow-auto">
+                    {filteredDocs.map((doc, idx) => (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+                          idx === activeIndex ? 'bg-gray-100' : 'bg-white'
+                        }`}
+                        onMouseEnter={() => setActiveIndex(idx)}
+                        onClick={() => commitSelection(doc)}
+                      >
+                        {doc.title}
+                        <span className="ml-2 text-xs text-gray-400">{doc.type}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -517,6 +605,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               onSubmit={handleSubmit}
               handleFilesAdded={handleFilesAdded}
               disabled={status === 'submitted' || status === 'streaming'}
+              knowledgeDocuments={knowledgeData?.documents}
             />
           </FileUpload>
         </SidebarFooter>
