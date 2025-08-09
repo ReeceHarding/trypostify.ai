@@ -1,7 +1,12 @@
 import useTweetMetadata from '@/hooks/use-tweet-metdata'
 
-const ContentLengthIndicator = () => {
-  const { charCount } = useTweetMetadata()
+interface ContentLengthIndicatorProps {
+  length?: number
+}
+
+const ContentLengthIndicator = ({ length }: ContentLengthIndicatorProps = {}) => {
+  const { charCount: hookCharCount } = useTweetMetadata()
+  const charCount = length ?? hookCharCount
 
   const getProgressColor = () => {
     const percentage = (charCount / 280) * 100

@@ -105,7 +105,9 @@ function ThreadTweetContent({
   onUpdate,
   initialContent = '',
 }: ThreadTweetProps) {
-  const { mediaFiles, setMediaFiles, shadowEditor, charCount } = useTweets()
+  const { shadowEditor } = useTweets()
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  const [charCount, setCharCount] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
@@ -133,14 +135,17 @@ function ThreadTweetContent({
 
   // Update parent when content changes
   useEffect(() => {
-    if (onUpdate && shadowEditor) {
+    if (shadowEditor) {
       const unregister = shadowEditor.registerUpdateListener(({ editorState }) => {
         editorState.read(() => {
           const content = $getRoot().getTextContent()
-          onUpdate(content, mediaFiles.filter(f => f.media_id && f.s3Key).map(f => ({
-            s3Key: f.s3Key!,
-            media_id: f.media_id!,
-          })))
+          setCharCount(content.length)
+          if (onUpdate) {
+            onUpdate(content, mediaFiles.filter(f => f.media_id && f.s3Key).map(f => ({
+              s3Key: f.s3Key!,
+              media_id: f.media_id!,
+            })))
+          }
         })
       })
       return () => unregister()
@@ -725,7 +730,7 @@ function ThreadTweetContent({
 
                   <div className="w-px h-4 bg-stone-300 mx-2" />
 
-                  <ContentLengthIndicator />
+                  <ContentLengthIndicator length={charCount} />
                 </div>
 
                 <div className="flex items-center gap-2">

@@ -209,9 +209,17 @@ export default function ThreadTweetEditor({
 
   const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
     console.log('[ThreadTweetEditor] Tweet updated:', id)
-    setThreadTweets(threadTweets.map(tweet =>
-      tweet.id === id ? { ...tweet, content, media } : tweet
-    ))
+    setThreadTweets(prevTweets => {
+      // Check if the tweet still exists in the array before updating
+      const tweetExists = prevTweets.some(tweet => tweet.id === id)
+      if (!tweetExists) {
+        console.log('[ThreadTweetEditor] Ignoring update for removed tweet:', id)
+        return prevTweets
+      }
+      return prevTweets.map(tweet =>
+        tweet.id === id ? { ...tweet, content, media } : tweet
+      )
+    })
   }
 
   const handlePostThread = async () => {
