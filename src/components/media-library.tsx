@@ -172,7 +172,7 @@ export default function MediaLibrary({
                 setPage(0)
               }}
               placeholder="Search media..."
-              className="pl-9"
+              className="pl-10 rounded-full h-11"
             />
           </div>
           <DuolingoButton
@@ -205,7 +205,7 @@ export default function MediaLibrary({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader className="size-8" />
@@ -222,7 +222,7 @@ export default function MediaLibrary({
             {search && <p className="text-sm">Try adjusting your search</p>}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-4">
             {data.items.map((item) => {
               const isSelected = selected.has(item.id)
               const isStarred = item.isStarred
@@ -231,9 +231,9 @@ export default function MediaLibrary({
                 <div
                   key={item.id}
                   className={cn(
-                    'relative group rounded-lg overflow-hidden border-2 cursor-pointer transition-all',
+                    'relative group rounded-lg overflow-hidden border cursor-pointer transition-colors',
                     isSelected
-                      ? 'border-primary-600 shadow-lg'
+                      ? 'border-primary shadow-sm ring-1 ring-primary/20'
                       : 'border-neutral-200 hover:border-neutral-300'
                   )}
                   onClick={() => handleToggleSelect(item)}
@@ -258,28 +258,21 @@ export default function MediaLibrary({
 
                   {/* Selection indicator */}
                   {isSelected && (
-                    <div className="absolute top-2 right-2 bg-primary-600 text-white rounded-full p-1">
-                      <Check className="size-4" />
-                    </div>
+                    <div className="absolute inset-0 ring-2 ring-primary/70 pointer-events-none" />
                   )}
 
                   {/* Media type badge */}
-                  <div className="absolute top-2 left-2">
-                    <Badge variant="secondary" className="gap-1">
-                      {getMediaIcon(item.mediaType)}
-                      {item.mediaType}
-                    </Badge>
-                  </div>
+                  {/* Hidden labels to reduce noise in compact mode */}
 
                   {/* Actions overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-end p-2 opacity-0 group-hover:opacity-100">
+                  <div className="absolute inset-0 bg-neutral-950/0 group-hover:bg-neutral-950/40 transition-all flex items-end p-2 opacity-0 group-hover:opacity-100">
                     <div className="flex gap-1 w-full">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           toggleStarMutation.mutate(item.id)
                         }}
-                        className="p-2 bg-white rounded hover:bg-neutral-100 transition-colors"
+                        className="p-2 bg-card text-card-foreground rounded-md hover:bg-neutral-100 transition-colors border"
                       >
                         <Star className={cn('size-4', isStarred && 'fill-current text-yellow-500')} />
                       </button>
@@ -288,7 +281,7 @@ export default function MediaLibrary({
                           e.stopPropagation()
                           setDeleteId(item.id)
                         }}
-                        className="p-2 bg-white rounded hover:bg-neutral-100 transition-colors ml-auto"
+                        className="p-2 bg-card text-card-foreground rounded-md hover:bg-neutral-100 transition-colors ml-auto border"
                       >
                         <Trash2 className="size-4 text-error-500" />
                       </button>
@@ -298,9 +291,6 @@ export default function MediaLibrary({
                   {/* File info */}
                   <div className="p-2">
                     <p className="text-xs text-neutral-600 truncate">{item.filename}</p>
-                    <p className="text-xs text-neutral-400">
-                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                    </p>
                   </div>
                 </div>
               )

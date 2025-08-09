@@ -1522,7 +1522,7 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
           <DrawerHeader>
             <DrawerTitle>Choose from library</DrawerTitle>
           </DrawerHeader>
-          <div className="h-[calc(85vh-5rem)]">
+          <div className="h-[calc(85vh-5rem)] custom-scrollbar">
             <MediaLibrary
               onSelect={handleMediaLibrarySelect}
               maxSelection={MAX_MEDIA_COUNT - mediaFiles.length}

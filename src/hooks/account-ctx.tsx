@@ -33,22 +33,79 @@ export function mapToConnectedAccount(raw: Account): Account {
 }
 
 export function AccountProvider({ children }: { children: React.ReactNode }) {
+  // Simple timestamp helper for structured logs with millisecond precision
+  const ts = () => new Date().toISOString()
+
+  // Hydrate from localStorage immediately to avoid initial network delay
+  const storageKey = 'active-account-cache-v1'
+  const initialAccount: Account | null =
+    typeof window !== 'undefined'
+      ? (() => {
+          try {
+            const raw = window.localStorage.getItem(storageKey)
+            if (!raw) {
+              console.log(`[AccountProvider ${ts()}] no cached account in localStorage under key`, storageKey)
+              return null
+            }
+            const parsed = JSON.parse(raw) as { account: Account; ts: number }
+            console.log(`[AccountProvider ${ts()}] loaded cached account`, {
+              id: parsed?.account?.id,
+              username: parsed?.account?.username,
+              cachedAt: parsed?.ts,
+            })
+            // Opportunistically preload avatar image from cache
+            if (parsed?.account?.profile_image_url) {
+              const img = new window.Image()
+              img.src = parsed.account.profile_image_url
+            }
+            return parsed?.account ?? null
+          } catch (err) {
+            console.log(`[AccountProvider ${ts()}] failed to parse cached account`, err)
+            return null
+          }
+        })()
+      : null
+
   const { data, isPending } = useQuery({
     queryKey: ['get-active-account'],
+    // Use cached value immediately; refresh in background
+    initialData: initialAccount,
     queryFn: async () => {
+      const startedAt = Date.now()
+      console.log(`[AccountProvider ${ts()}] fetching active account from API: client.settings.active_account`)
       const res = await client.settings.active_account.$get()
       const { account } = await res.json()
-      
+
       // Preload the profile image
       if (account?.profile_image_url) {
         const img = new window.Image()
         img.src = account.profile_image_url
       }
-      
-      return account ? mapToConnectedAccount(account) : null
+
+      const mapped = account ? mapToConnectedAccount(account) : null
+
+      // Write-through cache to localStorage
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            storageKey,
+            JSON.stringify({ account: mapped, ts: Date.now() }),
+          )
+          console.log(`[AccountProvider ${ts()}] cached active account to localStorage`, {
+            id: mapped?.id,
+            username: mapped?.username,
+            durationMs: Date.now() - startedAt,
+          })
+        }
+      } catch (err) {
+        console.log(`[AccountProvider ${ts()}] failed to cache active account`, err)
+      }
+
+      return mapped
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
-    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes in memory
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes in memory
+    refetchOnWindowFocus: false, // Avoid jarring refreshes when tab changes
   })
 
   return (

@@ -65,7 +65,7 @@ body {
   position: absolute;
   inset: 0;
   fill: none;
-  stroke: lime; /* 💥 hardcoded ugly color */
+  stroke: hsl(var(--primary));
   stroke-width: 0.01; /* visible on a normalized 0–1 viewBox */
   z-index: 1000;
   pointer-events: none;

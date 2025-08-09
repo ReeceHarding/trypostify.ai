@@ -1,9 +1,6 @@
 ---
-description: Design system rules and color variables for consistent UI development
-globs:
-alwaysApply: false
+alwaysApply: true
 ---
-
 # Design System & Color Variables
 
 ## CRITICAL: Always Use Color Variables
