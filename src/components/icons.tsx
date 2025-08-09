@@ -204,19 +204,5 @@ export const Icons = {
       />
     </svg>
   ),
-  thread: (props: LucideProps) => (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <circle cx="12" cy="6" r="3" />
-      <path d="M12 9v6" />
-      <circle cx="12" cy="18" r="3" />
-    </svg>
-  ),
+
 }

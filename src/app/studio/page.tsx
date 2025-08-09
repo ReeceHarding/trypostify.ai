@@ -49,7 +49,7 @@ const Page = () => {
           loading={onboardingLoading}
         />
       ) : null}
-      <div className="w-full mx-auto">
+      <div className="max-w-xl w-full mx-auto">
         <ThreadTweetEditor editMode={isEditMode} editTweetId={editTweetId} />
       </div>
     </>
