@@ -2,9 +2,8 @@
 
 import { cn } from '@/lib/utils'
 import { HTMLAttributes, useState } from 'react'
-import Tweet from './tweet'
-import { initialConfig } from '@/hooks/use-tweets'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import TweetEditor from './tweet-editor'
+import ThreadTweet from './thread-tweet'
 import { Plus } from 'lucide-react'
 import { nanoid } from 'nanoid'
 
@@ -15,9 +14,9 @@ interface TweetEditorProps extends HTMLAttributes<HTMLDivElement> {
   editTweetId?: string | null
 }
 
-interface ThreadTweet {
+interface TweetData {
   id: string
-  isFirst?: boolean
+  content: string
 }
 
 export default function ThreadTweetEditor({
@@ -28,61 +27,80 @@ export default function ThreadTweetEditor({
   editTweetId,
   ...rest
 }: TweetEditorProps) {
-  const [tweets, setTweets] = useState<ThreadTweet[]>([
-    {
-      id: nanoid(),
-      isFirst: true
-    }
+  const [isThreadMode, setIsThreadMode] = useState(false)
+  const [tweets, setTweets] = useState<TweetData[]>([
+    { id: nanoid(), content: '' },
+    { id: nanoid(), content: '' }
   ])
 
   const addTweet = () => {
-    setTweets([...tweets, {
-      id: nanoid(),
-      isFirst: false
-    }])
+    setTweets([...tweets, { id: nanoid(), content: '' }])
   }
 
   const removeTweet = (index: number) => {
-    if (tweets.length > 1) {
-      const newTweets = tweets.filter((_, i) => i !== index)
-      // Update isFirst flag if needed
-      if (index === 0 && newTweets.length > 0 && newTweets[0]) {
-        newTweets[0] = { ...newTweets[0], isFirst: true }
-      }
+    if (tweets.length > 2) {
+      setTweets(tweets.filter((_, i) => i !== index))
+    }
+  }
+
+  const updateTweetContent = (index: number, content: string) => {
+    const newTweets = [...tweets]
+    if (newTweets[index]) {
+      newTweets[index] = { ...newTweets[index], content }
       setTweets(newTweets)
     }
   }
 
-  // Only show as single tweet when there's one tweet
-  const isThreadMode = tweets.length > 1
+  // When not in thread mode, just show the regular tweet editor
+  if (!isThreadMode) {
+    return (
+      <div className={cn('relative z-10 w-full rounded-lg font-sans', className)} {...rest}>
+        <div className="space-y-4 w-full">
+          <TweetEditor editMode={editMode} editTweetId={editTweetId} />
+          
+          {/* Add to thread button */}
+          <div className="flex items-center pl-9">
+            <button
+              onClick={() => setIsThreadMode(true)}
+              className="font-semibold relative transition-transform active:translate-y-0.5 active:shadow-none focus:outline-none flex items-center justify-center bg-[#FFFFFF] border bg-clip-padding text-stone-800 border-b-2 border-[#E5E5E5] hover:bg-stone-100 shadow-[0_3px_0_#E5E5E5] focus:ring-[#E5E5E5] h-10 px-4 rounded-md gap-2"
+            >
+              <Plus className="size-4" />
+              <span className="text-sm">Add to thread</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
+  // Thread mode - show multiple tweets
   return (
     <div className={cn('relative z-10 w-full rounded-lg font-sans max-w-2xl mx-auto', className)} {...rest}>
       <div className="space-y-0 w-full">
         {tweets.map((tweet, index) => (
           <div key={tweet.id} className="relative">
-            {/* Visual connection line between tweets */}
+            {/* Visual connection line */}
             {index > 0 && (
               <div 
-                className="absolute left-[48px] -top-4 h-4 w-[2px] bg-stone-300 z-0" 
+                className="absolute left-[48px] -top-6 h-6 w-[2px] bg-stone-300 z-0" 
                 aria-hidden="true"
               />
             )}
             
-            {/* Tweet wrapper with proper spacing */}
+            {/* Tweet */}
             <div className={cn(
               "relative z-10 bg-white",
-              index > 0 && "mt-0"
+              index > 0 && "pt-0"
             )}>
-              <LexicalComposer key={tweet.id} initialConfig={{ ...initialConfig }}>
-                <Tweet 
-                  editMode={editMode && index === 0} 
-                  editTweetId={editMode && index === 0 ? editTweetId : null}
-                />
-              </LexicalComposer>
+              <ThreadTweet
+                isFirst={index === 0}
+                placeholder={index === 0 ? "What's happening?" : "Add another tweet..."}
+                onRemove={tweets.length > 2 ? () => removeTweet(index) : undefined}
+                onChange={(content) => updateTweetContent(index, content)}
+              />
             </div>
 
-            {/* Add tweet button appears below the last tweet */}
+            {/* Add tweet button below the last tweet */}
             {index === tweets.length - 1 && (
               <div className="relative">
                 <div 
