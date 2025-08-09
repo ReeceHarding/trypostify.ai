@@ -830,6 +830,333 @@ export const tweetRouter = j.router({
       }
     }),
 
+  /**
+   * Post a thread immediately by creating the first tweet and then
+   * replying sequentially to form a chain. Optional per item delays
+   * are respected within the server execution window.
+   */
+  threadPostImmediate: privateProcedure
+    .input(
+      z.object({
+        items: z
+          .array(
+            z.object({
+              position: z.number().min(1),
+              text: z.string().min(1).max(4000),
+              media: z
+                .array(
+                  z.object({
+                    media_id: z.string(),
+                    s3Key: z.string(),
+                  }),
+                )
+                .optional()
+                .default([]),
+              delay_ms: z.number().min(0).optional().default(0),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .post(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { items } = input
+
+      const account = await getAccount({ email: user.email })
+      if (!account?.id) {
+        throw new HTTPException(400, { message: 'Please connect your Twitter account' })
+      }
+
+      const dbAccount = await db.query.account.findFirst({
+        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
+      })
+      if (!dbAccount || !dbAccount.accessToken) {
+        throw new HTTPException(400, {
+          message: 'Twitter account not connected or access token missing',
+        })
+      }
+
+      const client = new TwitterApi({
+        appKey: consumerKey as string,
+        appSecret: consumerSecret as string,
+        accessToken: dbAccount.accessToken as string,
+        accessSecret: dbAccount.accessSecret as string,
+      })
+
+      const correlationId = crypto.randomUUID()
+      const startedAt = Date.now()
+      console.log('[threadPostImmediate:start]', {
+        correlationId,
+        userId: user.id,
+        accountId: account.id,
+        items: items.map((i) => ({ position: i.position, hasMedia: (i.media?.length || 0) > 0 })),
+        startedAt: new Date(startedAt).toISOString(),
+      })
+
+      let previousTweetId: string | undefined
+      const threadId = crypto.randomUUID()
+      const results: Array<{ position: number; platform_id: string; url: string }> = []
+      const errors: Array<{ position: number; message: string }> = []
+
+      // config
+      const charLimit = Number(process.env.TWITTER_CHAR_LIMIT ?? '280')
+      const maxMediaCount = Number(process.env.TWITTER_MAX_MEDIA_COUNT ?? '4')
+
+      // validate items
+      for (const it of items) {
+        if (it.text.length > charLimit) {
+          throw new HTTPException(400, { message: `Item ${it.position} exceeds character limit` })
+        }
+        if ((it.media?.length || 0) > maxMediaCount) {
+          throw new HTTPException(400, { message: `Item ${it.position} exceeds media limit` })
+        }
+      }
+
+      // sort by position defensively
+      const ordered = [...items].sort((a, b) => a.position - b.position)
+
+      for (const item of ordered) {
+        if (item.delay_ms && item.delay_ms > 0 && previousTweetId) {
+          console.log('[threadPostImmediate:delay]', {
+            correlationId,
+            position: item.position,
+            delay_ms: item.delay_ms,
+          })
+          await new Promise((r) => setTimeout(r, item.delay_ms))
+        }
+
+        const payload: SendTweetV2Params = { text: item.text }
+        if (item.media && item.media.length > 0) {
+          payload.media = {
+            // @ts-expect-error tuple typing vs runtime string[]
+            media_ids: item.media.map((m) => m.media_id),
+          }
+        }
+        if (previousTweetId) {
+          // Set reply to chain the thread
+          // @ts-ignore - library typing allows reply.in_reply_to_tweet_id
+          payload.reply = { in_reply_to_tweet_id: previousTweetId }
+        }
+
+        try {
+          const res = await client.v2.tweet(payload)
+          const platformId = res.data.id
+          previousTweetId = platformId
+
+          // store row for observability
+          await db.insert(tweets).values({
+            userId: user.id,
+            accountId: account.id,
+            content: item.text,
+            media: item.media || [],
+            isScheduled: false,
+            isPublished: true,
+            twitterId: platformId,
+            threadId,
+            threadPosition: item.position,
+          })
+
+          const url = account.username
+            ? `https://twitter.com/${account.username}/status/${platformId}`
+            : `https://x.com/i/web/status/${platformId}`
+          results.push({ position: item.position, platform_id: platformId, url })
+        } catch (err: any) {
+          console.error('[threadPostImmediate:error]', {
+            correlationId,
+            position: item.position,
+            err: String(err?.message || err),
+          })
+          errors.push({ position: item.position, message: 'Failed to post item' })
+        }
+      }
+
+      const success = errors.length === 0
+      const partial_success = errors.length > 0 && results.length > 0
+      const threadUrl = results.length > 0 ? results[0]?.url : ''
+
+      console.log('[threadPostImmediate:end]', {
+        correlationId,
+        duration_ms: Date.now() - startedAt,
+        success,
+        partial_success,
+        resultsCount: results.length,
+        errorsCount: errors.length,
+      })
+
+      return c.json({ success, partial_success, items: results, errors, thread_url: threadUrl })
+    }),
+
+  /**
+   * Schedule a thread by creating one job per item with computed notBefore
+   * while storing the sequence in the database to preserve ordering.
+   */
+  threadSchedule: privateProcedure
+    .input(
+      z.object({
+        start_unix: z.number().int(),
+        items: z
+          .array(
+            z.object({
+              position: z.number().min(1),
+              text: z.string().min(1).max(4000),
+              media: z
+                .array(
+                  z.object({
+                    media_id: z.string(),
+                    s3Key: z.string(),
+                  }),
+                )
+                .optional()
+                .default([]),
+              delay_ms: z.number().min(0).optional().default(0),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .post(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { start_unix, items } = input
+
+      const account = await getAccount({ email: user.email })
+      if (!account?.id) {
+        throw new HTTPException(400, { message: 'Please connect your Twitter account' })
+      }
+      const dbAccount = await db.query.account.findFirst({
+        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
+      })
+      if (!dbAccount || !dbAccount.accessToken) {
+        throw new HTTPException(400, {
+          message: 'Twitter account not connected or access token missing',
+        })
+      }
+
+      const charLimit = Number(process.env.TWITTER_CHAR_LIMIT ?? '280')
+      const maxMediaCount = Number(process.env.TWITTER_MAX_MEDIA_COUNT ?? '4')
+      for (const it of items) {
+        if (it.text.length > charLimit) {
+          throw new HTTPException(400, { message: `Item ${it.position} exceeds character limit` })
+        }
+        if ((it.media?.length || 0) > maxMediaCount) {
+          throw new HTTPException(400, { message: `Item ${it.position} exceeds media limit` })
+        }
+      }
+
+      const threadId = crypto.randomUUID()
+      const baseUrl = process.env.NODE_ENV === 'development' ? 'https://sponge-relaxing-separately.ngrok-free.app' : getBaseUrl()
+
+      // compute absolute schedule times
+      const ordered = [...items].sort((a, b) => a.position - b.position)
+      let currentTimeSec = start_unix
+      const scheduledJobs: Array<{ position: number; messageId: string }> = []
+
+      for (const item of ordered) {
+        // add delay for next item relative to previous
+        if (item.position > 1 && item.delay_ms && item.delay_ms > 0) {
+          currentTimeSec += Math.floor(item.delay_ms / 1000)
+        }
+
+        const tweetId = crypto.randomUUID()
+
+        const { messageId } = await qstash.publishJSON({
+          url: baseUrl + '/api/tweet/postThreadItem',
+          body: { tweetId, userId: user.id, accountId: dbAccount.id, threadId, position: item.position },
+          notBefore: currentTimeSec,
+        })
+
+        scheduledJobs.push({ position: item.position, messageId })
+
+        await db.insert(tweets).values({
+          id: tweetId,
+          userId: user.id,
+          accountId: account.id,
+          content: item.text,
+          media: item.media || [],
+          isScheduled: true,
+          scheduledFor: new Date(currentTimeSec * 1000),
+          scheduledUnix: currentTimeSec * 1000,
+          isQueued: false,
+          qstashId: messageId,
+          threadId,
+          threadPosition: item.position,
+        })
+      }
+
+      return c.json({ success: true, threadId, jobs: scheduledJobs })
+    }),
+
+  /**
+   * Worker endpoint to post a single thread item. It links the reply to the
+   * previous posted id when available.
+   */
+  postThreadItem: publicProcedure.post(async ({ c }) => {
+    const body = await c.req.text()
+    const signature = c.req.header('Upstash-Signature') ?? c.req.header('upstash-signature') ?? ''
+    try {
+      await receiver.verify({ body, signature })
+    } catch {
+      throw new HTTPException(403, { message: 'Invalid credentials' })
+    }
+
+    const { tweetId, userId, accountId, threadId, position } = JSON.parse(body) as {
+      tweetId: string
+      userId: string
+      accountId: string
+      threadId: string
+      position: number
+    }
+
+    const row = await db.query.tweets.findFirst({ where: eq(tweets.id, tweetId) })
+    if (!row) throw new HTTPException(404, { message: 'Tweet not found' })
+
+    const account = await db.query.account.findFirst({
+      where: and(eq(accountSchema.userId, userId), eq(accountSchema.id, accountId)),
+    })
+    if (!account || !account.accessToken) {
+      throw new HTTPException(400, { message: 'Twitter account not connected or access token missing' })
+    }
+
+    const client = new TwitterApi({
+      appKey: consumerKey as string,
+      appSecret: consumerSecret as string,
+      accessToken: account.accessToken as string,
+      accessSecret: account.accessSecret as string,
+    })
+
+    const payload: Partial<SendTweetV2Params> = { text: row.content }
+    if (row.media && row.media.length > 0) {
+      payload.media = {
+        // @ts-expect-error tuple typing
+        media_ids: row.media.map((m) => m.media_id),
+      }
+    }
+
+    if (position > 1) {
+      // find previous posted id in same thread
+      const prev = await db.query.tweets.findFirst({
+        where: and(eq(tweets.threadId, threadId), eq(tweets.threadPosition, position - 1)),
+      })
+      if (!prev || !prev.twitterId) {
+        // previous not posted yet, retry later by returning error
+        throw new HTTPException(409, { message: 'Previous item not posted yet' })
+      }
+      // @ts-ignore
+      payload.reply = { in_reply_to_tweet_id: prev.twitterId }
+    }
+
+    try {
+      const res = await client.v2.tweet(payload)
+      await db
+        .update(tweets)
+        .set({ isScheduled: false, isPublished: true, updatedAt: new Date(), twitterId: res.data.id })
+        .where(eq(tweets.id, tweetId))
+      return c.json({ success: true, tweetId: res.data.id })
+    } catch (err) {
+      console.error('[postThreadItem:error]', String(err))
+      throw new HTTPException(500, { message: 'Failed to post tweet to Twitter' })
+    }
+  }),
+
   getScheduledAndPublished: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
 

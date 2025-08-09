@@ -26,6 +26,10 @@ export const tweets = pgTable('tweets', {
   s3Keys: json('s3_keys').$type<string[]>().default([]),
   qstashId: text('qstash_id'),
   twitterId: text('twitter_id'),
+  // Optional thread grouping. All items in the same thread share the same threadId.
+  threadId: text('thread_id'),
+  // One based position of the item in the thread sequence.
+  threadPosition: integer('thread_position'),
   userId: text('user_id')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),

@@ -96,6 +96,9 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
   const [imageDrawerOpen, setImageDrawerOpen] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
+  const [threadItems, setThreadItems] = useState<Array<{ id: string; text: string; delay_ms: number }>>([
+    { id: '1', text: '', delay_ms: 0 },
+  ])
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
   const [didTogglePostConfirmation, setDidTogglePostConfirmation] = useState(false)
 
@@ -887,18 +890,36 @@ export default function Tweet({ editMode = false, editTweetId }: TweetProps) {
   }
 
   const performPostTweet = () => {
-    const content = shadowEditor?.read(() => $getRoot().getTextContent()) || ''
+    // If only single item, use existing flow. If multiple items, call thread API.
+    const singleText = shadowEditor?.read(() => $getRoot().getTextContent()) || ''
 
     const media = mediaFiles
       .filter((f) => Boolean(f.s3Key) && Boolean(f.media_id))
-      .map((f) => ({
-        s3Key: f.s3Key!,
-        media_id: f.media_id!,
-      }))
+      .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
 
-    postTweetMutation.mutate({
-      content,
-      media,
+    const nonEmptyThreads = threadItems.filter((t) => t.text.trim().length > 0)
+    if (nonEmptyThreads.length <= 1) {
+      postTweetMutation.mutate({ content: singleText, media })
+      return
+    }
+
+    const items = nonEmptyThreads.map((t, idx) => ({
+      position: idx + 1,
+      text: t.text,
+      media: idx === 0 ? media : [],
+      delay_ms: t.delay_ms || 0,
+    }))
+
+    client.tweet.threadPostImmediate.$post({ items }).then(async (res) => {
+      const result = await res.json()
+      if (!result.success && !result.partial_success) {
+        toast.error('Failed to post thread')
+        return
+      }
+      setTimeout(() => fire(), 250)
+      if (result.thread_url) {
+        window.open(result.thread_url, '_blank', 'noopener,noreferrer')
+      }
     })
   }
 
