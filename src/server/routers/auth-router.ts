@@ -13,8 +13,8 @@ import { getBaseUrl } from '@/constants/base-url'
 
 import { PostHog } from 'posthog-node'
 
-const posthog = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-  host: 'https://eu.i.posthog.com',
+const posthog = new PostHog(process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
+  host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
 })
 
 const nanoid = customAlphabet(

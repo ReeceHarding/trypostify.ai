@@ -4,8 +4,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { createAuthMiddleware } from 'better-auth/api'
 import { PostHog } from 'posthog-node'
 
-const client = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-  host: process.env.NEXT_PUBLIC_POSTHOG_HOST!,
+const client = new PostHog(process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
+  host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
 })
 
 const database = drizzleAdapter(db, { provider: 'pg' })
