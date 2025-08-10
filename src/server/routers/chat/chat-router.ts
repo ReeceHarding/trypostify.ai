@@ -296,7 +296,7 @@ export const chatRouter = j.router({
           const result = streamText({
             model: openrouter.chat('openai/gpt-5', {
               models: ['openai/gpt-5'],
-              reasoning: { enabled: false, effort: 'low' },
+              reasoning: { effort: 'low' },
             }),
             system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
             messages: convertToModelMessages(messages),

@@ -184,7 +184,7 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
       ]
 
       const model = openrouter.chat("anthropic/claude-sonnet-4", {
-        reasoning: { enabled: false, effort: 'low' },
+        reasoning: { effort: 'low' },
         models: [
           'openrouter/horizon-alpha',
           'anthropic/claude-3.7-sonnet',
