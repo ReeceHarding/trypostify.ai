@@ -1723,12 +1723,26 @@ export const tweetRouter = j.router({
           // Twitter API errors typically have more detailed information
           if (error && typeof error === 'object' && 'data' in error) {
             const apiError = error as any
+            
+            // Log rate limit details if available
+            if (apiError.rateLimit) {
+              console.log('[postThreadNow] Rate limit details:', {
+                limit: apiError.rateLimit.limit,
+                remaining: apiError.rateLimit.remaining,
+                reset: new Date(apiError.rateLimit.reset * 1000).toISOString(),
+                window: apiError.rateLimit.window,
+              })
+            }
+            
             if (apiError.data?.detail) {
               errorMessage = `Twitter API error: ${apiError.data.detail}`
             }
             if (apiError.code === 429) {
+              const resetTime = apiError.rateLimit?.reset 
+                ? new Date(apiError.rateLimit.reset * 1000).toLocaleTimeString()
+                : 'soon'
               throw new HTTPException(429, {
-                message: 'Twitter API rate limit exceeded. Please try again later.',
+                message: `Twitter rate limit exceeded. Try again after ${resetTime}.`,
               })
             }
           }
