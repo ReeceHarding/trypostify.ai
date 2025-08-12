@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { client } from '@/lib/client'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
@@ -55,6 +55,7 @@ export default function ThreadTweetEditor({
   ])
   const router = useRouter()
   const { fire } = useConfetti()
+  const queryClient = useQueryClient()
 
   // Load thread data if in edit mode
   const { data: threadData, isLoading: loadingThread } = useQuery({
@@ -237,7 +238,11 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: () => {
-
+      // Invalidate all relevant queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['thread', editTweetId] })
+      queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
+      queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
+      
       toast.success('Thread updated successfully!')
       router.push('/studio/scheduled')
     },

@@ -107,7 +107,10 @@ const Page = () => {
                 setShowDiscard(false)
                 const target = pendingHref || '/studio'
                 setPendingHref(null)
-                router.push(target)
+                // Clear editor state by removing ?edit and pushing to create page
+                const url = new URL(target, window.location.origin)
+                url.searchParams.delete('edit')
+                router.push(url.pathname + (url.search ? `?${url.searchParams}` : ''))
               }}
             >
               Discard
