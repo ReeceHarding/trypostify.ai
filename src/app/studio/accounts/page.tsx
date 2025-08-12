@@ -227,7 +227,7 @@ export default function AccountsPage() {
     onSuccess: () => {
       setTweetLink('')
       refetchStyle()
-      toast.success('Tweet imported successfully')
+      toast.success('Post imported successfully')
     },
     onError: (error: HTTPException) => {
       toast.error(error.message)
@@ -553,7 +553,7 @@ export default function AccountsPage() {
               <DuolingoTextarea
                 fullWidth
                 className="min-h-32"
-                placeholder="My tweets always use this symbol (◆) for bullet points and usually consist of a short, catchy intro hook and three bullet points. I love expressing excitement and celebration"
+                placeholder="My posts always use this symbol (◆) for bullet points and usually consist of a short, catchy intro hook and three bullet points. I love expressing excitement and celebration"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
               />
@@ -638,10 +638,10 @@ export default function AccountsPage() {
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Sparkles className="w-10 h-10 text-neutral-300 mb-3" />
                     <p className="text-sm font-medium text-neutral-700">
-                      No imported tweets yet
+                      No imported posts yet
                     </p>
                     <p className="text-xs text-neutral-500 mt-1 max-w-xs">
-                      Import tweets that match your desired writing style
+                      Import posts that match your desired writing style
                     </p>
                   </div>
                 )}

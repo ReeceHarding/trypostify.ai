@@ -535,7 +535,7 @@ function ThreadTweetContent({
     const remainingSlots = MAX_MEDIA_COUNT - mediaFiles.length
     
     if (remainingSlots === 0) {
-      toast.error(`Maximum ${MAX_MEDIA_COUNT} media files allowed per tweet`)
+      toast.error(`Maximum ${MAX_MEDIA_COUNT} media files allowed per post`)
       return
     }
     
@@ -633,7 +633,7 @@ function ThreadTweetContent({
                   }
                   ErrorBoundary={LexicalErrorBoundary}
                 />
-                <PlaceholderPlugin placeholder={isFirstTweet ? "What's happening?" : "Add another tweet..."} />
+                <PlaceholderPlugin placeholder={isFirstTweet ? "What's happening?" : "Add another post..."} />
                 <HistoryPlugin />
                 <MentionsPlugin />
                 <MentionTooltipPlugin />
@@ -1013,9 +1013,9 @@ function ThreadTweetContent({
       <Dialog open={showPostConfirmModal} onOpenChange={setShowPostConfirmModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Post {isThread ? 'Thread' : 'Tweet'} Now?</DialogTitle>
+            <DialogTitle>Post {isThread ? 'Thread' : 'Content'} Now?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to post this {isThread ? 'thread' : 'tweet'} immediately?
+              Are you sure you want to post this {isThread ? 'thread' : 'content'} immediately?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col gap-3">

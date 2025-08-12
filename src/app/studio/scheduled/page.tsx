@@ -10,9 +10,9 @@ export default function ScheduledTweetsPage() {
         <div className="flex items-center gap-3">
           <AccountAvatar className="size-10" />
           <div className="flex flex-col">
-            <h1 className="text-2xl font-semibold text-neutral-900">Queued Tweets</h1>
+            <h1 className="text-2xl font-semibold text-neutral-900">Queued Posts</h1>
             <p className="text-sm text-neutral-600">
-              Your queue automatically publishes tweets to peak activity times.
+              Your queue automatically publishes posts to peak activity times.
             </p>
           </div>
         </div>

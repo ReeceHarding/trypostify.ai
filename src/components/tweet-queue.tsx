@@ -100,7 +100,7 @@ export default function TweetQueue() {
       return await res.json()
     },
     onSuccess: () => {
-      toast.success('Tweet deleted & unscheduled')
+      toast.success('Post deleted & unscheduled')
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
       queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
     },
@@ -182,8 +182,8 @@ export default function TweetQueue() {
       })
     },
     onError: (error) => {
-      console.error('Failed to post tweet:', error)
-      toast.error('Failed to post tweet')
+      console.error('Failed to post content:', error)
+      toast.error('Failed to post content')
     },
   })
 
@@ -276,7 +276,7 @@ export default function TweetQueue() {
                               <div className="flex items-center gap-2 mb-2">
                                 <MessageSquare className="size-4 text-neutral-600" />
                                 <span className="font-medium text-sm text-neutral-900">
-                                  Thread ({tweet.tweets?.length || 0} tweets)
+                                  Thread ({tweet.tweets?.length || 0} posts)
                                 </span>
                               </div>
                               {tweet.tweets && tweet.tweets.slice(0, 2).map((t: any, idx: number) => (
@@ -441,8 +441,8 @@ export default function TweetQueue() {
                                 </DialogTitle>
                                 <DialogDescription>
                                   {tweet.isThread 
-                                    ? `This thread (${tweet.tweets?.length || 0} tweets) will be posted and removed from your queue immediately. Would you like to continue?`
-                                    : 'This tweet will be posted and removed from your queue immediately. Would you like to continue?'
+                                    ? `This thread (${tweet.tweets?.length || 0} posts) will be posted and removed from your queue immediately. Would you like to continue?`
+                                    : 'This post will be posted and removed from your queue immediately. Would you like to continue?'
                                   }
                                 </DialogDescription>
                                 <div className="flex justify-center sm:justify-start pt-4">

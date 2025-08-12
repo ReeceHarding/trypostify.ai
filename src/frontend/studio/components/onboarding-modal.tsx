@@ -49,9 +49,9 @@ const STEPS: Array<{ id: string; name: string; fields: Field[] }> = [
 ]
 
 const TWEET_GOALS = [
-  { label: '1 tweet / day', value: '1_day', description: 'Build a habit' },
-  { label: '2 tweets / day', value: '2_day', description: 'Grow faster' },
-  { label: '3+ tweets / day', value: '3_day', description: 'Go all in' },
+  { label: '1 post / day', value: '1_day', description: 'Build a habit' },
+  { label: '2 posts / day', value: '2_day', description: 'Grow faster' },
+  { label: '3+ posts / day', value: '3_day', description: 'Go all in' },
 ]
 
 const MAIN_FOCUS = [

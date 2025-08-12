@@ -117,7 +117,7 @@ export default function TweetList({
       })
     },
     onError: () => {
-      toast.error('Failed to delete tweet')
+      toast.error('Failed to delete post')
     },
   })
 
@@ -135,13 +135,13 @@ export default function TweetList({
       return await res.json()
     },
     onSuccess: (data) => {
-      toast.success(`Updated metrics for ${data.updatedCount} tweets`)
+      toast.success(`Updated metrics for ${data.updatedCount} posts`)
       queryClient.invalidateQueries({
         queryKey: ['posted-tweets', account?.username],
       })
     },
     onError: () => {
-      toast.error('Failed to fetch tweet metrics')
+      toast.error('Failed to fetch post metrics')
     },
   })
 
@@ -299,7 +299,7 @@ export default function TweetList({
                 className="w-fit mx-auto"
               >
                 <Edit className="size-4 mr-1" />
-                Start writing
+                Start creating
               </DuolingoButton>
             </div>
           </Card>
@@ -329,7 +329,7 @@ export default function TweetList({
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-sm text-neutral-600 font-medium">
                               <MessageSquare className="size-4" />
-                              <span>Thread ({item.tweets.length} tweets)</span>
+                              <span>Thread ({item.tweets.length} posts)</span>
                             </div>
                             {item.tweets.map((tweet: any, index: number) => (
                               <div key={tweet.id} className="relative">

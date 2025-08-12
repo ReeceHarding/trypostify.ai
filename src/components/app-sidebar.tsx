@@ -285,7 +285,7 @@ const ChatInput = ({
                 }
                 ErrorBoundary={LexicalErrorBoundary}
               />
-              <PlaceholderPlugin placeholder="Tweet about..." />
+              <PlaceholderPlugin placeholder="Post about..." />
               <HistoryPlugin />
               <MultipleEditorStorePlugin id="app-sidebar" />
 

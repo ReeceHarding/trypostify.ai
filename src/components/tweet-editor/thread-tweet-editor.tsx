@@ -139,7 +139,7 @@ export default function ThreadTweetEditor({
       const errorMessage = error?.message || error?.data?.message || 'Failed to post thread'
       
       if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate limit')) {
-        toast.error('Twitter rate limit reached. You\'ve posted too many tweets today. Please try again later.')
+        toast.error('Rate limit reached. You\'ve posted too much content today. Please try again later.')
       } else if (errorMessage.includes('reconnect')) {
         toast.error('Please reconnect your Twitter account')
       } else {
@@ -407,7 +407,7 @@ export default function ThreadTweetEditor({
     // Validate all tweets have content
     const emptyTweets = threadTweets.filter(t => !t.content.trim())
     if (emptyTweets.length > 0) {
-      toast.error('All tweets in the thread must have content')
+      toast.error('All posts in the thread must have content')
       return
     }
 
@@ -482,7 +482,7 @@ export default function ThreadTweetEditor({
             onClick={handleAddTweet}
             className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
           >
-            <span className="text-sm font-medium">Add another tweet to this thread</span>
+            <span className="text-sm font-medium">Add another post to this thread</span>
           </button>
         )}
         
@@ -492,7 +492,7 @@ export default function ThreadTweetEditor({
             onClick={handleAddTweet}
             className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
           >
-            <span className="text-sm font-medium">Add another tweet to this thread</span>
+            <span className="text-sm font-medium">Add another post to this thread</span>
           </button>
         )}
       </div>
