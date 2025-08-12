@@ -308,6 +308,11 @@ export default function ThreadTweetEditor({
       const { threadId } = await createResult.json()
 
       // Schedule the thread
+      console.log('[ThreadTweetEditor] scheduling thread', {
+        threadId,
+        scheduledIso: scheduledDate.toISOString(),
+        scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),
+      })
       await scheduleThreadMutation.mutateAsync({
         threadId,
         scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),

@@ -949,9 +949,22 @@ function ThreadTweetContent({
                                   </TooltipTrigger>
                                   <PopoverContent className="max-w-3xl w-full">
                                     <Calendar20
-                                      onSchedule={(date) => {
-                                        if (onScheduleThread) {
-                                          onScheduleThread(date)
+                                      onSchedule={(date, time) => {
+                                        // Combine selected calendar date with the chosen HH:mm time
+                                        try {
+                                          const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
+                                          const scheduled = new Date(date)
+                                          scheduled.setHours(hh || 0, mm || 0, 0, 0)
+                                          // Debug log to trace scheduling values end-to-end
+                                          console.log('[ThreadTweet] onSchedule selected', {
+                                            rawDate: date?.toISOString?.(),
+                                            time,
+                                            combinedIso: scheduled.toISOString(),
+                                          })
+                                          if (onScheduleThread) onScheduleThread(scheduled)
+                                        } catch (e) {
+                                          console.error('[ThreadTweet] onSchedule combine error', e)
+                                          if (onScheduleThread) onScheduleThread(date)
                                         }
                                       }}
                                       isPending={isPosting}
