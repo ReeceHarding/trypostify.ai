@@ -14,13 +14,15 @@ const api = j
   .use(
     cors({
       origin: [
-        'http://localhost:3000',
+        process.env.NEXT_PUBLIC_SITE_URL,
+        process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
         'https://trypostify.ai',
         'https://www.trypostify.ai',
         'https://trypostify.vercel.app',
         'https://www.trypostify.vercel.app',
-        process.env.NEXT_PUBLIC_SITE_URL || '',
-      ].filter(Boolean),
+        // Only add localhost in development
+        process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : undefined,
+      ].filter(Boolean) as string[],
       allowHeaders: ['x-is-superjson', 'Content-Type', 'content-type'],
       exposeHeaders: ['x-is-superjson', 'Content-Type', 'content-type'],
       credentials: true,

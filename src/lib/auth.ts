@@ -10,12 +10,18 @@ const client = new PostHog(process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLI
 
 const database = drizzleAdapter(db, { provider: 'pg' })
 
+// Build trusted origins dynamically
+const trustedOrigins = [
+  process.env.NEXT_PUBLIC_SITE_URL,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  'https://trypostify.ai',
+  'https://www.trypostify.ai',
+  // Only add localhost in development
+  process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : undefined,
+].filter(Boolean) as string[]
+
 export const auth = betterAuth({
-  trustedOrigins: [
-    'http://localhost:3000',
-    'https://trypostify.ai',
-    'https://www.trypostify.ai',
-  ],
+  trustedOrigins,
   databaseHooks: {
     user: {
       create: {
