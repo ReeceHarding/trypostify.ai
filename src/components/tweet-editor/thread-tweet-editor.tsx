@@ -11,6 +11,7 @@ import Link from 'next/link'
 import posthog from 'posthog-js'
 import { useConfetti } from '@/hooks/use-confetti'
 import ThreadTweet from './thread-tweet'
+import { format } from 'date-fns'
 
 interface ThreadTweetData {
   id: string
@@ -317,9 +318,11 @@ export default function ThreadTweetEditor({
         thread_id: threadId,
         scheduled_for: scheduledDate.toISOString(),
       })
+      
+      toast.success(`Thread scheduled for ${format(scheduledDate, 'MMM d at h:mm a')}`)
     } catch (error) {
-      // console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
-      toast.error('Failed to schedule thread')
+      console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to schedule thread')
     }
   }
 
@@ -363,8 +366,11 @@ export default function ThreadTweetEditor({
         thread_id: threadId,
         tweet_count: threadTweets.length,
       })
+      
+      toast.success('Thread added to queue!')
     } catch (error) {
-      // console.error('[ThreadTweetEditor] Failed to queue thread:', error)
+      console.error('[ThreadTweetEditor] Failed to queue thread:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
     }
   }
 
