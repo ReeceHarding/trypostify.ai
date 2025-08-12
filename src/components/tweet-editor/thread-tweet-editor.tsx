@@ -150,13 +150,8 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-
-      toast.success('Thread scheduled successfully!')
-      
       // Clear the thread
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
-
-      
       router.push('/studio/scheduled')
     },
   })
