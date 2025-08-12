@@ -13,6 +13,8 @@ declare global {
       TWITTER_API_SECRET: string
       TWITTER_ACCESS_TOKEN: string
       TWITTER_ACCESS_TOKEN_SECRET: string
+      TWITTER_CLIENT_ID: string
+      TWITTER_CLIENT_SECRET: string
       BETTER_AUTH_SECRET: string
       DATABASE_URL: string
       GOOGLE_CLIENT_ID: string
