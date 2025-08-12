@@ -319,7 +319,17 @@ export default function ThreadTweetEditor({
         scheduled_for: scheduledDate.toISOString(),
       })
       
-      toast.success(`Thread scheduled for ${format(scheduledDate, 'MMM d at h:mm a')}`)
+      // Display a user-localized friendly time using the user's timezone
+      const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const friendly = new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: userTz,
+      }).format(scheduledDate)
+      toast.success(`Thread scheduled for ${friendly}`)
     } catch (error) {
       console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to schedule thread')
