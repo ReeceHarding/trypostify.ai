@@ -199,23 +199,10 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-
-      toast.success(
-        <div className="flex gap-1.5 items-center">
-          <p>Thread queued!</p>
-          <Link
-            href="/studio/scheduled"
-            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
-          >
-            See queue
-          </Link>
-        </div>
-      )
-      
       // Clear the thread
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
-
       
+      // Navigate to the queue page - no need for a toast since we're redirecting
       router.push('/studio/scheduled')
     },
     onError: (error: HTTPException) => {
