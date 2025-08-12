@@ -158,7 +158,10 @@ export const Calendar20 = ({
                   key={time}
                   variant={selectedTime === time ? 'default' : 'outline'}
                   onClick={() => setSelectedTime(time)}
-                  className="w-full shadow-none"
+                  className={cn(
+                    'w-full shadow-none',
+                    selectedTime === time && 'text-success-600'
+                  )}
                 >
                   {time}
                 </Button>

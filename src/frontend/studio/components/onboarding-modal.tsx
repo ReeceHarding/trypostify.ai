@@ -259,7 +259,7 @@ export const OnboardingModal = ({
                   </p>
                   <p className="text-neutral-600 text-balance">
                     Just{' '}
-                    <span className="font-medium text-neutral-800">2 quick questions</span>{' '}
+                    <span className="font-medium text-neutral-800">3 quick questions</span>{' '}
                     before we write your first tweet!
                   </p>
                 </div>
