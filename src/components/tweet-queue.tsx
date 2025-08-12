@@ -342,39 +342,19 @@ export default function TweetQueue() {
                                   className="mb-1 w-full"
                                   onClick={() => {
                                     if (tweet) {
-                                      if (tweet.isThread) {
-                                        // Log and route to existing editor with first tweet id
-                                        try {
-                                          console.log('[TweetQueue] Edit click for thread', {
-                                            threadId: tweet.threadId,
-                                            tweetsCount: tweet.tweets?.length,
-                                            tweetIds: (tweet.tweets || []).map((t: any) => t.id),
-                                          })
-                                        } catch {}
-                                        const firstId = tweet.tweets?.[0]?.id
-                                        if (firstId) {
-                                          router.push(`/studio?edit=${firstId}`)
-                                        } else {
-                                          console.warn('[TweetQueue] No first tweet id found for thread', tweet)
-                                        }
+                                      // Always route to editor with first tweet id
+                                      const firstId = tweet.tweets?.[0]?.id || tweet.id
+                                      
+                                      console.log('[TweetQueue] Edit click', {
+                                        firstId,
+                                        threadId: tweet.threadId,
+                                        tweetsCount: tweet.tweets?.length || 1,
+                                      })
+                                      
+                                      if (firstId) {
+                                        router.push(`/studio?edit=${firstId}`)
                                       } else {
-                                        // Edit individual tweet
-                                        shadowEditor.update(() => {
-                                          const root = $getRoot()
-                                          const p = $createParagraphNode()
-                                          const text = $createTextNode(tweet.content)
-                                          p.append(text)
-                                          root.clear()
-                                          root.append(p)
-                                          root.selectEnd()
-                                        })
-
-                                        setMediaFiles(tweet.media || [])
-
-                                        console.log('[TweetQueue] Edit click for single tweet', {
-                                          tweetId: tweet.id,
-                                        })
-                                        router.push(`/studio?edit=${tweet.id}`)
+                                        console.warn('[TweetQueue] No id found for editing', tweet)
                                       }
                                     }
                                   }}
