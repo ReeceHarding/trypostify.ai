@@ -231,9 +231,12 @@ export const chatRouter = j.router({
 
       content.close('message')
 
+      // Only include text parts in the model payload to avoid provider-side URL fetch failures for files/images
+      const safeTextAttachments = attachments.filter((p) => p?.type === 'text')
+
       const userMessage: MyUIMessage = {
         ...message,
-        parts: [{ type: 'text', text: content.toString() }, ...attachments],
+        parts: [{ type: 'text', text: content.toString() }, ...safeTextAttachments],
       }
 
       const messages = [...(history ?? []), userMessage] as MyUIMessage[]
@@ -293,6 +296,14 @@ export const chatRouter = j.router({
           })
 
           const readWebsiteContent = create_read_website_content({ chatId: id })
+
+          // Log attachment composition for debugging
+          try {
+            console.log('[CHAT] preparing model call', JSON.stringify({
+              messagePartsCount: messages[messages.length - 1]?.parts?.length,
+              lastMessageTypes: messages[messages.length - 1]?.parts?.map((p) => p.type),
+            }))
+          } catch {}
 
           const result = streamText({
             model: openrouter.chat('openai/gpt-5', {
