@@ -1824,7 +1824,7 @@ export const tweetRouter = j.router({
             }
             if (apiError.code === 429) {
               const resetTime = apiError.rateLimit?.reset 
-                ? new Date(apiError.rateLimit.reset * 1000).toLocaleTimeString()
+                ? new Date(apiError.rateLimit.reset * 1000).toLocaleTimeString('en-US')
                 : 'soon'
               throw new HTTPException(429, {
                 message: `Twitter rate limit exceeded. Try again after ${resetTime}.`,
