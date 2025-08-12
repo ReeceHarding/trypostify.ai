@@ -107,15 +107,6 @@ Our design system follows these principles:
 4. **Rounded Corners**: Use `rounded-md` for most elements, `rounded-lg` for larger components
 5. **Subtle Shadows**: Use `shadow-sm` or `shadow` sparingly for depth
 
-## Icons
-
-**Use Lucide only**: All icons in this project must come from the Lucide icon library (https://lucide.dev).
-
-- Consistent stroke-based design
-- 24x24 viewBox with stroke-width="2"
-- Use `lucide` and `lucide-{icon-name}` class naming
-- Never mix with other icon libraries (Heroicons, Feather, etc.)
-
 ## Typography
 
 - **Primary font**: System font stack (Arial, Helvetica, sans-serif)

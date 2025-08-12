@@ -69,7 +69,16 @@ export default function TweetQueue() {
     queryKey: ['scheduled-and-published-tweets'],
     queryFn: async () => {
       const res = await client.tweet.getScheduledAndPublished.$get()
-      return await res.json()
+      const data = await res.json()
+      console.log('[TweetQueue] scheduledData received:', data)
+      console.log('[TweetQueue] scheduledData type:', typeof data)
+      console.log('[TweetQueue] scheduledData keys:', data ? Object.keys(data) : 'null')
+      // If data has a json property (superjson wrapper), unwrap it
+      if (data && typeof data === 'object' && 'json' in data) {
+        console.log('[TweetQueue] Unwrapping superjson data:', data.json)
+        return data.json
+      }
+      return data
     },
   })
 
@@ -385,6 +394,15 @@ export default function TweetQueue() {
       </div>
 
       {/* Scheduled Threads Section */}
+      {console.log('[TweetQueue] Rendering scheduled threads section:', {
+        isLoadingScheduled,
+        scheduledData,
+        hasItems: scheduledData?.items,
+        threadCount: scheduledData?.items?.filter(item => item.isThread).length,
+        // Check if data is in a different structure
+        rawData: scheduledData,
+        json: scheduledData?.json,
+      })}
       {isLoadingScheduled ? (
         <div className="mt-6 space-y-4">
           <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
