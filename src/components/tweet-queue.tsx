@@ -270,43 +270,56 @@ export default function TweetQueue() {
                         )}
                       >
                         {tweet ? (
-                          tweet.isThread ? (
-                            // Render thread item
-                            <div className="space-y-2">
+                          // Always render as thread (single posts are just threads with one item)
+                          <div className="space-y-2">
+                            {/* Show thread indicator if more than one post */}
+                            {tweet.tweets && tweet.tweets.length > 1 && (
                               <div className="flex items-center gap-2 mb-2">
                                 <MessageSquare className="size-4 text-neutral-600" />
                                 <span className="font-medium text-sm text-neutral-900">
-                                  Thread ({tweet.tweets?.length || 0} posts)
+                                  Thread ({tweet.tweets.length} posts)
                                 </span>
                               </div>
-                              {tweet.tweets && tweet.tweets.slice(0, 2).map((t: any, idx: number) => (
-                                <div key={t.id} className="pl-6 border-l-2 border-neutral-200">
-                                  <p className="text-xs text-neutral-700 line-clamp-2">
-                                    {idx + 1}. {t.content}
+                            )}
+                            
+                            {/* Render tweets in the thread */}
+                            {tweet.tweets ? (
+                              // If we have tweets array, use it
+                              <>
+                                {tweet.tweets.slice(0, 2).map((t: any, idx: number) => (
+                                  <div key={t.id} className={tweet.tweets.length > 1 ? "pl-6 border-l-2 border-neutral-200" : ""}>
+                                    <p className="text-xs text-neutral-700 line-clamp-2">
+                                      {tweet.tweets.length > 1 && `${idx + 1}. `}{t.content}
+                                    </p>
+                                    {t.media && t.media.length > 0 && (
+                                      <div className="text-xs text-neutral-500 flex items-center gap-1 mt-1">
+                                        <Paperclip className="size-3" />
+                                        {t.media.length} media file{t.media.length > 1 ? 's' : ''}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                                {tweet.tweets.length > 2 && (
+                                  <p className="pl-6 text-xs text-neutral-500">
+                                    ... and {tweet.tweets.length - 2} more posts
                                   </p>
-                                </div>
-                              ))}
-                              {tweet.tweets && tweet.tweets.length > 2 && (
-                                <p className="pl-6 text-xs text-neutral-500">
-                                  ... and {tweet.tweets.length - 2} more tweets
+                                )}
+                              </>
+                            ) : (
+                              // Fallback for single tweet structure (legacy)
+                              <div>
+                                <p className="text-neutral-900 whitespace-pre-line text-sm leading-relaxed">
+                                  {tweet.content || 'No content'}
                                 </p>
-                              )}
-                            </div>
-                          ) : (
-                            // Render individual tweet
-                            <div className="space-y-2">
-                              <p className="text-neutral-900 whitespace-pre-line text-sm leading-relaxed">
-                                {tweet.content || 'No content'}
-                              </p>
-                              {tweet.media && tweet.media.length > 0 && (
-                                <div className="text-xs text-neutral-500 flex items-center gap-1">
-                                  <Paperclip className="size-3" />
-                                  {tweet.media.length} media file
-                                  {tweet.media.length > 1 ? 's' : ''}
-                                </div>
-                              )}
-                            </div>
-                          )
+                                {tweet.media && tweet.media.length > 0 && (
+                                  <div className="text-xs text-neutral-500 flex items-center gap-1 mt-1">
+                                    <Paperclip className="size-3" />
+                                    {tweet.media.length} media file{tweet.media.length > 1 ? 's' : ''}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2 text-neutral-500">
                             <span className="text-sm">Empty slot</span>

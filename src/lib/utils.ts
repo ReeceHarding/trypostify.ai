@@ -23,12 +23,12 @@ export type DiffWithReplacement = {
 }
 
 export function diff_lineMode(text1: string, text2: string) {
-  var dmp = new diff_match_patch()
-  var a = dmp.diff_linesToChars_(text1, text2)
-  var lineText1 = a.chars1
-  var lineText2 = a.chars2
-  var lineArray = a.lineArray
-  var diffs = dmp.diff_main(lineText1, lineText2, false)
+  const dmp = new diff_match_patch()
+  const a = dmp.diff_linesToChars_(text1, text2)
+  const lineText1 = a.chars1
+  const lineText2 = a.chars2
+  const lineArray = a.lineArray
+  const diffs = dmp.diff_main(lineText1, lineText2, false)
   dmp.diff_charsToLines_(diffs, lineArray)
   return diffs
 }
@@ -224,7 +224,7 @@ export function chunkDiffs(diffs: Diff[], index = 0, result: Diff[] = []): Diff[
 
   // Try to match alternating pattern: -1, 1, optional 0 (whitespace), -1, 1, etc.
   if (current[0] === -1 && next?.[0] === 1) {
-    let group = [current, next]
+    const group = [current, next]
     let cursor = index + 2
 
     // Capture interleaved whitespace and diff pairs

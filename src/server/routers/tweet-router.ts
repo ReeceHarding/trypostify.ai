@@ -166,8 +166,6 @@ export const tweetRouter = j.router({
       })
     }),
 
-  // [REMOVED] create endpoint - using thread-based operations instead
-
   // save: privateProcedure
   //   .input(
   //     z.object({
@@ -665,60 +663,41 @@ export const tweetRouter = j.router({
       }),
     )
 
-    // Group tweets by threadId
-    const threads: Record<string, typeof tweetsWithMedia> = {}
-    const singleTweets: typeof tweetsWithMedia = []
-
+    // Group all tweets by threadId (or treat as single-item threads)
+    const threadGroups: Record<string, typeof tweetsWithMedia> = {}
+    
     for (const tweet of tweetsWithMedia) {
-      if (tweet.threadId) {
-        if (!threads[tweet.threadId]) {
-          threads[tweet.threadId] = []
-        }
-        threads[tweet.threadId]!.push(tweet)
-      } else {
-        singleTweets.push(tweet)
+      const groupKey = tweet.threadId || tweet.id
+      if (!threadGroups[groupKey]) {
+        threadGroups[groupKey] = []
       }
+      threadGroups[groupKey].push(tweet)
     }
 
-    // Sort tweets within each thread by position
-    for (const threadId in threads) {
-      threads[threadId]!.sort((a, b) => (a.position || 0) - (b.position || 0))
-    }
-
-    // Convert threads object to array and combine with single tweets
-    const threadsList = Object.entries(threads).map(([threadId, tweets]) => ({
-      threadId,
-      tweets,
-      isThread: true,
-      scheduledFor: tweets[0]?.scheduledFor, // Use first tweet's scheduled time
-      scheduledUnix: tweets[0]?.scheduledUnix,
-    }))
-
-    const allItems = [
-      ...threadsList,
-      ...singleTweets.map(tweet => ({
-        threadId: null,
-        tweets: [tweet],
-        isThread: false,
-        scheduledFor: tweet.scheduledFor,
-        scheduledUnix: tweet.scheduledUnix,
-      })),
-    ].sort((a, b) => {
-      // Sort by scheduled time, newest first
-      const timeA = a.scheduledUnix || 0
-      const timeB = b.scheduledUnix || 0
-      return timeB - timeA
-    })
+    // Convert to unified thread structure
+    const allItems = Object.entries(threadGroups)
+      .map(([key, tweets]) => {
+        const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
+        const firstTweet = sortedTweets[0]!
+        
+        return {
+          threadId: firstTweet.threadId,
+          tweets: sortedTweets,
+          scheduledFor: firstTweet.scheduledFor,
+          scheduledUnix: firstTweet.scheduledUnix,
+        }
+      })
+      .sort((a, b) => {
+        // Sort by scheduled time, newest first
+        const timeA = a.scheduledUnix || 0
+        const timeB = b.scheduledUnix || 0
+        return timeB - timeA
+      })
 
     console.log('[getScheduledAndPublished] Returning items:', {
       totalItems: allItems.length,
-      threads: allItems.filter(item => item.isThread).length,
-      singleTweets: allItems.filter(item => !item.isThread).length,
-      threadDetails: allItems.filter(item => item.isThread).map(item => ({
-        threadId: item.threadId,
-        tweetCount: item.tweets.length,
-        scheduledFor: item.scheduledFor,
-      })),
+      threads: allItems.filter(item => item.tweets.length > 1).length,
+      singlePosts: allItems.filter(item => item.tweets.length === 1).length,
     })
 
     return c.superjson({ items: allItems, tweets: tweetsWithMedia })
@@ -753,48 +732,35 @@ export const tweetRouter = j.router({
       }),
     )
 
-    // Group tweets by threadId
-    const threads: Record<string, typeof tweetsWithMedia> = {}
-    const singleTweets: typeof tweetsWithMedia = []
-
+    // Group all tweets by threadId (or treat as single-item threads)
+    const threadGroups: Record<string, typeof tweetsWithMedia> = {}
+    
     for (const tweet of tweetsWithMedia) {
-      if (tweet.threadId) {
-        if (!threads[tweet.threadId]) {
-          threads[tweet.threadId] = []
-        }
-        threads[tweet.threadId]!.push(tweet)
-      } else {
-        singleTweets.push(tweet)
+      const groupKey = tweet.threadId || tweet.id
+      if (!threadGroups[groupKey]) {
+        threadGroups[groupKey] = []
       }
+      threadGroups[groupKey].push(tweet)
     }
 
-    // Sort tweets within each thread by position
-    for (const threadId in threads) {
-      threads[threadId]!.sort((a, b) => (a.position || 0) - (b.position || 0))
-    }
-
-    // Convert threads object to array and combine with single tweets
-    const threadsList = Object.entries(threads).map(([threadId, tweets]) => ({
-      threadId,
-      tweets,
-      isThread: true,
-      updatedAt: tweets[0]?.updatedAt, // Use first tweet's updated time
-    }))
-
-    const allItems = [
-      ...threadsList,
-      ...singleTweets.map(tweet => ({
-        threadId: null,
-        tweets: [tweet],
-        isThread: false,
-        updatedAt: tweet.updatedAt,
-      })),
-    ].sort((a, b) => {
-      // Sort by updated time, newest first
-      const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
-      const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
-      return timeB - timeA
-    })
+    // Convert to unified thread structure
+    const allItems = Object.entries(threadGroups)
+      .map(([key, tweets]) => {
+        const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
+        const firstTweet = sortedTweets[0]!
+        
+        return {
+          threadId: firstTweet.threadId,
+          tweets: sortedTweets,
+          updatedAt: firstTweet.updatedAt,
+        }
+      })
+      .sort((a, b) => {
+        // Sort by updated time, newest first
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
+        return timeB - timeA
+      })
 
     return c.superjson({ items: allItems, tweets: tweetsWithMedia, accountId: account.id })
   }),
@@ -863,7 +829,7 @@ export const tweetRouter = j.router({
       })
     }),
 
-  // [REMOVED] enqueue_tweet - using thread-based operations instead
+  // [DEPRECATED] enqueue_tweet - use thread-based operations instead
   enqueue_tweet_deprecated: privateProcedure
     .input(
       z.object({
@@ -1059,64 +1025,40 @@ export const tweetRouter = j.router({
         withoutThreadId: scheduledTweetsWithMedia.filter(t => !t.threadId).length,
       })
       
-      // Separate individual tweets and thread tweets
-      const individualTweets = scheduledTweetsWithMedia.filter((tweet) => !tweet.threadId)
-      const threadTweets = scheduledTweetsWithMedia.filter((tweet) => tweet.threadId)
+      // Group all tweets by threadId (or treat as single-item threads)
+      const threadGroups: Record<string, typeof scheduledTweetsWithMedia> = {}
       
-      // Group thread tweets by threadId
-      const threadGroups = threadTweets.reduce((acc, tweet) => {
-        const threadId = tweet.threadId!
-        if (!acc[threadId]) {
-          acc[threadId] = []
+      for (const tweet of scheduledTweetsWithMedia) {
+        const groupKey = tweet.threadId || tweet.id
+        if (!threadGroups[groupKey]) {
+          threadGroups[groupKey] = []
         }
-        acc[threadId].push(tweet)
-        return acc
-      }, {} as Record<string, typeof threadTweets>)
+        threadGroups[groupKey].push(tweet)
+      }
       
-      // Create thread items with the earliest scheduled time
-      const threadItems = Object.entries(threadGroups).map(([threadId, tweets]) => {
-        const sortedTweets = tweets.sort((a, b) => a.scheduledUnix! - b.scheduledUnix!)
-        const firstTweet = sortedTweets[0]
-        if (!firstTweet) return null // Safety check
+      // Convert to unified thread structure
+      const scheduledTweets = Object.entries(threadGroups).map(([key, tweets]) => {
+        const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
+        const firstTweet = sortedTweets[0]!
         
         return {
-          id: threadId,
-          threadId,
-          isThread: true,
-          content: `Thread (${tweets.length} tweets)`,
+          id: key,
+          threadId: firstTweet.threadId,
+          content: sortedTweets.length > 1 
+            ? `Thread (${sortedTweets.length} posts)` 
+            : firstTweet.content,
           scheduledUnix: firstTweet.scheduledUnix,
           isQueued: firstTweet.isQueued,
           isScheduled: true,
           tweets: sortedTweets,
-          media: [], // Threads don't have direct media
+          media: sortedTweets.length === 1 ? firstTweet.media : [],
         }
-      }).filter(Boolean) as any[]
-      
-      // Wrap individual tweets as single-item threads for consistency
-      const individualThreadItems = individualTweets.map(tweet => ({
-        id: tweet.id,
-        threadId: null,
-        isThread: false,
-        content: tweet.content,
-        scheduledUnix: tweet.scheduledUnix,
-        isQueued: tweet.isQueued,
-        isScheduled: true,
-        tweets: [tweet], // Single tweet wrapped as thread
-        media: tweet.media,
-      }))
-      
-      // Combine all items as threads
-      const scheduledTweets = [...individualThreadItems, ...threadItems]
+      })
       
       console.log('[get_queue] Combined scheduled items:', {
         total: scheduledTweets.length,
-        individual: individualTweets.length,
-        threads: threadItems.length,
-        threadDetails: threadItems.map(t => ({
-          threadId: t.threadId,
-          tweetCount: t.tweets.length,
-          scheduledTime: new Date(t.scheduledUnix!).toISOString()
-        }))
+        singlePosts: scheduledTweets.filter(t => t.tweets.length === 1).length,
+        threads: scheduledTweets.filter(t => t.tweets.length > 1).length,
       })
 
       // Only allow items that were actually queued to occupy preset slots.
@@ -1131,7 +1073,7 @@ export const tweetRouter = j.router({
             console.log('[get_queue] slot filled', {
               unixIso: new Date(unix).toISOString(),
               tweetId: (slotTweet as any).id,
-              isThread: (slotTweet as any).isThread,
+              tweetCount: (slotTweet as any).tweets?.length || 1,
               isQueued: Boolean((slotTweet as any).isQueued),
             })
           } catch {}
@@ -1571,7 +1513,7 @@ export const tweetRouter = j.router({
           // Add media if present
           if (tweet.media && tweet.media.length > 0) {
             tweetPayload.media = {
-              media_ids: tweet.media.map((media: any) => media.media_id) as any,
+              media_ids: tweet.media.map((media) => media.media_id),
             }
           }
 

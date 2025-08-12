@@ -264,7 +264,7 @@ export const authRouter = j.router({
       const sortedTweets = tweetsWithStats.sort((a, b) => b.likes - a.likes)
       const topTweets = sortedTweets.slice(0, 20)
       const author = userProfile
-      let formattedTweets = topTweets.map((tweet) => {
+      const formattedTweets = topTweets.map((tweet) => {
         const cleanedText = tweet.text.replace(/https:\/\/t\.co\/\w+/g, '').trim()
         return {
           id: tweet.id,

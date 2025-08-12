@@ -53,7 +53,7 @@ export const fileRouter = j.router({
     .mutation(async ({ c, ctx, input }) => {
       const { user } = ctx
 
-      let type = FILE_TYPE_MAP[input.fileType as keyof typeof FILE_TYPE_MAP]
+      const type = FILE_TYPE_MAP[input.fileType as keyof typeof FILE_TYPE_MAP]
 
       const isValidFileType = [
         ...ALLOWED_DOCUMENT_TYPES,

@@ -327,7 +327,7 @@ export default function TweetList({
                   <div className="space-y-4">
                     {items.map((item) => (
                       <div key={item.threadId || item.tweets[0]?.id} className="space-y-3">
-                        {item.isThread ? (
+                        {item.tweets.length > 1 ? (
                           // Render thread
                           <div className="space-y-3">
                             <div className="flex items-center gap-2 text-sm text-neutral-600 font-medium">
