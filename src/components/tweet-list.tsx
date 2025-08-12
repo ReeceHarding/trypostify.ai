@@ -95,7 +95,7 @@ export default function TweetList({
   const router = useRouter()
 
   const { data: postedData, isLoading } = useQuery({
-    queryKey: ['posted-tweets', account?.username],
+    queryKey: ['threads-posted', account?.username],
     queryFn: async () => {
       const res = await client.tweet.getPosted.$get()
       return await res.json()
@@ -113,7 +113,7 @@ export default function TweetList({
     onSuccess: () => {
       toast.success('Post deleted and unscheduled')
       queryClient.invalidateQueries({
-        queryKey: ['posted-tweets', account?.username],
+        queryKey: ['threads-posted', account?.username],
       })
     },
     onError: () => {
@@ -137,7 +137,7 @@ export default function TweetList({
     onSuccess: (data) => {
       toast.success(`Updated metrics for ${data.updatedCount} posts`)
       queryClient.invalidateQueries({
-        queryKey: ['posted-tweets', account?.username],
+        queryKey: ['threads-posted', account?.username],
       })
     },
     onError: () => {

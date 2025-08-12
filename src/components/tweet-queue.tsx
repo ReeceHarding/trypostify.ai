@@ -70,7 +70,7 @@ export default function TweetQueue() {
 
   // Fetch scheduled threads and tweets
   const { data: rawScheduledData, isPending: isLoadingScheduled } = useQuery({
-    queryKey: ['scheduled-and-published-tweets'],
+    queryKey: ['threads-scheduled-published'],
     queryFn: async () => {
       const res = await client.tweet.getScheduledAndPublished.$get()
       const data = await res.json()
@@ -102,7 +102,7 @@ export default function TweetQueue() {
     onSuccess: () => {
       toast.success('Post deleted & unscheduled')
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
-      queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
+      queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
     },
   })
   
@@ -128,7 +128,7 @@ export default function TweetQueue() {
     onSuccess: (data) => {
       toast.success('Thread posted successfully!')
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
-      queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
+      queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
       
       if (data.threadUrl) {
         window.open(data.threadUrl, '_blank')
@@ -154,7 +154,7 @@ export default function TweetQueue() {
       setPendingPostId(null)
 
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
-      queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
+      queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
 
       toast.success(
         <div className="flex items-center gap-2">
