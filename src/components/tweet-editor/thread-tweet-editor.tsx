@@ -238,10 +238,8 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: () => {
-      // Invalidate all relevant queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ['thread', editTweetId] })
-      queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
-      queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
+      // Invalidate thread cache to ensure fresh data on next edit
+      queryClient.invalidateQueries({ queryKey: ['thread'] })
       
       toast.success('Thread updated successfully!')
       router.push('/studio/scheduled')
