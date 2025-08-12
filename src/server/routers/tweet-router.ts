@@ -1515,10 +1515,7 @@ export const tweetRouter = j.router({
 
       // console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
 
-      const baseUrl =
-        process.env.NODE_ENV === 'development'
-          ? 'https://sponge-relaxing-separately.ngrok-free.app'
-          : getBaseUrl()
+      const baseUrl = process.env.WEBHOOK_URL || getBaseUrl()
 
       // Schedule the thread posting with QStash
       const { messageId } = await qstash.publishJSON({
@@ -1666,10 +1663,7 @@ export const tweetRouter = j.router({
 
       const scheduledUnix = nextSlot.getTime()
 
-      const baseUrl =
-        process.env.NODE_ENV === 'development'
-          ? 'https://sponge-relaxing-separately.ngrok-free.app'
-          : getBaseUrl()
+      const baseUrl = process.env.WEBHOOK_URL || getBaseUrl()
 
       // Schedule the thread posting with QStash
       const { messageId } = await qstash.publishJSON({
