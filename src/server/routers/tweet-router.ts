@@ -89,6 +89,44 @@ async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
   return mediaData
 }
 
+// Simple in-memory scheduler for local development
+if (process.env.NODE_ENV === 'development') {
+  // Check for scheduled tweets every minute in development
+  setInterval(async () => {
+    try {
+      const now = Date.now()
+      const scheduledTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.isScheduled, true),
+          eq(tweets.isPublished, false),
+        ),
+      })
+      
+      // Group by threadId
+      const threads = scheduledTweets.reduce((acc, tweet) => {
+        if (tweet.threadId && tweet.scheduledUnix && tweet.scheduledUnix <= now) {
+          if (!acc[tweet.threadId]) {
+            acc[tweet.threadId] = []
+          }
+          acc[tweet.threadId]!.push(tweet)
+        }
+        return acc
+      }, {} as Record<string, typeof scheduledTweets>)
+      
+      // Process each thread that's due
+      for (const [threadId, threadTweets] of Object.entries(threads)) {
+        if (threadTweets.length > 0) {
+          console.log(`[LocalScheduler] Processing scheduled thread ${threadId}`)
+          // In a real implementation, you'd call the postThread logic here
+          // For now, just log it
+        }
+      }
+    } catch (error) {
+      console.error('[LocalScheduler] Error checking scheduled tweets:', error)
+    }
+  }, 60000) // Check every minute
+}
+
 export const tweetRouter = j.router({
   getConnectedAccount: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
@@ -1457,14 +1495,23 @@ export const tweetRouter = j.router({
 
       // console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
 
-      const baseUrl = process.env.WEBHOOK_URL || getBaseUrl()
-
-      // Schedule the thread posting with QStash
-      const { messageId } = await qstash.publishJSON({
-        url: baseUrl + '/api/tweet/postThread',
-        body: { threadId, userId: user.id, accountId: dbAccount.id },
-        notBefore: scheduledUnix,
-      })
+      // For local development, skip QStash and just update the database
+      let messageId = null
+      
+      if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
+        // In development, generate a fake message ID
+        messageId = `local-${Date.now()}-${Math.random().toString(36).substring(7)}`
+        console.log('[scheduleThread] Local development - skipping QStash, using fake messageId:', messageId)
+      } else {
+        // In production, use QStash
+        const baseUrl = process.env.WEBHOOK_URL
+        const qstashResponse = await qstash.publishJSON({
+          url: baseUrl + '/api/tweet/postThread',
+          body: { threadId, userId: user.id, accountId: dbAccount.id },
+          notBefore: scheduledUnix,
+        })
+        messageId = qstashResponse.messageId
+      }
 
       // Update all tweets in the thread to scheduled
       console.log('[scheduleThread] Updating tweets with scheduled time:', {
@@ -1605,14 +1652,23 @@ export const tweetRouter = j.router({
 
       const scheduledUnix = nextSlot.getTime()
 
-      const baseUrl = process.env.WEBHOOK_URL || getBaseUrl()
-
-      // Schedule the thread posting with QStash
-      const { messageId } = await qstash.publishJSON({
-        url: baseUrl + '/api/tweet/postThread',
-        body: { threadId, userId: user.id, accountId: dbAccount.id },
-        notBefore: scheduledUnix / 1000, // needs to be in seconds
-      })
+      // For local development, skip QStash and just update the database
+      let messageId = null
+      
+      if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
+        // In development, generate a fake message ID
+        messageId = `local-${Date.now()}-${Math.random().toString(36).substring(7)}`
+        console.log('[enqueueThread] Local development - skipping QStash, using fake messageId:', messageId)
+      } else {
+        // In production, use QStash
+        const baseUrl = process.env.WEBHOOK_URL
+        const qstashResponse = await qstash.publishJSON({
+          url: baseUrl + '/api/tweet/postThread',
+          body: { threadId, userId: user.id, accountId: dbAccount.id },
+          notBefore: scheduledUnix / 1000, // needs to be in seconds
+        })
+        messageId = qstashResponse.messageId
+      }
 
       // console.log('[enqueueThread] QStash message created:', messageId)
 

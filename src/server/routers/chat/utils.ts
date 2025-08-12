@@ -1,4 +1,5 @@
 import { HeadObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { Attachment } from './chat-router'
 import { BUCKET_NAME, FILE_TYPE_MAP, s3Client } from '@/lib/s3'
 import mammoth from 'mammoth'
@@ -87,15 +88,20 @@ export const parseAttachments = async ({
       })
 
       const data = await s3Client.send(command)
-      const mediaType = data.ContentType as keyof typeof FILE_TYPE_MAP
+      const mediaType = (data.ContentType as string) || 'application/octet-stream'
 
       const type = FILE_TYPE_MAP[mediaType as keyof typeof FILE_TYPE_MAP]
-      const url = `https://dtvhue6he2eeq.cloudfront.net/${attachment.fileKey}`
+      // Prefer a short-lived presigned S3 URL so external providers can fetch reliably
+      const signedUrl = await getSignedUrl(
+        s3Client,
+        new GetObjectCommand({ Bucket: BUCKET_NAME, Key: attachment.fileKey! }),
+        { expiresIn: 600 },
+      )
 
       if (type === 'image') {
-        return { mediaType, url, filename: attachment.title, type: 'file' } as FileUIPart
+        return { mediaType, url: signedUrl, filename: attachment.title, type: 'file' } as FileUIPart
       } else if (type === 'docx') {
-        const response = await fetch(url)
+        const response = await fetch(signedUrl)
         const buffer = await response.arrayBuffer()
         const { value } = await mammoth.extractRawText({
           buffer: Buffer.from(buffer),
@@ -121,8 +127,7 @@ export const parseAttachments = async ({
           } as TextPart
         }
       } else {
-        return { mediaType, url, type: 'file' } as FileUIPart
-        // return { type: 'file' as const, data: url, mimeType: contentType } as FilePart
+        return { mediaType, url: signedUrl, type: 'file' } as FileUIPart
       }
     }),
   )

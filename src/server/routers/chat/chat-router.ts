@@ -231,12 +231,21 @@ export const chatRouter = j.router({
 
       content.close('message')
 
-      // Only include text parts in the model payload to avoid provider-side URL fetch failures for files/images
-      const safeTextAttachments = attachments.filter((p) => p?.type === 'text')
+      // Include text parts always; include file parts only if using a vision-capable model
+      const textParts = attachments.filter((p) => p?.type === 'text')
+      // Only include UI file parts (with url) to satisfy UIMessagePart typing
+      const fileParts = attachments.filter((p: any) => p?.type === 'file' && 'url' in p)
+
+      const hasImage = fileParts.length > 0
 
       const userMessage: MyUIMessage = {
         ...message,
-        parts: [{ type: 'text', text: content.toString() }, ...safeTextAttachments],
+        parts: [
+          { type: 'text', text: content.toString() },
+          ...textParts,
+          // pass images when present; we will route to a vision model below
+          ...(hasImage ? fileParts : []),
+        ],
       }
 
       const messages = [...(history ?? []), userMessage] as MyUIMessage[]
@@ -305,16 +314,48 @@ export const chatRouter = j.router({
             }))
           } catch {}
 
-          const result = streamText({
-            model: openrouter.chat('openai/gpt-5', {
-              models: ['openai/gpt-5'],
-              reasoning: { effort: 'low' },
-            }),
-            system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
-            messages: convertToModelMessages(messages),
-            tools: { writeTweet, readWebsiteContent },
-            stopWhen: stepCountIs(3),
-          })
+          // When we have images, we need to use a different message format
+          // convertToModelMessages expects specific formats, so we'll use a different approach
+          const result = await (async () => {
+            if (hasImage) {
+              // For vision models, convert the last message to include image_url format
+              const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
+              const lastMessage = messages[messages.length - 1]
+              // Convert to Vercel AI SDK image format
+              const imageParts = fileParts.map((p: any) => ({
+                type: 'image' as const,
+                image: p.url,
+              }))
+
+              return streamText({
+                model: openrouter.chat('anthropic/claude-sonnet-4'),
+                system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
+                messages: [
+                  ...modelMessages,
+                  {
+                    role: 'user',
+                    content: [
+                      { type: 'text', text: content.toString() },
+                      ...imageParts,
+                    ],
+                  },
+                ],
+                tools: { writeTweet, readWebsiteContent },
+                stopWhen: stepCountIs(3),
+              })
+            } else {
+              // For non-vision models, use standard conversion
+              return streamText({
+                model: openrouter.chat('openai/gpt-5', {
+                  models: ['openai/gpt-5'],
+                }),
+                system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
+                messages: convertToModelMessages(messages as any),
+                tools: { writeTweet, readWebsiteContent },
+                stopWhen: stepCountIs(3),
+              })
+            }
+          })()
 
           writer.merge(result.toUIMessageStream())
         },

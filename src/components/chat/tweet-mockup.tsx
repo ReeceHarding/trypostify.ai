@@ -5,7 +5,6 @@ import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { ChevronsLeft, RotateCcw } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
 import { useTweets } from '@/hooks/use-tweets'
-import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 
 export const TweetMockup = memo(
   ({
@@ -13,7 +12,8 @@ export const TweetMockup = memo(
     text,
     isLoading = false,
   }: PropsWithChildren<{ isLoading?: boolean; text?: string }>) => {
-    const { shadowEditor } = useTweets()
+    const { setTweetContent } = useTweets()
+    
     const containerVariants = {
       hidden: { opacity: 0, y: 20, scale: 0.95 },
       visible: {
@@ -29,19 +29,9 @@ export const TweetMockup = memo(
     }
 
     const apply = () => {
-      shadowEditor.update(
-        () => {
-          const root = $getRoot()
-          const paragraph = $createParagraphNode()
-          const textNode = $createTextNode(text)
-
-          root.clear()
-
-          paragraph.append(textNode)
-          root.append(paragraph)
-        },
-        { tag: 'force-sync' },
-      )
+      if (!text) return
+      // Simply set the content directly - no need for complex editor synchronization
+      setTweetContent(text)
     }
 
     return (
@@ -68,14 +58,14 @@ export const TweetMockup = memo(
               }}
               className="flex items-center gap-2"
             >
-              <DuolingoButton
-                onClick={apply}
-                variant="secondary"
-                size="sm"
-                className="text-sm w-fit h-8 px-2"
-              >
-                <ChevronsLeft className="size-4 mr-1" /> Apply
-              </DuolingoButton>
+            <DuolingoButton
+              onClick={apply}
+              variant="secondary"
+              size="sm"
+              className="text-sm w-fit h-8 px-2"
+            >
+              <ChevronsLeft className="size-4 mr-1" /> Apply
+            </DuolingoButton>
             </motion.div>
           )}
         </div>

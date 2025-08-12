@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import DuolingoButton from '@/components/ui/duolingo-button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
 import { useConfetti } from '@/hooks/use-confetti'
-import { MediaFile, TweetProvider } from '@/hooks/use-tweets'
+import { MediaFile, useTweets } from '@/hooks/use-tweets'
 import PlaceholderPlugin from '@/lib/placeholder-plugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -24,6 +24,7 @@ import { useAttachments } from '@/hooks/use-attachments'
 import { client } from '@/lib/client'
 import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
 import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
+
 
 import { useMutation } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
@@ -115,6 +116,7 @@ function ThreadTweetContent({
 }: ThreadTweetProps) {
 
   const [editor] = useLexicalComposerContext()
+  const { currentTweet } = useTweets()
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [charCount, setCharCount] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -147,6 +149,28 @@ function ThreadTweetContent({
       }, { tag: 'initialization' })
     }
   }, [editor, initialContent])
+
+  // Update editor when content is set from AI (only for first tweet)
+  useEffect(() => {
+    if (editor && isFirstTweet && currentTweet.content) {
+      editor.update(() => {
+        const root = $getRoot()
+        root.clear()
+        const paragraph = $createParagraphNode()
+        const text = $createTextNode(currentTweet.content)
+        paragraph.append(text)
+        root.append(paragraph)
+        setCharCount(currentTweet.content.length)
+      })
+      // Also notify the parent component about the update
+      if (onUpdate) {
+        onUpdate(currentTweet.content, mediaFiles.filter(m => m.s3Key).map(m => ({ 
+          s3Key: m.s3Key!, 
+          media_id: m.media_id || '' 
+        })))
+      }
+    }
+  }, [editor, isFirstTweet, currentTweet.content])
 
   // Initialize media files when editing
   useEffect(() => {
@@ -1055,10 +1079,8 @@ function ThreadTweetContent({
 
 export default function ThreadTweet(props: ThreadTweetProps) {
   return (
-    <TweetProvider>
-      <LexicalComposer initialConfig={{ ...initialConfig }}>
-        <ThreadTweetContent {...props} />
-      </LexicalComposer>
-    </TweetProvider>
+    <LexicalComposer initialConfig={{ ...initialConfig }}>
+      <ThreadTweetContent {...props} />
+    </LexicalComposer>
   )
 }
