@@ -1238,10 +1238,11 @@ export const tweetRouter = j.router({
           scheduledUnix: true,
           isPublished: true,
           isQueued: true,
+          threadId: true,
         },
       })
 
-      const scheduledTweets = await Promise.all(
+      const scheduledTweetsWithMedia = await Promise.all(
         _scheduledTweets.map(async (tweet) => {
           const enrichedMedia = await fetchMediaFromS3(tweet.media || [])
           return {
@@ -1250,6 +1251,9 @@ export const tweetRouter = j.router({
           }
         }),
       )
+      
+      // Filter out tweets that are part of a thread - they should only appear in the threads section
+      const scheduledTweets = scheduledTweetsWithMedia.filter((tweet) => !tweet.threadId)
 
       const getSlotTweet = (unix: number) => {
         const slotTweet = scheduledTweets.find((t) => t.scheduledUnix === unix)
@@ -1289,8 +1293,12 @@ export const tweetRouter = j.router({
       all.forEach((day) => {
         const [dayUnix, timestamps] = Object.entries(day)[0]!
 
+        // Timezone-aware day grouping to ensure tweets scheduled at arbitrary times (e.g., 12:30) appear on the correct day for the user
         const tweetsForThisDay = scheduledTweets.filter((t) =>
-          isSameDay(t.scheduledUnix!, Number(dayUnix)),
+          isSameDay(
+            toZonedTime(new Date(t.scheduledUnix!), timezone),
+            toZonedTime(new Date(Number(dayUnix)), timezone),
+          ),
         )
 
         const manualForThisDay = tweetsForThisDay.filter((t) => !Boolean(t.isQueued))
@@ -1304,20 +1312,23 @@ export const tweetRouter = j.router({
 
         results.push({
           [dayUnix]: [
+            // Preset queue slots
             ...timestamps.map((timestamp) => ({
               unix: timestamp,
               tweet: getSlotTweet(timestamp),
               isQueued: true,
             })),
+            // Manually scheduled items (not part of the queue)
             ...manualForThisDay.map((tweet) => ({
               unix: tweet.scheduledUnix!,
               tweet,
               isQueued: false,
             })),
+            // Queued items that do not align with preset slots should still appear at their exact scheduled time
             ...timezoneChanged.map((tweet) => ({
               unix: tweet.scheduledUnix!,
               tweet,
-              isQueued: false,
+              isQueued: Boolean(tweet.isQueued),
             })),
           ]
             .sort((a, b) => a.unix - b.unix)
