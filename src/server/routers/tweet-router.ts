@@ -7,7 +7,7 @@ import { BUCKET_NAME, s3Client } from '@/lib/s3'
 import { HeadObjectCommand } from '@aws-sdk/client-s3'
 import { Receiver } from '@upstash/qstash'
 import { Ratelimit } from '@upstash/ratelimit'
-import { and, desc, eq, asc, inArray } from 'drizzle-orm'
+import { and, desc, eq, asc, inArray, lte } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { SendTweetV2Params, TwitterApi, UserV2 } from 'twitter-api-v2'
 import { z } from 'zod'
@@ -74,6 +74,7 @@ if (process.env.NODE_ENV === 'development') {
         where: and(
           eq(tweets.isScheduled, true),
           eq(tweets.isPublished, false),
+          lte(tweets.scheduledUnix, now),
         ),
       })
       

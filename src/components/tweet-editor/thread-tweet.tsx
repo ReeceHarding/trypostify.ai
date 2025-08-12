@@ -448,7 +448,7 @@ function ThreadTweetContent({
         {/* Remove button */}
         <button
           onClick={() => removeMediaFile(index)}
-          className="absolute top-1 right-1 p-1.5 bg-neutral-900 bg-opacity-70 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-90"
+          className="absolute top-1 right-1 p-1.5 bg-neutral-900 bg-opacity-70 rounded-full transition-opacity hover:bg-opacity-90"
         >
           <X className="w-4 h-4 text-white" />
         </button>

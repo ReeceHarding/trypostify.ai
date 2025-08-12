@@ -43,7 +43,6 @@ export default function TweetQueue() {
   const { fire } = useConfetti()
   const [pendingPostId, setPendingPostId] = useState<string | null>(null)
   const [daysLoaded, setDaysLoaded] = useState(7) // Start with 7 days
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const { shadowEditor, setMediaFiles } = useTweets()
   const router = useRouter()
@@ -62,12 +61,13 @@ export default function TweetQueue() {
     setSkipPostConfirmation(localStorage.getItem('skipPostConfirmation') === 'true')
   }, [])
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, isFetching } = useQuery({
     queryKey: ['queue-slots', daysLoaded],
     queryFn: async () => {
       const res = await client.tweet.get_queue.$get({ timezone, userNow, daysToLoad: daysLoaded })
       return await res.json()
     },
+    placeholderData: (previousData) => previousData, // Keep previous data while loading
   })
 
   // Fetch scheduled threads and tweets
@@ -206,29 +206,34 @@ export default function TweetQueue() {
   }
 
   // Handle loading more days
-  const loadMoreDays = async () => {
-    setIsLoadingMore(true)
+  const loadMoreDays = () => {
+    // Save current scroll position
+    const currentScrollY = window.scrollY
+    
     setDaysLoaded(prev => prev + 7) // Load 7 more days at a time
-    // The useQuery will automatically refetch with the new daysLoaded value
-    setIsLoadingMore(false)
+    
+    // Restore scroll position after React re-renders
+    requestAnimationFrame(() => {
+      window.scrollTo(0, currentScrollY)
+    })
   }
 
   // Add infinite scroll detection (must be declared before any early return to keep hook order stable)
   useEffect(() => {
     const handleScroll = () => {
-      if (isLoadingMore || isPending) return
+      if (isFetching || isPending) return
 
       const scrollPosition = window.innerHeight + window.scrollY
       const bottomThreshold = document.documentElement.scrollHeight - 500 // Load when 500px from bottom
 
-      if (scrollPosition >= bottomThreshold) {
+      if (scrollPosition >= bottomThreshold && daysLoaded < 365) {
         loadMoreDays()
       }
     }
 
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [isLoadingMore, isPending])
+  }, [isFetching, isPending, daysLoaded])
 
   if (isPending) {
     return (
@@ -528,9 +533,9 @@ export default function TweetQueue() {
         
         {/* Loading indicator and Load More button */}
         <div className="flex flex-col items-center space-y-4 pt-8 pb-16">
-          {isLoadingMore && <Loader />}
+          {isFetching && !isPending && <Loader />}
           
-          {!isPending && !isLoadingMore && (
+          {!isPending && !isFetching && daysLoaded < 365 && (
             <DuolingoButton
               variant="secondary"
               onClick={loadMoreDays}

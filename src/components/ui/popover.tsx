@@ -25,6 +25,8 @@ function PopoverContent({
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
     <PopoverPrimitive.Portal>
+      {/* Dimmed background overlay when popover is open. */}
+      <div className="fixed inset-0 z-40 bg-neutral-950/50 backdrop-blur-[1px]" />
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}
