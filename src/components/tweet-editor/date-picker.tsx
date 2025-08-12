@@ -30,6 +30,17 @@ export const Calendar20 = ({
   const currentHour = today.getHours()
   const currentMinute = today.getMinutes()
 
+  // Helper to format a "HH:mm" string into a 12-hour time label like "1:30 PM"
+  const formatHHmmTo12h = (hhmm: string | null): string => {
+    if (!hhmm) return ''
+    const [hStr, mStr] = hhmm.split(':')
+    const hours24 = Number(hStr || 0)
+    const minutes = Number(mStr || 0)
+    const hours12 = ((hours24 + 11) % 12) + 1
+    const ampm = hours24 >= 12 ? 'PM' : 'AM'
+    return `${hours12}:${mStr?.padStart(2, '0')} ${ampm}`
+  }
+
   const timeSlots = Array.from({ length: 37 }, (_, i) => {
     const totalMinutes = i * 15
     const hour = Math.floor(totalMinutes / 60) + 9
@@ -163,7 +174,7 @@ export const Calendar20 = ({
                     selectedTime === time && 'text-success-600'
                   )}
                 >
-                  {time}
+                  {formatHHmmTo12h(time)}
                 </Button>
               ))}
           </div>
@@ -182,7 +193,7 @@ export const Calendar20 = ({
                   month: 'long',
                 })}{' '}
               </span>
-              at <span className="font-medium">{selectedTime}</span>.
+              at <span className="font-medium">{formatHHmmTo12h(selectedTime)}</span>.
             </>
           ) : (
             <>Select a date and time for your meeting.</>
