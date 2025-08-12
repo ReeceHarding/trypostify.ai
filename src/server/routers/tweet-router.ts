@@ -99,27 +99,6 @@ export const tweetRouter = j.router({
 
     return c.json({ isConnected: Boolean(connectedAccount) })
   }),
-  recents: privateProcedure.get(async ({ c, ctx }) => {
-    const { user } = ctx
-
-    // Fetch recent thread starts instead of individual tweets
-    const recentThreadStarts = await db.query.tweets.findMany({
-      where: and(
-        eq(tweets.userId, user.id),
-        eq(tweets.isThreadStart, true)
-      ),
-      orderBy: desc(tweets.createdAt),
-      limit: 5,
-      columns: { id: true, content: true, threadId: true },
-    })
-
-    console.log('[recents] Fetched recent thread starts:', {
-      count: recentThreadStarts.length,
-      threadIds: recentThreadStarts.map(t => t.threadId),
-    })
-
-    return c.json({ tweets: recentThreadStarts })
-  }),
 
   getTweet: privateProcedure
     .input(z.object({ tweetId: z.string() }))
@@ -183,39 +162,6 @@ export const tweetRouter = j.router({
   //             size: z.number().optional(),
   //           }),
   //         )
-  //         .optional(),
-  //     }),
-  //   )
-  //   .post(async ({ c, ctx, input }) => {
-  //     const { user } = ctx
-  //     const { tweetId, content, mediaData } = input
-
-  //     const mediaIds = mediaData?.map((m) => m.media_id) || []
-
-  //     const [tweet] = await db
-  //       .insert(tweets)
-  //       .values({
-  //         id: tweetId,
-  //         userId: user.id,
-  //         content,
-  //         mediaIds,
-  //         s3Keys: [],
-  //         updatedAt: new Date(),
-  //       })
-  //       .onConflictDoUpdate({
-  //         target: tweets.id,
-  //         set: {
-  //           content,
-  //           mediaIds,
-  //           s3Keys: [],
-  //           updatedAt: new Date(),
-  //         },
-  //       })
-  //       .returning()
-
-  //     return c.superjson({ success: true, assignedId: tweetId, tweet })
-  //   }),
-
   uploadMediaToTwitter: privateProcedure
     .input(
       z.object({
@@ -316,11 +262,8 @@ export const tweetRouter = j.router({
       })
     }),
 
-  // [REMOVED] delete endpoint - using thread-based operations instead
 
-  // [REMOVED] update endpoint - using thread-based operations instead
 
-  // [REMOVED] schedule endpoint - using thread-based operations instead
 
 
 
@@ -362,7 +305,7 @@ export const tweetRouter = j.router({
     })
 
     if (!account || !account.accessToken) {
-      // console.log('no account')
+
       throw new HTTPException(400, {
         message: 'X account not connected or access token missing',
       })
@@ -394,7 +337,7 @@ export const tweetRouter = j.router({
       }
 
       try {
-        // console.log('ℹ️ tweet payload', JSON.stringify(tweetPayload, null, 2))
+
         const res = await client.v2.tweet(tweetPayload)
         // res.errors?.map((error) =>
         //   console.error('⚠️ Twitter error:', JSON.stringify(error, null, 2)),
@@ -1174,8 +1117,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, tweets: updatedTweets } = input
 
-      // console.log('[updateThread] Updating thread:', threadId)
-      // console.log('[updateThread] Number of tweets:', updatedTweets.length)
+
 
       // Get existing thread tweets
       const existingTweets = await db.query.tweets.findMany({
@@ -1186,14 +1128,14 @@ export const tweetRouter = j.router({
         orderBy: asc(tweets.position),
       })
 
-      // console.log('[updateThread] Found existing tweets:', existingTweets.length)
+
 
       // Delete tweets that are no longer in the updated list
       const updatedIds = updatedTweets.filter(t => t.id).map(t => t.id)
       const toDelete = existingTweets.filter(t => !updatedIds.includes(t.id))
       
       for (const tweet of toDelete) {
-        // console.log('[updateThread] Deleting tweet:', tweet.id)
+
         await db.delete(tweets).where(eq(tweets.id, tweet.id))
       }
 
@@ -1202,7 +1144,7 @@ export const tweetRouter = j.router({
         updatedTweets.map(async (tweet, index) => {
           if (tweet.id) {
             // Update existing tweet
-            // console.log(`[updateThread] Updating tweet ${index + 1}, id: ${tweet.id}`)
+
             const [updated] = await db
               .update(tweets)
               .set({
@@ -1218,7 +1160,7 @@ export const tweetRouter = j.router({
           } else {
             // Create new tweet
             const tweetId = crypto.randomUUID()
-            // console.log(`[updateThread] Creating new tweet ${index + 1}, id: ${tweetId}`)
+
             // Get account ID from existing tweets
             if (!existingTweets[0]) {
               throw new HTTPException(400, { message: 'Cannot add tweets to empty thread' })
@@ -1246,7 +1188,7 @@ export const tweetRouter = j.router({
         }),
       )
 
-      // console.log('[updateThread] Thread updated successfully')
+
       return c.json({ 
         success: true, 
         tweets: results,

@@ -288,10 +288,7 @@ export default function MediaLibrary({
                     </div>
                   </div>
 
-                  {/* File info */}
-                  <div className="p-2">
-                    <p className="text-xs text-neutral-600 truncate">{item.filename}</p>
-                  </div>
+                  {/* Intentionally omit filename to keep the overlay icon-only UI */}
                 </div>
               )
             })}

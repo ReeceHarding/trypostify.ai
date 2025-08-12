@@ -236,25 +236,7 @@ export default function KnowledgePage() {
             </div>
           </div>
 
-          {/* <div className="flex flex-wrap gap-3 mb-6">
-            <DuolingoBadge variant="achievement" size="md">
-              <Star className="size-3 mr-1" />
-              {mockDocuments.filter(doc => doc.isStarred).length} Starred
-            </DuolingoBadge>
-            <DuolingoBadge variant="streak" size="md">
-              <TrendingUp className="size-3 mr-1" />
-              {getRecentDocumentsCount()} This Week
-            </DuolingoBadge>
-            <DuolingoBadge variant="xp" size="md">
-              <span className="text-xs mr-1">{categoryIcons[categoryStats.mostUsed as keyof typeof categoryIcons]}</span>
-              Most Used: {categoryStats.mostUsed} ({categoryStats.count})
-            </DuolingoBadge>
-            {selectedCategory !== "all" && (
-              <DuolingoBadge variant="notification" size="md">
-                {filteredDocuments.length} {selectedCategory}s
-              </DuolingoBadge>
-            )}
-          </div> */}
+
         </div>
 
         {documents.filter((d) => !d.isDeleted).length === 0 ? (
