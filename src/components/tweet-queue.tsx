@@ -481,9 +481,11 @@ export default function TweetQueue() {
                                       toggleSkipConfirmation(true)
                                     }
                                     
-                                    if (tweet.isThread && tweet.tweets) {
+                                    if (tweet.tweets && tweet.tweets.length > 0) {
+                                      // Post as thread (works for single posts too)
                                       postThreadNow(tweet.tweets)
                                     } else {
+                                      // Fallback for legacy single tweet structure
                                       postImmediateFromQueue({ tweetId: tweet.id })
                                     }
                                   }}

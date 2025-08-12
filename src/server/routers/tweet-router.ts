@@ -102,14 +102,23 @@ export const tweetRouter = j.router({
   recents: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
 
-    const recentTweets = await db.query.tweets.findMany({
-      where: eq(tweets.userId, user.id),
+    // Fetch recent thread starts instead of individual tweets
+    const recentThreadStarts = await db.query.tweets.findMany({
+      where: and(
+        eq(tweets.userId, user.id),
+        eq(tweets.isThreadStart, true)
+      ),
       orderBy: desc(tweets.createdAt),
       limit: 5,
-      columns: { id: true, content: true },
+      columns: { id: true, content: true, threadId: true },
     })
 
-    return c.json({ tweets: recentTweets })
+    console.log('[recents] Fetched recent thread starts:', {
+      count: recentThreadStarts.length,
+      threadIds: recentThreadStarts.map(t => t.threadId),
+    })
+
+    return c.json({ tweets: recentThreadStarts })
   }),
 
   getTweet: privateProcedure
@@ -118,11 +127,43 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { tweetId } = input
 
+      console.log('[getTweet] Fetching tweet with thread context:', { tweetId })
+
       const tweet = await db.query.tweets.findFirst({
         where: and(eq(tweets.id, tweetId), eq(tweets.userId, user.id)),
       })
 
-      return c.superjson({ tweet })
+      if (!tweet) {
+        return c.superjson({ tweet: null })
+      }
+
+      // If tweet has a threadId, fetch all tweets in the thread
+      if (tweet.threadId) {
+        const threadTweets = await db.query.tweets.findMany({
+          where: and(
+            eq(tweets.threadId, tweet.threadId),
+            eq(tweets.userId, user.id)
+          ),
+          orderBy: asc(tweets.position),
+        })
+
+        console.log('[getTweet] Fetched thread context:', {
+          tweetId,
+          threadId: tweet.threadId,
+          threadLength: threadTweets.length,
+        })
+
+        return c.superjson({ 
+          tweet,
+          thread: threadTweets 
+        })
+      }
+
+      // Single tweet without thread
+      return c.superjson({ 
+        tweet,
+        thread: [tweet]
+      })
     }),
 
   // [REMOVED] create endpoint - using thread-based operations instead
@@ -1284,8 +1325,21 @@ export const tweetRouter = j.router({
         }
       }).filter(Boolean) as any[]
       
-      // Combine individual tweets and thread items
-      const scheduledTweets = [...individualTweets, ...threadItems]
+      // Wrap individual tweets as single-item threads for consistency
+      const individualThreadItems = individualTweets.map(tweet => ({
+        id: tweet.id,
+        threadId: null,
+        isThread: false,
+        content: tweet.content,
+        scheduledUnix: tweet.scheduledUnix,
+        isQueued: tweet.isQueued,
+        isScheduled: true,
+        tweets: [tweet], // Single tweet wrapped as thread
+        media: tweet.media,
+      }))
+      
+      // Combine all items as threads
+      const scheduledTweets = [...individualThreadItems, ...threadItems]
       
       console.log('[get_queue] Combined scheduled items:', {
         total: scheduledTweets.length,
