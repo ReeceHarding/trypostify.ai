@@ -471,7 +471,14 @@ export default function ThreadTweetEditor({
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
               initialContent={tweet.content}
               initialMedia={tweet.media?.map((m: any) => ({
-                url: m.url || '',
+                // Ensure a valid preview URL is always present. If the API didn't
+                // enrich media with a URL, derive it from the S3 key using the
+                // public bucket name so image/video previews render instead of alt text.
+                url:
+                  m.url ??
+                  (process.env.NEXT_PUBLIC_S3_BUCKET_NAME && m.s3Key
+                    ? `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${m.s3Key}`
+                    : ''),
                 s3Key: m.s3Key,
                 media_id: m.media_id,
                 type: m.type || 'image'

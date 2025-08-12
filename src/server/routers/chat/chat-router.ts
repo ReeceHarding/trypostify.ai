@@ -345,9 +345,10 @@ export const chatRouter = j.router({
               })
             } else {
               // For non-vision models, use standard conversion
+              console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/o4-mini`)
               return streamText({
-                model: openrouter.chat('openai/gpt-5', {
-                  models: ['openai/gpt-5'],
+                model: openrouter.chat('openai/o4-mini', {
+                  models: ['openai/o4-mini', 'openai/gpt-4o-mini'],
                 }),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                 messages: convertToModelMessages(messages as any),

@@ -102,6 +102,13 @@ const ChatInput = ({
 
   const commitSelection = useCallback(
     (doc: SelectedKnowledgeDocument) => {
+      try {
+        console.log(
+          `[${new Date().toISOString()}] [ChatInput] commitSelection: docId=%s title=%s`,
+          doc.id,
+          doc.title,
+        )
+      } catch {}
       const exists = attachments.some((a: any) => a.id === doc.id)
       if (!exists) addKnowledgeAttachment(doc)
       setIsChooserOpen(false)
@@ -113,10 +120,12 @@ const ChatInput = ({
         const lastText = textNodes[textNodes.length - 1]
         if (lastText) {
           const current = lastText.getTextContent()
+          // Replace the @/trigger with a plain-text @Title mention and a trailing space
           const cleaned = current.replace(/@\/([^\s]*)$/, '')
-          if (cleaned !== current) {
-            lastText.setTextContent(cleaned)
-          }
+          const mentionText = `@${doc.title ?? ''}`.trimEnd()
+          lastText.setTextContent(`${cleaned}${mentionText} `)
+          // Place cursor at end so the user can continue typing
+          root.selectEnd()
         }
       })
     },
@@ -166,6 +175,19 @@ const ChatInput = ({
     const removeCommand = editor?.registerCommand(
       KEY_ENTER_COMMAND,
       (event: KeyboardEvent | null) => {
+        // If the chooser is open or another handler already prevented default, do not submit.
+        if (event?.defaultPrevented || isChooserOpen) {
+          try {
+            console.log(
+              `[${new Date().toISOString()}] [ChatInput] Enter prevented due to chooserOpen=%s defaultPrevented=%s`,
+              isChooserOpen,
+              Boolean(event?.defaultPrevented),
+            )
+          } catch {}
+          event?.preventDefault()
+          return true
+        }
+
         if (event && !event.shiftKey) {
           event.preventDefault()
 

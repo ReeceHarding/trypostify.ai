@@ -184,15 +184,17 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
         },
       ]
 
-      const model = openrouter.chat("anthropic/claude-sonnet-4", {
+      const model = openrouter.chat('openai/o4-mini', {
         reasoning: { enabled: false, effort: 'low' },
         models: [
-          'openrouter/horizon-alpha',
-          'anthropic/claude-3.7-sonnet',
           'openai/o4-mini',
+          'openai/gpt-4o-mini',
+          'anthropic/claude-3.7-sonnet',
         ],
       })
 
+      const startMs = Date.now()
+      console.log(`[${new Date().toISOString()}] [create-tweet-tool] starting streamText with fast model`)
       const result = streamText({
         model,
         system: editToolSystemPrompt({ name: account.name, hasXPremium: ctx.hasXPremium }),
@@ -219,6 +221,9 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
           },
         })
       }
+
+      const durationMs = Date.now() - startMs
+      console.log(`[${new Date().toISOString()}] [create-tweet-tool] streamText completed in ${durationMs}ms, length=${fullText.length}`)
 
       writer.write({
         type: 'data-tool-output',
