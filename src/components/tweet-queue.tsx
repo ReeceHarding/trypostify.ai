@@ -422,9 +422,12 @@ export default function TweetQueue() {
         <div className="mt-6 space-y-4">
           <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
           <div className="space-y-4">
+            {console.log('[TweetQueue] Threads to render:', scheduledData.items.filter((item: any) => item.isThread))}
             {scheduledData.items
               .filter((item: any) => item.isThread)
-              .map((thread: any) => (
+              .map((thread: any) => {
+                console.log('[TweetQueue] Rendering thread:', thread);
+                return (
                 <Card key={thread.threadId} className="overflow-hidden">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -522,7 +525,7 @@ export default function TweetQueue() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
           </div>
         </div>
       ) : (
