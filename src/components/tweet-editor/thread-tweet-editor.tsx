@@ -107,6 +107,14 @@ export default function ThreadTweetEditor({
     }
   }, [threadData])
 
+  // Reset state when switching from edit mode to create mode
+  useEffect(() => {
+    if (!editMode && !editTweetId) {
+      console.log('[ThreadTweetEditor] Resetting to create mode')
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    }
+  }, [editMode, editTweetId])
+
   // Post thread mutation - combines create and post
   const postThreadMutation = useMutation({
     mutationFn: async (tweets: Array<{ content: string; media: any[]; delayMs: number }>) => {
