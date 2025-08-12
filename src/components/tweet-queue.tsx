@@ -385,7 +385,14 @@ export default function TweetQueue() {
       </div>
 
       {/* Scheduled Threads Section */}
-      {scheduledData?.items && scheduledData.items.filter(item => item.isThread).length > 0 && (
+      {isLoadingScheduled ? (
+        <div className="mt-6 space-y-4">
+          <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
+          <div className="flex items-center justify-center py-8">
+            <Loader variant="classic" />
+          </div>
+        </div>
+      ) : scheduledData?.items && scheduledData.items.filter(item => item.isThread).length > 0 ? (
         <div className="mt-6 space-y-4">
           <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
           <div className="space-y-4">
@@ -490,6 +497,14 @@ export default function TweetQueue() {
                   </CardContent>
                 </Card>
               ))}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-4">
+          <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
+          <div className="text-center py-8 text-neutral-500">
+            <MessageSquare className="size-12 mx-auto mb-3 text-neutral-300" />
+            <p className="text-sm">No scheduled threads</p>
           </div>
         </div>
       )}
