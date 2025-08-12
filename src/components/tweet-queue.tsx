@@ -48,6 +48,10 @@ export default function TweetQueue() {
 
   const userNow = new Date()
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  
+  // Get chatId from URL params
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  const chatId = searchParams.get('chatId') || undefined
 
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
   const [didTogglePostConfirmation, setDidTogglePostConfirmation] = useState(false)
@@ -99,6 +103,44 @@ export default function TweetQueue() {
       toast.success('Tweet deleted & unscheduled')
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
       queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
+    },
+  })
+  
+  const { mutate: postThreadNow, isPending: isPostingThread } = useMutation({
+    mutationFn: async (threadTweets: any[]) => {
+      const tweets = threadTweets.map(tweet => ({
+        content: tweet.content,
+        media: tweet.media || [],
+        delayMs: 0,
+      }))
+      
+      const res = await client.tweet.postThreadNow.$post({
+        tweets,
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error((error as any).message || 'Failed to post thread')
+      }
+
+      return await res.json()
+    },
+    onSuccess: (data) => {
+      toast.success('Thread posted successfully!')
+      queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
+      queryClient.invalidateQueries({ queryKey: ['scheduled-and-published-tweets'] })
+      
+      if (data.threadUrl) {
+        window.open(data.threadUrl, '_blank')
+      }
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.message || 'Failed to post thread'
+      if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate limit')) {
+        toast.error('Twitter rate limit reached. Please try again later.')
+      } else {
+        toast.error(errorMessage)
+      }
     },
   })
 
@@ -228,18 +270,43 @@ export default function TweetQueue() {
                         )}
                       >
                         {tweet ? (
-                          <div className="space-y-2">
-                            <p className="text-neutral-900 whitespace-pre-line text-sm leading-relaxed">
-                              {tweet.content || 'No content'}
-                            </p>
-                            {tweet.media && tweet.media.length > 0 && (
-                              <div className="text-xs text-neutral-500 flex items-center gap-1">
-                                <Paperclip className="size-3" />
-                                {tweet.media.length} media file
-                                {tweet.media.length > 1 ? 's' : ''}
+                          tweet.isThread ? (
+                            // Render thread item
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 mb-2">
+                                <MessageSquare className="size-4 text-neutral-600" />
+                                <span className="font-medium text-sm text-neutral-900">
+                                  Thread ({tweet.tweets?.length || 0} tweets)
+                                </span>
                               </div>
-                            )}
-                          </div>
+                              {tweet.tweets && tweet.tweets.slice(0, 2).map((t: any, idx: number) => (
+                                <div key={t.id} className="pl-6 border-l-2 border-neutral-200">
+                                  <p className="text-xs text-neutral-700 line-clamp-2">
+                                    {idx + 1}. {t.content}
+                                  </p>
+                                </div>
+                              ))}
+                              {tweet.tweets && tweet.tweets.length > 2 && (
+                                <p className="pl-6 text-xs text-neutral-500">
+                                  ... and {tweet.tweets.length - 2} more tweets
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            // Render individual tweet
+                            <div className="space-y-2">
+                              <p className="text-neutral-900 whitespace-pre-line text-sm leading-relaxed">
+                                {tweet.content || 'No content'}
+                              </p>
+                              {tweet.media && tweet.media.length > 0 && (
+                                <div className="text-xs text-neutral-500 flex items-center gap-1">
+                                  <Paperclip className="size-3" />
+                                  {tweet.media.length} media file
+                                  {tweet.media.length > 1 ? 's' : ''}
+                                </div>
+                              )}
+                            </div>
+                          )
                         ) : (
                           <div className="flex items-center gap-2 text-neutral-500">
                             <span className="text-sm">Empty slot</span>
@@ -275,19 +342,25 @@ export default function TweetQueue() {
                                   className="mb-1 w-full"
                                   onClick={() => {
                                     if (tweet) {
-                                      shadowEditor.update(() => {
-                                        const root = $getRoot()
-                                        const p = $createParagraphNode()
-                                        const text = $createTextNode(tweet.content)
-                                        p.append(text)
-                                        root.clear()
-                                        root.append(p)
-                                        root.selectEnd()
-                                      })
+                                      if (tweet.isThread) {
+                                        // Navigate to edit thread
+                                        router.push(`/studio?chatId=${chatId}&editThread=${tweet.threadId}`)
+                                      } else {
+                                        // Edit individual tweet
+                                        shadowEditor.update(() => {
+                                          const root = $getRoot()
+                                          const p = $createParagraphNode()
+                                          const text = $createTextNode(tweet.content)
+                                          p.append(text)
+                                          root.clear()
+                                          root.append(p)
+                                          root.selectEnd()
+                                        })
 
-                                      setMediaFiles(tweet.media || [])
+                                        setMediaFiles(tweet.media || [])
 
-                                      router.push(`/studio?edit=${tweet.id}`)
+                                        router.push(`/studio?edit=${tweet.id}`)
+                                      }
                                     }
                                   }}
                                 >
@@ -295,7 +368,7 @@ export default function TweetQueue() {
                                   <div className="flex flex-col">
                                     <p>Edit</p>
                                     <p className="text-xs text-neutral-500">
-                                      Open this tweet in the editor.
+                                      Open this {tweet?.isThread ? 'thread' : 'tweet'} in the editor.
                                     </p>
                                   </div>
                                 </DropdownMenuItem>
@@ -321,13 +394,22 @@ export default function TweetQueue() {
                                 <DropdownMenuItem
                                   variant="destructive"
                                   className="mt-1 w-full"
-                                  onClick={() => deleteTweet(tweet!.id)}
+                                  onClick={() => {
+                                    if (tweet!.isThread && tweet!.tweets) {
+                                      // Delete all tweets in the thread
+                                      tweet!.tweets.forEach((t: any) => {
+                                        deleteTweet(t.id)
+                                      })
+                                    } else {
+                                      deleteTweet(tweet!.id)
+                                    }
+                                  }}
                                 >
                                   <Trash2 className="size-4 mr-1 text-error-600" />
                                   <div className="flex text-error-600  flex-col">
                                     <p>Delete</p>
                                     <p className="text-xs text-error-600">
-                                      Delete this tweet from the queue.
+                                      Delete this {tweet?.isThread ? 'thread' : 'tweet'} from the queue.
                                     </p>
                                   </div>
                                 </DropdownMenuItem>
@@ -343,8 +425,10 @@ export default function TweetQueue() {
                                   Post to Twitter
                                 </DialogTitle>
                                 <DialogDescription>
-                                  This tweet will be posted and removed from your queue
-                                  immediately. Would you like to continue?
+                                  {tweet.isThread 
+                                    ? `This thread (${tweet.tweets?.length || 0} tweets) will be posted and removed from your queue immediately. Would you like to continue?`
+                                    : 'This tweet will be posted and removed from your queue immediately. Would you like to continue?'
+                                  }
                                 </DialogDescription>
                                 <div className="flex justify-center sm:justify-start pt-4">
                                   <DuolingoCheckbox
@@ -373,7 +457,7 @@ export default function TweetQueue() {
                                   </DuolingoButton>
                                 </DialogClose>
                                 <DuolingoButton
-                                  loading={isPosting}
+                                  loading={isPosting || isPostingThread}
                                   size="sm"
                                   className="h-11"
                                   onClick={(e) => {
@@ -381,11 +465,16 @@ export default function TweetQueue() {
                                     if (didTogglePostConfirmation) {
                                       toggleSkipConfirmation(true)
                                     }
-                                    postImmediateFromQueue({ tweetId: tweet.id })
+                                    
+                                    if (tweet.isThread && tweet.tweets) {
+                                      postThreadNow(tweet.tweets)
+                                    } else {
+                                      postImmediateFromQueue({ tweetId: tweet.id })
+                                    }
                                   }}
                                 >
                                   <Icons.twitter className="size-4 mr-2" />
-                                  {isPosting ? 'Posting...' : 'Post Now'}
+                                  {isPosting || isPostingThread ? 'Posting...' : 'Post Now'}
                                 </DuolingoButton>
                               </DialogFooter>
                             </DialogContent>
@@ -401,148 +490,7 @@ export default function TweetQueue() {
         })}
       </div>
 
-      {/* Scheduled Threads Section */}
-      <div className="mt-6 p-4 bg-red-500 text-white font-bold">
-        DEBUG: Scheduled Threads Section Container - This should be visible!
-      </div>
-      {console.log('[TweetQueue] About to render scheduled threads section')}
-      {console.log('[TweetQueue] isLoadingScheduled:', isLoadingScheduled)}
-      {console.log('[TweetQueue] scheduledData:', scheduledData)}
-      {console.log('[TweetQueue] scheduledData?.items:', scheduledData?.items)}
-      {console.log('[TweetQueue] items length:', scheduledData?.items?.length)}
-      {console.log('[TweetQueue] items with isThread:', scheduledData?.items?.filter((item: any) => item.isThread))}
-      {console.log('[TweetQueue] Condition check:', {
-        hasItems: Boolean(scheduledData?.items),
-        hasThreads: scheduledData?.items?.filter((item: any) => item.isThread).length > 0,
-        overallCondition: scheduledData?.items && scheduledData.items.filter((item: any) => item.isThread).length > 0
-      })}
-      {isLoadingScheduled ? (
-        <div className="mt-6 space-y-4">
-          <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
-          <div className="flex items-center justify-center py-8">
-            <Loader variant="classic" />
-          </div>
-        </div>
-      ) : scheduledData?.items && scheduledData.items.filter((item: any) => item.isThread).length > 0 ? (
-        <div className="mt-6 space-y-4">
-          <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
-          <div className="space-y-4">
-            {console.log('[TweetQueue] Threads to render:', scheduledData.items.filter((item: any) => item.isThread))}
-            {scheduledData.items
-              .filter((item: any) => item.isThread)
-              .map((thread: any) => {
-                console.log('[TweetQueue] Rendering thread:', thread);
-                return (
-                <Card key={thread.threadId} className="overflow-hidden border-2 border-primary bg-primary-50">
-                  <div className="p-4 bg-red-500 text-white">DEBUG: Thread {thread.threadId} is rendering!</div>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="size-5 text-neutral-600" />
-                        <CardTitle className="text-base">
-                          Thread ({thread.tweets.length} tweets)
-                        </CardTitle>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="size-4 text-neutral-500" />
-                        <span className="text-sm text-neutral-600">
-                          {thread.scheduledFor && format(new Date(thread.scheduledFor), 'MMM d, h:mm a')}
-                        </span>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {thread.tweets.map((tweet: any, index: number) => (
-                      <div key={tweet.id} className="relative">
-                        {/* Connect tweets with a line */}
-                        {index < thread.tweets.length - 1 && (
-                          <div className="absolute left-5 top-12 bottom-[-12px] w-[2px] bg-neutral-200" />
-                        )}
-                        
-                        <div className="flex gap-3">
-                          <div className="flex-shrink-0">
-                            <div className="size-10 rounded-full bg-neutral-200 flex items-center justify-center text-sm font-medium text-neutral-700">
-                              {index + 1}
-                            </div>
-                          </div>
-                          
-                          <div className="flex-1 bg-white rounded-lg border border-neutral-200 p-3">
-                            <p className="text-sm text-neutral-900 whitespace-pre-line">
-                              {tweet.content}
-                            </p>
-                            {tweet.media && tweet.media.length > 0 && (
-                              <div className="mt-2 text-xs text-neutral-500 flex items-center gap-1">
-                                <Paperclip className="size-3" />
-                                {tweet.media.length} media file{tweet.media.length > 1 ? 's' : ''}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="pt-3 flex items-center justify-end gap-2">
-                      <DuolingoButton
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          // Navigate to edit thread
-                          router.push(`/studio?edit=${thread.tweets[0]?.id}`)
-                        }}
-                      >
-                        <Edit className="size-3 mr-1" />
-                        Edit Thread
-                      </DuolingoButton>
-                      
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <DuolingoButton
-                            variant="secondary"
-                            size="sm"
-                          >
-                            <Trash2 className="size-3 mr-1" />
-                            Delete
-                          </DuolingoButton>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Delete Thread</DialogTitle>
-                            <DialogDescription>
-                              Are you sure you want to delete this entire thread? This will remove all {thread.tweets.length} tweets.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <DialogFooter>
-                            <DialogClose asChild>
-                              <DuolingoButton variant="secondary">Cancel</DuolingoButton>
-                            </DialogClose>
-                            <DuolingoButton
-                              onClick={() => {
-                                // Delete all tweets in the thread
-                                thread.tweets.forEach((tweet: any) => {
-                                  deleteTweet(tweet.id)
-                                })
-                              }}
-                            >
-                              Delete Thread
-                            </DuolingoButton>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardContent>
-                </Card>
-              )})}
-          </div>
-        </div>
-      ) : (
-        <div className="mt-6 space-y-4">
-          <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
-          <div className="text-center py-8 text-neutral-500">
-            <MessageSquare className="size-12 mx-auto mb-3 text-neutral-300" />
-            <p className="text-sm">No scheduled threads</p>
-          </div>
-        </div>
-      )}
+
     </>
   )
 }

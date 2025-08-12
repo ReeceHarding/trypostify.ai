@@ -1282,8 +1282,52 @@ export const tweetRouter = j.router({
         withoutThreadId: scheduledTweetsWithMedia.filter(t => !t.threadId).length,
       })
       
-      // Filter out tweets that are part of a thread - they should only appear in the threads section
-      const scheduledTweets = scheduledTweetsWithMedia.filter((tweet) => !tweet.threadId)
+      // Separate individual tweets and thread tweets
+      const individualTweets = scheduledTweetsWithMedia.filter((tweet) => !tweet.threadId)
+      const threadTweets = scheduledTweetsWithMedia.filter((tweet) => tweet.threadId)
+      
+      // Group thread tweets by threadId
+      const threadGroups = threadTweets.reduce((acc, tweet) => {
+        const threadId = tweet.threadId!
+        if (!acc[threadId]) {
+          acc[threadId] = []
+        }
+        acc[threadId].push(tweet)
+        return acc
+      }, {} as Record<string, typeof threadTweets>)
+      
+      // Create thread items with the earliest scheduled time
+      const threadItems = Object.entries(threadGroups).map(([threadId, tweets]) => {
+        const sortedTweets = tweets.sort((a, b) => a.scheduledUnix! - b.scheduledUnix!)
+        const firstTweet = sortedTweets[0]
+        if (!firstTweet) return null // Safety check
+        
+        return {
+          id: threadId,
+          threadId,
+          isThread: true,
+          content: `Thread (${tweets.length} tweets)`,
+          scheduledUnix: firstTweet.scheduledUnix,
+          isQueued: firstTweet.isQueued,
+          isScheduled: true,
+          tweets: sortedTweets,
+          media: [], // Threads don't have direct media
+        }
+      }).filter(Boolean) as any[]
+      
+      // Combine individual tweets and thread items
+      const scheduledTweets = [...individualTweets, ...threadItems]
+      
+      console.log('[get_queue] Combined scheduled items:', {
+        total: scheduledTweets.length,
+        individual: individualTweets.length,
+        threads: threadItems.length,
+        threadDetails: threadItems.map(t => ({
+          threadId: t.threadId,
+          tweetCount: t.tweets.length,
+          scheduledTime: new Date(t.scheduledUnix!).toISOString()
+        }))
+      })
 
       const getSlotTweet = (unix: number) => {
         const slotTweet = scheduledTweets.find((t) => t.scheduledUnix === unix)
