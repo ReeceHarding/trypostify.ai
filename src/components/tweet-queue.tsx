@@ -96,7 +96,7 @@ export default function TweetQueue() {
 
   const { mutate: deleteTweet } = useMutation({
     mutationFn: async (tweetId: string) => {
-      const res = await client.tweet.delete.$post({ id: tweetId })
+      const res = await client.tweet.deleteThread.$post({ threadId: tweetId })
       return await res.json()
     },
     onSuccess: () => {

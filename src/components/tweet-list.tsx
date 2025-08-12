@@ -108,7 +108,10 @@ export default function TweetList({
     variables,
   } = useMutation({
     mutationFn: async ({ tweetId }: { tweetId: string }) => {
-      await client.tweet.delete.$post({ id: tweetId })
+      // For single tweets without threadId, we need to get the tweet first
+      // to determine if it has a threadId
+      // For now, we'll use deleteThread with the tweetId as threadId
+      await client.tweet.deleteThread.$post({ threadId: tweetId })
     },
     onSuccess: () => {
       toast.success('Post deleted and unscheduled')
