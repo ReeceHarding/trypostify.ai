@@ -343,8 +343,20 @@ export default function TweetQueue() {
                                   onClick={() => {
                                     if (tweet) {
                                       if (tweet.isThread) {
-                                        // Navigate to edit thread
-                                        router.push(`/studio?chatId=${chatId}&editThread=${tweet.threadId}`)
+                                        // Log and route to existing editor with first tweet id
+                                        try {
+                                          console.log('[TweetQueue] Edit click for thread', {
+                                            threadId: tweet.threadId,
+                                            tweetsCount: tweet.tweets?.length,
+                                            tweetIds: (tweet.tweets || []).map((t: any) => t.id),
+                                          })
+                                        } catch {}
+                                        const firstId = tweet.tweets?.[0]?.id
+                                        if (firstId) {
+                                          router.push(`/studio?edit=${firstId}`)
+                                        } else {
+                                          console.warn('[TweetQueue] No first tweet id found for thread', tweet)
+                                        }
                                       } else {
                                         // Edit individual tweet
                                         shadowEditor.update(() => {
@@ -359,6 +371,9 @@ export default function TweetQueue() {
 
                                         setMediaFiles(tweet.media || [])
 
+                                        console.log('[TweetQueue] Edit click for single tweet', {
+                                          tweetId: tweet.id,
+                                        })
                                         router.push(`/studio?edit=${tweet.id}`)
                                       }
                                     }

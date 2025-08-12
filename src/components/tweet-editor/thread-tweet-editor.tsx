@@ -63,6 +63,11 @@ export default function ThreadTweetEditor({
     queryFn: async () => {
       if (!editTweetId) return null
       
+      console.log('[ThreadTweetEditor] loading edit mode data', {
+        editTweetId,
+        ts: new Date().toISOString(),
+      })
+
       // First get the tweet to find its threadId
       const tweetRes = await client.tweet.getTweet.$get({ tweetId: editTweetId })
       if (!tweetRes.ok) throw new Error('Failed to load tweet')
@@ -70,6 +75,11 @@ export default function ThreadTweetEditor({
       const { tweet } = await tweetRes.json()
       if (!tweet?.threadId) return null
       
+      console.log('[ThreadTweetEditor] fetched base tweet', {
+        tweetId: tweet.id,
+        threadId: tweet.threadId,
+      })
+
       // Then get all tweets in the thread
       const threadRes = await client.tweet.getThread.$get({ threadId: tweet.threadId })
       if (!threadRes.ok) throw new Error('Failed to load thread')
@@ -81,6 +91,10 @@ export default function ThreadTweetEditor({
   // Initialize thread data when loaded
   useEffect(() => {
     if (threadData?.tweets && threadData.tweets.length > 0) {
+      console.log('[ThreadTweetEditor] initializing editor with thread data', {
+        tweetCount: threadData.tweets.length,
+        tweetIds: threadData.tweets.map((t: any) => t.id),
+      })
       setThreadTweets(threadData.tweets.map((tweet: any) => ({
         id: tweet.id,
         content: tweet.content,
