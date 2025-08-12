@@ -1406,7 +1406,24 @@ export const tweetRouter = j.router({
             })),
           ]
             .sort((a, b) => a.unix - b.unix)
-            .filter((entry) => isFuture(entry.unix)),
+            // Keep items scheduled in the future OR within a small grace window in the past
+            // Use client-supplied userNow to align with the UI timezone perception
+            .filter((entry) => {
+              const GRACE_MS = 5 * 60 * 1000 // five minutes
+              const now = new Date(userNow as any).getTime()
+              const keep = entry.unix >= now - GRACE_MS
+              try {
+                console.log('[get_queue] filter check', {
+                  entryUnixIso: new Date(entry.unix).toISOString(),
+                  nowIso: new Date(now).toISOString(),
+                  deltaMs: entry.unix - now,
+                  keep,
+                  isQueued: entry.isQueued,
+                  hasTweetId: Boolean(entry.tweet?.id),
+                })
+              } catch {}
+              return keep
+            }),
         })
       })
 
