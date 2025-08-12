@@ -4,7 +4,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { useChatContext } from '@/hooks/use-chat'
 import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
-import { ArrowLeftFromLine, ArrowRightFromLine, PanelLeft, Settings, Edit, Brain, Calendar, Send, User, Crown } from 'lucide-react'
+import { ArrowLeftFromLine, ArrowRightFromLine, PanelLeft, Settings, Crown } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createSerializer, parseAsString } from 'nuqs'
@@ -96,7 +96,7 @@ export const LeftSidebar = () => {
               )}
             >
               <div className="size-6 flex items-center justify-center flex-shrink-0">
-                <Edit className="size-4" />
+                <span aria-hidden="true" className="text-base">📝</span>
               </div>
               <span
                 className={cn(
@@ -137,7 +137,7 @@ export const LeftSidebar = () => {
                 )}
               >
                 <div className="size-6 flex items-center justify-center flex-shrink-0">
-                  <Brain className="size-4" />
+                  <span aria-hidden="true" className="text-base">🧠</span>
                 </div>
                 <span
                   className={cn(
@@ -164,7 +164,7 @@ export const LeftSidebar = () => {
                 )}
               >
                 <div className="size-6 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="size-4" />
+                  <span aria-hidden="true" className="text-base">🗓️</span>
                 </div>
                 <span
                   className={cn(
@@ -191,7 +191,7 @@ export const LeftSidebar = () => {
                 )}
               >
                 <div className="size-6 flex items-center justify-center flex-shrink-0">
-                  <Send className="size-4" />
+                  <span aria-hidden="true" className="text-base">📤</span>
                 </div>
                 <span
                   className={cn(
@@ -232,7 +232,7 @@ export const LeftSidebar = () => {
               )}
             >
               <div className="size-6 flex items-center justify-center flex-shrink-0">
-                <User className="size-4" />
+                <span aria-hidden="true" className="text-base">👤</span>
               </div>
               <span
                 className={cn(

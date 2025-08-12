@@ -12,7 +12,7 @@ import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import posthog from 'posthog-js'
-import { Fragment, useEffect, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Icons } from './icons'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -65,22 +65,30 @@ export default function TweetQueue() {
   })
 
   // Fetch scheduled threads and tweets
-  const { data: scheduledData, isPending: isLoadingScheduled } = useQuery({
+  const { data: rawScheduledData, isPending: isLoadingScheduled } = useQuery({
     queryKey: ['scheduled-and-published-tweets'],
     queryFn: async () => {
       const res = await client.tweet.getScheduledAndPublished.$get()
       const data = await res.json()
-      console.log('[TweetQueue] scheduledData received:', data)
-      console.log('[TweetQueue] scheduledData type:', typeof data)
-      console.log('[TweetQueue] scheduledData keys:', data ? Object.keys(data) : 'null')
-      // If data has a json property (superjson wrapper), unwrap it
-      if (data && typeof data === 'object' && 'json' in data) {
-        console.log('[TweetQueue] Unwrapping superjson data:', data.json)
-        return data.json
-      }
+      console.log('[TweetQueue] Raw response:', data)
       return data
     },
   })
+
+  // Handle potential superjson wrapper
+  const scheduledData = React.useMemo(() => {
+    if (!rawScheduledData) return null
+    
+    // Check if this is a superjson response with a json property
+    if ((rawScheduledData as any).json) {
+      console.log('[TweetQueue] Unwrapped superjson data:', (rawScheduledData as any).json)
+      return (rawScheduledData as any).json
+    }
+    
+    // Otherwise use the data as-is
+    console.log('[TweetQueue] Using data as-is:', rawScheduledData)
+    return rawScheduledData
+  }, [rawScheduledData])
 
   const { mutate: deleteTweet } = useMutation({
     mutationFn: async (tweetId: string) => {
@@ -398,7 +406,7 @@ export default function TweetQueue() {
         isLoadingScheduled,
         scheduledData,
         hasItems: scheduledData?.items,
-        threadCount: scheduledData?.items?.filter(item => item.isThread).length,
+        threadCount: scheduledData?.items?.filter((item: any) => item.isThread).length,
         // Check if data is in a different structure
         rawData: scheduledData,
         json: scheduledData?.json,
@@ -410,13 +418,13 @@ export default function TweetQueue() {
             <Loader variant="classic" />
           </div>
         </div>
-      ) : scheduledData?.items && scheduledData.items.filter(item => item.isThread).length > 0 ? (
+      ) : scheduledData?.items && scheduledData.items.filter((item: any) => item.isThread).length > 0 ? (
         <div className="mt-6 space-y-4">
           <h2 className="text-lg font-semibold text-neutral-900">Scheduled Threads</h2>
           <div className="space-y-4">
             {scheduledData.items
-              .filter(item => item.isThread)
-              .map((thread) => (
+              .filter((item: any) => item.isThread)
+              .map((thread: any) => (
                 <Card key={thread.threadId} className="overflow-hidden">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -435,7 +443,7 @@ export default function TweetQueue() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {thread.tweets.map((tweet, index) => (
+                    {thread.tweets.map((tweet: any, index: number) => (
                       <div key={tweet.id} className="relative">
                         {/* Connect tweets with a line */}
                         {index < thread.tweets.length - 1 && (
@@ -501,7 +509,7 @@ export default function TweetQueue() {
                             <DuolingoButton
                               onClick={() => {
                                 // Delete all tweets in the thread
-                                thread.tweets.forEach(tweet => {
+                                thread.tweets.forEach((tweet: any) => {
                                   deleteTweet(tweet.id)
                                 })
                               }}
