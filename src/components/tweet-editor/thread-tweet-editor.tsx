@@ -483,7 +483,12 @@ export default function ThreadTweetEditor({
               isPosting={isPosting}
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
               initialContent={tweet.content}
-              initialMedia={[]}
+              initialMedia={tweet.media?.map((m: any) => ({
+                url: m.url || '',
+                s3Key: m.s3Key,
+                media_id: m.media_id,
+                type: m.type || 'image'
+              })) || []}
             />
           </div>
         ))}
