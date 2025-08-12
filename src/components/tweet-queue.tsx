@@ -428,7 +428,8 @@ export default function TweetQueue() {
               .map((thread: any) => {
                 console.log('[TweetQueue] Rendering thread:', thread);
                 return (
-                <Card key={thread.threadId} className="overflow-hidden">
+                <Card key={thread.threadId} className="overflow-hidden border-2 border-primary bg-primary-50">
+                  <div className="p-4 bg-red-500 text-white">DEBUG: Thread {thread.threadId} is rendering!</div>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
