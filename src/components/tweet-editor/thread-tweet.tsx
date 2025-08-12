@@ -30,7 +30,7 @@ import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
 import {
   CalendarCog,
-  ChevronDown,
+
   Clock,
   ImagePlus,
   Loader2,
@@ -57,9 +57,9 @@ import {
   DrawerTitle,
 } from '../ui/drawer'
 import { Loader } from '../ui/loader'
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+
 import ContentLengthIndicator from './content-length-indicator'
-import { Calendar20 } from './date-picker'
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
 interface ThreadTweetProps {
@@ -71,7 +71,7 @@ interface ThreadTweetProps {
   onRemove?: () => void
   onPostThread?: () => void
   onQueueThread?: () => void
-  onScheduleThread?: (date: Date) => void
+
   onUpdateThread?: () => void
   onCancelEdit?: () => void
   isPosting?: boolean
@@ -104,7 +104,7 @@ function ThreadTweetContent({
   onRemove,
   onPostThread,
   onQueueThread,
-  onScheduleThread,
+
   onUpdateThread,
   onCancelEdit,
   isPosting = false,
@@ -932,49 +932,7 @@ function ThreadTweetContent({
                                 </TooltipContent>
                               </Tooltip>
 
-                              <Tooltip>
-                                <Popover>
-                                  <TooltipTrigger asChild>
-                                    <PopoverTrigger asChild>
-                                      <DuolingoButton
-                                        loading={isPosting}
-                                        disabled={mediaFiles.some((f) => f.uploading)}
-                                        size="icon"
-                                        className="h-11 w-14 rounded-l-none border-l"
-                                      >
-                                        <ChevronDown className="size-4" />
-                                        <span className="sr-only">Schedule manually</span>
-                                      </DuolingoButton>
-                                    </PopoverTrigger>
-                                  </TooltipTrigger>
-                                  <PopoverContent className="max-w-3xl w-full">
-                                    <Calendar20
-                                      onSchedule={(date, time) => {
-                                        // Combine selected calendar date with the chosen HH:mm time
-                                        try {
-                                          const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
-                                          const scheduled = new Date(date)
-                                          scheduled.setHours(hh || 0, mm || 0, 0, 0)
-                                          // Debug log to trace scheduling values end-to-end
-                                          console.log('[ThreadTweet] onSchedule selected', {
-                                            rawDate: date?.toISOString?.(),
-                                            time,
-                                            combinedIso: scheduled.toISOString(),
-                                          })
-                                          if (onScheduleThread) onScheduleThread(scheduled)
-                                        } catch (e) {
-                                          console.error('[ThreadTweet] onSchedule combine error', e)
-                                          if (onScheduleThread) onScheduleThread(date)
-                                        }
-                                      }}
-                                      isPending={isPosting}
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                                <TooltipContent>
-                                  <p>Schedule manually</p>
-                                </TooltipContent>
-                              </Tooltip>
+
                             </TooltipProvider>
                           </div>
                         </>

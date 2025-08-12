@@ -870,6 +870,7 @@ export const tweetRouter = j.router({
           isPublished: true,
           isQueued: true,
           threadId: true,
+          position: true,
         },
       })
 
@@ -1376,8 +1377,9 @@ export const tweetRouter = j.router({
 
           // Add media if present
           if (tweet.media && tweet.media.length > 0) {
+            const mediaIds = tweet.media.map((media) => media.media_id)
             tweetPayload.media = {
-              media_ids: tweet.media.map((media) => media.media_id),
+              media_ids: mediaIds as any,
             }
           }
 
@@ -1458,105 +1460,7 @@ export const tweetRouter = j.router({
       })
     }),
 
-  scheduleThread: privateProcedure
-    .input(
-      z.object({
-        threadId: z.string(),
-        scheduledUnix: z.number(),
-      }),
-    )
-    .post(async ({ c, ctx, input }) => {
-      const { user } = ctx
-      const { threadId, scheduledUnix } = input
 
-      console.log('[scheduleThread] Starting thread scheduling:', {
-        threadId,
-        scheduledUnix,
-        scheduledDate: new Date(scheduledUnix * 1000).toISOString(),
-        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      })
-
-      const account = await getAccount({
-        email: user.email,
-      })
-
-      if (!account?.id) {
-        throw new HTTPException(400, {
-          message: 'Please connect your X account',
-        })
-      }
-
-      const dbAccount = await db.query.account.findFirst({
-        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
-      })
-
-      if (!dbAccount || !dbAccount.accessToken) {
-        throw new HTTPException(400, {
-          message: 'X account not connected or access token missing',
-        })
-      }
-
-      // Get all tweets in the thread
-      const threadTweets = await db.query.tweets.findMany({
-        where: and(
-          eq(tweets.threadId, threadId),
-          eq(tweets.userId, user.id),
-        ),
-        orderBy: asc(tweets.position),
-      })
-
-      if (threadTweets.length === 0) {
-        throw new HTTPException(404, { message: 'Thread not found' })
-      }
-
-      // console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
-
-      const baseUrl =
-        process.env.NODE_ENV === 'development'
-          ? 'https://sponge-relaxing-separately.ngrok-free.app'
-          : getBaseUrl()
-
-      // Schedule the thread posting with QStash
-      const { messageId } = await qstash.publishJSON({
-        url: baseUrl + '/api/tweet/postThread',
-        body: { threadId, userId: user.id, accountId: dbAccount.id },
-        notBefore: scheduledUnix,
-      })
-
-      // Update all tweets in the thread to scheduled
-      console.log('[scheduleThread] Updating tweets with scheduled time:', {
-        scheduledFor: new Date(scheduledUnix * 1000).toISOString(),
-        scheduledUnixMillis: scheduledUnix * 1000,
-      })
-      
-      await db
-        .update(tweets)
-        .set({
-          isScheduled: true,
-          scheduledFor: new Date(scheduledUnix * 1000),
-          scheduledUnix: scheduledUnix * 1000,
-          qstashId: messageId,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(tweets.threadId, threadId),
-          eq(tweets.userId, user.id),
-        ))
-
-      console.log('[scheduleThread] Thread scheduled successfully:', {
-        threadId,
-        tweetCount: threadTweets.length,
-        scheduledFor: new Date(scheduledUnix * 1000).toISOString(),
-      })
-
-      return c.json({
-        success: true,
-        threadId,
-        scheduledFor: new Date(scheduledUnix * 1000),
-        messageId,
-        message: `Thread scheduled with ${threadTweets.length} tweets`,
-      })
-    }),
 
   enqueueThread: privateProcedure
     .input(
