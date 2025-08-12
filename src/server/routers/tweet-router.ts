@@ -855,6 +855,8 @@ export const tweetRouter = j.router({
   getScheduledAndPublished: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
 
+    console.log('[getScheduledAndPublished] Starting to fetch scheduled tweets')
+
     const account = await getAccount({
       email: user.email,
     })
@@ -868,6 +870,12 @@ export const tweetRouter = j.router({
     const allTweets = await db.query.tweets.findMany({
       where: and(eq(tweets.accountId, account.id), eq(tweets.isScheduled, true)),
       orderBy: [desc(tweets.scheduledFor)],
+    })
+    
+    console.log('[getScheduledAndPublished] Found tweets:', {
+      totalCount: allTweets.length,
+      tweetsWithThreadId: allTweets.filter(t => t.threadId).length,
+      uniqueThreadIds: [...new Set(allTweets.filter(t => t.threadId).map(t => t.threadId))],
     })
 
     // Fetch media URLs for each tweet
@@ -924,6 +932,17 @@ export const tweetRouter = j.router({
       const timeA = a.scheduledUnix || 0
       const timeB = b.scheduledUnix || 0
       return timeB - timeA
+    })
+
+    console.log('[getScheduledAndPublished] Returning items:', {
+      totalItems: allItems.length,
+      threads: allItems.filter(item => item.isThread).length,
+      singleTweets: allItems.filter(item => !item.isThread).length,
+      threadDetails: allItems.filter(item => item.isThread).map(item => ({
+        threadId: item.threadId,
+        tweetCount: item.tweets.length,
+        scheduledFor: item.scheduledFor,
+      })),
     })
 
     return c.superjson({ items: allItems, tweets: tweetsWithMedia })
@@ -1217,6 +1236,11 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { timezone, userNow } = input
 
+      console.log('[get_queue] Starting queue fetch:', {
+        timezone,
+        userNow: userNow.toISOString(),
+      })
+
       const today = startOfDay(userNow)
 
       const account = await getAccount({
@@ -1251,6 +1275,12 @@ export const tweetRouter = j.router({
           }
         }),
       )
+      
+      console.log('[get_queue] Scheduled tweets before filtering:', {
+        total: scheduledTweetsWithMedia.length,
+        withThreadId: scheduledTweetsWithMedia.filter(t => t.threadId).length,
+        withoutThreadId: scheduledTweetsWithMedia.filter(t => !t.threadId).length,
+      })
       
       // Filter out tweets that are part of a thread - they should only appear in the threads section
       const scheduledTweets = scheduledTweetsWithMedia.filter((tweet) => !tweet.threadId)
@@ -1787,7 +1817,12 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, scheduledUnix } = input
 
-      // console.log('[scheduleThread] Scheduling thread:', threadId, 'for:', new Date(scheduledUnix * 1000))
+      console.log('[scheduleThread] Starting thread scheduling:', {
+        threadId,
+        scheduledUnix,
+        scheduledDate: new Date(scheduledUnix * 1000).toISOString(),
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      })
 
       const account = await getAccount({
         email: user.email,
@@ -1837,6 +1872,11 @@ export const tweetRouter = j.router({
       })
 
       // Update all tweets in the thread to scheduled
+      console.log('[scheduleThread] Updating tweets with scheduled time:', {
+        scheduledFor: new Date(scheduledUnix * 1000).toISOString(),
+        scheduledUnixMillis: scheduledUnix * 1000,
+      })
+      
       await db
         .update(tweets)
         .set({
@@ -1851,7 +1891,11 @@ export const tweetRouter = j.router({
           eq(tweets.userId, user.id),
         ))
 
-      // console.log('[scheduleThread] Thread scheduled successfully')
+      console.log('[scheduleThread] Thread scheduled successfully:', {
+        threadId,
+        tweetCount: threadTweets.length,
+        scheduledFor: new Date(scheduledUnix * 1000).toISOString(),
+      })
 
       return c.json({
         success: true,
