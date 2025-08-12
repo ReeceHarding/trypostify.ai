@@ -137,7 +137,7 @@ export default function TweetQueue() {
     onError: (error: any) => {
       const errorMessage = error?.message || 'Failed to post thread'
       if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate limit')) {
-        toast.error('Twitter rate limit reached. Please try again later.')
+        toast.error('Rate limit reached. Please try again later.')
       } else {
         toast.error(errorMessage)
       }

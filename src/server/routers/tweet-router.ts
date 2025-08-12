@@ -244,7 +244,7 @@ export const tweetRouter = j.router({
 
       if (!account) {
         throw new HTTPException(400, {
-          message: 'Twitter account not connected or access token missing',
+          message: 'X account not connected or access token missing',
         })
       }
 
@@ -364,7 +364,7 @@ export const tweetRouter = j.router({
     if (!account || !account.accessToken) {
       // console.log('no account')
       throw new HTTPException(400, {
-        message: 'Twitter account not connected or access token missing',
+        message: 'X account not connected or access token missing',
       })
     }
 
@@ -442,7 +442,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -563,7 +563,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -637,7 +637,7 @@ export const tweetRouter = j.router({
 
     if (!account?.id) {
       throw new HTTPException(400, {
-        message: 'Please connect your Twitter account',
+        message: 'Please connect your X account',
       })
     }
 
@@ -712,7 +712,7 @@ export const tweetRouter = j.router({
 
     if (!account?.id) {
       throw new HTTPException(400, {
-        message: 'Please connect your Twitter account',
+        message: 'Please connect your X account',
       })
     }
 
@@ -781,7 +781,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -829,144 +829,8 @@ export const tweetRouter = j.router({
       })
     }),
 
-  // [DEPRECATED] enqueue_tweet - use thread-based operations instead
-  enqueue_tweet_deprecated: privateProcedure
-    .input(
-      z.object({
-        userNow: z.date(),
-        timezone: z.string(),
-        content: z.string().min(1).max(4000),
-        media: z.array(
-          z.object({
-            media_id: z.string(),
-            s3Key: z.string(),
-          }),
-        ),
-      }),
-    )
-    .mutation(async ({ c, ctx, input }) => {
-      const { user } = ctx
-      const { userNow, timezone, content, media } = input
 
-      const account = await getAccount({
-        email: user.email,
-      })
 
-      if (!account?.id) {
-        throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
-        })
-      }
-
-      const dbAccount = await db.query.account.findFirst({
-        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
-      })
-
-      if (!dbAccount || !dbAccount.accessToken) {
-        throw new HTTPException(400, {
-          message: 'Twitter account not connected or access token missing',
-        })
-      }
-
-      const scheduledTweets = await db.query.tweets.findMany({
-        where: and(eq(tweets.accountId, account.id), eq(tweets.isScheduled, true)),
-        columns: { scheduledUnix: true },
-      })
-
-      function isSpotEmpty(time: Date) {
-        const unix = time.getTime()
-        return !Boolean(scheduledTweets.some((t) => t.scheduledUnix === unix))
-      }
-
-      function getNextAvailableSlot({
-        userNow,
-        timezone,
-        maxDaysAhead,
-      }: {
-        userNow: Date
-        timezone: string
-        maxDaysAhead: number
-      }) {
-        for (let dayOffset = 0; dayOffset <= maxDaysAhead; dayOffset++) {
-          let checkDay: Date | undefined = undefined
-
-          if (dayOffset === 0) checkDay = startOfDay(userNow)
-          else checkDay = startOfDay(addDays(userNow, dayOffset))
-
-          for (const hour of SLOTS) {
-            const localSlotTime = startOfHour(setHours(checkDay, hour))
-            const slotTime = fromZonedTime(localSlotTime, timezone)
-
-            if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
-              return slotTime
-            }
-          }
-        }
-
-        return null // no slot found in next N days
-      }
-
-      const nextSlot = getNextAvailableSlot({ userNow, timezone, maxDaysAhead: 90 })
-
-      // console.log({ nextSlot })
-
-      if (!nextSlot) {
-        throw new HTTPException(409, {
-          message: 'Queue for the next 3 months is already full!',
-        })
-      }
-
-      const scheduledUnix = nextSlot.getTime()
-
-      const tweetId = crypto.randomUUID()
-
-      const baseUrl =
-        process.env.NODE_ENV === 'development'
-          ? 'https://sponge-relaxing-separately.ngrok-free.app'
-          : getBaseUrl()
-
-      const { messageId } = await qstash.publishJSON({
-        url: baseUrl + '/api/tweet/post',
-        body: { tweetId, userId: user.id, accountId: dbAccount.id, scheduledUnix },
-        notBefore: scheduledUnix / 1000, // needs to be in seconds
-      })
-
-      try {
-        const [tweet] = await db
-          .insert(tweets)
-          .values({
-            id: tweetId,
-            accountId: account.id,
-            userId: user.id,
-            content,
-            isScheduled: true,
-            scheduledFor: new Date(scheduledUnix),
-            scheduledUnix: scheduledUnix,
-            isQueued: true,
-            media,
-            qstashId: messageId,
-          })
-          .returning()
-      } catch (err) {
-        const messages = qstash.messages
-
-        try {
-          await messages.delete(messageId)
-        } catch (err) {
-          // fail silently
-        }
-
-        throw new HTTPException(500, { message: 'Problem with database' })
-      }
-
-      return c.json({
-        success: true,
-        tweetId,
-        scheduledUnix: scheduledUnix,
-        accountId: account.id,
-        accountName: account.name,
-      })
-    }),
 
   get_queue: privateProcedure
     .input(
@@ -992,7 +856,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -1179,7 +1043,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -1189,7 +1053,7 @@ export const tweetRouter = j.router({
 
       if (!dbAccount || !dbAccount.accessToken) {
         throw new HTTPException(400, {
-          message: 'Twitter account not connected or access token missing',
+          message: 'X account not connected or access token missing',
         })
       }
 
@@ -1242,7 +1106,7 @@ export const tweetRouter = j.router({
       if (!account?.id) {
 
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -1429,7 +1293,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -1571,7 +1435,7 @@ export const tweetRouter = j.router({
                 ? new Date(apiError.rateLimit.reset * 1000).toLocaleTimeString('en-US')
                 : 'soon'
               throw new HTTPException(429, {
-                message: `Twitter rate limit exceeded. Try again after ${resetTime}.`,
+                message: `X rate limit exceeded. Try again after ${resetTime}.`,
               })
             }
           }
@@ -1618,7 +1482,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -1628,7 +1492,7 @@ export const tweetRouter = j.router({
 
       if (!dbAccount || !dbAccount.accessToken) {
         throw new HTTPException(400, {
-          message: 'Twitter account not connected or access token missing',
+          message: 'X account not connected or access token missing',
         })
       }
 
@@ -1716,7 +1580,7 @@ export const tweetRouter = j.router({
       if (!account?.id) {
         // console.log('[enqueueThread] No active account found')
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -1727,7 +1591,7 @@ export const tweetRouter = j.router({
       if (!dbAccount || !dbAccount.accessToken) {
         // console.log('[enqueueThread] No access token found')
         throw new HTTPException(400, {
-          message: 'Twitter account not connected or access token missing',
+          message: 'X account not connected or access token missing',
         })
       }
 
@@ -2038,7 +1902,7 @@ export const tweetRouter = j.router({
     if (!account || !account.accessToken) {
       // console.log('[postThread] No account or access token')
       throw new HTTPException(400, {
-        message: 'Twitter account not connected or access token missing',
+        message: 'X account not connected or access token missing',
       })
     }
 
@@ -2129,7 +1993,7 @@ export const tweetRouter = j.router({
 
       if (!account?.id) {
         throw new HTTPException(400, {
-          message: 'Please connect your Twitter account',
+          message: 'Please connect your X account',
         })
       }
 
@@ -2139,7 +2003,7 @@ export const tweetRouter = j.router({
 
       if (!dbAccount || !dbAccount.accessToken) {
         throw new HTTPException(400, {
-          message: 'Twitter account not connected or access token missing',
+          message: 'X account not connected or access token missing',
         })
       }
 

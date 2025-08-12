@@ -73,7 +73,7 @@ function InitialContentPlugin({ content }: { content: string }) {
   return null
 }
 
-type TweetType = InferOutput['tweet']['getScheduledAndPublished']['tweets'][number]
+
 
 interface TweetListProps {
   mode: 'scheduled' | 'posted'

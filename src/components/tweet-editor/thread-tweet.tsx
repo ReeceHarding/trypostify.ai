@@ -831,14 +831,14 @@ function ThreadTweetContent({
                           variant="secondary"
                           size="icon"
                           className="rounded-md"
-                          onClick={isThread && canDelete ? onRemove : handleClearTweet}
+                          onClick={canDelete ? onRemove : handleClearTweet}
                         >
                           <Trash2 className="size-4" />
-                          <span className="sr-only">{isThread && canDelete ? 'Remove tweet' : 'Clear tweet'}</span>
+                          <span className="sr-only">{canDelete ? 'Remove post' : 'Clear post'}</span>
                         </DuolingoButton>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{isThread && canDelete ? 'Remove from thread' : 'Clear tweet'}</p>
+                        <p>{canDelete ? 'Remove from thread' : 'Clear post'}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -1013,9 +1013,9 @@ function ThreadTweetContent({
       <Dialog open={showPostConfirmModal} onOpenChange={setShowPostConfirmModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Post {isThread ? 'Thread' : 'Content'} Now?</DialogTitle>
+            <DialogTitle>Post Now?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to post this {isThread ? 'thread' : 'content'} immediately?
+              Are you sure you want to post this immediately?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col gap-3">
