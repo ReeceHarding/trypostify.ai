@@ -1329,10 +1329,22 @@ export const tweetRouter = j.router({
         }))
       })
 
+      // Only allow items that were actually queued to occupy preset slots.
+      // Threads and manually scheduled items should not fill queue slots to avoid duplication.
       const getSlotTweet = (unix: number) => {
-        const slotTweet = scheduledTweets.find((t) => t.scheduledUnix === unix)
+        const slotTweet = scheduledTweets.find(
+          (t) => t.scheduledUnix === unix && Boolean(t.isQueued),
+        )
 
         if (slotTweet) {
+          try {
+            console.log('[get_queue] slot filled', {
+              unixIso: new Date(unix).toISOString(),
+              tweetId: (slotTweet as any).id,
+              isThread: (slotTweet as any).isThread,
+              isQueued: Boolean((slotTweet as any).isQueued),
+            })
+          } catch {}
           return slotTweet
         }
 

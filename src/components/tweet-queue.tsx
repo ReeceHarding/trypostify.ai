@@ -235,7 +235,7 @@ export default function TweetQueue() {
                   style={{ gridTemplateColumns: 'auto 1fr auto' }}
                 >
                   {tweets.map(({ unix, tweet, isQueued }) => (
-                    <Fragment key={tweet?.id || `${day}-${unix}-time`}>
+                    <Fragment key={`${day}-${unix}-${tweet?.id || 'no-id'}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2 mt-2">
                           <div className="flex items-center gap-2 w-[100px]">

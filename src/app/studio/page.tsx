@@ -37,6 +37,9 @@ const Page = () => {
   }
   const isEditMode = Boolean(editTweetId)
 
+  const [showDiscard, setShowDiscard] = useState(false)
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+
   // Intercept clicks on the global "Create" link when in edit mode
   useEffect(() => {
     const onOpen = (e: any) => {
@@ -54,8 +57,6 @@ const Page = () => {
     return () => window.removeEventListener('open-discard-confirm', onOpen as any)
   }, [isEditMode, showDiscard])
 
-  const [showDiscard, setShowDiscard] = useState(false)
-  const [pendingHref, setPendingHref] = useState<string | null>(null)
 
   useEffect(() => {
     // Check for ?account_connected=true in URL
