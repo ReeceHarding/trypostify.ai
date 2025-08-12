@@ -818,11 +818,12 @@ export const tweetRouter = j.router({
       z.object({
         userNow: z.date(),
         timezone: z.string(),
+        daysToLoad: z.number().default(7), // Add pagination support
       }),
     )
     .query(async ({ c, input, ctx }) => {
       const { user } = ctx
-      const { timezone, userNow } = input
+      const { timezone, userNow, daysToLoad } = input
 
       console.log('[get_queue] Starting queue fetch:', {
         timezone,
@@ -931,7 +932,7 @@ export const tweetRouter = j.router({
 
       const all: Array<Record<number, Array<number>>> = []
 
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < daysToLoad; i++) {
         const currentDay = addDays(today, i)
 
         const unixTimestamps = SLOTS.map((hour) => {

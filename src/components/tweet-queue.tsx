@@ -42,6 +42,8 @@ export default function TweetQueue() {
   const queryClient = useQueryClient()
   const { fire } = useConfetti()
   const [pendingPostId, setPendingPostId] = useState<string | null>(null)
+  const [daysLoaded, setDaysLoaded] = useState(7) // Start with 7 days
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const { shadowEditor, setMediaFiles } = useTweets()
   const router = useRouter()
@@ -61,9 +63,9 @@ export default function TweetQueue() {
   }, [])
 
   const { data, isPending } = useQuery({
-    queryKey: ['queue-slots'],
+    queryKey: ['queue-slots', daysLoaded],
     queryFn: async () => {
-      const res = await client.tweet.get_queue.$get({ timezone, userNow })
+      const res = await client.tweet.get_queue.$get({ timezone, userNow, daysToLoad: daysLoaded })
       return await res.json()
     },
   })
@@ -213,6 +215,31 @@ export default function TweetQueue() {
       localStorage.removeItem('skipPostConfirmation')
     }
   }
+
+  // Handle loading more days
+  const loadMoreDays = async () => {
+    setIsLoadingMore(true)
+    setDaysLoaded(prev => prev + 7) // Load 7 more days at a time
+    // The useQuery will automatically refetch with the new daysLoaded value
+    setIsLoadingMore(false)
+  }
+
+  // Add infinite scroll detection
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isLoadingMore || isPending) return
+      
+      const scrollPosition = window.innerHeight + window.scrollY
+      const bottomThreshold = document.documentElement.scrollHeight - 500 // Load when 500px from bottom
+      
+      if (scrollPosition >= bottomThreshold) {
+        loadMoreDays()
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [isLoadingMore, isPending])
 
   return (
     <>
@@ -498,9 +525,30 @@ export default function TweetQueue() {
             </Card>
           )
         })}
+        
+        {/* Loading indicator and Load More button */}
+        <div className="flex flex-col items-center space-y-4 pt-8 pb-16">
+          {isLoadingMore && <Loader />}
+          
+          {!isPending && !isLoadingMore && (
+            <DuolingoButton
+              variant="secondary"
+              onClick={loadMoreDays}
+              className="w-full max-w-xs"
+            >
+              Load More Days
+            </DuolingoButton>
+          )}
+          
+          {daysLoaded >= 365 && (
+            <p className="text-sm text-neutral-500">
+              You've loaded a full year of scheduling slots!
+            </p>
+          )}
+        </div>
       </div>
 
-
+      {(isPending || isLoadingScheduled) && !data && <Loader />}
     </>
   )
 }
