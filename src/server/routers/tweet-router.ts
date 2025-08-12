@@ -125,38 +125,7 @@ export const tweetRouter = j.router({
       return c.superjson({ tweet })
     }),
 
-  create: privateProcedure.post(async ({ c, ctx }) => {
-    const { user } = ctx
-
-    const account = await getAccount({
-      email: user.email,
-    })
-
-    if (!account?.id) {
-      throw new HTTPException(400, {
-        message: 'Please connect your Twitter account',
-      })
-    }
-
-    const id = crypto.randomUUID()
-
-    const [tweet] = await db
-      .insert(tweets)
-      .values({
-        id,
-        accountId: account.id,
-        userId: user.id,
-        content: '',
-        editorState: {},
-      })
-      .returning()
-
-    if (!tweet) {
-      throw new HTTPException(500, { message: 'Failed to create tweet' })
-    }
-
-    return c.superjson({ id, tweet })
-  }),
+  // [REMOVED] create endpoint - using thread-based operations instead
 
   // save: privateProcedure
   //   .input(
