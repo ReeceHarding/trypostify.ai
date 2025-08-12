@@ -402,14 +402,19 @@ export default function TweetQueue() {
       </div>
 
       {/* Scheduled Threads Section */}
-      {console.log('[TweetQueue] Rendering scheduled threads section:', {
-        isLoadingScheduled,
-        scheduledData,
-        hasItems: scheduledData?.items,
-        threadCount: scheduledData?.items?.filter((item: any) => item.isThread).length,
-        // Check if data is in a different structure
-        rawData: scheduledData,
-        json: scheduledData?.json,
+      <div className="mt-6 p-4 bg-red-500 text-white font-bold">
+        DEBUG: Scheduled Threads Section Container - This should be visible!
+      </div>
+      {console.log('[TweetQueue] About to render scheduled threads section')}
+      {console.log('[TweetQueue] isLoadingScheduled:', isLoadingScheduled)}
+      {console.log('[TweetQueue] scheduledData:', scheduledData)}
+      {console.log('[TweetQueue] scheduledData?.items:', scheduledData?.items)}
+      {console.log('[TweetQueue] items length:', scheduledData?.items?.length)}
+      {console.log('[TweetQueue] items with isThread:', scheduledData?.items?.filter((item: any) => item.isThread))}
+      {console.log('[TweetQueue] Condition check:', {
+        hasItems: Boolean(scheduledData?.items),
+        hasThreads: scheduledData?.items?.filter((item: any) => item.isThread).length > 0,
+        overallCondition: scheduledData?.items && scheduledData.items.filter((item: any) => item.isThread).length > 0
       })}
       {isLoadingScheduled ? (
         <div className="mt-6 space-y-4">
