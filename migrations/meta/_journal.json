@@ -22,6 +22,13 @@
       "when": 1754770057485,
       "tag": "0002_safe_ezekiel",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1755014885706,
+      "tag": "0003_thin_komodo",
+      "breakpoints": true
     }
   ]
 }

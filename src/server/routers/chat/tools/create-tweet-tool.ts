@@ -32,6 +32,7 @@ interface Context {
     userContent: string
     messages: MyUIMessage[]
     attachments: Awaited<ReturnType<typeof parseAttachments>>
+    hasXPremium: boolean
     redisKeys: {
       style: string
       account: string
@@ -119,7 +120,7 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
 
       // system
       prompt.open('system')
-      prompt.text(editToolSystemPrompt({ name: account.name }))
+      prompt.text(editToolSystemPrompt({ name: account.name, hasXPremium: ctx.hasXPremium }))
       prompt.close('system')
 
       // history
@@ -184,7 +185,7 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
       ]
 
       const model = openrouter.chat("anthropic/claude-sonnet-4", {
-        reasoning: { effort: 'low' },
+        reasoning: { enabled: false, effort: 'low' },
         models: [
           'openrouter/horizon-alpha',
           'anthropic/claude-3.7-sonnet',
@@ -194,7 +195,7 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
 
       const result = streamText({
         model,
-        system: editToolSystemPrompt({ name: account.name }),
+        system: editToolSystemPrompt({ name: account.name, hasXPremium: ctx.hasXPremium }),
         messages: convertToModelMessages(messages),
         onError(error) {
           console.log('[ERROR] CREATE_TWEET_TOOL:', JSON.stringify(error, null, 2))

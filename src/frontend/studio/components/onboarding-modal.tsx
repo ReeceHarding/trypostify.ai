@@ -20,13 +20,15 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 import { TWITTER_HANDLE_VALIDATOR, TwitterHandleForm } from '../lib/validators'
 import './swiper-bundle.css'
 import DuolingoRadioGroup from '@/components/ui/duolingo-radio'
+import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
 
 enum SLIDES {
   WELCOME_SLIDE = 0,
   FOCUS_SLIDE = 1,
   GOAL_SLIDE = 2,
-  HANDLE_SLIDE = 3,
-  COMPLETED_SLIDE = 4,
+  X_PREMIUM_SLIDE = 3,
+  HANDLE_SLIDE = 4,
+  COMPLETED_SLIDE = 5,
 }
 
 type Field = keyof TwitterHandleForm
@@ -41,8 +43,9 @@ const STEPS: Array<{ id: string; name: string; fields: Field[] }> = [
   { id: 'Step 0', name: 'Welcome slide', fields: [] },
   { id: 'Step 1', name: 'Goal slide', fields: [] },
   { id: 'Step 2', name: 'Focus slide', fields: [] },
-  { id: 'Step 3', name: 'Handle slide', fields: ['handle'] },
-  { id: 'Step 4', name: 'Completed slide', fields: [] },
+  { id: 'Step 3', name: 'X Premium slide', fields: [] },
+  { id: 'Step 4', name: 'Handle slide', fields: ['handle'] },
+  { id: 'Step 5', name: 'Completed slide', fields: [] },
 ]
 
 const TWEET_GOALS = [
@@ -70,6 +73,7 @@ export const OnboardingModal = ({
   const [exampleDocsCreated, setExampleDocsCreated] = useState(false)
   const [frequency, setFrequency] = useState('')
   const [mainFocus, setMainFocus] = useState('')
+  const [hasXPremium, setHasXPremium] = useState(false)
 
   const { mutate: createOAuthLink, isPending: isCreatingOAuthLink } = useMutation({
     mutationFn: async () => {
@@ -96,6 +100,7 @@ export const OnboardingModal = ({
       await client.auth_router.updateOnboardingMetaData.$post({
         userFrequency,
         userGoals: [mainFocus],
+        hasXPremium,
       })
     },
   })
@@ -134,7 +139,7 @@ export const OnboardingModal = ({
   const handleNext = async () => {
     if (!swiperRef) return
     const currentSlide = swiperRef.activeIndex
-    if (currentSlide === SLIDES.GOAL_SLIDE) {
+    if (currentSlide === SLIDES.X_PREMIUM_SLIDE) {
       updateOnboardingMetaData()
     }
     if (currentSlide === SLIDES.GOAL_SLIDE && !frequency) return
@@ -324,6 +329,55 @@ export const OnboardingModal = ({
                       value={frequency}
                       onChange={setFrequency}
                     />
+                  </div>
+                </div>
+              </SwiperSlide>
+
+              <SwiperSlide>
+                <div className="flex flex-col gap-6 w-full">
+                  <div className="flex w-full items-center">
+                    <DuolingoButton
+                      variant="secondary"
+                      size="icon"
+                      onClick={handleBack}
+                      className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
+                    >
+                      <ArrowLeft className="size-5" />
+                    </DuolingoButton>
+                    <Progress value={progress} className="h-2 flex-1" />
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1 text-center">
+                    <p className="text-2xl font-semibold text-neutral-900">
+                      Do you have X Premium?
+                    </p>
+                    <p className="text-neutral-600 text-balance">
+                      This helps us optimize your tweet length
+                    </p>
+                  </div>
+
+                  <div className="w-full flex flex-col items-center gap-4">
+                    <div className="bg-neutral-50 rounded-lg p-4 w-full">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium text-neutral-900">I have X Premium</p>
+                          <p className="text-sm text-neutral-600">
+                            {hasXPremium 
+                              ? "Great! You can write longer tweets" 
+                              : "Standard 280 character limit applies"}
+                          </p>
+                        </div>
+                        <DuolingoCheckbox
+                          id="x-premium-checkbox"
+                          label=""
+                          checked={hasXPremium}
+                          onChange={(e) => setHasXPremium(e.target.checked)}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-neutral-500 text-center">
+                      Premium users can write up to 25,000 characters
+                    </p>
                   </div>
                 </div>
               </SwiperSlide>

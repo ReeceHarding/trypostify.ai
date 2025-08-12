@@ -15,6 +15,7 @@ export const user = pgTable('user', {
   hadTrial: boolean('had_trial').default(false),
   goals: json('goals').$type<string[]>().default([]),
   frequency: integer('frequency'),
+  hasXPremium: boolean('has_x_premium').default(false),
 })
 
 export const session = pgTable('session', {

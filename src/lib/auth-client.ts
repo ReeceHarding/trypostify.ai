@@ -16,6 +16,7 @@ export const authClient = createAuthClient({
     inferAdditionalFields({
       user: {
         plan: { type: 'string', defaultValue: 'free' },
+        hasXPremium: { type: 'boolean', defaultValue: false },
       },
     }),
   ],

@@ -43,6 +43,7 @@ export const auth = betterAuth({
       plan: { type: 'string', defaultValue: 'free' },
       stripeId: { type: 'string', defaultValue: null, required: false },
       hadTrial: { type: 'boolean', defaultValue: false, required: true },
+      hasXPremium: { type: 'boolean', defaultValue: false, required: true },
     },
   },
   session: {

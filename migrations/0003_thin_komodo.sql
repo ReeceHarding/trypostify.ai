@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "has_x_premium" boolean DEFAULT false;

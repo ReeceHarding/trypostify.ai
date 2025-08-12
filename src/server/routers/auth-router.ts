@@ -33,13 +33,14 @@ const clientV2 = new TwitterApi(process.env.TWITTER_BEARER_TOKEN!).readOnly
 
 export const authRouter = j.router({
   updateOnboardingMetaData: privateProcedure
-    .input(z.object({ userGoals: z.array(z.string()), userFrequency: z.number() }))
+    .input(z.object({ userGoals: z.array(z.string()), userFrequency: z.number(), hasXPremium: z.boolean() }))
     .post(async ({ c, input, ctx }) => {
       await db
         .update(user)
         .set({
           goals: input.userGoals,
           frequency: input.userFrequency,
+          hasXPremium: input.hasXPremium,
         })
         .where(eq(user.id, ctx.user.id))
       return c.json({ success: true })

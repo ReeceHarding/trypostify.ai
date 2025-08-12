@@ -283,6 +283,7 @@ export const chatRouter = j.router({
               messages,
               userContent,
               attachments: { attachments, links },
+              hasXPremium: user.hasXPremium ?? false,
               redisKeys: {
                 style: `style:${user.email}:${account.id}`,
                 account: `active-account:${user.email}`,

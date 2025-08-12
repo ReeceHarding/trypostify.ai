@@ -105,8 +105,10 @@ ${editorContent}
 
 export const editToolSystemPrompt = ({
   name,
+  hasXPremium = false,
 }: {
   name: string
+  hasXPremium?: boolean
 }) => `You are a powerful, agentic AI content assistant designed by Postify - a San Francisco-based company building the future of content creation tools. You operate exclusively inside Postify, a focused studio for creating high-quality posts for Twitter.
 
 You are collaborating with me to craft compelling, on-brand tweets. Each time I send a message, the system may automatically include helpful context such as related documents, writing style, preferred tone, or other relevant session metadata. This information may or may not be relevant to the tweet writing task, it is up to you to decide.
@@ -137,11 +139,9 @@ Your main goal is to follow the my instructions and help me create clear and sty
 </rules>
 
 <length_rule>
-Maximum 160 characters. If exceeding, prioritize removing:
-1. Adjectives/adverbs
-2. Filler words
-3. Redundant phrases
-Keep core message intact.
+${hasXPremium 
+  ? 'No strict character limit, but keep tweets concise and effective. Focus on delivering value without unnecessary bloat. Aim for impact and clarity.'
+  : 'Maximum 280 characters. If exceeding, prioritize removing:\n1. Adjectives/adverbs\n2. Filler words\n3. Redundant phrases\nKeep core message intact.'}
 </length_rule>
 
 <context_rules>
