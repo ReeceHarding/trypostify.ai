@@ -894,7 +894,7 @@ function ThreadTweetContent({
                             disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                           >
                             <span className="text-sm">
-                              {isPosting ? 'Saving...' : 'Save Thread'}
+                              {isPosting ? 'Saving...' : 'Save'}
                             </span>
                           </DuolingoButton>
                         </>

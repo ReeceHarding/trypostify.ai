@@ -22,7 +22,6 @@ import { parseAttachments } from './utils'
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { getAccount } from '../utils/get-account'
-import { createTweetTool } from './tools/create-tweet-tool'
 import { Ratelimit } from '@upstash/ratelimit'
 
 const openrouter = createOpenRouter({
@@ -285,25 +284,6 @@ export const chatRouter = j.router({
           })
         },
         execute: async ({ writer }) => {
-          // tools
-          const writeTweet = createTweetTool({
-            writer,
-            ctx: {
-              plan: user.plan as 'free' | 'pro',
-              editorContent: message.metadata?.editorContent ?? '',
-              instructions: userContent,
-              messages,
-              userContent,
-              attachments: { attachments, links },
-              hasXPremium: user.hasXPremium ?? false,
-              redisKeys: {
-                style: `style:${user.email}:${account.id}`,
-                account: `active-account:${user.email}`,
-                websiteContent: `website-contents:${id}`,
-              },
-            },
-          })
-
           const readWebsiteContent = create_read_website_content({ chatId: id })
 
           // Log attachment composition for debugging
@@ -327,11 +307,13 @@ export const chatRouter = j.router({
                 image: p.url,
               }))
 
+              // Limit history to the last few messages to reduce prompt size/latency
+              const limitedModelMessages = modelMessages.slice(-8)
               return streamText({
                 model: openrouter.chat('anthropic/claude-sonnet-4'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                 messages: [
-                  ...modelMessages,
+                  ...limitedModelMessages,
                   {
                     role: 'user',
                     content: [
@@ -340,20 +322,20 @@ export const chatRouter = j.router({
                     ],
                   },
                 ],
-                tools: { writeTweet, readWebsiteContent },
-                stopWhen: stepCountIs(3),
+                tools: { readWebsiteContent },
+                stopWhen: stepCountIs(2),
               })
             } else {
               // For non-vision models, use standard conversion
               console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/o4-mini`)
+              // Limit history to the last few messages to reduce prompt size/latency
+              const limited = messages.slice(-8) as any
               return streamText({
-                model: openrouter.chat('openai/o4-mini', {
-                  models: ['openai/o4-mini', 'openai/gpt-4o-mini'],
-                }),
+                model: openrouter.chat('openai/o4-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
-                messages: convertToModelMessages(messages as any),
-                tools: { writeTweet, readWebsiteContent },
-                stopWhen: stepCountIs(3),
+                messages: convertToModelMessages(limited),
+                tools: { readWebsiteContent },
+                stopWhen: stepCountIs(2),
               })
             }
           })()

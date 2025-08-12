@@ -5,6 +5,7 @@ import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { ChevronsLeft, RotateCcw } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
 import { useTweets } from '@/hooks/use-tweets'
+import { usePathname, useRouter } from 'next/navigation'
 
 export const TweetMockup = memo(
   ({
@@ -13,6 +14,8 @@ export const TweetMockup = memo(
     isLoading = false,
   }: PropsWithChildren<{ isLoading?: boolean; text?: string }>) => {
     const { setTweetContent } = useTweets()
+    const router = useRouter()
+    const pathname = usePathname()
     
     const containerVariants = {
       hidden: { opacity: 0, y: 20, scale: 0.95 },
@@ -32,6 +35,17 @@ export const TweetMockup = memo(
       if (!text) return
       // Simply set the content directly - no need for complex editor synchronization
       setTweetContent(text)
+      try {
+        console.log(
+          `[${new Date().toISOString()}] [TweetMockup] Apply clicked`,
+          { pathname, textLen: text.length },
+        )
+      } catch {}
+
+      // If we're not on the create page, navigate there so the editor can pick up the content
+      if (pathname !== '/studio') {
+        router.push('/studio')
+      }
     }
 
     return (

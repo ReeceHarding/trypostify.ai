@@ -189,17 +189,6 @@ export default function TweetQueue() {
     },
   })
 
-  if (isPending) {
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center text-center py-12">
-          <Loader variant="classic" />
-          <p className="text-sm text-neutral-600 mt-4">Loading queue...</p>
-        </div>
-      </div>
-    )
-  }
-
   const renderDay = (unix: number) => {
     if (isToday(unix)) return `Today | ${format(unix, 'MMM d')}`
     if (isTomorrow(unix)) return `Tomorrow | ${format(unix, 'MMM d')}`
@@ -224,14 +213,14 @@ export default function TweetQueue() {
     setIsLoadingMore(false)
   }
 
-  // Add infinite scroll detection
+  // Add infinite scroll detection (must be declared before any early return to keep hook order stable)
   useEffect(() => {
     const handleScroll = () => {
       if (isLoadingMore || isPending) return
-      
+
       const scrollPosition = window.innerHeight + window.scrollY
       const bottomThreshold = document.documentElement.scrollHeight - 500 // Load when 500px from bottom
-      
+
       if (scrollPosition >= bottomThreshold) {
         loadMoreDays()
       }
@@ -240,6 +229,17 @@ export default function TweetQueue() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [isLoadingMore, isPending])
+
+  if (isPending) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col items-center justify-center text-center py-12">
+          <Loader variant="classic" />
+          <p className="text-sm text-neutral-600 mt-4">Loading queue...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
