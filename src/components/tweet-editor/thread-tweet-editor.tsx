@@ -158,6 +158,29 @@ export default function ThreadTweetEditor({
 
 
 
+  // Schedule thread mutation
+  const scheduleThreadMutation = useMutation({
+    mutationFn: async ({ threadId, scheduledUnix }: { threadId: string; scheduledUnix: number }) => {
+
+      const res = await client.tweet.scheduleThread.$post({
+        threadId,
+        scheduledUnix,
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new HTTPException(res.status as any, { message: (error as any).message })
+      }
+
+      return res.json()
+    },
+    onSuccess: (data) => {
+      // Clear the thread
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      router.push('/studio/scheduled')
+    },
+  })
+
   // Enqueue thread mutation
   const enqueueThreadMutation = useMutation({
     mutationFn: async ({ threadId, userNow, timezone }: { threadId: string; userNow: Date; timezone: string }) => {
@@ -282,6 +305,66 @@ export default function ThreadTweetEditor({
 
 
 
+  const handleScheduleThread = async (scheduledDate: Date) => {
+    // Validate tweets
+    const validation = validateThreadTweets(threadTweets)
+    if (!validation.valid) {
+      toast.error(validation.error!)
+      return
+    }
+
+    posthog.capture('thread_schedule_started', { tweet_count: threadTweets.length })
+
+    try {
+      // First create the thread
+      const createResult = await client.tweet.createThread.$post({
+        tweets: threadTweets.map((tweet, index) => ({
+          content: tweet.content,
+          media: tweet.media,
+          delayMs: index > 0 ? 1000 : 0,
+        }))
+      })
+
+      if (!createResult.ok) {
+        throw new Error('Failed to create thread')
+      }
+      
+      const { threadId } = await createResult.json()
+
+      // Schedule the thread
+      console.log('[ThreadTweetEditor] scheduling thread', {
+        threadId,
+        scheduledIso: scheduledDate.toISOString(),
+        scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),
+      })
+      await scheduleThreadMutation.mutateAsync({
+        threadId,
+        scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),
+      })
+      
+      posthog.capture('thread_scheduled', {
+        tweet_count: threadTweets.length,
+        thread_id: threadId,
+        scheduled_for: scheduledDate.toISOString(),
+      })
+      
+      // Display a user-localized friendly time using the user's timezone
+      const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const friendly = new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: userTz,
+      }).format(scheduledDate)
+      toast.success(`Thread scheduled for ${friendly}`)
+    } catch (error) {
+      console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to schedule thread')
+    }
+  }
+
   const handleQueueThread = async () => {
     // Validate tweets
     const validation = validateThreadTweets(threadTweets)
@@ -359,7 +442,7 @@ export default function ThreadTweetEditor({
     router.push('/studio/scheduled')
   }
 
-  const isPosting = postThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
+  const isPosting = postThreadMutation.isPending || scheduleThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
 
   // Show loading state while loading thread data
   if (loadingThread) {
@@ -394,7 +477,7 @@ export default function ThreadTweetEditor({
 
               onPostThread={index === 0 && !editMode ? handlePostThread : undefined}
               onQueueThread={index === 0 && !editMode ? handleQueueThread : undefined}
-
+              onScheduleThread={index === 0 && !editMode ? handleScheduleThread : undefined}
               onUpdateThread={index === 0 && editMode ? handleUpdateThread : undefined}
               onCancelEdit={index === 0 && editMode ? handleCancelEdit : undefined}
               isPosting={isPosting}
