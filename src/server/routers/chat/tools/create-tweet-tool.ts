@@ -37,14 +37,15 @@ export const createTweetTool = (
     execute: async ({ instruction, tweetContent, imageDescriptions }) => {
       const generationId = nanoid()
 
-      writer.write({
-        type: 'data-tool-output',
-        id: generationId,
-        data: {
-          text: '',
-          status: 'processing',
-        },
-      })
+      try {
+        writer.write({
+          type: 'data-tool-output',
+          id: generationId,
+          data: {
+            text: '',
+            status: 'processing',
+          },
+        })
 
       let fullPrompt = instruction
 
@@ -100,6 +101,20 @@ CHARACTER LIMIT: ${hasXPremium ? 280 : 140}`
       })
 
       return fullText
+    } catch (error) {
+      console.error('[CREATE_TWEET_TOOL] Error:', error)
+      
+      writer.write({
+        type: 'data-tool-output',
+        id: generationId,
+        data: {
+          text: 'Sorry, I encountered an error while creating your tweet. Please try again.',
+          status: 'error',
+        },
+      })
+      
+      throw error
+    }
     },
   })
 }

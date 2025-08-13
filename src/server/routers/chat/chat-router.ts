@@ -31,6 +31,11 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 })
 
+// Validate OpenRouter API key on startup
+if (!process.env.OPENROUTER_API_KEY) {
+  console.error('[CHAT_ROUTER] Warning: OPENROUTER_API_KEY is not set')
+}
+
 // ==================== Types ====================
 
 export interface EditTweetToolResult {
@@ -308,7 +313,9 @@ export const chatRouter = j.router({
           ])
 
           if (!style || !accountData) {
-            throw new Error('Style or account not found')
+            throw new HTTPException(412, { 
+              message: 'Account settings not found. Please configure your account settings first.' 
+            })
           }
 
           // Get any website content that was scraped
