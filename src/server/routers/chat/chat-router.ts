@@ -22,6 +22,7 @@ import { parseAttachments } from './utils'
 import { createTweetTool } from './tools/create-tweet-tool'
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { openai } from '@ai-sdk/openai'
 import { getAccount } from '../utils/get-account'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Account } from '../settings-router'
@@ -370,21 +371,62 @@ export const chatRouter = j.router({
 
           // When we have images, we need to use a different message format
           // convertToModelMessages expects specific formats, so we'll use a different approach
-          const result = await (async () => {
+          let result
+          try {
+            result = await (async () => {
+              if (hasImage) {
+                // For vision models, convert the last message to include image format
+                const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
+                // Convert to Vercel AI SDK image format
+                const imageParts = fileParts.map((p: any) => ({
+                  type: 'image' as const,
+                  image: p.url,
+                }))
+
+                // Limit history to the last few messages to reduce prompt size/latency
+                const limitedModelMessages = modelMessages.slice(-8)
+                return streamText({
+                  model: openrouter.chat('openai/gpt-4o-mini'),
+                  system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
+                  messages: [
+                    ...limitedModelMessages,
+                    {
+                      role: 'user',
+                      content: [
+                        { type: 'text', text: content.toString() },
+                        ...imageParts,
+                      ],
+                    },
+                  ],
+                  tools: { readWebsiteContent, writeTweet },
+                  stopWhen: stepCountIs(2),
+                })
+              } else {
+                // For non-vision models, use standard conversion
+                console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini`)
+                // Limit history to the last few messages to reduce prompt size/latency
+                const limited = messages.slice(-8) as any
+                return streamText({
+                  model: openrouter.chat('openai/gpt-4o-mini'),
+                  system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
+                  messages: convertToModelMessages(limited),
+                  tools: { readWebsiteContent, writeTweet },
+                  stopWhen: stepCountIs(2),
+                })
+              }
+            })()
+          } catch (err: any) {
+            // Fallback retry using official OpenAI adapter to avoid provider-specific annotations
+            console.error(`[${new Date().toISOString()}] [chat-router] primary model failed, retrying with @ai-sdk/openai. errorName=${err?.name} message=${err?.message}`)
             if (hasImage) {
-              // For vision models, convert the last message to include image_url format
               const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
-              const lastMessage = messages[messages.length - 1]
-              // Convert to Vercel AI SDK image format
               const imageParts = fileParts.map((p: any) => ({
                 type: 'image' as const,
                 image: p.url,
               }))
-
-              // Limit history to the last few messages to reduce prompt size/latency
               const limitedModelMessages = modelMessages.slice(-8)
-              return streamText({
-                model: openrouter.chat('anthropic/claude-sonnet-4'),
+              result = await streamText({
+                model: openai('gpt-4o-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                 messages: [
                   ...limitedModelMessages,
@@ -400,19 +442,16 @@ export const chatRouter = j.router({
                 stopWhen: stepCountIs(2),
               })
             } else {
-              // For non-vision models, use standard conversion
-              console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini`)
-              // Limit history to the last few messages to reduce prompt size/latency
               const limited = messages.slice(-8) as any
-              return streamText({
-                model: openrouter.chat('openai/gpt-4o-mini'),
+              result = await streamText({
+                model: openai('gpt-4o-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                 messages: convertToModelMessages(limited),
                 tools: { readWebsiteContent, writeTweet },
                 stopWhen: stepCountIs(2),
               })
             }
-          })()
+          }
 
           writer.merge(result.toUIMessageStream())
         },
