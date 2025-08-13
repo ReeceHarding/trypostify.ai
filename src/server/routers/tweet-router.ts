@@ -832,8 +832,22 @@ export const tweetRouter = j.router({
         },
       })
 
-      const scheduledTweetsWithMedia = await Promise.all(
-        _scheduledTweets.map(async (tweet) => {
+      // Optimize media fetching by batching and lazy loading
+      console.log('[get_queue] Optimizing media fetch for', _scheduledTweets.length, 'tweets')
+      const startMediaFetch = Date.now()
+      
+      // Only fetch media for tweets that have media
+      const tweetsWithMedia = _scheduledTweets.filter(t => t.media && t.media.length > 0)
+      const tweetsWithoutMedia = _scheduledTweets.filter(t => !t.media || t.media.length === 0)
+      
+      console.log('[get_queue] Media fetch split:', {
+        withMedia: tweetsWithMedia.length,
+        withoutMedia: tweetsWithoutMedia.length
+      })
+      
+      // Batch process media-rich tweets
+      const enrichedTweetsWithMedia = await Promise.all(
+        tweetsWithMedia.map(async (tweet) => {
           const enrichedMedia = await fetchMediaFromS3(tweet.media || [])
           return {
             ...tweet,
@@ -841,6 +855,14 @@ export const tweetRouter = j.router({
           }
         }),
       )
+      
+      // Combine results
+      const scheduledTweetsWithMedia = [
+        ...enrichedTweetsWithMedia,
+        ...tweetsWithoutMedia.map(tweet => ({ ...tweet, media: [] }))
+      ]
+      
+      console.log('[get_queue] Media fetch completed in', Date.now() - startMediaFetch, 'ms')
       
       console.log('[get_queue] Scheduled tweets before filtering:', {
         total: scheduledTweetsWithMedia.length,

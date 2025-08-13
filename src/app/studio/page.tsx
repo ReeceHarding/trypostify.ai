@@ -24,17 +24,18 @@ const Page = () => {
   const { account, isLoading } = useAccount()
   
   const editTweetId = searchParams?.get('edit')
-  // Debug logs to trace edit flow
-  if (typeof window !== 'undefined' && editTweetId) {
-    try {
+  const isEditMode = Boolean(editTweetId)
+  
+  // Debug logs to trace edit flow (only log once per change)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && editTweetId) {
       console.log('[StudioPage] editTweetId found in URL', {
         editTweetId,
         href: window.location.href,
         ts: new Date().toISOString(),
       })
-    } catch {}
-  }
-  const isEditMode = Boolean(editTweetId)
+    }
+  }, [editTweetId])
 
   const [showDiscard, setShowDiscard] = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)

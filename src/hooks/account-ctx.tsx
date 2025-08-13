@@ -68,15 +68,31 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const { data, isPending } = useQuery({
     queryKey: ['get-active-account'],
-    // Show cached value if present but keep loading state until network returns
-    placeholderData: initialAccount ?? undefined,
+    // Show cached value immediately to eliminate loading delay
+    initialData: initialAccount,
     queryFn: async () => {
       const startedAt = Date.now()
       console.log(`[AccountProvider ${ts()}] fetching active account from API: client.settings.active_account`)
+      
+      // Check cache age - if less than 30 seconds old, skip API call
+      if (initialAccount && typeof window !== 'undefined') {
+        try {
+          const cached = window.localStorage.getItem(storageKey)
+          if (cached) {
+            const { ts: cacheTime } = JSON.parse(cached) as { ts: number }
+            const ageMs = Date.now() - cacheTime
+            if (ageMs < 30000) { // 30 seconds
+              console.log(`[AccountProvider ${ts()}] using fresh cache, age: ${ageMs}ms`)
+              return initialAccount
+            }
+          }
+        } catch {}
+      }
+
       const res = await client.settings.active_account.$get()
       const { account } = await res.json()
 
-      // Preload the profile image
+      // Preload the profile image asynchronously
       if (account?.profile_image_url) {
         const img = new window.Image()
         img.src = account.profile_image_url
@@ -103,9 +119,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
       return mapped
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes in memory
+    staleTime: 1000 * 30, // Shorter stale time for faster updates
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes in memory
     refetchOnWindowFocus: false, // Avoid jarring refreshes when tab changes
+    retry: 1, // Reduce retry attempts for faster failure
+    retryDelay: 500, // Faster retry
   })
 
   return (

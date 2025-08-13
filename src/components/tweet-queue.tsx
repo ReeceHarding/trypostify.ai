@@ -64,21 +64,36 @@ export default function TweetQueue() {
   const { data, isPending, isFetching } = useQuery({
     queryKey: ['queue-slots', daysLoaded],
     queryFn: async () => {
+      console.log('[TweetQueue] Fetching queue data...', { daysLoaded, timestamp: new Date().toISOString() })
+      const startTime = Date.now()
       const res = await client.tweet.get_queue.$get({ timezone, userNow, daysToLoad: daysLoaded })
-      return await res.json()
+      const result = await res.json()
+      console.log('[TweetQueue] Queue data fetched in', Date.now() - startTime, 'ms')
+      return result
     },
     placeholderData: (previousData) => previousData, // Keep previous data while loading
+    staleTime: 1000 * 60, // Cache for 1 minute
+    gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes
+    retry: 1, // Reduce retries for faster failure
+    retryDelay: 300,
   })
 
-  // Fetch scheduled threads and tweets
+  // Fetch scheduled threads and tweets with optimized caching
   const { data: rawScheduledData, isPending: isLoadingScheduled } = useQuery({
     queryKey: ['threads-scheduled-published'],
     queryFn: async () => {
+      console.log('[TweetQueue] Fetching scheduled data...', { timestamp: new Date().toISOString() })
+      const startTime = Date.now()
       const res = await client.tweet.getScheduledAndPublished.$get()
       const data = await res.json()
+      console.log('[TweetQueue] Scheduled data fetched in', Date.now() - startTime, 'ms')
       console.log('[TweetQueue] Raw response:', data)
       return data
     },
+    staleTime: 1000 * 30, // Cache for 30 seconds
+    gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes
+    retry: 1, // Reduce retries for faster failure
+    retryDelay: 300,
   })
 
   // Handle potential superjson wrapper

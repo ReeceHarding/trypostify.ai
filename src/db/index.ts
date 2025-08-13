@@ -31,6 +31,14 @@ function initializeDatabase() {
   _pool = new Pool({
     connectionString,
     ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
+    // Optimize connection pool for performance
+    max: 10, // Maximum number of connections
+    min: 1, // Minimum number of connections
+    idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+    connectionTimeoutMillis: 5000, // Connection timeout
+    // Keep connections alive
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 0,
   })
 
   _db = drizzle(_pool, { schema })
