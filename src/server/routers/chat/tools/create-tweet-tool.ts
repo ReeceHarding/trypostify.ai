@@ -36,7 +36,7 @@ export const createTweetTool = (
       const systemPrompt = editToolSystemPrompt({ name: account.name, hasXPremium })
 
       const result = streamText({
-        model: openrouter.chat('openai/o4-mini'),
+        model: openrouter.chat('openai/gpt-4o-mini'),
         system: systemPrompt,
         prompt: instruction,
       })
