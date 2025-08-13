@@ -77,6 +77,13 @@ export const OnboardingModal = ({
 
   const { mutate: createOAuthLink, isPending: isCreatingOAuthLink } = useMutation({
     mutationFn: async () => {
+      console.log('[OnboardingModal] Creating Twitter OAuth link with data:', {
+        frequency,
+        mainFocus,
+        hasXPremium,
+        timestamp: new Date().toISOString()
+      })
+      
       // Save onboarding data before redirecting to Twitter
       let userFrequency = 0
       if (frequency === '1_day') userFrequency = 1
@@ -94,10 +101,12 @@ export const OnboardingModal = ({
       })
       return await res.json()
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('[OnboardingModal] Error creating Twitter link:', error)
       toast.error('Error, please try again')
     },
     onSuccess: ({ url }) => {
+      console.log('[OnboardingModal] Redirecting to Twitter OAuth:', url)
       window.location.href = url
     },
   })
@@ -123,10 +132,17 @@ export const OnboardingModal = ({
 
   // Update parent component when modal is closed
   useEffect(() => {
+    console.log('[OnboardingModal] Modal state changed:', {
+      isOpen,
+      oauthOnboarding,
+      loading,
+      timestamp: new Date().toISOString()
+    })
+    
     if (onOpenChange) {
       onOpenChange(isOpen)
     }
-  }, [isOpen, onOpenChange])
+  }, [isOpen, onOpenChange, oauthOnboarding, loading])
 
   // Create example documents when reaching the completion slide
   useEffect(() => {

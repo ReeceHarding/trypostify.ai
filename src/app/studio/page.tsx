@@ -63,24 +63,37 @@ const Page = () => {
     // Check for ?account_connected=true in URL
     if (searchParams?.get('account_connected') === 'true') {
       console.log('[StudioPage] Account connected, showing completion')
+      // Mark as completed immediately to prevent modal from reopening
+      setHasCompletedOnboarding(true)
+      
       // Wait a bit for account data to load before showing modal
       const timer = setTimeout(async () => {
+        // Invalidate and wait for the query to actually refetch
         await queryClient.invalidateQueries({ queryKey: ['get-active-account'] })
-        // Only show completion if we actually have an account now
-        const accountData = queryClient.getQueryData(['get-active-account'])
-        if (accountData) {
-          setOauthOnboarding(true)
-          setIsOpen(true)
-          setOnboardingLoading(true)
-          setHasCompletedOnboarding(true) // Mark as completed
-          // Close modal after showing success
-          setTimeout(() => {
-            setIsOpen(false)
-            setOauthOnboarding(false)
-            setOnboardingLoading(false)
-          }, 3000)
+        
+        // Force a refetch and wait for it to complete
+        try {
+          const accountData = await queryClient.fetchQuery({
+            queryKey: ['get-active-account'],
+          })
+          
+          console.log('[StudioPage] Account data after refetch:', accountData)
+          
+          if (accountData) {
+            setOauthOnboarding(true)
+            setIsOpen(true)
+            setOnboardingLoading(true)
+            // Close modal after showing success
+            setTimeout(() => {
+              setIsOpen(false)
+              setOauthOnboarding(false)
+              setOnboardingLoading(false)
+            }, 3000)
+          }
+        } catch (error) {
+          console.error('[StudioPage] Error fetching account after connection:', error)
         }
-      }, 1000) // Wait 1 second for account to load
+      }, 1000) // Wait 1 second for Redis to be ready
       
       router.replace('/studio', { scroll: false })
       return () => clearTimeout(timer)
@@ -88,6 +101,16 @@ const Page = () => {
   }, [searchParams, queryClient, router])
 
   useEffect(() => {
+    // Log the current state for debugging
+    console.log('[StudioPage] Onboarding state check:', {
+      hasAccount: Boolean(account),
+      isLoading,
+      isEditMode,
+      oauthOnboarding,
+      hasCompletedOnboarding,
+      timestamp: new Date().toISOString()
+    })
+    
     // Only open onboarding if no account exists AND we're not coming from Twitter connection
     if (!Boolean(account) && !Boolean(isLoading) && !isEditMode && !oauthOnboarding && !hasCompletedOnboarding) {
       console.log('[StudioPage] No account found, opening onboarding modal')
