@@ -189,6 +189,18 @@ export const authRouter = j.router({
     for (const accountKey of accountKeys) {
       const existingAccount = await redis.json.get<Account>(accountKey)
       if (existingAccount?.username === userProfile.screen_name) {
+        // Always set the active account when returning from OAuth for existing accounts
+        try {
+          await redis.json.set(`active-account:${user.email}`, '$', existingAccount)
+          console.log('[AUTH_ROUTER] Set active-account for existing account', {
+            email: user.email,
+            id: existingAccount?.id,
+            username: existingAccount?.username,
+          })
+        } catch (e) {
+          console.error('[AUTH_ROUTER] Failed to set active-account for existing account', e)
+        }
+
         if (authAction === 'invite') {
           return c.redirect(`${getBaseUrl()}/invite/success?id=${inviteId}`)
         }
@@ -227,10 +239,30 @@ export const authRouter = j.router({
 
     await redis.json.set(`account:${user.email}:${dbAccountId}`, '$', connectedAccount)
 
-    const exists = await redis.exists(`active-account:${user.email}`)
-
-    if (!exists) {
-      await redis.json.set(`active-account:${user.email}`, '$', connectedAccount)
+    // For onboarding and invite flows, always set the connected account as active to avoid UI race conditions
+    try {
+      if (authAction !== 'add-account') {
+        await redis.json.set(`active-account:${user.email}`, '$', connectedAccount)
+        console.log('[AUTH_ROUTER] Set active-account for new connection', {
+          email: user.email,
+          id: connectedAccount.id,
+          username: connectedAccount.username,
+          authAction,
+        })
+      } else {
+        // Preserve behavior for add-account flow
+        const exists = await redis.exists(`active-account:${user.email}`)
+        if (!exists) {
+          await redis.json.set(`active-account:${user.email}`, '$', connectedAccount)
+          console.log('[AUTH_ROUTER] Set active-account (was missing) during add-account', {
+            email: user.email,
+            id: connectedAccount.id,
+            username: connectedAccount.username,
+          })
+        }
+      }
+    } catch (e) {
+      console.error('[AUTH_ROUTER] Failed to set active-account for new connection', e)
     }
 
     const userTweets = await loggedInClient.v2.userTimeline(userProfile.id_str, {

@@ -68,8 +68,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const { data, isPending } = useQuery({
     queryKey: ['get-active-account'],
-    // Use cached value immediately; refresh in background
-    initialData: initialAccount,
+    // Show cached value if present but keep loading state until network returns
+    placeholderData: initialAccount ?? undefined,
     queryFn: async () => {
       const startedAt = Date.now()
       console.log(`[AccountProvider ${ts()}] fetching active account from API: client.settings.active_account`)

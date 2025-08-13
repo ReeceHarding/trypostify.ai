@@ -12,7 +12,7 @@ import {
 import { useAccount } from '@/hooks/account-ctx'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const Page = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -24,6 +24,9 @@ const Page = () => {
   const queryClient = useQueryClient()
 
   const { account, isLoading } = useAccount()
+  // Prevent handling account_connected flow multiple times on the same mount
+  const handledAccountConnectedRef = useRef(false)
+
   
   const editTweetId = searchParams?.get('edit')
   // Debug logs to trace edit flow
@@ -61,41 +64,42 @@ const Page = () => {
 
   useEffect(() => {
     // Check for ?account_connected=true in URL
-    if (searchParams?.get('account_connected') === 'true') {
+    if (searchParams?.get('account_connected') === 'true' && !handledAccountConnectedRef.current) {
+      handledAccountConnectedRef.current = true
       console.log('[StudioPage] Account connected, showing completion')
       // Mark as completed immediately to prevent modal from reopening
       setHasCompletedOnboarding(true)
-      
+
       // Wait a bit for account data to load before showing modal
       const timer = setTimeout(async () => {
         // Invalidate and wait for the query to actually refetch
         await queryClient.invalidateQueries({ queryKey: ['get-active-account'] })
-        
+
         // Force a refetch and wait for it to complete
         try {
           const accountData = await queryClient.fetchQuery({
             queryKey: ['get-active-account'],
           })
-          
+
           console.log('[StudioPage] Account data after refetch:', accountData)
-          
+
           if (accountData) {
             setOauthOnboarding(true)
             setIsOpen(true)
             setOnboardingLoading(true)
-            // Close modal after showing success
+            // Close modal after showing success, then clean URL
             setTimeout(() => {
               setIsOpen(false)
               setOauthOnboarding(false)
               setOnboardingLoading(false)
+              router.replace('/studio', { scroll: false })
             }, 3000)
           }
         } catch (error) {
           console.error('[StudioPage] Error fetching account after connection:', error)
         }
       }, 1000) // Wait 1 second for Redis to be ready
-      
-      router.replace('/studio', { scroll: false })
+
       return () => clearTimeout(timer)
     }
   }, [searchParams, queryClient, router])
