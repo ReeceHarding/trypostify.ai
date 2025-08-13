@@ -183,13 +183,18 @@ Examples:
   child.stderr.on('data', (data) => {
     const output = data.toString();
     
-    // Filter out font private use area warnings to prevent log spam
+    // Filter out font private use area warnings and binary data to prevent log spam
     if (!output.includes('Warning: Ran out of space in font private use area')) {
-      // Write to log file
-      writeToLog(output.trim(), 'STDERR');
+      // Additional check for binary data - if output contains mostly non-printable characters, skip it
+      const printableRatio = output.replace(/[^\x20-\x7E\n\r\t]/g, '').length / output.length;
       
-      // Also display in console (preserve original behavior)
-      process.stderr.write(output);
+      if (printableRatio > 0.9) { // Only log if at least 90% printable characters
+        // Write to log file
+        writeToLog(output.trim(), 'STDERR');
+        
+        // Also display in console (preserve original behavior)
+        process.stderr.write(output);
+      }
     }
   });
 
