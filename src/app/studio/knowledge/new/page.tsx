@@ -82,6 +82,9 @@ export default function NewKnowledgePage() {
       toast.success(`Successfully imported content from ${data.url}`)
       setTitle('')
       setUrl('')
+      
+      // Redirect to knowledge base after successful import
+      router.push('/studio/knowledge')
     },
     onError: (error) => {
       console.error('Error importing URL:', error)
@@ -197,6 +200,9 @@ export default function NewKnowledgePage() {
       setUploadState(null)
       setTitle('')
       queryClient.refetchQueries({ queryKey: ['knowledge-documents'] })
+      
+      // Redirect to knowledge base after successful upload
+      router.push('/studio/knowledge')
     },
   })
 
