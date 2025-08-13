@@ -307,7 +307,7 @@ export default function TweetList({
             </div>
           </Card>
         ) : (
-          <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
+          <div className="rounded-2xl overflow-hidden">
             {sortedDateEntries.map(([date, items]) => (
               <div key={date}>
                 <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50">
