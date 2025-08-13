@@ -14,6 +14,8 @@ import { format, isToday, isTomorrow } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert'
+import { Loader2, Trash2 } from 'lucide-react'
 
 const Page = () => {
   const router = useRouter()
@@ -83,6 +85,28 @@ const Page = () => {
         toast.error('Something went wrong, please try again.')
       },
     })
+
+  const { mutate: deleteUser, isPending: isDeletingUser } = useMutation({
+    mutationFn: async () => {
+      const res = await client.settings.delete_user.$post()
+      return await res.json()
+    },
+    onSuccess: async () => {
+      toast.success('Your account has been deleted')
+      // Sign out the session and redirect home
+      await authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            router.push('/')
+          },
+        },
+      })
+    },
+    onError: (error) => {
+      console.error(error)
+      toast.error('Failed to delete account, please try again')
+    },
+  })
 
   return (
     <div className="relative w-full max-w-md mx-auto mt-12">
@@ -160,6 +184,55 @@ const Page = () => {
           >
             Sign out
           </p>
+        </div>
+
+        {/* Danger zone */}
+        <Separator className="my-6" />
+        <div className="bg-white border border-error-100 rounded-xl p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-base font-semibold text-neutral-900">Delete Account</p>
+              <p className="text-sm text-neutral-600 mt-1">
+                Permanently delete your account, connected social accounts, queued content, knowledge, and media. This action cannot be undone.
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <DuolingoButton variant="destructive" size="sm" className="w-fit">
+                  <Trash2 className="size-4 mr-2" />
+                  Delete my account
+                </DuolingoButton>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete your account permanently?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will erase all your data. Type DELETE to confirm.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction asChild>
+                    <DuolingoButton
+                      variant="destructive"
+                      onClick={() => deleteUser()}
+                      loading={isDeletingUser}
+                      className="w-fit"
+                    >
+                      {isDeletingUser ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        'Confirm delete'
+                      )}
+                    </DuolingoButton>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
     </div>

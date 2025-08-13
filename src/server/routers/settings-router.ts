@@ -1,5 +1,5 @@
 import { db } from '@/db'
-import { account as accountSchema } from '@/db/schema'
+import { account as accountSchema, user as userSchema } from '@/db/schema'
 import { chatLimiter } from '@/lib/chat-limiter'
 import { redis } from '@/lib/redis'
 import { and, desc, eq } from 'drizzle-orm'
@@ -7,6 +7,7 @@ import { HTTPException } from 'hono/http-exception'
 import { TwitterApi } from 'twitter-api-v2'
 import { z } from 'zod'
 import { j, privateProcedure } from '../jstack'
+import { stripe } from '@/lib/stripe/client'
 
 export type Account = {
   id: string
@@ -79,6 +80,17 @@ export const settingsRouter = j.router({
       }
 
       await redis.json.del(`account:${user.email}:${accountId}`)
+      // Also remove any style data cached for this account
+      try {
+        await redis.json.del(`style:${user.email}:${accountId}`)
+      } catch (err) {
+        console.log('[settings.delete_account] style json del failed (may be absent)', {
+          email: user.email,
+          accountId,
+          err,
+          at: new Date().toISOString(),
+        })
+      }
 
       return c.json({ success: true })
     }),
@@ -160,4 +172,70 @@ export const settingsRouter = j.router({
 
       return c.json({ success: true, account })
     }),
+
+  // Permanently delete the current user and all related data
+  delete_user: privateProcedure.post(async ({ c, ctx }) => {
+    const { user } = ctx
+
+    const now = new Date().toISOString()
+    console.log('[settings.delete_user] starting user deletion', { id: user.id, email: user.email, at: now })
+
+    // Attempt to delete Stripe customer if present
+    try {
+      if (user.stripeId) {
+        await stripe.customers.del(user.stripeId)
+        console.log('[settings.delete_user] deleted stripe customer', { stripeId: user.stripeId, at: new Date().toISOString() })
+      }
+    } catch (err) {
+      console.error('[settings.delete_user] failed to delete stripe customer', { stripeId: user.stripeId, err })
+    }
+
+    // Best-effort Redis cleanup
+    try {
+      // Delete active account pointer
+      await redis.del(`active-account:${user.email}`)
+
+      // Delete all per-account caches for this user
+      const accountsScan = await redis.scan(0, { match: `account:${user.email}:*` })
+      const [, accountKeys] = accountsScan
+      for (const key of accountKeys) {
+        try {
+          await redis.json.del(key)
+        } catch {
+          await redis.del(key)
+        }
+      }
+
+      // Delete all style caches for this user
+      const stylesScan = await redis.scan(0, { match: `style:${user.email}:*` })
+      const [, styleKeys] = stylesScan
+      for (const key of styleKeys) {
+        try {
+          await redis.json.del(key)
+        } catch {
+          await redis.del(key)
+        }
+      }
+
+      // Clear any other keys containing the user's email (e.g., rate limits)
+      const anyScan = await redis.scan(0, { match: `*${user.email}*` })
+      const [, anyKeys] = anyScan
+      if (anyKeys.length) {
+        await Promise.all(anyKeys.map((k) => redis.del(k)))
+      }
+    } catch (err) {
+      console.error('[settings.delete_user] redis cleanup error', err)
+    }
+
+    // Delete the user from the database (cascades to sessions, accounts, tweets, knowledge, media)
+    try {
+      await db.delete(userSchema).where(eq(userSchema.id, user.id))
+    } catch (err) {
+      console.error('[settings.delete_user] database deletion failed', err)
+      throw new HTTPException(500, { message: 'Failed to delete user account' })
+    }
+
+    console.log('[settings.delete_user] user deleted successfully', { id: user.id, email: user.email, at: new Date().toISOString() })
+    return c.json({ success: true })
+  }),
 })
