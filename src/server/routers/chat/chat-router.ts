@@ -225,6 +225,18 @@ export const chatRouter = j.router({
         content.close('attached_links')
       }
 
+      // Add attached document content for knowledge documents
+      if (Boolean(attachments.length)) {
+        const textAttachments = attachments.filter((a) => a?.type === 'text')
+        if (textAttachments.length > 0) {
+          content.open('attached_documents', { note: 'Use this attached document content as context for your response.' })
+          textAttachments.forEach((attachment: any) => {
+            content.tag('document_content', attachment.text)
+          })
+          content.close('attached_documents')
+        }
+      }
+
       if (message.metadata?.editorContent) {
         content.tag('tweet_draft', message.metadata.editorContent)
       }
