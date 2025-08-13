@@ -99,6 +99,12 @@ function initializeAuth() {
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID as string,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+        // Force account chooser to avoid silently reusing last Google account
+        authorization: {
+          params: {
+            prompt: 'select_account',
+          },
+        },
       },
       twitter: {
         clientId: process.env.TWITTER_CLIENT_ID as string,

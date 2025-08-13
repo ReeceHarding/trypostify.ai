@@ -24,6 +24,13 @@ const Page = () => {
   const status = searchParams.get('s')
 
   const handleLogout = async () => {
+    // Clear any cached active account when signing out
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('active-account-cache-v1')
+      }
+    } catch {}
+
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
@@ -92,6 +99,12 @@ const Page = () => {
     },
     onSuccess: async () => {
       toast.success('Your account has been deleted')
+      // Clear any cached active account to avoid stale auto-selection
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('active-account-cache-v1')
+        }
+      } catch {}
       // Sign out the session and redirect home
       await authClient.signOut({
         fetchOptions: {

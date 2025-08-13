@@ -103,10 +103,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       // Write-through cache to localStorage
       try {
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(
-            storageKey,
-            JSON.stringify({ account: mapped, ts: Date.now() }),
-          )
+          if (mapped) {
+            window.localStorage.setItem(
+              storageKey,
+              JSON.stringify({ account: mapped, ts: Date.now() }),
+            )
+          } else {
+            window.localStorage.removeItem(storageKey)
+          }
           console.log(`[AccountProvider ${ts()}] cached active account to localStorage`, {
             id: mapped?.id,
             username: mapped?.username,
