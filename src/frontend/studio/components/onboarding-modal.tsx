@@ -77,6 +77,18 @@ export const OnboardingModal = ({
 
   const { mutate: createOAuthLink, isPending: isCreatingOAuthLink } = useMutation({
     mutationFn: async () => {
+      // Save onboarding data before redirecting to Twitter
+      let userFrequency = 0
+      if (frequency === '1_day') userFrequency = 1
+      if (frequency === '2_day') userFrequency = 2
+      if (frequency === '3_day') userFrequency = 3
+
+      await client.auth_router.updateOnboardingMetaData.$post({
+        userFrequency,
+        userGoals: [mainFocus],
+        hasXPremium,
+      })
+
       const res = await client.auth_router.createTwitterLink.$get({
         action: 'onboarding',
       })
