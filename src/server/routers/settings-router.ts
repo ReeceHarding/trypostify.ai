@@ -150,7 +150,48 @@ export const settingsRouter = j.router({
 
     let account: Account | null = null
 
+    // Read the active account pointer from Redis
     account = await redis.json.get<Account>(`active-account:${user.email}`)
+
+    // Validate against the database to avoid stale pointers that make the UI inconsistent
+    if (account?.id) {
+      try {
+        const [dbAccount] = await db
+          .select()
+          .from(accountSchema)
+          .where(and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)))
+          .limit(1)
+
+        // If no DB record or missing tokens, clear the Redis pointer and return null
+        if (!dbAccount || !dbAccount.accessToken || !dbAccount.accessSecret) {
+          try {
+            await redis.del(`active-account:${user.email}`)
+            console.log('[settings.active_account] cleared stale active-account pointer', {
+              email: user.email,
+              accountId: account.id,
+              reason: !dbAccount
+                ? 'db-record-missing'
+                : 'missing-access-tokens',
+              at: new Date().toISOString(),
+            })
+          } catch (err) {
+            console.log('[settings.active_account] failed clearing stale pointer', {
+              email: user.email,
+              accountId: account.id,
+              err,
+            })
+          }
+          account = null
+        }
+      } catch (err) {
+        console.log('[settings.active_account] db validation failed; returning null', {
+          email: user.email,
+          accountId: account.id,
+          err,
+        })
+        account = null
+      }
+    }
 
     return c.json({ account })
   }),
