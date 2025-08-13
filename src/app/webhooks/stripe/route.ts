@@ -14,9 +14,19 @@ import { STRIPE_SUBSCRIPTION_DATA } from '@/constants/stripe-subscription'
 const validateWebhook = async ({ body, signature }: { body: any; signature: string }) => {
   const { STRIPE_WEBHOOK_SECRET } = process.env
 
-  if (!STRIPE_WEBHOOK_SECRET) return { event: null }
+  if (!STRIPE_WEBHOOK_SECRET) {
+    console.log('[STRIPE_WEBHOOK] Stripe webhook secret not found, skipping validation')
+    return { event: null }
+  }
 
+  if (!stripe) {
+    console.log('[STRIPE_WEBHOOK] Stripe client not initialized, skipping validation')
+    return { event: null }
+  }
+
+  console.log('[STRIPE_WEBHOOK] Validating webhook signature...', new Date().toISOString())
   const event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET)
+  console.log('[STRIPE_WEBHOOK] Webhook signature validated successfully')
 
   return { event }
 }
