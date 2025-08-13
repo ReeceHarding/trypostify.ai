@@ -13,9 +13,19 @@ import { getBaseUrl } from '@/constants/base-url'
 
 import { PostHog } from 'posthog-node'
 
-const posthog = new PostHog(process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
-  host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
-})
+// Initialize PostHog client only if API key is available
+const posthogApiKey = process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY
+let posthog: PostHog | null = null
+
+if (posthogApiKey && posthogApiKey.trim()) {
+  console.log('[AUTH_ROUTER] Initializing PostHog client...', new Date().toISOString())
+  posthog = new PostHog(posthogApiKey, {
+    host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+  })
+  console.log('[AUTH_ROUTER] PostHog client initialized successfully')
+} else {
+  console.log('[AUTH_ROUTER] PostHog API key not found, skipping analytics initialization')
+}
 
 const nanoid = customAlphabet(
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
@@ -329,18 +339,24 @@ export const authRouter = j.router({
       ])
     }
 
-    posthog.capture({
-      distinctId: user.id,
-      event: 'user_account_connected',
-      properties: {
-        userId: user.id,
-        accountId: dbAccountId,
-        accountName: userProfile.name,
-        reason: authAction,
-      },
-    })
+    // Only send analytics if PostHog client is available
+    if (posthog) {
+      console.log('[AUTH_ROUTER] Capturing user account connected event for user:', user.id)
+      posthog.capture({
+        distinctId: user.id,
+        event: 'user_account_connected',
+        properties: {
+          userId: user.id,
+          accountId: dbAccountId,
+          accountName: userProfile.name,
+          reason: authAction,
+        },
+      })
 
-    await posthog.shutdown()
+      await posthog.shutdown()
+    } else {
+      console.log('[AUTH_ROUTER] PostHog client not available, skipping user account connected analytics')
+    }
 
     if (authAction === 'invite') {
       return c.redirect(`${getBaseUrl()}/invite/success?id=${inviteId}`)

@@ -4,9 +4,19 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { createAuthMiddleware } from 'better-auth/api'
 import { PostHog } from 'posthog-node'
 
-const client = new PostHog(process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
-  host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
-})
+// Initialize PostHog client only if API key is available
+const posthogApiKey = process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY
+let client: PostHog | null = null
+
+if (posthogApiKey && posthogApiKey.trim()) {
+  console.log('[AUTH] Initializing PostHog client...', new Date().toISOString())
+  client = new PostHog(posthogApiKey, {
+    host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+  })
+  console.log('[AUTH] PostHog client initialized successfully')
+} else {
+  console.log('[AUTH] PostHog API key not found, skipping analytics initialization')
+}
 
 const database = drizzleAdapter(db, { provider: 'pg' })
 
@@ -26,15 +36,21 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          client.capture({
-            distinctId: user.id,
-            event: 'user_signed_up',
-            properties: {
-              email: user.email,
-            },
-          })
+          // Only send analytics if PostHog client is available
+          if (client) {
+            console.log('[AUTH] Capturing user signup event for user:', user.id)
+            client.capture({
+              distinctId: user.id,
+              event: 'user_signed_up',
+              properties: {
+                email: user.email,
+              },
+            })
 
-          await client.shutdown()
+            await client.shutdown()
+          } else {
+            console.log('[AUTH] PostHog client not available, skipping user signup analytics')
+          }
         },
       },
     },
