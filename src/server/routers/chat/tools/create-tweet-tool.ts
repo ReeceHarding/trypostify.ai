@@ -89,6 +89,14 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
         ),
     }),
     execute: async ({ instruction, tweetContent, imageDescriptions }) => {
+      console.log('[CREATE_TWEET_TOOL] Starting execution', {
+        instruction,
+        tweetContent: tweetContent ? 'PROVIDED' : 'NOT_PROVIDED',
+        imageDescriptions: imageDescriptions?.length || 0,
+        redisKeys: ctx.redisKeys,
+        timestamp: new Date().toISOString()
+      })
+
       const generationId = nanoid()
 
       writer.write({
@@ -100,13 +108,26 @@ export const createTweetTool = ({ writer, ctx }: Context) => {
         },
       })
 
+      console.log('[CREATE_TWEET_TOOL] Fetching Redis data...')
       const [style, account, websiteContent] = await Promise.all([
         redis.json.get<Style>(ctx.redisKeys.style),
         redis.json.get<Account>(ctx.redisKeys.account),
         redis.lrange<WebsiteContent>(ctx.redisKeys.websiteContent, 0, -1),
       ])
 
+      console.log('[CREATE_TWEET_TOOL] Redis fetch results', {
+        styleExists: !!style,
+        accountExists: !!account,
+        websiteContentLength: websiteContent?.length || 0
+      })
+
       if (!style || !account) {
+        console.error('[CREATE_TWEET_TOOL] Missing style or account data', {
+          styleKey: ctx.redisKeys.style,
+          accountKey: ctx.redisKeys.account,
+          styleExists: !!style,
+          accountExists: !!account
+        })
         throw new Error('Style or account not found')
       }
 

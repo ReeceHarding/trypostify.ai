@@ -299,8 +299,8 @@ export const chatRouter = j.router({
               attachments: parsedAttachments,
               hasXPremium: user.hasXPremium || false,
               redisKeys: {
-                style: `style:${user.email}`,
-                account: `account:${user.email}`,
+                style: `style:${user.email}:${account.id}`,
+                account: `account:${user.email}:${account.id}`,
                 websiteContent: `website-contents:${id}`,
               },
             },
