@@ -386,7 +386,7 @@ export const chatRouter = j.router({
                 // Limit history to the last few messages to reduce prompt size/latency
                 const limitedModelMessages = modelMessages.slice(-8)
                 return streamText({
-                  model: openrouter.chat('openai/gpt-4o-mini'),
+                  model: openai('gpt-4o-mini'),
                   system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                   messages: [
                     ...limitedModelMessages,
@@ -403,11 +403,11 @@ export const chatRouter = j.router({
                 })
               } else {
                 // For non-vision models, use standard conversion
-                console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini`)
+                console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini (official adapter)`)
                 // Limit history to the last few messages to reduce prompt size/latency
                 const limited = messages.slice(-8) as any
                 return streamText({
-                  model: openrouter.chat('openai/gpt-4o-mini'),
+                  model: openai('gpt-4o-mini'),
                   system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                   messages: convertToModelMessages(limited),
                   tools: { readWebsiteContent, writeTweet },

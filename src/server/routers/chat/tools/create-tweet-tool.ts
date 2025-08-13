@@ -1,14 +1,12 @@
 import { editToolSystemPrompt } from '@/lib/prompt-utils'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { streamText, tool, UIMessageStreamWriter } from 'ai'
+import { openai } from '@ai-sdk/openai'
 import { nanoid } from 'nanoid'
 import { z } from 'zod'
 import { Account } from '../../settings-router'
 import { Style } from '../../style-router'
 
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-})
+// Use official OpenAI adapter to ensure SDK-compliant chunks
 
 export const createTweetTool = (
   writer: UIMessageStreamWriter,
@@ -73,7 +71,7 @@ ${JSON.stringify(style, null, 2)}
 CHARACTER LIMIT: ${hasXPremium ? 280 : 140}`
 
       const result = streamText({
-        model: openrouter.chat('openai/gpt-4o-mini'),
+        model: openai('gpt-4o-mini'),
         system: systemPrompt,
         prompt: fullPrompt,
       })
