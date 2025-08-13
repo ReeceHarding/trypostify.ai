@@ -310,7 +310,7 @@ export default function TweetList({
           <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
             {sortedDateEntries.map(([date, items]) => (
               <div key={date}>
-                <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50/50">
+                <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50">
                   <h2 className="text-[19px] font-bold text-neutral-900">
                     {(() => {
                       const relativeLabel = getDateLabel(date)
@@ -321,14 +321,14 @@ export default function TweetList({
                     })()}
                   </h2>
                 </div>
-                <div>
+                <div className="px-6 py-6">
                     {items.map((item, itemIndex) => (
-                      <div key={item.threadId || item.tweets[0]?.id} className={itemIndex > 0 ? "mt-4" : ""}>
+                      <div key={item.threadId || item.tweets[0]?.id} className={itemIndex > 0 ? "mt-6" : ""}>
                         {item.tweets.length > 1 ? (
                           // Exact Twitter thread rendering
                           <div>
                             {item.tweets.map((tweet: any, index: number) => (
-                              <div key={tweet.id} className="relative px-4 pt-3 hover:bg-neutral-50 transition-colors cursor-pointer">
+                              <div key={tweet.id} className="relative -mx-6 px-10 pt-3 hover:bg-neutral-50 transition-colors cursor-pointer">
                                 <div className="flex gap-3">
                                   {/* Avatar column with line */}
                                   <div className="flex flex-col items-center">
@@ -417,7 +417,7 @@ export default function TweetList({
                               </div>
                             ))}
                             {/* Thread actions */}
-                            <div className="px-4 py-3 border-t border-neutral-100 bg-neutral-50/50">
+                            <div className="-mx-6 px-10 py-3 border-t border-neutral-100 bg-neutral-50/50">
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-neutral-600">
                                   Thread · {item.tweets.length} posts
@@ -437,13 +437,14 @@ export default function TweetList({
                               </div>
                             </div>
                             {/* Only show divider if not the last item */}
-                            {itemIndex < items.length - 1 && <div className="h-px bg-neutral-200" />}
+                            {itemIndex < items.length - 1 && <div className="-mx-6 h-px bg-neutral-200" />}
                           </div>
                         ) : (
                           // Exact Twitter single tweet
-                          item.tweets.map((tweet: any) => (
-                            <div key={tweet.id} className="hover:bg-neutral-50 transition-colors cursor-pointer">
-                              <div className="px-4 py-3">
+                          item.tweets.map((tweet: any, tweetIndex: number) => (
+                            <div key={tweet.id}>
+                              <div className="-mx-6 hover:bg-neutral-50 transition-colors cursor-pointer">
+                              <div className="px-10 py-3">
                               <div className="flex gap-3">
                                 <AccountAvatar className="size-12 ring-1 ring-neutral-100" />
                                 <div className="flex-1 min-w-0">
@@ -533,8 +534,11 @@ export default function TweetList({
                                 </div>
                               </div>
                               </div>
-                              {/* Only show divider if not the last item */}
-                              {itemIndex < items.length - 1 && <div className="h-px bg-neutral-200" />}
+                              </div>
+                              {/* Show divider between single tweets or after last single tweet if not last item */}
+                              {(tweetIndex < item.tweets.length - 1 || itemIndex < items.length - 1) && (
+                                <div className="-mx-6 h-px bg-neutral-200" />
+                              )}
                             </div>
                           ))
                         )}
