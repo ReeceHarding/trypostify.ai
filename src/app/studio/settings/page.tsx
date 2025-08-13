@@ -14,7 +14,7 @@ import { format, isToday, isTomorrow } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Loader2, Trash2 } from 'lucide-react'
 
 const Page = () => {
@@ -196,42 +196,46 @@ const Page = () => {
                 Permanently delete your account, connected social accounts, queued content, knowledge, and media. This action cannot be undone.
               </p>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+            <Dialog>
+              <DialogTrigger asChild>
                 <DuolingoButton variant="destructive" size="sm" className="w-fit">
                   <Trash2 className="size-4 mr-2" />
                   Delete my account
                 </DuolingoButton>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete your account permanently?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will erase all your data. Type DELETE to confirm.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction asChild>
-                    <DuolingoButton
-                      variant="destructive"
-                      onClick={() => deleteUser()}
-                      loading={isDeletingUser}
-                      className="w-fit"
-                    >
-                      {isDeletingUser ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        'Confirm delete'
-                      )}
-                    </DuolingoButton>
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete your account permanently?</DialogTitle>
+                  <DialogDescription>
+                    This will erase all your data. This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DuolingoButton
+                    variant="secondary"
+                    size="sm"
+                    className="w-fit"
+                  >
+                    Cancel
+                  </DuolingoButton>
+                  <DuolingoButton
+                    variant="destructive"
+                    onClick={() => deleteUser()}
+                    loading={isDeletingUser}
+                    className="w-fit"
+                  >
+                    {isDeletingUser ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      'Confirm delete'
+                    )}
+                  </DuolingoButton>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

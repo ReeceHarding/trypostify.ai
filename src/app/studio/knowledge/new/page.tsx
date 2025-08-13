@@ -21,20 +21,10 @@ interface UploadState {
   xhr?: XMLHttpRequest
 }
 
-interface MultiFileUploadState {
-  files: Array<{
-    id: string
-    file: File
-    localUrl?: string
-    uploadProgress: number
-    isUploadDone: boolean
-    xhr?: XMLHttpRequest
-    title: string // Auto-filled from filename, user can edit
-    fileKey?: string
-    type?: string
-  }>
-  currentFileIndex: number
-  allUploadsComplete: boolean
+interface MultiFile {
+  file: File
+  title: string
+  localUrl?: string
 }
 
 export default function NewKnowledgePage() {
@@ -45,7 +35,7 @@ export default function NewKnowledgePage() {
   const [title, setTitle] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [uploadState, setUploadState] = useState<UploadState | null>(null)
-  const [multiFileState, setMultiFileState] = useState<MultiFileUploadState | null>(null)
+  const [multiFiles, setMultiFiles] = useState<MultiFile[]>([])
 
   // Helper function to extract clean title from filename
   const extractTitleFromFilename = (filename: string): string => {
@@ -60,55 +50,19 @@ export default function NewKnowledgePage() {
     return titleCased
   }
 
-  // Generate unique ID for file tracking
-  const generateFileId = (): string => {
-    return Math.random().toString(36).substr(2, 9)
-  }
-
-  // Initialize bulk upload state for multiple files
-  const initializeBulkUpload = (files: File[]) => {
-    console.log('[BULK_UPLOAD] Initializing bulk upload for', files.length, 'files')
+  // Initialize multiple files
+  const initializeMultiFiles = (files: File[]) => {
+    console.log('[MULTI_UPLOAD] Setting up', files.length, 'files')
     
-    const uploadFiles = files.map((file, index) => {
-      const id = generateFileId()
-      const title = extractTitleFromFilename(file.name)
-      let localUrl: string | undefined = undefined
-      
-      if (file.type.startsWith('image/')) {
-        localUrl = URL.createObjectURL(file)
-      }
-      
-      console.log(`[BULK_UPLOAD] File ${index + 1}:`, {
-        name: file.name,
-        extractedTitle: title,
-        size: file.size,
-        type: file.type
-      })
-      
-      return {
-        id,
-        file,
-        localUrl,
-        uploadProgress: 0,
-        isUploadDone: false,
-        title,
-      }
-    })
+    const multiFiles = files.map(file => ({
+      file,
+      title: extractTitleFromFilename(file.name),
+      localUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined
+    }))
 
-    setMultiFileState({
-      files: uploadFiles,
-      currentFileIndex: 0,
-      allUploadsComplete: false,
-    })
-    
-    // Clear single file state if it exists
+    setMultiFiles(multiFiles)
     setUploadState(null)
     setTitle('')
-    
-    console.log('[BULK_UPLOAD] Bulk upload state initialized with', uploadFiles.length, 'files')
-    
-    // Start uploading all files immediately
-    setTimeout(() => startBulkFileUploads(uploadFiles), 100)
   }
 
   // Navigation functions for multi-file upload
