@@ -311,8 +311,29 @@ export const chatRouter = j.router({
             throw new Error('Style or account not found')
           }
 
-          // Create writeTweet tool with simplified context
-          const writeTweet = createTweetTool(writer, accountData, style, user.hasXPremium || false)
+          // Build conversation context from previous messages
+          const conversationContext = messages
+            .slice(0, -1) // Exclude current message
+            .slice(-4) // Take last 4 messages for context
+            .map(msg => {
+              if (msg.role === 'user') {
+                return `User: ${msg.metadata?.userMessage || msg.parts?.find(p => p.type === 'text')?.text || ''}`
+              } else if (msg.role === 'assistant') {
+                return `Assistant: ${msg.parts?.find(p => p.type === 'text')?.text || ''}`
+              }
+              return ''
+            })
+            .filter(Boolean)
+            .join('\n\n')
+
+          // Create writeTweet tool with conversation context
+          const writeTweet = createTweetTool(
+            writer, 
+            accountData, 
+            style, 
+            user.hasXPremium || false,
+            conversationContext
+          )
 
           // Log attachment composition for debugging
           try {

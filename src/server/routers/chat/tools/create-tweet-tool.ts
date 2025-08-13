@@ -14,7 +14,8 @@ export const createTweetTool = (
   writer: UIMessageStreamWriter,
   account: Account,
   style: Style,
-  hasXPremium: boolean
+  hasXPremium: boolean,
+  conversationContext?: string
 ) => {
   return tool({
     description: 'Write a tweet based on user instruction',
@@ -33,7 +34,13 @@ export const createTweetTool = (
         },
       })
 
-      const systemPrompt = editToolSystemPrompt({ name: account.name, hasXPremium })
+      const systemPrompt = `${editToolSystemPrompt({ name: account.name, hasXPremium })}
+
+${conversationContext ? `CONVERSATION CONTEXT:
+${conversationContext}
+
+Use this context to understand what the user is referring to when creating the tweet.
+` : ''}`
 
       const result = streamText({
         model: openrouter.chat('openai/gpt-4o-mini'),
