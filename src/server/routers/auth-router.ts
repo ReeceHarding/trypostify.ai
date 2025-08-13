@@ -248,6 +248,24 @@ export const authRouter = j.router({
     for (const accountKey of accountKeys) {
       const existingAccount = await redis.json.get<Account>(accountKey)
       if (existingAccount?.username === userProfile.screen_name) {
+        console.log('[AUTH_ROUTER] Found existing account in Redis, updating database with fresh tokens', {
+          accountId: existingAccount.id,
+          username: existingAccount.username,
+        })
+
+        // CRITICAL: Update the database with fresh access tokens for existing accounts
+        // This fixes the "access token missing" error when users reconnect
+        await db
+          .update(account)
+          .set({
+            accessToken,
+            accessSecret,
+            updatedAt: new Date(),
+          })
+          .where(eq(account.id, existingAccount.id))
+
+        console.log('[AUTH_ROUTER] Successfully updated database tokens for existing account:', existingAccount.id)
+
         // Always set the active account when returning from OAuth for existing accounts
         try {
           await redis.json.set(`active-account:${user.email}`, '$', existingAccount)

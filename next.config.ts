@@ -24,17 +24,14 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
+      // Minimal PostHog setup - only essential endpoints to prevent 431 errors
       {
-        source: '/ingest/static/:path*',
-        destination: 'https://us-assets.i.posthog.com/static/:path*',
+        source: '/ingest/batch',
+        destination: 'https://us.i.posthog.com/batch',
       },
       {
-        source: '/ingest/:path*',
-        destination: 'https://us.i.posthog.com/:path*',
-      },
-      {
-        source: '/ingest/decide',
-        destination: 'https://us.i.posthog.com/decide',
+        source: '/ingest/capture',
+        destination: 'https://us.i.posthog.com/capture',
       },
     ]
   },

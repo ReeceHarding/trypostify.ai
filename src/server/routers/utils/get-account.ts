@@ -40,6 +40,8 @@ export const getAccount = async ({ email }: { email: string }) => {
   if (!dbAccount.accessToken || !dbAccount.accessSecret) {
     console.log(`[GET_ACCOUNT] Account ${redisAccount.id} exists but missing access tokens - OAuth flow incomplete`)
     console.log(`[GET_ACCOUNT] AccessToken present: ${Boolean(dbAccount.accessToken)}, AccessSecret present: ${Boolean(dbAccount.accessSecret)}`)
+    console.log(`[GET_ACCOUNT] Account last updated: ${dbAccount.updatedAt}`)
+    console.log(`[GET_ACCOUNT] This typically means the user needs to reconnect their Twitter account in Settings`)
     return null
   }
   
