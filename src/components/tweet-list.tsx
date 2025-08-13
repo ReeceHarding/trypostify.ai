@@ -325,18 +325,17 @@ export default function TweetList({
                     {items.map((item, itemIndex) => (
                       <div key={item.threadId || item.tweets[0]?.id} className={itemIndex > 0 ? "mt-6" : ""}>
                         {item.tweets.length > 1 ? (
-                          // Exact Twitter thread rendering
-                          <div>
+                          // Thread - but show each tweet as separate card
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-sm text-neutral-600">
+                              <MessageSquare className="size-4" />
+                              <span>Thread · {item.tweets.length} posts</span>
+                            </div>
                             {item.tweets.map((tweet: any, index: number) => (
-                              <div key={tweet.id} className="relative -mx-6 px-10 pt-3 hover:bg-neutral-50 transition-colors cursor-pointer">
-                                <div className="flex gap-3">
-                                  {/* Avatar column with line */}
-                                  <div className="flex flex-col items-center">
+                              <div key={tweet.id} className="bg-white rounded-lg border border-neutral-200 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="px-4 py-3">
+                                  <div className="flex gap-3">
                                     <AccountAvatar className="size-12 ring-1 ring-neutral-100" />
-                                    {index < item.tweets.length - 1 && (
-                                      <div className="w-0.5 grow mt-1 bg-neutral-300" />
-                                    )}
-                                  </div>
                                   {/* Content */}
                                   <div className="flex-1 pb-3">
                                     <div className="flex items-start justify-between">
@@ -412,39 +411,17 @@ export default function TweetList({
                                         </button>
                                       </div>
                                     )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             ))}
-                            {/* Thread actions */}
-                            <div className="-mx-6 px-10 py-3 border-t border-neutral-100 bg-neutral-50/50">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-neutral-600">
-                                  Thread · {item.tweets.length} posts
-                                </span>
-                                <DuolingoButton
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => {
-                                    const tweetIds = item.tweets.filter((t: any) => t.twitterId).map((t: any) => t.id)
-                                    if (tweetIds.length > 0) fetchMetrics({ tweetIds })
-                                  }}
-                                  disabled={isFetchingMetrics}
-                                >
-                                  <RefreshCw className={cn('size-3.5 mr-1.5', isFetchingMetrics && 'animate-spin')} />
-                                  Update metrics
-                                </DuolingoButton>
-                              </div>
-                            </div>
-                            {/* Only show divider if not the last item */}
-                            {itemIndex < items.length - 1 && <div className="-mx-6 h-px bg-neutral-200" />}
                           </div>
                         ) : (
-                          // Exact Twitter single tweet
-                          item.tweets.map((tweet: any, tweetIndex: number) => (
-                            <div key={tweet.id}>
-                              <div className="-mx-6 hover:bg-neutral-50 transition-colors cursor-pointer">
-                              <div className="px-10 py-3">
+                          // Single tweets - each as separate card
+                          item.tweets.map((tweet: any) => (
+                            <div key={tweet.id} className="bg-white rounded-lg border border-neutral-200 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="px-4 py-3">
                               <div className="flex gap-3">
                                 <AccountAvatar className="size-12 ring-1 ring-neutral-100" />
                                 <div className="flex-1 min-w-0">
@@ -532,13 +509,8 @@ export default function TweetList({
                                     </div>
                                   )}
                                 </div>
+                                </div>
                               </div>
-                              </div>
-                              </div>
-                              {/* Show divider between single tweets or after last single tweet if not last item */}
-                              {(tweetIndex < item.tweets.length - 1 || itemIndex < items.length - 1) && (
-                                <div className="-mx-6 h-px bg-neutral-200" />
-                              )}
                             </div>
                           ))
                         )}
