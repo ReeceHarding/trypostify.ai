@@ -19,6 +19,7 @@ import { redis } from '../../../lib/redis'
 import { j, privateProcedure } from '../../jstack'
 import { create_read_website_content } from './read-website-content'
 import { parseAttachments } from './utils'
+import { createTweetTool } from './tools/create-tweet-tool'
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { getAccount } from '../utils/get-account'
@@ -285,6 +286,25 @@ export const chatRouter = j.router({
         },
         execute: async ({ writer }) => {
           const readWebsiteContent = create_read_website_content({ chatId: id })
+          
+          // Create writeTweet tool with proper context
+          const writeTweet = createTweetTool({
+            writer,
+            ctx: {
+              plan: user.plan,
+              editorContent: message.metadata?.editorContent || '',
+              instructions: userContent,
+              userContent,
+              messages,
+              attachments: parsedAttachments,
+              hasXPremium: user.hasXPremium || false,
+              redisKeys: {
+                style: `style:${user.email}`,
+                account: `account:${user.email}`,
+                websiteContent: `website-contents:${id}`,
+              },
+            },
+          })
 
           // Log attachment composition for debugging
           try {
@@ -322,7 +342,7 @@ export const chatRouter = j.router({
                     ],
                   },
                 ],
-                tools: { readWebsiteContent },
+                tools: { readWebsiteContent, writeTweet },
                 stopWhen: stepCountIs(2),
               })
             } else {
@@ -334,7 +354,7 @@ export const chatRouter = j.router({
                 model: openrouter.chat('openai/o4-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                 messages: convertToModelMessages(limited),
-                tools: { readWebsiteContent },
+                tools: { readWebsiteContent, writeTweet },
                 stopWhen: stepCountIs(2),
               })
             }
