@@ -385,7 +385,10 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="w-full flex flex-col items-center gap-4">
-                    <div className="bg-neutral-50 rounded-lg p-4 w-full">
+                    <div 
+                      className="bg-neutral-50 rounded-lg p-4 w-full cursor-pointer hover:bg-neutral-100 transition-colors"
+                      onClick={() => setHasXPremium(!hasXPremium)}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="font-medium text-neutral-900">I have X Premium</p>
