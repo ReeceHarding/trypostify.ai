@@ -14,7 +14,6 @@ import { format, isToday, isTomorrow } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Loader2, Trash2 } from 'lucide-react'
 
 const Page = () => {
@@ -196,46 +195,28 @@ const Page = () => {
                 Permanently delete your account, connected social accounts, queued content, knowledge, and media. This action cannot be undone.
               </p>
             </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <DuolingoButton variant="destructive" size="sm" className="w-fit">
+            <DuolingoButton
+              variant="destructive"
+              size="sm"
+              className="w-fit"
+              onClick={() => {
+                const ok = window.confirm('This will erase all your data. Are you sure?')
+                if (ok) deleteUser()
+              }}
+              disabled={isDeletingUser}
+            >
+              {isDeletingUser ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
                   <Trash2 className="size-4 mr-2" />
                   Delete my account
-                </DuolingoButton>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete your account permanently?</DialogTitle>
-                  <DialogDescription>
-                    This will erase all your data. This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DuolingoButton
-                    variant="secondary"
-                    size="sm"
-                    className="w-fit"
-                  >
-                    Cancel
-                  </DuolingoButton>
-                  <DuolingoButton
-                    variant="destructive"
-                    onClick={() => deleteUser()}
-                    loading={isDeletingUser}
-                    className="w-fit"
-                  >
-                    {isDeletingUser ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      'Confirm delete'
-                    )}
-                  </DuolingoButton>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </>
+              )}
+            </DuolingoButton>
           </div>
         </div>
       </div>

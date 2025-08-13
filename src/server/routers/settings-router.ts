@@ -7,7 +7,6 @@ import { HTTPException } from 'hono/http-exception'
 import { TwitterApi } from 'twitter-api-v2'
 import { z } from 'zod'
 import { j, privateProcedure } from '../jstack'
-import { stripe } from '@/lib/stripe/client'
 
 export type Account = {
   id: string
@@ -180,16 +179,6 @@ export const settingsRouter = j.router({
     const now = new Date().toISOString()
     console.log('[settings.delete_user] starting user deletion', { id: user.id, email: user.email, at: now })
 
-    // Attempt to delete Stripe customer if present
-    try {
-      if (user.stripeId) {
-        await stripe.customers.del(user.stripeId)
-        console.log('[settings.delete_user] deleted stripe customer', { stripeId: user.stripeId, at: new Date().toISOString() })
-      }
-    } catch (err) {
-      console.error('[settings.delete_user] failed to delete stripe customer', { stripeId: user.stripeId, err })
-    }
-
     // Best-effort Redis cleanup
     try {
       // Delete active account pointer
@@ -217,12 +206,6 @@ export const settingsRouter = j.router({
         }
       }
 
-      // Clear any other keys containing the user's email (e.g., rate limits)
-      const anyScan = await redis.scan(0, { match: `*${user.email}*` })
-      const [, anyKeys] = anyScan
-      if (anyKeys.length) {
-        await Promise.all(anyKeys.map((k) => redis.del(k)))
-      }
     } catch (err) {
       console.error('[settings.delete_user] redis cleanup error', err)
     }

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { client } from '@/lib/client'
 import { cn } from '@/lib/utils'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, FileText, FolderOpen, Link, Upload, X, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, FileText, FolderOpen, Link, Upload, X } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import posthog from 'posthog-js'
 import { useCallback, useState } from 'react'
@@ -39,20 +39,16 @@ export default function NewKnowledgePage() {
 
   // Helper function to extract clean title from filename
   const extractTitleFromFilename = (filename: string): string => {
-    console.log('[BULK_UPLOAD] Extracting title from filename:', filename)
     // Remove file extension and clean up common patterns
     const nameWithoutExt = filename.replace(/\.[^/.]+$/, '')
     // Replace underscores, hyphens, and dots with spaces
     const cleaned = nameWithoutExt.replace(/[_\-\.]/g, ' ')
     // Capitalize first letter of each word
-    const titleCased = cleaned.replace(/\b\w/g, l => l.toUpperCase())
-    console.log('[BULK_UPLOAD] Extracted title:', titleCased)
-    return titleCased
+    return cleaned.replace(/\b\w/g, l => l.toUpperCase())
   }
 
   // Initialize multiple files
   const initializeMultiFiles = (files: File[]) => {
-    console.log('[MULTI_UPLOAD] Setting up', files.length, 'files')
     
     const multiFiles = files.map(file => ({
       file,
@@ -65,86 +61,22 @@ export default function NewKnowledgePage() {
     setTitle('')
   }
 
-  // Navigation functions for multi-file upload
-  const navigateToFile = (index: number) => {
-    if (!multiFileState) return
-    console.log('[BULK_UPLOAD] Navigating to file index:', index)
-    setMultiFileState(prev => prev ? { ...prev, currentFileIndex: index } : null)
+  // Update title for a specific file
+  const updateFileTitle = (index: number, newTitle: string) => {
+    setMultiFiles(prev => prev.map((file, i) => 
+      i === index ? { ...file, title: newTitle } : file
+    ))
   }
 
-  const goToPreviousFile = () => {
-    if (!multiFileState) return
-    const newIndex = Math.max(0, multiFileState.currentFileIndex - 1)
-    navigateToFile(newIndex)
-  }
-
-  const goToNextFile = () => {
-    if (!multiFileState) return
-    const newIndex = Math.min(multiFileState.files.length - 1, multiFileState.currentFileIndex + 1)
-    navigateToFile(newIndex)
-  }
-
-  // Update title for current file in multi-file upload
-  const updateCurrentFileTitle = (newTitle: string) => {
-    if (!multiFileState) return
-    console.log('[BULK_UPLOAD] Updating title for file at index', multiFileState.currentFileIndex, 'to:', newTitle)
-    
-    setMultiFileState(prev => {
-      if (!prev) return null
-      const updatedFiles = [...prev.files]
-      updatedFiles[prev.currentFileIndex] = {
-        ...updatedFiles[prev.currentFileIndex],
-        title: newTitle
+  // Remove a file from multi-upload
+  const removeFile = (index: number) => {
+    setMultiFiles(prev => {
+      const file = prev[index]
+      if (file && file.localUrl) {
+        URL.revokeObjectURL(file.localUrl)
       }
-      return { ...prev, files: updatedFiles }
+      return prev.filter((_, i) => i !== index)
     })
-  }
-
-  // Remove a file from bulk upload
-  const removeFileFromBulkUpload = (fileId: string) => {
-    if (!multiFileState) return
-    
-    console.log('[BULK_UPLOAD] Removing file with ID:', fileId)
-    
-    const fileIndex = multiFileState.files.findIndex(f => f.id === fileId)
-    if (fileIndex === -1) return
-    
-    const fileToRemove = multiFileState.files[fileIndex]
-    
-    // Clean up object URL if it exists
-    if (fileToRemove.localUrl) {
-      URL.revokeObjectURL(fileToRemove.localUrl)
-    }
-    
-    // Abort upload if in progress
-    if (fileToRemove.xhr && !fileToRemove.isUploadDone) {
-      fileToRemove.xhr.abort()
-    }
-    
-    const updatedFiles = multiFileState.files.filter(f => f.id !== fileId)
-    
-    if (updatedFiles.length === 0) {
-      // No files left, clear multi-file state
-      setMultiFileState(null)
-      console.log('[BULK_UPLOAD] All files removed, clearing bulk upload state')
-      return
-    }
-    
-    // Adjust current index if necessary
-    let newCurrentIndex = multiFileState.currentFileIndex
-    if (fileIndex <= multiFileState.currentFileIndex && multiFileState.currentFileIndex > 0) {
-      newCurrentIndex = multiFileState.currentFileIndex - 1
-    } else if (multiFileState.currentFileIndex >= updatedFiles.length) {
-      newCurrentIndex = updatedFiles.length - 1
-    }
-    
-    setMultiFileState({
-      ...multiFileState,
-      files: updatedFiles,
-      currentFileIndex: newCurrentIndex
-    })
-    
-    console.log('[BULK_UPLOAD] File removed, remaining files:', updatedFiles.length)
   }
 
   // Normalize a user-entered URL so that host-only inputs like "example.com"
@@ -172,12 +104,9 @@ export default function NewKnowledgePage() {
     if (getDisabled()) return
 
     if (type === 'upload') {
-      if (multiFileState) {
-        // Handle bulk upload
-        console.log('[BULK_UPLOAD] Starting bulk upload process for', multiFileState.files.length, 'files')
-        startBulkUpload()
+      if (multiFiles.length > 0) {
+        processMultipleFiles()
       } else if (data) {
-        // Handle single file upload
         processFile({ ...data, title })
       }
     }
@@ -330,178 +259,56 @@ export default function NewKnowledgePage() {
     },
   })
 
-  // Bulk upload mutations
+  // Simple sequential processing for multiple files
   const {
-    mutate: uploadFileBulk,
-    isPending: isBulkUploading,
+    mutate: processMultipleFiles,
+    isPending: isMultiProcessing,
   } = useMutation({
-    mutationFn: async ({ file, fileId }: { file: File; fileId: string }) => {
-      console.log('[BULK_UPLOAD] Starting upload for file:', file.name, 'ID:', fileId)
+    mutationFn: async () => {
       
-      let localUrl: string | undefined = undefined
-      if (file.type.startsWith('image/')) {
-        localUrl = URL.createObjectURL(file)
+      for (const multiFile of multiFiles) {
+        // Upload to S3
+        const uploadRes = await client.file.upload.$post({
+          fileName: multiFile.file.name,
+          fileType: multiFile.file.type,
+          source: 'knowledge',
+        })
+        const { url, fields, fileKey } = await uploadRes.json()
+
+        // Upload file
+        const formData = new FormData()
+        Object.entries(fields).forEach(([key, value]) => {
+          formData.append(key, value as string)
+        })
+        formData.append('file', multiFile.file)
+        
+        await fetch(url, { method: 'POST', body: formData })
+
+        // Process to knowledge document
+        await client.file.promoteToKnowledgeDocument.$post({
+          fileKey,
+          fileName: multiFile.file.name,
+          title: multiFile.title,
+        })
       }
-
-      const xhr = new XMLHttpRequest()
-
-      // Update the specific file's state
-      setMultiFileState(prev => {
-        if (!prev) return null
-        const updatedFiles = prev.files.map(f => 
-          f.id === fileId 
-            ? { ...f, xhr, uploadProgress: 0, isUploadDone: false, localUrl }
-            : f
-        )
-        return { ...prev, files: updatedFiles }
-      })
-
-      const res = await client.file.upload.$post({
-        fileName: file.name,
-        fileType: file.type,
-        source: 'knowledge',
-      })
-
-      const { url, fields, fileKey, type } = await res.json()
-
-      const formData = new FormData()
-      Object.entries(fields).forEach(([key, value]) => {
-        formData.append(key, value as string)
-      })
-      formData.append('file', file)
-
-      await new Promise<void>((resolve, reject) => {
-        xhr.open('POST', url, true)
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const uploadProgress = (event.loaded / event.total) * 100
-            console.log(`[BULK_UPLOAD] Upload progress for ${file.name}:`, uploadProgress)
-            
-            setMultiFileState(prev => {
-              if (!prev) return null
-              const updatedFiles = prev.files.map(f => 
-                f.id === fileId ? { ...f, uploadProgress } : f
-              )
-              return { ...prev, files: updatedFiles }
-            })
-          }
-        }
-        xhr.onload = () => {
-          if (xhr.status === 200 || xhr.status === 204) {
-            console.log(`[BULK_UPLOAD] Upload completed for ${file.name}`)
-            setMultiFileState(prev => {
-              if (!prev) return null
-              const updatedFiles = prev.files.map(f => 
-                f.id === fileId 
-                  ? { ...f, isUploadDone: true, fileKey, type }
-                  : f
-              )
-              return { ...prev, files: updatedFiles }
-            })
-            resolve()
-          } else {
-            toast.error(`Upload failed for ${file.name}: status ${xhr.status}`)
-            reject(new Error(`Upload failed with status ${xhr.status}`))
-          }
-        }
-        xhr.onerror = () => {
-          toast.error(`Network error uploading ${file.name}`)
-          reject(new Error('Network error occurred during upload'))
-        }
-        xhr.onabort = () => {
-          console.log(`[BULK_UPLOAD] Upload cancelled for ${file.name}`)
-          reject(new Error('Upload aborted'))
-        }
-        xhr.send(formData)
-      })
-
-      return { fileKey, fileName: file.name, type, fileId }
     },
-  })
-
-  const {
-    mutate: processBulkFiles,
-    isPending: isBulkProcessing,
-  } = useMutation({
-    mutationFn: async (files: Array<{ fileKey: string; fileName: string; title: string }>) => {
-      console.log('[BULK_UPLOAD] Processing', files.length, 'files')
-      
-      const results = []
-      for (const file of files) {
-        console.log('[BULK_UPLOAD] Processing file:', file.fileName, 'with title:', file.title)
-        try {
-          const res = await client.file.promoteToKnowledgeDocument.$post({
-            fileKey: file.fileKey,
-            fileName: file.fileName,
-            title: file.title,
-          })
-          const result = await res.json()
-          results.push({ ...result, originalFile: file })
-          console.log('[BULK_UPLOAD] Successfully processed:', file.fileName)
-        } catch (error) {
-          console.error('[BULK_UPLOAD] Failed to process:', file.fileName, error)
-          throw error
-        }
-      }
-      
-      return results
-    },
-    onSuccess: (results) => {
-      console.log('[BULK_UPLOAD] All files processed successfully:', results.length)
-      
-      // Track analytics for bulk upload
+    onSuccess: () => {
       posthog.capture('knowledge_bulk_imported', {
-        source: 'bulk_upload',
-        fileCount: results.length,
-        files: results.map(r => r.originalFile.fileName),
+        source: 'multi_upload',
+        fileCount: multiFiles.length,
       })
 
-      toast.success(`Successfully added ${results.length} documents to knowledge base!`)
-      
-      // Clear all state
-      setMultiFileState(null)
+      toast.success(`Successfully added ${multiFiles.length} documents!`)
+      setMultiFiles([])
       setUploadState(null)
       setTitle('')
-      
-      // Refresh knowledge documents
       queryClient.refetchQueries({ queryKey: ['knowledge-documents'] })
-      
-      // Redirect to knowledge base
       router.push('/studio/knowledge')
     },
-    onError: (error) => {
-      console.error('[BULK_UPLOAD] Bulk processing failed:', error)
-      toast.error('Failed to process some files. Please try again.')
+    onError: () => {
+      toast.error('Failed to upload files. Please try again.')
     },
   })
-
-  // Start uploading files to S3 (called automatically when files are selected)
-  const startBulkFileUploads = async (uploadFiles: any[]) => {
-    console.log('[BULK_UPLOAD] Starting automatic file uploads for', uploadFiles.length, 'files')
-    
-    // Upload all files in parallel
-    uploadFiles.forEach(file => {
-      uploadFileBulk({ file: file.file, fileId: file.id })
-    })
-  }
-
-  // Start the bulk processing (called when user clicks submit)
-  const startBulkUpload = async () => {
-    if (!multiFileState) return
-    
-    console.log('[BULK_UPLOAD] Starting bulk processing for', multiFileState.files.length, 'files')
-    
-    // Process all uploaded files (files should already be uploaded to S3)
-    const filesToProcess = multiFileState.files.map(file => ({
-      fileKey: file.fileKey!,
-      fileName: file.file.name,
-      title: file.title,
-    }))
-    
-    console.log('[BULK_UPLOAD] Processing files with titles:', filesToProcess.map(f => ({ name: f.fileName, title: f.title })))
-    
-    processBulkFiles(filesToProcess)
-  }
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -518,37 +325,27 @@ export default function NewKnowledgePage() {
     setIsDragging(false)
 
     const files = Array.from(e.dataTransfer.files)
-    console.log('[BULK_UPLOAD] Files dropped:', files.length, files.map(f => f.name))
     
     if (files.length === 0) return
 
-    if (files.length === 1) {
+    if (files.length === 1 && files[0]) {
       // Single file - use existing flow
-      console.log('[BULK_UPLOAD] Single file detected, using existing upload flow')
-      const file = files[0]
-      upload({ file, title })
+      upload({ file: files[0], title })
     } else {
-      // Multiple files - use new bulk upload flow
-      console.log('[BULK_UPLOAD] Multiple files detected, initializing bulk upload')
-      initializeBulkUpload(files)
+      // Multiple files
+      initializeMultiFiles(files)
     }
   }, [title])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    console.log('[BULK_UPLOAD] Files selected:', files.length, files.map(f => f.name))
     
     if (files.length === 0) return
 
-    if (files.length === 1) {
-      // Single file - use existing flow
-      console.log('[BULK_UPLOAD] Single file selected, using existing upload flow')
-      const file = files[0]
-      upload({ file, title })
+    if (files.length === 1 && files[0]) {
+      upload({ file: files[0], title })
     } else {
-      // Multiple files - use new bulk upload flow
-      console.log('[BULK_UPLOAD] Multiple files selected, initializing bulk upload')
-      initializeBulkUpload(files)
+      initializeMultiFiles(files)
     }
   }
 
@@ -629,12 +426,11 @@ export default function NewKnowledgePage() {
               <h3 className="text-lg font-semibold text-neutral-900 truncate">
                 {file.name}
               </h3>
-              {isUploadDone && (
-                <DuolingoBadge variant="green" className="px-2 text-xs flex items-center gap-1">
-                  <Check className="size-3" />
-                  Uploaded
-                </DuolingoBadge>
-              )}
+                              {isUploadDone && (
+                  <DuolingoBadge variant="green" className="px-2 text-xs">
+                    Uploaded
+                  </DuolingoBadge>
+                )}
             </div>
             <p className="text-sm text-neutral-600">
               {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
@@ -670,172 +466,55 @@ export default function NewKnowledgePage() {
     )
   }
 
-  const renderMultiFilePreview = () => {
-    if (!multiFileState || multiFileState.files.length === 0) return null
-
-    const currentFile = multiFileState.files[multiFileState.currentFileIndex]
-    const { file, localUrl, uploadProgress, isUploadDone, title } = currentFile
-    const { currentFileIndex, files } = multiFileState
-
-    const isImage = file.type.startsWith('image/')
+  const renderMultiFileList = () => {
+    if (multiFiles.length === 0) return null
 
     return (
       <div className="space-y-4">
-        {/* File counter and navigation */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-neutral-700">
-              File {currentFileIndex + 1} of {files.length}
-            </span>
-            <div className="flex items-center gap-1">
-              {files.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => navigateToFile(index)}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-colors",
-                    index === currentFileIndex 
-                      ? "bg-primary" 
-                      : files[index].isUploadDone 
-                        ? "bg-success-500" 
-                        : "bg-neutral-300"
-                  )}
-                />
-              ))}
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-1">
-            <DuolingoButton
-              variant="secondary"
-              size="icon"
-              className="size-8"
-              onClick={goToPreviousFile}
-              disabled={currentFileIndex === 0}
-            >
-              <ChevronLeft className="size-4" />
-            </DuolingoButton>
-            <DuolingoButton
-              variant="secondary"
-              size="icon"
-              className="size-8"
-              onClick={goToNextFile}
-              disabled={currentFileIndex === files.length - 1}
-            >
-              <ChevronRight className="size-4" />
-            </DuolingoButton>
-          </div>
+        <div className="text-sm font-medium text-neutral-700">
+          {multiFiles.length} files selected
         </div>
-
-        {/* File preview card */}
-        <div className="relative border-2 border-neutral-200 shadow-[0_2px_0_hsl(var(--neutral-200))] rounded-2xl p-6 bg-white">
-          <div className="flex items-center gap-4">
-            {isImage && localUrl ? (
-              <div className="relative size-16 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
-                <img
-                  src={localUrl}
-                  alt={file.name}
-                  className="w-full h-full object-cover"
-                />
-                {!isUploadDone && (
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <div className="relative size-8">
-                      <svg className="size-8 transform" viewBox="0 0 36 36">
-                        <path
-                          className="text-neutral-300"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className="text-white"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeDasharray={`${uploadProgress}, 100`}
-                          strokeLinecap="round"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="relative size-16 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
-                <FileText className="size-8 text-neutral-400" />
-                {!isUploadDone && (
-                  <div className="absolute inset-0 bg-black/10 flex items-center justify-center">
-                    <div className="relative size-8">
-                      <svg className="size-8 transform -rotate-90" viewBox="0 0 36 36">
-                        <path
-                          className="text-neutral-300"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className="text-primary-600"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeDasharray={`${uploadProgress}, 100`}
-                          strokeLinecap="round"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold text-neutral-900 truncate">
-                  {file.name}
-                </h3>
-                {isUploadDone && (
-                  <DuolingoBadge variant="green" className="px-2 text-xs flex items-center gap-1">
-                    <Check className="size-3" />
-                    Uploaded
-                  </DuolingoBadge>
-                )}
-              </div>
-              <p className="text-sm text-neutral-600">
-                {(file.size / 1024 / 1024).toFixed(2)} MB • {file.type}
-              </p>
-              {!isUploadDone && uploadProgress > 0 && (
-                <p className="text-sm text-primary-600 mt-1">
-                  Uploading... {Math.round(uploadProgress)}%
-                </p>
+        
+        {multiFiles.map((multiFile, index) => (
+          <div key={index} className="relative border-2 border-neutral-200 shadow-[0_2px_0_hsl(var(--neutral-200))] rounded-2xl p-4 bg-white">
+            <div className="flex items-center gap-4 mb-3">
+              {multiFile.localUrl ? (
+                <img src={multiFile.localUrl} alt={multiFile.file.name} className="size-12 rounded object-cover" />
+              ) : (
+                <div className="size-12 rounded bg-neutral-100 flex items-center justify-center">
+                  <FileText className="size-6 text-neutral-400" />
+                </div>
               )}
+              
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-neutral-900 truncate">{multiFile.file.name}</h3>
+                <p className="text-xs text-neutral-600">
+                  {(multiFile.file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+              
+              <DuolingoButton
+                variant="destructive"
+                size="icon"
+                className="size-8"
+                onClick={() => removeFile(index)}
+              >
+                <X className="size-4" />
+              </DuolingoButton>
+            </div>
+            
+            <div className="space-y-1">
+              <Label className="text-xs">Title</Label>
+              <DuolingoInput
+                value={multiFile.title}
+                onChange={(e) => updateFileTitle(index, e.target.value)}
+                fullWidth
+                placeholder="Document title"
+                className="text-sm"
+              />
             </div>
           </div>
-
-          {/* Remove individual file button */}
-          <DuolingoButton
-            variant="destructive"
-            size="icon"
-            className="absolute size-8 top-2 right-2"
-            onClick={() => removeFileFromBulkUpload(currentFile.id)}
-          >
-            <X className="size-4" />
-          </DuolingoButton>
-        </div>
-
-        {/* Title input for current file */}
-        <div className="space-y-1">
-          <Label>Title for {file.name}</Label>
-          <DuolingoInput
-            value={title}
-            onChange={(e) => updateCurrentFileTitle(e.target.value)}
-            fullWidth
-            placeholder="Document title"
-          />
-        </div>
+        ))}
       </div>
     )
   }
@@ -843,8 +522,8 @@ export default function NewKnowledgePage() {
   const renderUploadView = () => (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        {multiFileState ? (
-          renderMultiFilePreview()
+        {multiFiles.length > 0 ? (
+          renderMultiFileList()
         ) : uploadState ? (
           renderFilePreview()
         ) : (
@@ -890,7 +569,7 @@ export default function NewKnowledgePage() {
       </div>
 
       {/* Only show title input for single file upload */}
-      {!multiFileState && (
+      {multiFiles.length === 0 && (
         <div className="space-y-1">
           <Label>Title</Label>
           <DuolingoInput
@@ -945,11 +624,8 @@ export default function NewKnowledgePage() {
 
   const getDisabled = () => {
     if (type === 'upload') {
-      if (multiFileState) {
-        // For bulk upload, ensure all files have titles and all uploads are complete
-        const allHaveTitles = multiFileState.files.every(f => f.title.trim().length > 0)
-        const allUploadsComplete = multiFileState.files.every(f => f.isUploadDone)
-        return !allHaveTitles || !allUploadsComplete
+      if (multiFiles.length > 0) {
+        return multiFiles.some(f => f.title.trim().length === 0)
       }
       return !Boolean(title) || !Boolean(uploadState?.isUploadDone)
     }
@@ -981,12 +657,12 @@ export default function NewKnowledgePage() {
           </div>
 
           <DuolingoButton
-            loading={isProcessing || isImporting || isBulkUploading || isBulkProcessing}
+            loading={isProcessing || isImporting || isMultiProcessing}
             onClick={handleSubmit}
             disabled={getDisabled()}
           >
-            {multiFileState 
-              ? `Add ${multiFileState.files.length} Documents` 
+            {multiFiles.length > 0 
+              ? `Add ${multiFiles.length} Documents` 
               : 'Add Knowledge'
             }
           </DuolingoButton>
