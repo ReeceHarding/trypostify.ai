@@ -23,7 +23,7 @@ export const getAccount = async ({ email }: { email: string }) => {
   
   console.log(`[GET_ACCOUNT] Found Redis account: ${redisAccount.id} (${redisAccount.username})`)
   
-  // Check if this account exists in the database
+  // Check if this account exists in the database and has valid access tokens
   const [dbAccount] = await db
     .select()
     .from(accountSchema)
@@ -31,42 +31,16 @@ export const getAccount = async ({ email }: { email: string }) => {
     .limit(1)
   
   if (!dbAccount) {
-    console.log(`[GET_ACCOUNT] Account ${redisAccount.id} exists in Redis but NOT in database. Creating database entry...`)
-    
-    try {
-      // Get user ID from email
-      const [user] = await db
-        .select()
-        .from(userSchema)
-        .where(eq(userSchema.email, email))
-        .limit(1)
-      
-      if (!user) {
-        console.log(`[GET_ACCOUNT] ERROR: No user found for email: ${email}`)
-        return null
-      }
-      
-      // Create the account in the database
-      await db
-        .insert(accountSchema)
-        .values({
-          id: redisAccount.id, // Use the existing Redis ID
-          accountId: redisAccount.username, // Use username as account_id (Twitter screen name)
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          providerId: 'twitter',
-          userId: user.id,
-          accessToken: null, // We don't have these tokens stored in Redis
-          accessSecret: null,
-        })
-        .onConflictDoNothing()
-      
-      console.log(`[GET_ACCOUNT] Successfully created database entry for account: ${redisAccount.id}`)
-      
-    } catch (error) {
-      console.error(`[GET_ACCOUNT] Failed to create database entry for account: ${redisAccount.id}`, error)
-      return null
-    }
+    console.log(`[GET_ACCOUNT] Account ${redisAccount.id} exists in Redis but NOT in database - this account was not properly connected via OAuth`)
+    console.log(`[GET_ACCOUNT] Redis accounts should only exist after successful OAuth callback which creates database records`)
+    return null
+  }
+  
+  // Verify the account has valid access tokens
+  if (!dbAccount.accessToken || !dbAccount.accessSecret) {
+    console.log(`[GET_ACCOUNT] Account ${redisAccount.id} exists but missing access tokens - OAuth flow incomplete`)
+    console.log(`[GET_ACCOUNT] AccessToken present: ${Boolean(dbAccount.accessToken)}, AccessSecret present: ${Boolean(dbAccount.accessSecret)}`)
+    return null
   }
   
   console.log(`[GET_ACCOUNT] Successfully found/created account in database: ${redisAccount.id}`)

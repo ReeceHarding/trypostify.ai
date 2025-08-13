@@ -1562,27 +1562,40 @@ export const tweetRouter = j.router({
       // console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
       // console.log('[enqueueThread] User timezone:', timezone)
 
+      console.log('[enqueueThread] Starting authentication checks for user:', user.email, 'at', new Date().toISOString())
+      
       const account = await getAccount({
         email: user.email,
       })
 
       if (!account?.id) {
-        // console.log('[enqueueThread] No active account found')
+        console.log('[enqueueThread] No active account found for user:', user.email)
         throw new HTTPException(400, {
-          message: 'Please connect your X account',
+          message: 'Please connect your X account. Go to Settings to link your Twitter account.',
         })
       }
+
+      console.log('[enqueueThread] Found active account:', account.id, 'username:', account.username)
 
       const dbAccount = await db.query.account.findFirst({
         where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
       })
 
-      if (!dbAccount || !dbAccount.accessToken) {
-        // console.log('[enqueueThread] No access token found')
+      if (!dbAccount) {
+        console.log('[enqueueThread] Database account not found for account ID:', account.id)
         throw new HTTPException(400, {
-          message: 'X account not connected or access token missing',
+          message: 'X account database entry missing. Please reconnect your Twitter account in Settings.',
         })
       }
+
+      if (!dbAccount.accessToken || !dbAccount.accessSecret) {
+        console.log('[enqueueThread] Access tokens missing for account:', account.id, 'accessToken present:', Boolean(dbAccount.accessToken), 'accessSecret present:', Boolean(dbAccount.accessSecret))
+        throw new HTTPException(400, {
+          message: 'X account authentication incomplete. Please reconnect your Twitter account in Settings to complete the OAuth flow.',
+        })
+      }
+
+      console.log('[enqueueThread] Authentication successful for account:', account.id)
 
       // Get all tweets in the thread
       const threadTweets = await db.query.tweets.findMany({

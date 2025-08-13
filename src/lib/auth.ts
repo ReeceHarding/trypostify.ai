@@ -10,7 +10,9 @@ let client: PostHog | null = null
 if (posthogApiKey && posthogApiKey.trim()) {
   console.log('[AUTH] Initializing PostHog client...', new Date().toISOString())
   client = new PostHog(posthogApiKey, {
-    host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+    host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+    flushAt: 1, // Reduce batching to prevent header buildup
+    flushInterval: 10000, // Flush every 10 seconds
   })
   console.log('[AUTH] PostHog client initialized successfully')
 } else {

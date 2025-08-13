@@ -28,15 +28,16 @@ export function DashboardProviders({ children }: ProvidersProps) {
     if (isIdentifiedRef.current) return
 
     if (session.data?.user) {
+      console.log('[DASHBOARD_PROVIDERS] Identifying user with PostHog:', session.data.user.id)
+      
+      // Only identify user, don't capture session_started to reduce events
       posthog.identify(session.data?.user.id, {
         email: session.data.user.email,
-        name: session.data.user.name,
         plan: session.data.user.plan,
       })
 
-      posthog.capture('session_started')
-
       isIdentifiedRef.current = true
+      console.log('[DASHBOARD_PROVIDERS] User identified successfully')
     }
   }, [session])
 

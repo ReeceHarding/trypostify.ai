@@ -39,6 +39,20 @@ const nextConfig: NextConfig = {
     ]
   },
 
+  async headers() {
+    return [
+      {
+        source: '/ingest/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
+  },
+
   // This is required to support PostHog trailing slash API requests
   skipTrailingSlashRedirect: true,
 }
