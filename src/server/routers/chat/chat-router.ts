@@ -311,8 +311,16 @@ export const chatRouter = j.router({
             throw new Error('Style or account not found')
           }
 
+          // Get any website content that was scraped
+          const websiteContent = await redis.lrange(`website-contents:${id}`, 0, -1)
+          
+          // Clean up website content after reading
+          if (websiteContent && websiteContent.length > 0) {
+            await redis.del(`website-contents:${id}`)
+          }
+          
           // Build conversation context from previous messages
-          const conversationContext = messages
+          let conversationContext = messages
             .slice(0, -1) // Exclude current message
             .slice(-4) // Take last 4 messages for context
             .map(msg => {
@@ -325,6 +333,16 @@ export const chatRouter = j.router({
             })
             .filter(Boolean)
             .join('\n\n')
+            
+          // Add website content to context if available
+          if (websiteContent && websiteContent.length > 0) {
+            conversationContext += '\n\nWEBSITE CONTENT:\n'
+            websiteContent.forEach((content: any) => {
+              if (content.title && content.content) {
+                conversationContext += `\nTitle: ${content.title}\nURL: ${content.url}\nContent: ${content.content.substring(0, 1000)}...\n`
+              }
+            })
+          }
 
           // Create writeTweet tool with conversation context
           const writeTweet = createTweetTool(

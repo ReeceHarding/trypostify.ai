@@ -21,8 +21,20 @@ export const createTweetTool = (
     description: 'Write a tweet based on user instruction',
     inputSchema: z.object({
       instruction: z.string().describe('User instruction for tweet creation'),
+      tweetContent: z
+        .string()
+        .optional()
+        .describe(
+          "Optional: If editing an existing tweet, the exact content of that tweet"
+        ),
+      imageDescriptions: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'Optional: Descriptions of any attached images to use as context'
+        ),
     }),
-    execute: async ({ instruction }) => {
+    execute: async ({ instruction, tweetContent, imageDescriptions }) => {
       const generationId = nanoid()
 
       writer.write({
@@ -34,18 +46,35 @@ export const createTweetTool = (
         },
       })
 
+      let fullPrompt = instruction
+
+      // Add image descriptions if provided
+      if (imageDescriptions && imageDescriptions.length > 0) {
+        fullPrompt += '\n\nAttached images:\n' + imageDescriptions.join('\n')
+      }
+
+      // Add tweet content if editing
+      if (tweetContent) {
+        fullPrompt += `\n\nExisting tweet to edit:\n${tweetContent}`
+      }
+
       const systemPrompt = `${editToolSystemPrompt({ name: account.name, hasXPremium })}
 
 ${conversationContext ? `CONVERSATION CONTEXT:
 ${conversationContext}
 
 Use this context to understand what the user is referring to when creating the tweet.
-` : ''}`
+` : ''}
+
+STYLE GUIDE:
+${JSON.stringify(style, null, 2)}
+
+CHARACTER LIMIT: ${hasXPremium ? 280 : 140}`
 
       const result = streamText({
         model: openrouter.chat('openai/gpt-4o-mini'),
         system: systemPrompt,
-        prompt: instruction,
+        prompt: fullPrompt,
       })
 
       let fullText = ''
