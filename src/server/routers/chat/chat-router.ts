@@ -251,20 +251,27 @@ export const chatRouter = j.router({
 
       content.close('message')
 
-      // Include text parts always; include file parts only if using a vision-capable model
+      // Include text parts always; include only true image files in vision-capable model path
       const textParts = attachments.filter((p) => p?.type === 'text')
-      // Only include UI file parts (with url) to satisfy UIMessagePart typing
+      // Only include UI file parts (with url); then filter to image/* media types explicitly
       const fileParts = attachments.filter((p: any) => p?.type === 'file' && 'url' in p)
+      const imageFileParts = (fileParts as any[]).filter(
+        (p: any) => typeof p.mediaType === 'string' && p.mediaType.startsWith('image/'),
+      )
 
-      const hasImage = fileParts.length > 0
+      const hasImage = imageFileParts.length > 0
+
+      try {
+        console.log('[CHAT] file parts mediaTypes', (fileParts as any[]).map((p: any) => p.mediaType))
+      } catch {}
 
       const userMessage: MyUIMessage = {
         ...message,
         parts: [
           { type: 'text', text: content.toString() },
           ...textParts,
-          // pass images when present; we will route to a vision model below
-          ...(hasImage ? fileParts : []),
+          // pass only image files (image/*) when present; we will route to a vision model below
+          ...(hasImage ? imageFileParts : []),
         ],
       }
 
@@ -378,7 +385,7 @@ export const chatRouter = j.router({
                 // For vision models, convert the last message to include image format
                 const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
                 // Convert to Vercel AI SDK image format
-                const imageParts = fileParts.map((p: any) => ({
+                const imageParts = imageFileParts.map((p: any) => ({
                   type: 'image' as const,
                   image: p.url,
                 }))
@@ -420,7 +427,7 @@ export const chatRouter = j.router({
             console.error(`[${new Date().toISOString()}] [chat-router] primary model failed, retrying with @ai-sdk/openai. errorName=${err?.name} message=${err?.message}`)
             if (hasImage) {
               const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
-              const imageParts = fileParts.map((p: any) => ({
+              const imageParts = imageFileParts.map((p: any) => ({
                 type: 'image' as const,
                 image: p.url,
               }))
