@@ -12,21 +12,16 @@ import {
 import { useAccount } from '@/hooks/account-ctx'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const Page = () => {
   const [isOpen, setIsOpen] = useState(false)
-  const [onboardingLoading, setOnboardingLoading] = useState(false)
   const [oauthOnboarding, setOauthOnboarding] = useState(false)
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
 
   const { account, isLoading } = useAccount()
-  // Prevent handling account_connected flow multiple times on the same mount
-  const handledAccountConnectedRef = useRef(false)
-
   
   const editTweetId = searchParams?.get('edit')
   // Debug logs to trace edit flow
@@ -63,46 +58,19 @@ const Page = () => {
 
 
   useEffect(() => {
-    // Check for ?account_connected=true in URL
-    if (searchParams?.get('account_connected') === 'true' && !handledAccountConnectedRef.current) {
-      handledAccountConnectedRef.current = true
-      console.log('[StudioPage] Account connected, showing completion')
-      // Mark as completed immediately to prevent modal from reopening
-      setHasCompletedOnboarding(true)
-
-      // Wait a bit for account data to load before showing modal
-      const timer = setTimeout(async () => {
-        // Invalidate and wait for the query to actually refetch
-        await queryClient.invalidateQueries({ queryKey: ['get-active-account'] })
-
-        // Force a refetch and wait for it to complete
-        try {
-          const accountData = await queryClient.fetchQuery({
-            queryKey: ['get-active-account'],
-          })
-
-          console.log('[StudioPage] Account data after refetch:', accountData)
-
-          if (accountData) {
-            setOauthOnboarding(true)
-            setIsOpen(true)
-            setOnboardingLoading(true)
-            // Close modal after showing success, then clean URL
-            setTimeout(() => {
-              setIsOpen(false)
-              setOauthOnboarding(false)
-              setOnboardingLoading(false)
-              router.replace('/studio', { scroll: false })
-            }, 3000)
-          }
-        } catch (error) {
-          console.error('[StudioPage] Error fetching account after connection:', error)
-        }
-      }, 1000) // Wait 1 second for Redis to be ready
-
+    // If we have the account and came back with account_connected=true, show completion once
+    if (searchParams?.get('account_connected') === 'true' && account && !isLoading) {
+      console.log('[StudioPage] Account connected and loaded, showing completion')
+      setOauthOnboarding(true)
+      setIsOpen(true)
+      const timer = setTimeout(() => {
+        setIsOpen(false)
+        setOauthOnboarding(false)
+        router.replace('/studio', { scroll: false })
+      }, 3000)
       return () => clearTimeout(timer)
     }
-  }, [searchParams, queryClient, router])
+  }, [searchParams, account, isLoading, router])
 
   useEffect(() => {
     // Log the current state for debugging
@@ -111,16 +79,15 @@ const Page = () => {
       isLoading,
       isEditMode,
       oauthOnboarding,
-      hasCompletedOnboarding,
       timestamp: new Date().toISOString()
     })
     
     // Only open onboarding if no account exists AND we're not coming from Twitter connection
-    if (!Boolean(account) && !Boolean(isLoading) && !isEditMode && !oauthOnboarding && !hasCompletedOnboarding) {
+    if (!Boolean(account) && !Boolean(isLoading) && !isEditMode && !oauthOnboarding) {
       console.log('[StudioPage] No account found, opening onboarding modal')
       setIsOpen(true)
     }
-  }, [account, isLoading, isEditMode, oauthOnboarding, hasCompletedOnboarding])
+  }, [account, isLoading, isEditMode, oauthOnboarding])
 
   return (
     <>
@@ -166,7 +133,6 @@ const Page = () => {
         <OnboardingModal
           onOpenChange={setIsOpen}
           oauthOnboarding={oauthOnboarding}
-          loading={onboardingLoading}
         />
       ) : null}
       <div className="max-w-xl w-full mx-auto">
