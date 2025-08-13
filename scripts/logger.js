@@ -160,7 +160,12 @@ Examples:
   const child = spawn(cmd, cmdArgs, {
     stdio: 'pipe',
     shell: true,
-    env: process.env
+    env: {
+      ...process.env,
+      // Suppress font warnings
+      TERM: 'xterm',
+      LC_ALL: 'C'
+    }
   });
 
   // Handle stdout
@@ -178,11 +183,14 @@ Examples:
   child.stderr.on('data', (data) => {
     const output = data.toString();
     
-    // Write to log file
-    writeToLog(output.trim(), 'STDERR');
-    
-    // Also display in console (preserve original behavior)
-    process.stderr.write(output);
+    // Filter out font private use area warnings to prevent log spam
+    if (!output.includes('Warning: Ran out of space in font private use area')) {
+      // Write to log file
+      writeToLog(output.trim(), 'STDERR');
+      
+      // Also display in console (preserve original behavior)
+      process.stderr.write(output);
+    }
   });
 
   // Handle process exit

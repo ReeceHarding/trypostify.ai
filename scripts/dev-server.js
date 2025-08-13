@@ -31,7 +31,10 @@ const nextProcess = spawn('next', ['dev', '-p', PORT], {
   stdio: 'inherit',
   env: { 
     ...process.env,
-    NEXT_TELEMETRY_DISABLED: '1'
+    NEXT_TELEMETRY_DISABLED: '1',
+    // Suppress font warnings
+    TERM: 'xterm',
+    LC_ALL: 'C'
   },
   shell: true
 });
