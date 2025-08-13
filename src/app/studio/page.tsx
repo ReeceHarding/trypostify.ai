@@ -61,13 +61,19 @@ const Page = () => {
   useEffect(() => {
     // Check for ?account_connected=true in URL
     if (searchParams?.get('account_connected') === 'true') {
+      console.log('[StudioPage] Account connected, showing completion')
       setOauthOnboarding(true)
       setIsOpen(true)
       setOnboardingLoading(true)
       // Optionally, you could poll or refetch until onboarding is complete
       const check = async () => {
-        queryClient.invalidateQueries({ queryKey: ['get-active-account'] })
+        await queryClient.invalidateQueries({ queryKey: ['get-active-account'] })
         setOnboardingLoading(false)
+        // After account is loaded, close the modal
+        setTimeout(() => {
+          setIsOpen(false)
+          setOauthOnboarding(false)
+        }, 3000) // Give user time to see the success message
       }
       check()
       router.replace('/studio', { scroll: false })
@@ -75,8 +81,12 @@ const Page = () => {
   }, [searchParams, queryClient, router])
 
   useEffect(() => {
-    if (!Boolean(account) && !Boolean(isLoading) && !isEditMode) setIsOpen(true)
-  }, [account, isLoading, isEditMode])
+    // Only open onboarding if no account exists AND we're not coming from Twitter connection
+    if (!Boolean(account) && !Boolean(isLoading) && !isEditMode && !oauthOnboarding) {
+      console.log('[StudioPage] No account found, opening onboarding modal')
+      setIsOpen(true)
+    }
+  }, [account, isLoading, isEditMode, oauthOnboarding])
 
   return (
     <>
