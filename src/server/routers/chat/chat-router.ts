@@ -24,6 +24,8 @@ import { createTweetTool } from './tools/create-tweet-tool'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { getAccount } from '../utils/get-account'
 import { Ratelimit } from '@upstash/ratelimit'
+import { Account } from '../settings-router'
+import { Style } from '../style-router'
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -299,24 +301,18 @@ export const chatRouter = j.router({
         execute: async ({ writer }) => {
           const readWebsiteContent = create_read_website_content({ chatId: id })
           
-          // Create writeTweet tool with proper context
-          const writeTweet = createTweetTool({
-            writer,
-            ctx: {
-              plan: user.plan,
-              editorContent: message.metadata?.editorContent || '',
-              instructions: userContent,
-              userContent,
-              messages,
-              attachments: parsedAttachments,
-              hasXPremium: user.hasXPremium || false,
-              redisKeys: {
-                style: `style:${user.email}:${account.id}`,
-                account: `account:${user.email}:${account.id}`,
-                websiteContent: `website-contents:${id}`,
-              },
-            },
-          })
+          // Fetch account data once 
+          const [style, accountData] = await Promise.all([
+            redis.json.get<Style>(`style:${user.email}:${account.id}`),
+            redis.json.get<Account>(`account:${user.email}:${account.id}`),
+          ])
+
+          if (!style || !accountData) {
+            throw new Error('Style or account not found')
+          }
+
+          // Create writeTweet tool with simplified context
+          const writeTweet = createTweetTool(writer, accountData, style, user.hasXPremium || false)
 
           // Log attachment composition for debugging
           try {
