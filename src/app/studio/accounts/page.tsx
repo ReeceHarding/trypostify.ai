@@ -433,7 +433,20 @@ export default function AccountsPage() {
                         </div>
                       ) : null}
                     </div>
-                    {acc.isActive ? null : (
+                    {acc.isActive ? (
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                        <DuolingoButton
+                          onClick={() => createOAuthLink()}
+                          variant="secondary"
+                          size="sm"
+                          className="w-fit"
+                          loading={isCreatingOAuthLink}
+                        >
+                          <LinkIcon className="size-4 mr-1" />
+                          Reconnect
+                        </DuolingoButton>
+                      </div>
+                    ) : (
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
                         <DuolingoButton
                           onClick={() => switchAccount({ accountId: acc.id })}
@@ -445,6 +458,16 @@ export default function AccountsPage() {
                           }
                         >
                           Switch
+                        </DuolingoButton>
+                        <DuolingoButton
+                          onClick={() => createOAuthLink()}
+                          variant="secondary"
+                          size="sm"
+                          className="w-fit"
+                          loading={isCreatingOAuthLink}
+                        >
+                          <LinkIcon className="size-4 mr-1" />
+                          Reconnect
                         </DuolingoButton>
                         <DuolingoButton
                           onClick={() => deleteAccount({ accountId: acc.id })}
