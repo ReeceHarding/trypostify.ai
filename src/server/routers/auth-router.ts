@@ -59,7 +59,33 @@ export const authRouter = j.router({
   createTwitterLink: privateProcedure
     .input(z.object({ action: z.enum(['onboarding', 'add-account']) }))
     .query(async ({ c, input, ctx }) => {
-      console.log('[WARNING] AUTH_ROUTER callback url:', `${getBaseUrl()}/api/auth_router/callback`)
+      const ts = new Date().toISOString()
+      const callbackUrl = `${getBaseUrl()}/api/auth_router/callback`
+      console.log('[AUTH_ROUTER:createTwitterLink]', JSON.stringify({
+        timestamp: ts,
+        message: 'Incoming createTwitterLink request',
+        userId: ctx.user?.id,
+        userPlan: ctx.user?.plan,
+        input,
+        baseUrl: getBaseUrl(),
+        callbackUrl,
+        env: {
+          hasConsumerKey: Boolean(consumerKey),
+          hasConsumerSecret: Boolean(consumerSecret),
+          vercelUrl: process.env.VERCEL_URL || null,
+          siteUrl: process.env.NEXT_PUBLIC_SITE_URL || null,
+        },
+      }))
+
+      if (!consumerKey || !consumerSecret) {
+        console.error('[AUTH_ROUTER:createTwitterLink]', JSON.stringify({
+          timestamp: ts,
+          message: 'Missing Twitter API credentials in environment',
+          hasConsumerKey: Boolean(consumerKey),
+          hasConsumerSecret: Boolean(consumerSecret),
+        }))
+        throw new HTTPException(400, { message: 'Failed to create Twitter link' })
+      }
 
       if (input.action === 'add-account' && ctx.user.plan !== 'pro') {
         throw new HTTPException(402, {
@@ -69,18 +95,49 @@ export const authRouter = j.router({
 
       try {
         const { url, oauth_token, oauth_token_secret } = await client.generateAuthLink(
-          `${getBaseUrl()}/api/auth_router/callback`,
+          callbackUrl,
         )
 
+        console.log('[AUTH_ROUTER:createTwitterLink]', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          message: 'Successfully generated Twitter auth link',
+          oauth_token_present: Boolean(oauth_token),
+        }))
+
         await Promise.all([
+          // Store the secret securely in Redis; do not log the value.
           redis.set(`twitter_oauth_secret:${oauth_token}`, oauth_token_secret),
           redis.set(`twitter_oauth_user_id:${oauth_token}`, ctx.user.id),
           redis.set(`auth_action:${oauth_token}`, input.action),
         ])
 
+        console.log('[AUTH_ROUTER:createTwitterLink]', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          message: 'Stored temporary OAuth metadata in Redis',
+          keys: [
+            `twitter_oauth_secret:${oauth_token}`,
+            `twitter_oauth_user_id:${oauth_token}`,
+            `auth_action:${oauth_token}`,
+          ],
+        }))
+
         return c.json({ url })
       } catch (err) {
-        console.error(JSON.stringify(err, null, 2))
+        try {
+          const anyErr: any = err
+          console.error('[AUTH_ROUTER:createTwitterLink] ERROR', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            name: anyErr?.name || null,
+            message: anyErr?.message || String(anyErr),
+            code: anyErr?.code || null,
+            status: anyErr?.status || null,
+            data: anyErr?.data || null,
+            errors: anyErr?.errors || null,
+            stack: anyErr?.stack || null,
+          }))
+        } catch (logErr) {
+          console.error('[AUTH_ROUTER:createTwitterLink] Failed to serialize error', logErr)
+        }
         throw new HTTPException(400, { message: 'Failed to create Twitter link' })
       }
     }),
