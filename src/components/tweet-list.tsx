@@ -322,8 +322,8 @@ export default function TweetList({
                   </h2>
                 </div>
                 <div>
-                    {items.map((item) => (
-                      <div key={item.threadId || item.tweets[0]?.id}>
+                    {items.map((item, itemIndex) => (
+                      <div key={item.threadId || item.tweets[0]?.id} className={itemIndex > 0 ? "mt-4" : ""}>
                         {item.tweets.length > 1 ? (
                           // Exact Twitter thread rendering
                           <div>
@@ -436,7 +436,8 @@ export default function TweetList({
                                 </DuolingoButton>
                               </div>
                             </div>
-                            <div className="h-px bg-neutral-200" />
+                            {/* Only show divider if not the last item */}
+                            {itemIndex < items.length - 1 && <div className="h-px bg-neutral-200" />}
                           </div>
                         ) : (
                           // Exact Twitter single tweet
@@ -532,7 +533,8 @@ export default function TweetList({
                                 </div>
                               </div>
                               </div>
-                              <div className="h-px bg-neutral-200" />
+                              {/* Only show divider if not the last item */}
+                              {itemIndex < items.length - 1 && <div className="h-px bg-neutral-200" />}
                             </div>
                           ))
                         )}
