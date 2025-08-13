@@ -5,11 +5,29 @@ import MuxPlayer from '@mux/mux-player-react'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import Script from 'next/script'
+import { redirect } from 'next/navigation'
 
 const Page = async () => {
+  console.log('[Homepage] Checking user session at', new Date().toISOString())
+  
   const session = await auth.api.getSession({
     headers: await headers(),
   })
+  
+  console.log('[Homepage] Session check result:', {
+    hasSession: !!session,
+    hasUser: !!session?.user,
+    userId: session?.user?.id || 'none',
+    timestamp: new Date().toISOString()
+  })
+  
+  // Redirect signed-in users directly to studio
+  if (session?.user) {
+    console.log('[Homepage] User is signed in, redirecting to /studio for user:', session.user.id)
+    redirect('/studio')
+  }
+  
+  console.log('[Homepage] User not signed in, showing homepage content')
 
   return (
     <>
