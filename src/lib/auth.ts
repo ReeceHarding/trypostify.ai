@@ -131,10 +131,27 @@ function initializeAuth() {
   return _auth
 }
 
-// Export a proxy that initializes auth on first access
-export const auth = new Proxy({} as any, {
+// Export auth with full compatibility through Proxy
+export const auth = new Proxy({}, {
   get(target, prop) {
     const authInstance = initializeAuth()
-    return authInstance[prop]
+    const value = authInstance[prop]
+    // Ensure functions are bound to the correct context
+    if (typeof value === 'function') {
+      return value.bind(authInstance)
+    }
+    return value
+  },
+  has(target, prop) {
+    const authInstance = initializeAuth()
+    return prop in authInstance
+  },
+  ownKeys(target) {
+    const authInstance = initializeAuth()
+    return Reflect.ownKeys(authInstance)
+  },
+  getOwnPropertyDescriptor(target, prop) {
+    const authInstance = initializeAuth()
+    return Reflect.getOwnPropertyDescriptor(authInstance, prop)
   }
-})
+}) as any
