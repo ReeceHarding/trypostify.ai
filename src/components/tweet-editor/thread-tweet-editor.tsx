@@ -70,10 +70,7 @@ export default function ThreadTweetEditor({
     queryFn: async () => {
       if (!editTweetId) return null
       
-      console.log('[ThreadTweetEditor] loading edit mode data', {
-        editTweetId,
-        ts: new Date().toISOString(),
-      })
+
 
       // First get the tweet to find its threadId
       const tweetRes = await client.tweet.getTweet.$get({ tweetId: editTweetId })
@@ -82,10 +79,7 @@ export default function ThreadTweetEditor({
       const { tweet } = await tweetRes.json()
       if (!tweet?.threadId) return null
       
-      console.log('[ThreadTweetEditor] fetched base tweet', {
-        tweetId: tweet.id,
-        threadId: tweet.threadId,
-      })
+
 
       // Then get all tweets in the thread
       const threadRes = await client.tweet.getThread.$get({ threadId: tweet.threadId })
@@ -98,10 +92,7 @@ export default function ThreadTweetEditor({
   // Initialize thread data when loaded
   useEffect(() => {
     if (threadData?.tweets && threadData.tweets.length > 0) {
-      console.log('[ThreadTweetEditor] initializing editor with thread data', {
-        tweetCount: threadData.tweets.length,
-        tweetIds: threadData.tweets.map((t: any) => t.id),
-      })
+
       setThreadTweets(threadData.tweets.map((tweet: any) => ({
         id: tweet.id,
         content: tweet.content,
@@ -136,12 +127,6 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] Post success callback triggered:', {
-        data,
-        currentThreadTweets: threadTweets.length,
-        timestamp: new Date().toISOString()
-      })
-      
       toast.success(
         <div className="flex items-center gap-2">
           <p>Tweet posted!</p>
@@ -160,7 +145,6 @@ export default function ThreadTweetEditor({
       fire()
       
       // Clear the thread content only after successful posting
-      console.log('[ThreadTweetEditor] Clearing thread content after successful post')
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
       // Note: Twitter URL available in data.threadUrl if needed for future features
@@ -318,11 +302,6 @@ export default function ThreadTweetEditor({
   }
 
   const handlePostThread = async () => {
-    console.log('[ThreadTweetEditor] handlePostThread called:', {
-      threadTweetsCount: threadTweets.length,
-      timestamp: new Date().toISOString()
-    })
-    
     // Validate tweets
     const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
@@ -333,7 +312,6 @@ export default function ThreadTweetEditor({
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
     try {
-      console.log('[ThreadTweetEditor] Calling postThreadMutation.mutateAsync')
       // Post thread immediately with combined mutation
       const result = await postThreadMutation.mutateAsync(
         threadTweets.map((tweet, index) => ({
@@ -343,13 +321,7 @@ export default function ThreadTweetEditor({
         }))
       )
       
-      console.log('[ThreadTweetEditor] postThreadMutation completed successfully:', {
-        result,
-        timestamp: new Date().toISOString()
-      })
-      
       // Clear content immediately after successful post
-      console.log('[ThreadTweetEditor] Clearing thread content after successful post in handlePostThread')
       setHasBeenCleared(true)
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
@@ -358,7 +330,6 @@ export default function ThreadTweetEditor({
         thread_id: result.threadId,
       })
     } catch (error) {
-      console.error('[ThreadTweetEditor] handlePostThread error:', error)
       // Already handled by mutation onError
     }
   }
@@ -392,11 +363,6 @@ export default function ThreadTweetEditor({
       const { threadId } = await createResult.json()
 
       // Schedule the thread
-      console.log('[ThreadTweetEditor] scheduling thread', {
-        threadId,
-        scheduledIso: scheduledDate.toISOString(),
-        scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),
-      })
       await scheduleThreadMutation.mutateAsync({
         threadId,
         scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),
@@ -420,7 +386,6 @@ export default function ThreadTweetEditor({
       }).format(scheduledDate)
       toast.success(`Thread scheduled for ${friendly}`)
     } catch (error) {
-      console.error('[ThreadTweetEditor] Error in schedule thread process:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to schedule thread')
     }
   }
@@ -462,7 +427,6 @@ export default function ThreadTweetEditor({
       })
       
       // Clear content immediately after successful queue
-      console.log('[ThreadTweetEditor] Clearing thread content after successful queue in handleQueueThread')
       setHasBeenCleared(true)
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
@@ -483,7 +447,6 @@ export default function ThreadTweetEditor({
         </div>
       )
     } catch (error) {
-      console.error('[ThreadTweetEditor] Failed to queue thread:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
     }
   }
