@@ -135,10 +135,17 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
+      console.log('[ThreadTweetEditor] Post success callback triggered:', {
+        data,
+        currentThreadTweets: threadTweets.length,
+        timestamp: new Date().toISOString()
+      })
+      
       toast.success('Thread posted successfully!')
       fire()
       
       // Clear the thread content only after successful posting
+      console.log('[ThreadTweetEditor] Clearing thread content after successful post')
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
       if (data.threadUrl) {
@@ -267,6 +274,11 @@ export default function ThreadTweetEditor({
   }
 
   const handlePostThread = async () => {
+    console.log('[ThreadTweetEditor] handlePostThread called:', {
+      threadTweetsCount: threadTweets.length,
+      timestamp: new Date().toISOString()
+    })
+    
     // Validate tweets
     const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
@@ -277,6 +289,7 @@ export default function ThreadTweetEditor({
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
     try {
+      console.log('[ThreadTweetEditor] Calling postThreadMutation.mutateAsync')
       // Post thread immediately with combined mutation
       const result = await postThreadMutation.mutateAsync(
         threadTweets.map((tweet, index) => ({
@@ -286,11 +299,17 @@ export default function ThreadTweetEditor({
         }))
       )
       
+      console.log('[ThreadTweetEditor] postThreadMutation completed successfully:', {
+        result,
+        timestamp: new Date().toISOString()
+      })
+      
       posthog.capture('thread_posted', {
         tweet_count: threadTweets.length,
         thread_id: result.threadId,
       })
     } catch (error) {
+      console.error('[ThreadTweetEditor] handlePostThread error:', error)
       // Already handled by mutation onError
     }
   }
