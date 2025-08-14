@@ -30,7 +30,7 @@ export type UseTextStreamResult = {
 
 function useTextStream({
   textStream,
-  speed = 5,
+  speed = 1,
   mode = "typewriter",
   onComplete,
   fadeDuration,
@@ -293,7 +293,7 @@ export type ResponseStreamProps = {
 function ResponseStream({
   textStream,
   mode = "typewriter",
-  speed = 5,
+  speed = 1,
   className = "",
   onComplete,
   as = "div",

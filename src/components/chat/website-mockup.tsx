@@ -22,10 +22,10 @@ export const WebsiteMockup = memo(
         scale: 1,
         transition: {
 
-          duration: 0.6,
+          duration: 0.15,
 
-          staggerChildren: 0.1,
-          delayChildren: 0.2,
+          staggerChildren: 0.02,
+          delayChildren: 0.05,
         },
       },
     }

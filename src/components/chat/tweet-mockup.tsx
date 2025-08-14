@@ -25,9 +25,9 @@ export const TweetMockup = memo(
         y: 0,
         scale: 1,
         transition: {
-          duration: 0.6,
-          staggerChildren: 0.1,
-          delayChildren: 0.2,
+          duration: 0.15,
+          staggerChildren: 0.02,
+          delayChildren: 0.05,
         },
       },
     }
@@ -126,21 +126,21 @@ export const TweetMockup = memo(
                   <motion.div
                     initial={{ opacity: 0, y: 0 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
+                    transition={{ duration: 0.1, delay: 0.02 }}
                     className="h-4 bg-neutral-200 rounded animate-pulse"
                     style={{ width: '85%' }}
                   />
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
+                    transition={{ duration: 0.1, delay: 0.04 }}
                     className="h-4 bg-neutral-200 rounded animate-pulse"
                     style={{ width: '92%' }}
                   />
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.3 }}
+                    transition={{ duration: 0.1, delay: 0.06 }}
                     className="h-4 bg-neutral-200 rounded animate-pulse"
                     style={{ width: '78%' }}
                   />
