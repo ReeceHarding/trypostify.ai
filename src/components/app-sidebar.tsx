@@ -655,8 +655,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         e.preventDefault()
         setIsHistoryOpen(true)
       }
-      // Close sidebar: Cmd/Ctrl + B
-      else if (actualMetaKey && e.key.toLowerCase() === 'b') {
+      // Close sidebar: Cmd/Ctrl + Option + B (avoids conflict with Bookmarks)
+      else if (actualMetaKey && (isMac ? e.altKey : e.altKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         toggleSidebar()
       }
@@ -748,7 +748,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Close sidebar</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + B</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + B</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
