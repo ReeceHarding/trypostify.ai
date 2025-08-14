@@ -40,7 +40,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import Link from 'next/link'
+
 import { PropsWithChildren } from 'react'
 import { Icons } from '../icons'
 import {
@@ -1092,15 +1092,7 @@ function ThreadTweetContent({
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <div className="space-y-1">
-                                    <p>
-                                      Add to next queue slot -{' '}
-                                      <Link
-                                        href="/studio/scheduled"
-                                        className="underline decoration-2 underline-offset-2"
-                                      >
-                                        what is this?
-                                      </Link>
-                                    </p>
+                                    <p>Add to next queue slot</p>
                                     <p className="text-xs text-neutral-400">{metaKey} + Q</p>
                                   </div>
                                 </TooltipContent>
