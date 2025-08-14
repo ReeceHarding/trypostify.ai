@@ -68,27 +68,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const { data, isPending } = useQuery({
     queryKey: ['get-active-account'],
-    // Use placeholderData so the query is still considered pending until the network request resolves.
-    // This prevents consumers (e.g., StudioPage) from treating "no account" as final too early and popping the onboarding again.
-    placeholderData: initialAccount,
     queryFn: async () => {
       const startedAt = Date.now()
       console.log(`[AccountProvider ${ts()}] fetching active account from API: client.settings.active_account`)
-      
-      // Check cache age - if less than 30 seconds old, skip API call
-      if (initialAccount && typeof window !== 'undefined') {
-        try {
-          const cached = window.localStorage.getItem(storageKey)
-          if (cached) {
-            const { ts: cacheTime } = JSON.parse(cached) as { ts: number }
-            const ageMs = Date.now() - cacheTime
-            if (ageMs < 30000) { // 30 seconds
-              console.log(`[AccountProvider ${ts()}] using fresh cache, age: ${ageMs}ms`)
-              return initialAccount
-            }
-          }
-        } catch {}
-      }
 
       const res = await client.settings.active_account.$get()
       const { account } = await res.json()
