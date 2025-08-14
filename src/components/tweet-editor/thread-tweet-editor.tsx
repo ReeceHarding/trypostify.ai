@@ -13,6 +13,7 @@ import { useConfetti } from '@/hooks/use-confetti'
 import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
 import { useUser } from '@/hooks/use-tweets'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface ThreadTweetData {
   id: string
@@ -62,6 +63,13 @@ export default function ThreadTweetEditor({
   const router = useRouter()
   const { fire } = useConfetti()
   const queryClient = useQueryClient()
+  
+  // Detect OS for keyboard shortcuts
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const metaKey = isMac ? 'Cmd' : 'Ctrl'
+  
+  // Refs to focus tweets
+  const tweetRefs = useRef<{ [key: string]: { focus: () => void } | null }>({})
 
   // Load thread data if in edit mode
   const { data: threadData, isLoading: loadingThread } = useQuery({
@@ -103,6 +111,30 @@ export default function ThreadTweetEditor({
       })))
     }
   }, [threadData])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+
+      // Focus first tweet: Cmd/Ctrl + K
+      if (actualMetaKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        const firstTweetId = threadTweets[0]?.id
+        if (firstTweetId && tweetRefs.current[firstTweetId]) {
+          tweetRefs.current[firstTweetId]?.focus()
+        }
+      }
+      // Add new tweet to thread: Cmd/Ctrl + Shift + Enter
+      else if (actualMetaKey && e.shiftKey && e.key === 'Enter') {
+        e.preventDefault()
+        handleAddTweet()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMac, threadTweets])
 
   // Reset state when switching from edit mode to create mode
   useEffect(() => {
@@ -286,7 +318,16 @@ export default function ThreadTweetEditor({
 
 
   const handleAddTweet = () => {
-    setThreadTweets([...threadTweets, { id: crypto.randomUUID(), content: '', media: [] }])
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([...threadTweets, { id: newTweetId, content: '', media: [] }])
+    
+    // Focus the new tweet after it's added
+    setTimeout(() => {
+      const newTweetRef = tweetRefs.current[newTweetId]
+      if (newTweetRef) {
+        newTweetRef.focus()
+      }
+    }, 100)
   }
 
   const handleRemoveTweet = (id: string) => {
@@ -513,6 +554,11 @@ export default function ThreadTweetEditor({
             
             <ThreadTweet
               key={tweet.id}
+              ref={(el) => {
+                if (el) {
+                  tweetRefs.current[tweet.id] = el
+                }
+              }}
               isThread={threadTweets.length > 1}
               isFirstTweet={index === 0}
               isLastTweet={index === threadTweets.length - 1}
@@ -543,28 +589,54 @@ export default function ThreadTweetEditor({
                 media_id: m.media_id,
                 type: m.type || 'image'
               })) || []}
+              showFocusTooltip={index === 0}
+              focusShortcut={`${metaKey} + K`}
             />
           </div>
         ))}
         
         {/* Add tweet button - visible by default when there's exactly one tweet */}
         {threadTweets.length === 1 && (
-          <button
-            onClick={handleAddTweet}
-            className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
-          >
-            <span className="text-sm font-medium">Add another post to this thread</span>
-          </button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleAddTweet}
+                  className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
+                >
+                  <span className="text-sm font-medium">Add another post to this thread</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="space-y-1">
+                  <p>Add new tweet to thread</p>
+                  <p className="text-xs text-neutral-400">{metaKey} + Shift + Enter</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         
         {/* Always show add button when multiple tweets */}
         {threadTweets.length > 1 && (
-          <button
-            onClick={handleAddTweet}
-            className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
-          >
-            <span className="text-sm font-medium">Add another post to this thread</span>
-          </button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleAddTweet}
+                  className="w-full p-3 border-2 border-dashed border-neutral-300 hover:border-neutral-400 rounded-lg flex items-center justify-center gap-2 text-neutral-500 hover:text-neutral-700 transition-colors"
+                >
+                  <span className="text-sm font-medium">Add another post to this thread</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="space-y-1">
+                  <p>Add new tweet to thread</p>
+                  <p className="text-xs text-neutral-400">{metaKey} + Shift + Enter</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
     </div>

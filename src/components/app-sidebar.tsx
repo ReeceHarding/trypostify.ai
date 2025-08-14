@@ -378,6 +378,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams()
   const [editor] = useLexicalComposerContext()
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  
+  // Detect OS for keyboard shortcuts
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const metaKey = isMac ? 'Cmd' : 'Ctrl'
 
   const { data: chatHistoryData, isPending: isHistoryPending } = useQuery({
     queryKey: ['chat-history', isHistoryOpen],
@@ -435,6 +439,27 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     [addChatAttachment],
   )
 
+  // Keyboard shortcut for New Chat
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+
+      // New Chat: Cmd/Ctrl + N
+      if (actualMetaKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        handleNewChat()
+      }
+      // Focus chat input: Cmd/Ctrl + /
+      else if (actualMetaKey && e.key === '/') {
+        e.preventDefault()
+        editor.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMac, handleNewChat, editor])
+
   const { setId } = useChatContext()
 
   const handleChatSelect = async (chatId: string) => {
@@ -477,7 +502,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     </DuolingoButton>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Start a new conversation</p>
+                    <div className="space-y-1">
+                      <p>Start a new conversation</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + N</p>
+                    </div>
                   </TooltipContent>
                 </Tooltip>
 

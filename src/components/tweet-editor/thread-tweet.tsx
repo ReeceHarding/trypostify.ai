@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import DuolingoButton from '@/components/ui/duolingo-button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
@@ -82,6 +82,8 @@ interface ThreadTweetProps {
   onUpdate?: (content: string, media: Array<{ s3Key: string; media_id: string }>) => void
   initialContent?: string
   initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
+  showFocusTooltip?: boolean
+  focusShortcut?: string
 }
 
 // Twitter media type validation
@@ -117,6 +119,8 @@ function ThreadTweetContent({
   onUpdate,
   initialContent = '',
   initialMedia = [],
+  showFocusTooltip = false,
+  focusShortcut,
 }: ThreadTweetProps) {
 
   const [editor] = useLexicalComposerContext()
@@ -128,6 +132,7 @@ function ThreadTweetContent({
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
   const [open, setOpen] = useState(false)
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
+  const [showTooltip, setShowTooltip] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllersRef = useRef(new Map<string, AbortController>())
 
@@ -731,28 +736,46 @@ function ThreadTweetContent({
                 <AccountHandle />
               </div>
 
-              <div className="text-neutral-800 leading-relaxed">
-                <PlainTextPlugin
-                  contentEditable={
-                    <ContentEditable
-                      spellCheck={false}
-                      onPaste={handlePaste}
-                      className={cn(
-                        'w-full !min-h-16 resize-none text-base/7 leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
-                      )}
-                    />
-                  }
-                  ErrorBoundary={LexicalErrorBoundary}
-                />
-                <PlaceholderPlugin placeholder={isFirstTweet ? "What's happening?" : "Add another post..."} />
-                <HistoryPlugin />
-                <MentionsPlugin />
-                <MentionTooltipPlugin />
-                <KeyboardShortcutsPlugin 
-                  onPost={handlePostClick}
-                  onQueue={onQueueThread}
-                />
-              </div>
+              <TooltipProvider>
+                <Tooltip open={showFocusTooltip && showTooltip && !editor.getRootElement()?.matches(':focus-within')}>
+                  <TooltipTrigger asChild>
+                    <div 
+                      className="text-neutral-800 leading-relaxed"
+                      onMouseEnter={() => setShowTooltip(true)}
+                      onMouseLeave={() => setShowTooltip(false)}
+                    >
+                      <PlainTextPlugin
+                        contentEditable={
+                          <ContentEditable
+                            spellCheck={false}
+                            onPaste={handlePaste}
+                            className={cn(
+                              'w-full !min-h-16 resize-none text-base/7 leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
+                            )}
+                          />
+                        }
+                        ErrorBoundary={LexicalErrorBoundary}
+                      />
+                      <PlaceholderPlugin placeholder={isFirstTweet ? "What's happening?" : "Add another post..."} />
+                      <HistoryPlugin />
+                      <MentionsPlugin />
+                      <MentionTooltipPlugin />
+                      <KeyboardShortcutsPlugin 
+                        onPost={handlePostClick}
+                        onQueue={onQueueThread}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  {focusShortcut && (
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>Focus input</p>
+                        <p className="text-xs text-neutral-400">{focusShortcut}</p>
+                      </div>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
 
               {/* Media Files Display */}
               {mediaFiles.length > 0 && (
@@ -1206,10 +1229,38 @@ function ThreadTweetContent({
   )
 }
 
-export default function ThreadTweet(props: ThreadTweetProps) {
+const ThreadTweetContentWithRef = React.forwardRef<any, ThreadTweetProps>((props, ref) => {
+  const [editor] = useLexicalComposerContext()
+  
+  React.useImperativeHandle(ref, () => ({
+    focus: () => {
+      editor.focus()
+    }
+  }))
+  
+  return <ThreadTweetContent {...props} />
+})
+
+ThreadTweetContentWithRef.displayName = 'ThreadTweetContentWithRef'
+
+const ThreadTweet = React.forwardRef<{ focus: () => void }, ThreadTweetProps>((props, ref) => {
+  const editorRef = useRef<any>(null)
+
+  React.useImperativeHandle(ref, () => ({
+    focus: () => {
+      if (editorRef.current) {
+        editorRef.current.focus()
+      }
+    }
+  }))
+
   return (
     <LexicalComposer initialConfig={{ ...initialConfig }}>
-      <ThreadTweetContent {...props} />
+      <ThreadTweetContentWithRef {...props} ref={editorRef} />
     </LexicalComposer>
   )
-}
+})
+
+ThreadTweet.displayName = 'ThreadTweet'
+
+export default ThreadTweet
