@@ -6,6 +6,7 @@ import { headers } from 'next/headers'
 import Link from 'next/link'
 import Script from 'next/script'
 import { redirect } from 'next/navigation'
+import { HOMEPAGE_VIDEO, HOMEPAGE_CONTENT } from '@/constants/homepage'
 
 const Page = async () => {
   console.log('[Homepage] Checking user session at', new Date().toISOString())
@@ -54,8 +55,7 @@ const Page = async () => {
               <div className="max-w-4xl mx-auto text-center">
                 <div className="flex flex-col justify-center items-center">
                   <h1 className="text-5xl font-semibold tracking-tight text-balance text-neutral-900 sm:text-6xl">
-                    Your <span className="text-primary-600">content engine </span> for
-                    growing on Twitter
+                    {HOMEPAGE_CONTENT.title}
                   </h1>
                   <p className="mt-8 text-neutral-500 text-base text-pretty sm:text-xl/8 max-w-2xl">
                     <span className="">Postify helps you </span>
@@ -126,7 +126,7 @@ const Page = async () => {
                         </div>
                         <p className="text-base text-neutral-600">
                           Trusted by{' '}
-                          <span className="font-medium text-neutral-900">1.140</span> founders
+                          <span className="font-medium text-neutral-900">{HOMEPAGE_CONTENT.trustedByCount}</span> founders
                         </p>
                       </div>
                     </div>
@@ -138,8 +138,8 @@ const Page = async () => {
                   accentColor="hsl(var(--primary))"
                   style={{ aspectRatio: 16 / 9 }}
                   className="w-full h-full overflow-hidden rounded-lg lg:rounded-xl shadow-lg"
-                  poster="https://image.mux.com/01ddBxgG7W53ZCMZ02LLP692sLD4w009XzUtoCd00NcSBO8/thumbnail.png?time=10"
-                  playbackId="01ddBxgG7W53ZCMZ02LLP692sLD4w009XzUtoCd00NcSBO8"
+                  poster={HOMEPAGE_VIDEO.getThumbnailUrl(HOMEPAGE_VIDEO.playbackId)}
+                  playbackId={HOMEPAGE_VIDEO.playbackId}
                   playsInline
                 />
               </div>
