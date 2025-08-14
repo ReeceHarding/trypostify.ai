@@ -70,29 +70,46 @@ export const LeftSidebar = () => {
           router.push(url)
         }
       }
+      // Toggle left sidebar: Cmd/Ctrl + \
+      else if (actualMetaKey && e.key === '\\') {
+        e.preventDefault()
+        toggleSidebar()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isMac, router, id])
+  }, [isMac, router, id, toggleSidebar])
 
   return (
     <Sidebar collapsible="icon" side="left" className="border-r border-border/40">
       <SidebarHeader className="border-b border-border/40 p-4">
         <div className="flex items-center justify-start gap-2">
-          <button
-            onClick={toggleSidebar}
-            className="h-8 w-8 rounded-md hover:bg-accent/50 transition-colors flex items-center justify-center group/toggle-button flex-shrink-0"
-          >
-            <PanelLeft className="h-4 w-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
-            <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">
-              {isCollapsed ? (
-                <ArrowRightFromLine className="h-4 w-4" />
-              ) : (
-                <ArrowLeftFromLine className="h-4 w-4" />
-              )}
-            </div>
-          </button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={toggleSidebar}
+                  className="h-8 w-8 rounded-md hover:bg-accent/50 transition-colors flex items-center justify-center group/toggle-button flex-shrink-0"
+                >
+                  <PanelLeft className="h-4 w-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
+                  <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">
+                    {isCollapsed ? (
+                      <ArrowRightFromLine className="h-4 w-4" />
+                    ) : (
+                      <ArrowLeftFromLine className="h-4 w-4" />
+                    )}
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <div className="space-y-1">
+                  <p>Toggle navigation</p>
+                  <p className="text-xs text-neutral-400">{metaKey} + \</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <div
             className={cn(
               'flex items-center gap-1 transition-all duration-200 ease-out',
