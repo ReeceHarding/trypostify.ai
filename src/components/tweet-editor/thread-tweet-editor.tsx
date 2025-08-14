@@ -304,6 +304,10 @@ export default function ThreadTweetEditor({
         timestamp: new Date().toISOString()
       })
       
+      // Clear content immediately after successful post
+      console.log('[ThreadTweetEditor] Clearing thread content after successful post in handlePostThread')
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      
       posthog.capture('thread_posted', {
         tweet_count: threadTweets.length,
         thread_id: result.threadId,
@@ -411,6 +415,10 @@ export default function ThreadTweetEditor({
         userNow: new Date(),
         timezone,
       })
+      
+      // Clear content immediately after successful queue
+      console.log('[ThreadTweetEditor] Clearing thread content after successful queue in handleQueueThread')
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
       posthog.capture('thread_queued', {
         thread_id: threadId,
