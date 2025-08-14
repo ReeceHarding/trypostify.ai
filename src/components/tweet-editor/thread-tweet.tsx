@@ -923,7 +923,7 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex md:flex-row flex-col md:items-center md:justify-between gap-3">
                 <div
                   className={cn(
                     'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
@@ -1016,9 +1016,9 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Show Post/Queue buttons only on first tweet or single tweet */}
-                  {(!isThread || isFirstTweet) && (
+                {/* Show Post/Queue buttons only on first tweet or single tweet */}
+                {(!isThread || isFirstTweet) && (
+                  <div className="flex md:flex-row flex-col gap-2 md:order-none order-1 md:w-auto w-full">
                     <>
                       {editMode ? (
                         // Edit mode buttons
@@ -1028,7 +1028,7 @@ function ThreadTweetContent({
                               <TooltipTrigger asChild>
                                 <DuolingoButton
                                   variant="secondary"
-                                  className="h-11 px-4 whitespace-nowrap"
+                                  className="h-11 px-4 whitespace-nowrap md:w-auto w-full"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
@@ -1048,7 +1048,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 px-4 whitespace-nowrap"
+                                  className="h-11 px-4 whitespace-nowrap md:w-auto w-full"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
@@ -1073,7 +1073,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 px-4 whitespace-nowrap"
+                                  className="h-11 px-4 whitespace-nowrap md:w-auto w-full"
                                   variant="secondary"
                                   onClick={handlePostClick}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
@@ -1181,10 +1181,8 @@ function ThreadTweetContent({
                         </>
                       )}
                     </>
-                  )}
-
-
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
