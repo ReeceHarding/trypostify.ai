@@ -37,6 +37,7 @@ export const createTweetTool = (
       const generationId = nanoid()
 
       try {
+        console.log('[CREATE_TWEET_TOOL] Starting tweet generation with ID:', generationId)
         writer.write({
           type: 'data-tool-output',
           id: generationId,
@@ -45,6 +46,7 @@ export const createTweetTool = (
             status: 'processing',
           },
         })
+        console.log('[CREATE_TWEET_TOOL] Sent processing status')
 
         let fullPrompt = instruction
 
@@ -81,6 +83,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
         let fullText = ''
         for await (const textPart of result.textStream) {
           fullText += textPart
+          console.log('[CREATE_TWEET_TOOL] Streaming text chunk, total length:', fullText.length)
           writer.write({
             type: 'data-tool-output',
             id: generationId,
@@ -91,6 +94,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
           })
         }
 
+        console.log('[CREATE_TWEET_TOOL] Sending final result, text length:', fullText.length)
         writer.write({
           type: 'data-tool-output',
           id: generationId,
@@ -99,6 +103,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
             status: 'complete',
           },
         })
+        console.log('[CREATE_TWEET_TOOL] Tweet generation completed successfully')
 
         return fullText
     } catch (error) {

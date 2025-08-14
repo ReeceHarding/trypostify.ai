@@ -356,6 +356,7 @@ export const chatRouter = j.router({
           }
 
           // Create writeTweet tool with conversation context and website content
+          console.log('[CHAT_ROUTER] Creating tweet tool for user:', user.id, 'account:', accountData?.name)
           const writeTweet = createTweetTool(
             writer, 
             accountData, 
@@ -364,6 +365,7 @@ export const chatRouter = j.router({
             conversationContext,
             websiteContent
           )
+          console.log('[CHAT_ROUTER] Tweet tool created successfully')
 
           // Log attachment composition for debugging
           try {
@@ -429,6 +431,7 @@ export const chatRouter = j.router({
                 image: p.url,
               }))
               const limitedModelMessages = modelMessages.slice(-8)
+              console.log('[CHAT_ROUTER] Starting vision streamText call with tools')
               result = await streamText({
                 model: openai('gpt-4o-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
@@ -445,8 +448,10 @@ export const chatRouter = j.router({
                 tools: { readWebsiteContent, writeTweet },
                 stopWhen: stepCountIs(2),
               })
+              console.log('[CHAT_ROUTER] Vision streamText call completed')
             } else {
               const limited = messages.slice(-8) as any
+              console.log('[CHAT_ROUTER] Starting standard streamText call with tools')
               result = await streamText({
                 model: openai('gpt-4o-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
@@ -454,6 +459,7 @@ export const chatRouter = j.router({
                 tools: { readWebsiteContent, writeTweet },
                 stopWhen: stepCountIs(2),
               })
+              console.log('[CHAT_ROUTER] Standard streamText call completed')
             }
           }
 
