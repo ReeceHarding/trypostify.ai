@@ -142,7 +142,21 @@ export default function ThreadTweetEditor({
         timestamp: new Date().toISOString()
       })
       
-      toast.success('Thread posted successfully!')
+      toast.success(
+        <div className="flex items-center gap-2">
+          <p>Tweet posted!</p>
+          {data.threadUrl && (
+            <Link
+              target="_blank"
+              rel="noreferrer"
+              href={data.threadUrl}
+              className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+            >
+              View here
+            </Link>
+          )}
+        </div>
+      )
       fire()
       
       // Clear the thread content only after successful posting
@@ -189,6 +203,17 @@ export default function ThreadTweetEditor({
       // Clear the thread content only after successful scheduling
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       // Stay on current page instead of redirecting
+      toast.success(
+        <div className="flex items-center gap-2">
+          <p>Thread scheduled!</p>
+          <Link
+            href="/studio/scheduled"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+          >
+            View here
+          </Link>
+        </div>
+      )
     },
   })
 
@@ -214,7 +239,17 @@ export default function ThreadTweetEditor({
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
       // Stay on current page instead of redirecting
-      toast.success('Thread added to queue!')
+      toast.success(
+        <div className="flex items-center gap-2">
+          <p>Thread queued!</p>
+          <Link
+            href="/studio/scheduled"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+          >
+            View here
+          </Link>
+        </div>
+      )
     },
     onError: (error: HTTPException) => {
       // console.error('[ThreadTweetEditor] Failed to queue thread:', error)
@@ -249,7 +284,17 @@ export default function ThreadTweetEditor({
       // Invalidate thread cache to ensure fresh data on next edit
       queryClient.invalidateQueries({ queryKey: ['thread'] })
       
-      toast.success('Thread updated successfully!')
+      toast.success(
+        <div className="flex items-center gap-2">
+          <p>Thread updated!</p>
+          <Link
+            href="/studio/scheduled"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+          >
+            View here
+          </Link>
+        </div>
+      )
       // Stay on current page instead of redirecting
     },
   })
@@ -426,7 +471,17 @@ export default function ThreadTweetEditor({
         tweet_count: threadTweets.length,
       })
       
-      toast.success('Thread added to queue!')
+      toast.success(
+        <div className="flex items-center gap-2">
+          <p>Thread queued!</p>
+          <Link
+            href="/studio/scheduled"
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+          >
+            View here
+          </Link>
+        </div>
+      )
     } catch (error) {
       console.error('[ThreadTweetEditor] Failed to queue thread:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
