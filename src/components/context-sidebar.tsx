@@ -65,10 +65,9 @@ export const LeftSidebar = () => {
         ]
         const index = parseInt(e.key) - 1
         if (paths[index]) {
-          router.push({
-            pathname: paths[index],
-            search: id ? serialize({ chatId: id }) : undefined,
-          } as any)
+          const searchString = id ? serialize({ chatId: id }) : ''
+          const url = searchString ? `${paths[index]}?${searchString}` : paths[index]
+          router.push(url)
         }
       }
     }
