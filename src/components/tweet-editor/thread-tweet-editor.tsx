@@ -149,9 +149,7 @@ export default function ThreadTweetEditor({
       console.log('[ThreadTweetEditor] Clearing thread content after successful post')
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
-      if (data.threadUrl) {
-        window.open(data.threadUrl, '_blank')
-      }
+      // Note: Twitter URL available in data.threadUrl if needed for future features
     },
     onError: (error: any) => {
       console.error('[postThreadMutation] Error:', error)
@@ -190,7 +188,7 @@ export default function ThreadTweetEditor({
     onSuccess: (data) => {
       // Clear the thread content only after successful scheduling
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
-      router.push('/studio/scheduled')
+      // Stay on current page instead of redirecting
     },
   })
 
@@ -215,8 +213,8 @@ export default function ThreadTweetEditor({
       // Clear the thread content only after successful queuing
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
-      // Navigate to the queue page - no need for a toast since we're redirecting
-      router.push('/studio/scheduled')
+      // Stay on current page instead of redirecting
+      toast.success('Thread added to queue!')
     },
     onError: (error: HTTPException) => {
       // console.error('[ThreadTweetEditor] Failed to queue thread:', error)
@@ -252,7 +250,7 @@ export default function ThreadTweetEditor({
       queryClient.invalidateQueries({ queryKey: ['thread'] })
       
       toast.success('Thread updated successfully!')
-      router.push('/studio/scheduled')
+      // Stay on current page instead of redirecting
     },
   })
 
@@ -461,7 +459,14 @@ export default function ThreadTweetEditor({
   }
 
   const handleCancelEdit = () => {
-    router.push('/studio/scheduled')
+    // Reset to create mode by clearing edit params from URL
+    const url = new URL(window.location.href)
+    url.searchParams.delete('edit')
+    url.searchParams.delete('tweetId')
+    window.history.pushState({}, '', url.toString())
+    
+    // Reset the component state
+    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
   }
 
   const isPosting = postThreadMutation.isPending || scheduleThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
