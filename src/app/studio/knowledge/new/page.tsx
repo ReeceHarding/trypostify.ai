@@ -10,8 +10,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, FileText, FolderOpen, Link, Upload, X } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import posthog from 'posthog-js'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface UploadState {
   file: File
@@ -36,6 +37,14 @@ export default function NewKnowledgePage() {
   const [isDragging, setIsDragging] = useState(false)
   const [uploadState, setUploadState] = useState<UploadState | null>(null)
   const [multiFiles, setMultiFiles] = useState<MultiFile[]>([])
+  
+  // Refs for keyboard shortcuts
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+  
+  // Detect OS for keyboard shortcuts
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const metaKey = isMac ? 'Cmd' : 'Ctrl'
 
   // Helper function to extract clean title from filename
   const extractTitleFromFilename = (filename: string): string => {
@@ -98,6 +107,32 @@ export default function NewKnowledgePage() {
       return `https://${value}`
     }
   }
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+
+      // Browse files: Cmd/Ctrl + B
+      if (actualMetaKey && e.key.toLowerCase() === 'b' && type === 'upload') {
+        e.preventDefault()
+        fileInputRef.current?.click()
+      }
+      // Submit: Cmd/Ctrl + Enter
+      else if (actualMetaKey && e.key === 'Enter') {
+        e.preventDefault()
+        handleSubmit(e as any)
+      }
+      // Back: Escape
+      else if (e.key === 'Escape') {
+        e.preventDefault()
+        router.push('/studio/knowledge')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMac, type, router])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -545,16 +580,29 @@ export default function NewKnowledgePage() {
             </p>
             <div className="w-full flex justify-center">
               <label htmlFor="file-upload" className="cursor-pointer">
-                <DuolingoButton
-                  variant="secondary"
-                  size="sm"
-                  className="w-auto pointer-events-none"
-                >
-                  <Upload className="size-4 mr-2" />
-                  Browse Files
-                </DuolingoButton>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DuolingoButton
+                        variant="secondary"
+                        size="sm"
+                        className="w-auto pointer-events-none"
+                      >
+                        <Upload className="size-4 mr-2" />
+                        Browse Files
+                      </DuolingoButton>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>Browse files</p>
+                        <p className="text-xs text-neutral-400">{metaKey} + B</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </label>
               <input
+                ref={fileInputRef}
                 id="file-upload"
                 type="file"
                 className="hidden"
@@ -600,24 +648,16 @@ export default function NewKnowledgePage() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onBlur={(e) => setUrl(normalizeUrlInput(e.target.value))}
-          className="flex-1 w-full"
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label>Title</Label>
-        <DuolingoInput
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               handleSubmit(e)
             }
           }}
-          disabled={isImporting}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          fullWidth
-          placeholder="My document title"
+          className="flex-1 w-full"
         />
+        <p className="text-xs text-neutral-500 mt-2">
+          The title will be automatically extracted from the website
+        </p>
       </div>
     </form>
   )
@@ -630,12 +670,10 @@ export default function NewKnowledgePage() {
       return !Boolean(title) || !Boolean(uploadState?.isUploadDone)
     }
     if (type === 'url') {
-      return !Boolean(title) || !Boolean(url)
+      return !Boolean(url)
     }
     return false
   }
-
-  const router = useRouter()
 
   return (
     <div className="relative z-10 min-h-screen">
@@ -656,16 +694,28 @@ export default function NewKnowledgePage() {
             {type === 'url' && renderUrlView()}
           </div>
 
-          <DuolingoButton
-            loading={isProcessing || isImporting || isMultiProcessing}
-            onClick={handleSubmit}
-            disabled={getDisabled()}
-          >
-            {multiFiles.length > 0 
-              ? `Add ${multiFiles.length} Documents` 
-              : 'Add Knowledge'
-            }
-          </DuolingoButton>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DuolingoButton
+                  loading={isProcessing || isImporting || isMultiProcessing}
+                  onClick={handleSubmit}
+                  disabled={getDisabled()}
+                >
+                  {multiFiles.length > 0 
+                    ? `Add ${multiFiles.length} Documents` 
+                    : 'Add Knowledge'
+                  }
+                </DuolingoButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="space-y-1">
+                  <p>Submit knowledge</p>
+                  <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </div>

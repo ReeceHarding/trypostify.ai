@@ -29,8 +29,10 @@ import {
   Edit,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
+import { useRouter } from 'next/navigation'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Document {
   id: string
@@ -97,7 +99,13 @@ const TweetListing = ({ tweetMetadata }: { tweetMetadata: TweetMetadata }) => {
 const Page = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const queryClient = useQueryClient()
+  const router = useRouter()
+  
+  // Detect OS for keyboard shortcuts
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const metaKey = isMac ? 'Cmd' : 'Ctrl'
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B'
@@ -132,6 +140,32 @@ const Page = () => {
       return titleMatch
     })
   }, [allDocuments, searchQuery])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+
+      // Add Knowledge: Cmd/Ctrl + K
+      if (actualMetaKey && e.key.toLowerCase() === 'k' && !e.shiftKey) {
+        e.preventDefault()
+        setDropdownOpen(true)
+      }
+      // Upload Document: Cmd/Ctrl + U
+      else if (actualMetaKey && e.key.toLowerCase() === 'u' && !e.shiftKey) {
+        e.preventDefault()
+        router.push('/studio/knowledge/new?type=upload')
+      }
+      // Add from Website: Cmd/Ctrl + W
+      else if (actualMetaKey && e.key.toLowerCase() === 'w' && !e.shiftKey) {
+        e.preventDefault()
+        router.push('/studio/knowledge/new?type=url')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMac, router])
 
   const { mutate: deleteDocument } = useMutation({
     mutationFn: async (documentId: string) => {
@@ -174,13 +208,25 @@ const Page = () => {
                 factually.
               </p>
             </div>
-            <DropdownMenu>
+            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <DuolingoButton className="w-auto">
-                  <Plus className="size-5 mr-2" />
-                  <span className="whitespace-nowrap">Add Knowledge</span>
-                  <ChevronDown className="size-4 ml-2" />
-                </DuolingoButton>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DuolingoButton className="w-auto">
+                        <Plus className="size-5 mr-2" />
+                        <span className="whitespace-nowrap">Add Knowledge</span>
+                        <ChevronDown className="size-4 ml-2" />
+                      </DuolingoButton>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>Add new knowledge</p>
+                        <p className="text-xs text-neutral-400">{metaKey} + K</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="p-3 border-2 shadow-xl">
                 <div className="space-y-2">
@@ -202,6 +248,7 @@ const Page = () => {
                         <p className="text-sm opacity-60 leading-relaxed">
                           Upload pdf, docx, text or images
                         </p>
+                        <p className="text-xs text-neutral-400 mt-1">{metaKey} + U</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>
@@ -224,6 +271,7 @@ const Page = () => {
                         <p className="text-sm opacity-60 leading-relaxed">
                           Extract knowledge from articles and blog posts
                         </p>
+                        <p className="text-xs text-neutral-400 mt-1">{metaKey} + W</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>

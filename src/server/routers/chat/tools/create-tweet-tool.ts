@@ -68,7 +68,7 @@ Use this context to understand what the user is referring to when creating the t
 
 STYLE GUIDE:
 ${style.prompt ? `Custom Instructions: ${style.prompt}\n` : ''}
-Example Tweets: ${style.tweets?.slice(0, 3).map(t => t.text).join('\n')}
+${style.tweets && style.tweets.length > 0 ? `\nExample tweets that demonstrate the writing style to follow:\n${style.tweets.map((t, i) => `${i + 1}. ${t.text}`).join('\n')}\n` : ''}
 
 CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
 
