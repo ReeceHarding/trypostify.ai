@@ -430,23 +430,45 @@ const ChatInput = ({
                 )}
               </div>
 
-              {isChooserOpen && filteredDocs.length > 0 ? (
+              {isChooserOpen ? (
                 <div className="absolute bottom-16 left-3 right-3 z-50 bg-white border-2 border-neutral-200 rounded-xl shadow-[0_6px_0_hsl(var(--neutral-200))] p-1">
                   <div className="max-h-64 overflow-auto">
-                    {filteredDocs.map((doc, idx) => (
-                      <button
-                        key={doc.id}
-                        type="button"
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                          idx === activeIndex ? 'bg-neutral-100' : 'bg-white'
-                        }`}
-                        onMouseEnter={() => setActiveIndex(idx)}
-                        onClick={() => commitSelection(doc)}
-                      >
-                        {doc.title}
-                        <span className="ml-2 text-xs text-neutral-400">{doc.type}</span>
-                      </button>
-                    ))}
+                    {filteredDocs.length > 0 ? (
+                      <>
+                        {filteredDocs.map((doc, idx) => (
+                          <button
+                            key={doc.id}
+                            type="button"
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+                              idx === activeIndex ? 'bg-neutral-100' : 'bg-white'
+                            }`}
+                            onMouseEnter={() => setActiveIndex(idx)}
+                            onClick={() => commitSelection(doc)}
+                          >
+                            {doc.title}
+                            <span className="ml-2 text-xs text-neutral-400">{doc.type}</span>
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-neutral-500">
+                        No knowledge documents found
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-neutral-200 mt-1 pt-1">
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-neutral-100 flex items-center gap-2"
+                      onClick={() => {
+                        window.open('/studio/knowledge/new', '_blank')
+                        setIsChooserOpen(false)
+                        setChooserQuery('')
+                      }}
+                    >
+                      <Plus className="size-4" />
+                      Add new knowledge document
+                    </button>
                   </div>
                 </div>
               ) : null}
