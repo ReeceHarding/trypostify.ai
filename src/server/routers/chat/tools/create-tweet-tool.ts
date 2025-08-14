@@ -68,7 +68,7 @@ Use this context to understand what the user is referring to when creating the t
 STYLE GUIDE:
 ${JSON.stringify(style, null, 2)}
 
-CHARACTER LIMIT: ${hasXPremium ? 280 : 140}`
+CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
 
       const result = streamText({
         model: openai('gpt-4o-mini'),

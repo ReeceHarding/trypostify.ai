@@ -13,6 +13,7 @@ import { $createParagraphNode, $createTextNode, $getRoot, createEditor } from 'l
 import { nanoid } from 'nanoid'
 import { useParams, usePathname, useSearchParams } from 'next/navigation'
 import posthog from 'posthog-js'
+import { authClient } from '@/lib/auth-client'
 import React, {
   createContext,
   PropsWithChildren,
@@ -587,4 +588,15 @@ export function useTweets() {
     throw new Error('useTweets must be used within a TweetProvider')
   }
   return context
+}
+
+// User hook to access user session data including hasXPremium
+export function useUser() {
+  const session = authClient.useSession()
+  return {
+    user: session.data?.user,
+    isLoading: session.isPending,
+    hasXPremium: session.data?.user?.hasXPremium || false,
+    getCharacterLimit: () => session.data?.user?.hasXPremium ? 25000 : 280,
+  }
 }

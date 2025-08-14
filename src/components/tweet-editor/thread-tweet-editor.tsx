@@ -12,6 +12,7 @@ import posthog from 'posthog-js'
 import { useConfetti } from '@/hooks/use-confetti'
 import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
+import { useUser } from '@/hooks/use-tweets'
 
 interface ThreadTweetData {
   id: string
@@ -29,7 +30,7 @@ interface ThreadTweetEditorProps {
 }
 
 // Validation helper
-function validateThreadTweets(tweets: ThreadTweetData[]): { valid: boolean; error?: string } {
+function validateThreadTweets(tweets: ThreadTweetData[], characterLimit: number): { valid: boolean; error?: string } {
   // Check for empty tweets
   const emptyTweets = tweets.filter(t => !t.content.trim())
   if (emptyTweets.length > 0) {
@@ -37,9 +38,9 @@ function validateThreadTweets(tweets: ThreadTweetData[]): { valid: boolean; erro
   }
 
   // Check character limits
-  const oversizedTweets = tweets.filter(t => t.content.length > 280)
+  const oversizedTweets = tweets.filter(t => t.content.length > characterLimit)
   if (oversizedTweets.length > 0) {
-    return { valid: false, error: 'All tweets must be 280 characters or less' }
+    return { valid: false, error: `All tweets must be ${characterLimit.toLocaleString()} characters or less` }
   }
 
   return { valid: true }
@@ -50,6 +51,10 @@ export default function ThreadTweetEditor({
   editMode = false,
   editTweetId,
 }: ThreadTweetEditorProps) {
+  
+  const { getCharacterLimit } = useUser()
+  const characterLimit = getCharacterLimit()
+  
   const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
     { id: crypto.randomUUID(), content: '', media: [] },
   ])
@@ -263,7 +268,7 @@ export default function ThreadTweetEditor({
 
   const handlePostThread = async () => {
     // Validate tweets
-    const validation = validateThreadTweets(threadTweets)
+    const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
       toast.error(validation.error!)
       return
@@ -294,7 +299,7 @@ export default function ThreadTweetEditor({
 
   const handleScheduleThread = async (scheduledDate: Date) => {
     // Validate tweets
-    const validation = validateThreadTweets(threadTweets)
+    const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
       toast.error(validation.error!)
       return
@@ -354,7 +359,7 @@ export default function ThreadTweetEditor({
 
   const handleQueueThread = async () => {
     // Validate tweets
-    const validation = validateThreadTweets(threadTweets)
+    const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
       toast.error(validation.error!)
       return

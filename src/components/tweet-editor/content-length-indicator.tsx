@@ -1,4 +1,5 @@
 import useTweetMetadata from '@/hooks/use-tweet-metdata'
+import { useUser } from '@/hooks/use-tweets'
 
 interface ContentLengthIndicatorProps {
   length?: number
@@ -6,15 +7,17 @@ interface ContentLengthIndicatorProps {
 
 const ContentLengthIndicator = ({ length }: ContentLengthIndicatorProps = {}) => {
   const { charCount: hookCharCount } = useTweetMetadata()
+  const { getCharacterLimit } = useUser()
   const charCount = length ?? hookCharCount
+  const characterLimit = getCharacterLimit()
 
   const getProgressColor = () => {
-    const percentage = (charCount / 280) * 100
+    const percentage = (charCount / characterLimit) * 100
     if (percentage >= 100) return 'text-error-500'
     return 'text-primary-500'
   }
 
-  const progress = Math.min((charCount / 280) * 100, 100)
+  const progress = Math.min((charCount / characterLimit) * 100, 100)
   const circumference = 2 * Math.PI * 10
   const strokeDashoffset = circumference - (progress / 100) * circumference
 
@@ -45,11 +48,11 @@ const ContentLengthIndicator = ({ length }: ContentLengthIndicatorProps = {}) =>
           />
         </svg>
       </div>
-      {charCount > 260 && charCount < 280 && (
+      {charCount > (characterLimit - 20) && charCount < characterLimit && (
         <div
-          className={`text-sm/6 ${280 - charCount < 1 ? 'text-error-500' : 'text-neutral-800'} mr-3.5`}
+          className={`text-sm/6 ${characterLimit - charCount < 1 ? 'text-error-500' : 'text-neutral-800'} mr-3.5`}
         >
-          <p>{280 - charCount < 20 ? 280 - charCount : charCount}</p>
+          <p>{characterLimit - charCount < 20 ? characterLimit - charCount : charCount.toLocaleString()}</p>
         </div>
       )}
     </div>
