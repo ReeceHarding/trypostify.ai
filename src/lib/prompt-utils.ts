@@ -69,9 +69,12 @@ You have the following tools at your disposal to solve the tweet writing task:
 <name>writeTweet</name>
 <description>Call when any tweet writing task is imminent. You can call this multiple times in parallel to write multiple tweets. Do not exceed 3 calls per message total under any circumstances.
 
-CRITICAL: You MUST pass the parameter "instruction" with a concise description of exactly what to write. Summarize the user’s request in your own words (e.g., "Write a tweet about Alpha School's AI-powered private school"). Do NOT omit this parameter.
+PARAMETERS:
+1. instruction (REQUIRED): A concise description of exactly what to write. Summarize the user's request in your own words (e.g., "Write a tweet about Alpha School's AI-powered private school").
 
-IMPORTANT: If the user has attached images, you MUST provide descriptions of those images in the imageDescriptions parameter. Describe what you see in each image in detail so the tweet can reference the visual content appropriately.</description>
+2. tweetContent (OPTIONAL): If the user is editing an existing tweet (e.g., "change the first tweet", "edit the second one", "make that shorter"), you MUST pass the exact content of that tweet here so the tool knows what to edit.
+
+3. imageDescriptions (OPTIONAL): If the user has attached images, provide descriptions of those images here. Describe what you see in each image in detail so the tweet can reference the visual content appropriately.</description>
 </tool>
 <tool>
 <name>readWebsiteContent</name>

@@ -548,6 +548,72 @@ function ThreadTweetContent({
     setMediaFiles([])
   }
 
+  // Detect OS for keyboard shortcuts
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const metaKey = isMac ? 'Cmd' : 'Ctrl'
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!isFirstTweet) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+
+      if (editMode) {
+        // Save: Cmd/Ctrl + S
+        if (actualMetaKey && e.key.toLowerCase() === 's' && onUpdateThread) {
+          e.preventDefault()
+          onUpdateThread()
+        }
+        // Cancel: Esc
+        else if (e.key === 'Escape' && onCancelEdit) {
+          e.preventDefault()
+          onCancelEdit()
+        }
+      } else {
+        // Post: Cmd/Ctrl + Enter
+        if (actualMetaKey && e.key === 'Enter' && !e.shiftKey && onPostThread) {
+          e.preventDefault()
+          handlePostClick()
+        }
+        // Queue: Cmd/Ctrl + Q
+        else if (actualMetaKey && e.key.toLowerCase() === 'q' && onQueueThread) {
+          e.preventDefault()
+          onQueueThread()
+        }
+        // Schedule: Cmd/Ctrl + S
+        else if (actualMetaKey && e.key.toLowerCase() === 's' && onScheduleThread) {
+          e.preventDefault()
+          setOpen(true)
+        }
+      }
+
+      // Common shortcuts for both modes
+      // Upload: Cmd/Ctrl + U
+      if (actualMetaKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault()
+        fileInputRef.current?.click()
+      }
+      // Media Library: Cmd/Ctrl + M
+      else if (actualMetaKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault()
+        setMediaLibraryOpen(true)
+      }
+      // Clear/Delete: Cmd/Ctrl + D
+      else if (actualMetaKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        if (canDelete && onRemove) {
+          onRemove()
+        } else {
+          handleClearTweet()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isFirstTweet, editMode, isMac, onPostThread, onQueueThread, onScheduleThread, onUpdateThread, onCancelEdit, onRemove, canDelete])
+
   const handlePostClick = () => {
     if (skipPostConfirmation) {
       if (onPostThread) {
@@ -830,7 +896,10 @@ function ThreadTweetContent({
                         </DuolingoButton>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Upload media</p>
+                        <div className="space-y-1">
+                          <p>Upload media</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + U</p>
+                        </div>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -863,7 +932,10 @@ function ThreadTweetContent({
                         </DuolingoButton>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Choose from library</p>
+                        <div className="space-y-1">
+                          <p>Choose from library</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + M</p>
+                        </div>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -883,7 +955,10 @@ function ThreadTweetContent({
                         </DuolingoButton>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{canDelete ? 'Remove from thread' : 'Clear post'}</p>
+                        <div className="space-y-1">
+                          <p>{canDelete ? 'Remove from thread' : 'Clear post'}</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + D</p>
+                        </div>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -900,23 +975,48 @@ function ThreadTweetContent({
                       {editMode ? (
                         // Edit mode buttons
                         <>
-                          <DuolingoButton
-                            variant="secondary"
-                            className="h-11"
-                            onClick={onCancelEdit}
-                            disabled={isPosting}
-                          >
-                            Cancel
-                          </DuolingoButton>
-                          <DuolingoButton
-                            className="h-11"
-                            onClick={onUpdateThread}
-                            disabled={isPosting || mediaFiles.some((f) => f.uploading)}
-                          >
-                            <span className="text-sm">
-                              {isPosting ? 'Saving...' : 'Save'}
-                            </span>
-                          </DuolingoButton>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <DuolingoButton
+                                  variant="secondary"
+                                  className="h-11"
+                                  onClick={onCancelEdit}
+                                  disabled={isPosting}
+                                >
+                                  Cancel
+                                </DuolingoButton>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-1">
+                                  <p>Cancel editing</p>
+                                  <p className="text-xs text-neutral-400">Esc</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <DuolingoButton
+                                  className="h-11"
+                                  onClick={onUpdateThread}
+                                  disabled={isPosting || mediaFiles.some((f) => f.uploading)}
+                                >
+                                  <span className="text-sm">
+                                    {isPosting ? 'Saving...' : 'Save'}
+                                  </span>
+                                </DuolingoButton>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="space-y-1">
+                                  <p>Save changes</p>
+                                  <p className="text-xs text-neutral-400">{metaKey} + S</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </>
                       ) : (
                         // Regular mode buttons
@@ -937,11 +1037,14 @@ function ThreadTweetContent({
                                 </DuolingoButton>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>
-                                  {skipPostConfirmation
-                                    ? 'The tweet will be posted immediately'
-                                    : 'A confirmation modal will open'}
-                                </p>
+                                <div className="space-y-1">
+                                  <p>
+                                    {skipPostConfirmation
+                                      ? 'The tweet will be posted immediately'
+                                      : 'A confirmation modal will open'}
+                                  </p>
+                                  <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
+                                </div>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -965,15 +1068,18 @@ function ThreadTweetContent({
                                   </DuolingoButton>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>
-                                    Add to next queue slot -{' '}
-                                    <Link
-                                      href="/studio/scheduled"
-                                      className="underline decoration-2 underline-offset-2"
-                                    >
-                                      what is this?
-                                    </Link>
-                                  </p>
+                                  <div className="space-y-1">
+                                    <p>
+                                      Add to next queue slot -{' '}
+                                      <Link
+                                        href="/studio/scheduled"
+                                        className="underline decoration-2 underline-offset-2"
+                                      >
+                                        what is this?
+                                      </Link>
+                                    </p>
+                                    <p className="text-xs text-neutral-400">{metaKey} + Q</p>
+                                  </div>
                                 </TooltipContent>
                               </Tooltip>
 
@@ -1017,7 +1123,10 @@ function ThreadTweetContent({
                                   </PopoverContent>
                                 </Popover>
                                 <TooltipContent>
-                                  <p>Schedule manually</p>
+                                  <div className="space-y-1">
+                                    <p>Schedule manually</p>
+                                    <p className="text-xs text-neutral-400">{metaKey} + S</p>
+                                  </div>
                                 </TooltipContent>
                               </Tooltip>
 
