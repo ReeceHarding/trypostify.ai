@@ -452,6 +452,11 @@ const ChatInput = ({
               ) : null}
             </div>
           </div>
+          
+          {/* Hint for @/ mentions */}
+          <p className="text-xs text-neutral-400 mt-2 px-1">
+            Tip: Type @/ to reference knowledge documents
+          </p>
         </div>
       </div>
     </div>
