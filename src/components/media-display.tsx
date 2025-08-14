@@ -30,6 +30,16 @@ export default function MediaDisplay({
 }: MediaDisplayProps) {
   const [openImageUrl, setOpenImageUrl] = useState<string | null>(null)
 
+  // Helper function to detect video files from URL even if type is wrong
+  const isVideoFile = (mediaFile: MediaFile): boolean => {
+    if (mediaFile.type === 'video') return true
+    
+    // Check file extension as fallback
+    const url = mediaFile.url.toLowerCase()
+    return url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') || 
+           url.includes('.webm') || url.includes('.mkv') || url.includes('.m4v')
+  }
+
   const renderMediaOverlays = (mediaFile: MediaFile) => (
     <>
       {(mediaFile.uploading || mediaFile.error) && (
@@ -85,17 +95,47 @@ export default function MediaDisplay({
     </Dialog>
   )
 
+  const renderVideo = (mediaFile: MediaFile, className: string) => (
+    <div className="relative">
+      <video
+        src={mediaFile.url}
+        className={`${className} rounded-lg`}
+        controls={false}
+        preload="metadata"
+        muted
+        onLoadedMetadata={(e) => {
+          // Set video to first frame to show as thumbnail
+          const video = e.target as HTMLVideoElement
+          video.currentTime = 0.1
+        }}
+      />
+      {/* Play button overlay */}
+      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg hover:bg-opacity-40 transition-colors cursor-pointer group"
+           onClick={(e) => {
+             e.preventDefault()
+             const video = e.currentTarget.previousElementSibling as HTMLVideoElement
+             if (video.paused) {
+               video.play()
+               video.setAttribute('controls', 'true')
+               e.currentTarget.style.display = 'none'
+             }
+           }}>
+        <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
+          <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="mt-3 max-w-full">
       {mediaFiles.length === 1 && mediaFiles[0] && (
         <div className="relative group">
           <div className="relative overflow-hidden">
-            {mediaFiles[0].type === 'video' ? (
-              <video
-                src={mediaFiles[0].url}
-                className="w-full max-h-[510px] object-cover"
-                controls
-              />
+            {isVideoFile(mediaFiles[0]) ? (
+              renderVideo(mediaFiles[0], "w-full max-h-[510px] object-cover")
             ) : (
               renderImage(mediaFiles[0], "w-full max-h-[510px] object-cover")
             )}
@@ -109,12 +149,8 @@ export default function MediaDisplay({
           {mediaFiles.map((mediaFile, index) => (
             <div key={mediaFile.url} className="relative group">
               <div className="relative overflow-hidden h-[254px]">
-                {mediaFile.type === 'video' ? (
-                  <video 
-                    src={mediaFile.url} 
-                    className="w-full h-full object-cover"
-                    controls
-                  />
+                {isVideoFile(mediaFile) ? (
+                  renderVideo(mediaFile, "w-full h-full object-cover")
                 ) : (
                   renderImage(mediaFile, "w-full h-full object-cover")
                 )}
@@ -129,12 +165,8 @@ export default function MediaDisplay({
         <div className="grid grid-cols-2 gap-0.5 overflow-hidden h-[254px]">
           <div className="relative group">
             <div className="relative overflow-hidden h-full">
-              {mediaFiles[0].type === 'video' ? (
-                <video 
-                  src={mediaFiles[0].url} 
-                  className="w-full h-full object-cover"
-                  controls
-                />
+              {isVideoFile(mediaFiles[0]) ? (
+                renderVideo(mediaFiles[0], "w-full h-full object-cover")
               ) : (
                 renderImage(mediaFiles[0], "w-full h-full object-cover")
               )}
@@ -145,12 +177,8 @@ export default function MediaDisplay({
             {mediaFiles.slice(1).map((mediaFile, index) => (
               <div key={mediaFile.url} className="relative group">
                 <div className="relative overflow-hidden h-full">
-                  {mediaFile.type === 'video' ? (
-                    <video
-                      src={mediaFile.url}
-                      className="w-full h-full object-cover"
-                      controls
-                    />
+                  {isVideoFile(mediaFile) ? (
+                    renderVideo(mediaFile, "w-full h-full object-cover")
                   ) : (
                     renderImage(mediaFile, "w-full h-full object-cover")
                   )}
@@ -167,12 +195,8 @@ export default function MediaDisplay({
           {mediaFiles.map((mediaFile, index) => (
             <div key={mediaFile.url} className="relative group">
               <div className="relative overflow-hidden h-full">
-                {mediaFile.type === 'video' ? (
-                  <video 
-                    src={mediaFile.url} 
-                    className="w-full h-full object-cover"
-                    controls
-                  />
+                {isVideoFile(mediaFile) ? (
+                  renderVideo(mediaFile, "w-full h-full object-cover")
                 ) : (
                   renderImage(mediaFile, "w-full h-full object-cover")
                 )}

@@ -136,6 +136,51 @@ function ThreadTweetContent({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllersRef = useRef(new Map<string, AbortController>())
 
+  // Helper function to detect video files from URL even if type is wrong
+  const isVideoFile = (mediaFile: MediaFile): boolean => {
+    if (mediaFile.type === 'video') return true
+    
+    // Check file extension as fallback
+    const url = mediaFile.url.toLowerCase()
+    return url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') || 
+           url.includes('.webm') || url.includes('.mkv') || url.includes('.m4v')
+  }
+
+  // Render video with proper thumbnail preview
+  const renderVideo = (mediaFile: MediaFile, className: string) => (
+    <div className="relative">
+      <video
+        src={mediaFile.url}
+        className={`${className}`}
+        controls={false}
+        preload="metadata"
+        muted
+        onLoadedMetadata={(e) => {
+          // Set video to first frame to show as thumbnail
+          const video = e.target as HTMLVideoElement
+          video.currentTime = 0.1
+        }}
+      />
+      {/* Play button overlay */}
+      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-colors cursor-pointer group"
+           onClick={(e) => {
+             e.preventDefault()
+             const video = e.currentTarget.previousElementSibling as HTMLVideoElement
+             if (video.paused) {
+               video.play()
+               video.setAttribute('controls', 'true')
+               e.currentTarget.style.display = 'none'
+             }
+           }}>
+        <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
+          <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  )
+
   useEffect(() => {
     setSkipPostConfirmation(localStorage.getItem('skipPostConfirmation') === 'true')
   }, [])
@@ -783,12 +828,8 @@ function ThreadTweetContent({
                   {mediaFiles.length === 1 && mediaFiles[0] && (
                     <div className="relative group">
                       <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
-                        {mediaFiles[0].type === 'video' ? (
-                          <video
-                            src={mediaFiles[0].url}
-                            className="w-full max-h-[510px] object-cover"
-                            controls={false}
-                          />
+                        {isVideoFile(mediaFiles[0]) ? (
+                          renderVideo(mediaFiles[0], "w-full max-h-[510px] object-cover")
                         ) : (
                           <img
                             src={mediaFiles[0].url}
@@ -806,12 +847,8 @@ function ThreadTweetContent({
                       {mediaFiles.map((mediaFile, index) => (
                         <div key={mediaFile.url} className="relative group">
                           <div className="relative overflow-hidden h-[254px]">
-                            {mediaFile.type === 'video' ? (
-                              <video
-                                src={mediaFile.url}
-                                className="w-full h-full object-cover"
-                                controls={false}
-                              />
+                            {isVideoFile(mediaFile) ? (
+                              renderVideo(mediaFile, "w-full h-full object-cover")
                             ) : (
                               <img
                                 src={mediaFile.url}
@@ -830,12 +867,8 @@ function ThreadTweetContent({
                     <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200 h-[254px]">
                       <div className="relative group">
                         <div className="relative overflow-hidden h-full">
-                          {mediaFiles[0].type === 'video' ? (
-                            <video
-                              src={mediaFiles[0].url}
-                              className="w-full h-full object-cover"
-                              controls={false}
-                            />
+                          {isVideoFile(mediaFiles[0]) ? (
+                            renderVideo(mediaFiles[0], "w-full h-full object-cover")
                           ) : (
                             <img
                               src={mediaFiles[0].url}
@@ -850,12 +883,8 @@ function ThreadTweetContent({
                         {mediaFiles.slice(1).map((mediaFile, index) => (
                           <div key={mediaFile.url} className="relative group">
                             <div className="relative overflow-hidden h-full">
-                              {mediaFile.type === 'video' ? (
-                                <video
-                                  src={mediaFile.url}
-                                  className="w-full h-full object-cover"
-                                  controls={false}
-                                />
+                              {isVideoFile(mediaFile) ? (
+                                renderVideo(mediaFile, "w-full h-full object-cover")
                               ) : (
                                 <img
                                   src={mediaFile.url}
@@ -876,12 +905,8 @@ function ThreadTweetContent({
                       {mediaFiles.map((mediaFile, index) => (
                         <div key={mediaFile.url} className="relative group">
                           <div className="relative overflow-hidden h-full">
-                            {mediaFile.type === 'video' ? (
-                              <video
-                                src={mediaFile.url}
-                                className="w-full h-full object-cover"
-                                controls={false}
-                              />
+                            {isVideoFile(mediaFile) ? (
+                              renderVideo(mediaFile, "w-full h-full object-cover")
                             ) : (
                               <img
                                 src={mediaFile.url}
