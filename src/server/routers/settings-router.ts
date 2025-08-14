@@ -1,12 +1,17 @@
 import { db } from '@/db'
-import { account as accountSchema, user as userSchema } from '@/db/schema'
+import { account as accountSchema, user as userSchema, tweets, knowledgeDocument, mediaLibrary } from '@/db/schema'
 import { chatLimiter } from '@/lib/chat-limiter'
 import { redis } from '@/lib/redis'
-import { and, desc, eq } from 'drizzle-orm'
+import { qstash } from '@/lib/qstash'
+import { s3Client, BUCKET_NAME } from '@/lib/s3'
+import { stripe } from '@/lib/stripe/client'
+import { DeleteObjectsCommand } from '@aws-sdk/client-s3'
+import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { TwitterApi } from 'twitter-api-v2'
 import { z } from 'zod'
 import { j, privateProcedure } from '../jstack'
+import { PostHog } from 'posthog-node'
 
 export type Account = {
   id: string
@@ -17,6 +22,18 @@ export type Account = {
 }
 
 const client = new TwitterApi(process.env.TWITTER_BEARER_TOKEN!).readOnly
+
+// Initialize PostHog client only if API key is available
+const posthogApiKey = process.env.POSTHOG_API_KEY || process.env.NEXT_PUBLIC_POSTHOG_KEY
+let posthog: PostHog | null = null
+
+if (posthogApiKey && posthogApiKey.trim()) {
+  posthog = new PostHog(posthogApiKey, {
+    host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+    flushAt: 1, // Reduce batching to prevent header buildup
+    flushInterval: 10000, // Flush every 10 seconds
+  })
+}
 
 interface Settings {
   user: {
@@ -257,38 +274,206 @@ export const settingsRouter = j.router({
     const now = new Date().toISOString()
     console.log('[settings.delete_user] starting user deletion', { id: user.id, email: user.email, at: now })
 
-    // Best-effort Redis cleanup
-    try {
-      // Delete active account pointer
-      await redis.del(`active-account:${user.email}`)
+    // Phase 1: Collect all data that needs cleanup before deletion
+    console.log('[settings.delete_user] collecting user data for cleanup', { id: user.id, at: new Date().toISOString() })
+    
+    // Collect QStash message IDs from scheduled tweets
+    const scheduledTweets = await db
+      .select({ qstashId: tweets.qstashId })
+      .from(tweets)
+      .where(and(
+        eq(tweets.userId, user.id),
+        isNotNull(tweets.qstashId)
+      ))
+    console.log('[settings.delete_user] found scheduled tweets', { count: scheduledTweets.length, at: new Date().toISOString() })
 
-      // Delete all per-account caches for this user
-      const accountsScan = await redis.scan(0, { match: `account:${user.email}:*` })
-      const [, accountKeys] = accountsScan
-      for (const key of accountKeys) {
-        try {
-          await redis.json.del(key)
-        } catch {
-          await redis.del(key)
-        }
-      }
+    // Collect S3 keys from all sources
+    const tweetsWithMedia = await db
+      .select({ media: tweets.media })
+      .from(tweets)
+      .where(eq(tweets.userId, user.id))
+    
+    const knowledgeDocs = await db
+      .select({ s3Key: knowledgeDocument.s3Key })
+      .from(knowledgeDocument)
+      .where(eq(knowledgeDocument.userId, user.id))
+    
+    const mediaItems = await db
+      .select({ s3Key: mediaLibrary.s3Key })
+      .from(mediaLibrary)
+      .where(eq(mediaLibrary.userId, user.id))
 
-      // Delete all style caches for this user
-      const stylesScan = await redis.scan(0, { match: `style:${user.email}:*` })
-      const [, styleKeys] = stylesScan
-      for (const key of styleKeys) {
-        try {
-          await redis.json.del(key)
-        } catch {
-          await redis.del(key)
-        }
-      }
+    // Extract all S3 keys with proper typing
+    interface MediaItem {
+      s3Key: string
+      media_id: string
+    }
+    
+    const s3Keys: string[] = [
+      ...tweetsWithMedia.flatMap(t => {
+        const media = t.media as MediaItem[] | null
+        return media?.map(m => m.s3Key) || []
+      }),
+      ...knowledgeDocs.map(k => k.s3Key),
+      ...mediaItems.map(m => m.s3Key)
+    ].filter(Boolean)
+    console.log('[settings.delete_user] collected S3 keys', { count: s3Keys.length, at: new Date().toISOString() })
 
-    } catch (err) {
-      console.error('[settings.delete_user] redis cleanup error', err)
+    // Phase 2: Clean up external resources (best effort, non-blocking)
+    const cleanupPromises = []
+
+    // QStash cleanup
+    if (scheduledTweets.length > 0) {
+      cleanupPromises.push(
+        (async () => {
+          console.log('[settings.delete_user] cancelling QStash messages', { count: scheduledTweets.length, at: new Date().toISOString() })
+          const messages = qstash.messages
+          let cancelledCount = 0
+          
+          for (const tweet of scheduledTweets) {
+            if (tweet.qstashId) {
+              try {
+                await messages.delete(tweet.qstashId)
+                cancelledCount++
+              } catch (err) {
+                console.error('[settings.delete_user] failed to cancel QStash message', { qstashId: tweet.qstashId, err })
+              }
+            }
+          }
+          
+          console.log('[settings.delete_user] QStash cleanup complete', { 
+            attempted: scheduledTweets.length, 
+            cancelled: cancelledCount,
+            at: new Date().toISOString()
+          })
+        })()
+      )
     }
 
-    // Delete the user from the database (cascades to sessions, accounts, tweets, knowledge, media)
+    // S3 cleanup
+    if (s3Keys.length > 0) {
+      cleanupPromises.push(
+        (async () => {
+          console.log('[settings.delete_user] deleting S3 objects', { count: s3Keys.length, at: new Date().toISOString() })
+          try {
+            // Batch delete S3 objects (max 1000 per request)
+            const batches = []
+            for (let i = 0; i < s3Keys.length; i += 1000) {
+              batches.push(s3Keys.slice(i, i + 1000))
+            }
+
+            let deletedCount = 0
+            for (const batch of batches) {
+              const deleteResult = await s3Client.send(new DeleteObjectsCommand({
+                Bucket: BUCKET_NAME,
+                Delete: {
+                  Objects: batch.map(Key => ({ Key })),
+                  Quiet: true
+                }
+              }))
+              deletedCount += deleteResult.Deleted?.length || 0
+            }
+
+            console.log('[settings.delete_user] S3 cleanup complete', { 
+              attempted: s3Keys.length,
+              deleted: deletedCount,
+              at: new Date().toISOString()
+            })
+          } catch (err) {
+            console.error('[settings.delete_user] S3 cleanup error', err)
+          }
+        })()
+      )
+    }
+
+    // Stripe cleanup
+    if (user.stripeId && stripe) {
+      cleanupPromises.push(
+        (async () => {
+          console.log('[settings.delete_user] deleting Stripe customer', { stripeId: user.stripeId, at: new Date().toISOString() })
+          try {
+            await stripe.customers.del(user.stripeId)
+            console.log('[settings.delete_user] Stripe customer deleted', { stripeId: user.stripeId, at: new Date().toISOString() })
+          } catch (err) {
+            console.error('[settings.delete_user] Stripe cleanup error', { stripeId: user.stripeId, err })
+          }
+        })()
+      )
+    }
+
+    // PostHog cleanup
+    if (posthog) {
+      cleanupPromises.push(
+        (async () => {
+          console.log('[settings.delete_user] deleting PostHog user', { email: user.email, at: new Date().toISOString() })
+          try {
+            // Delete the person from PostHog
+            posthog.capture({
+              distinctId: user.email,
+              event: '$delete_person',
+              properties: {
+                $delete_distinct_id: user.email
+              }
+            })
+            await posthog.flush() // Ensure the event is sent
+            console.log('[settings.delete_user] PostHog user deleted', { email: user.email, at: new Date().toISOString() })
+          } catch (err) {
+            console.error('[settings.delete_user] PostHog cleanup error', { email: user.email, err })
+          }
+        })()
+      )
+    }
+
+    // Redis cleanup
+    cleanupPromises.push(
+      (async () => {
+        try {
+          // Delete active account pointer
+          await redis.del(`active-account:${user.email}`)
+
+          // Delete all per-account caches for this user
+          const accountsScan = await redis.scan(0, { match: `account:${user.email}:*` })
+          const [, accountKeys] = accountsScan
+          for (const key of accountKeys) {
+            try {
+              await redis.json.del(key)
+            } catch {
+              await redis.del(key)
+            }
+          }
+
+          // Delete all style caches for this user
+          const stylesScan = await redis.scan(0, { match: `style:${user.email}:*` })
+          const [, styleKeys] = stylesScan
+          for (const key of styleKeys) {
+            try {
+              await redis.json.del(key)
+            } catch {
+              await redis.del(key)
+            }
+          }
+          
+          console.log('[settings.delete_user] Redis cleanup complete', { 
+            accountKeys: accountKeys.length,
+            styleKeys: styleKeys.length,
+            at: new Date().toISOString()
+          })
+        } catch (err) {
+          console.error('[settings.delete_user] Redis cleanup error', err)
+        }
+      })()
+    )
+
+    // Execute all cleanup operations in parallel
+    console.log('[settings.delete_user] executing cleanup operations', { operations: cleanupPromises.length, at: new Date().toISOString() })
+    const cleanupResults = await Promise.allSettled(cleanupPromises)
+    const failedCleanups = cleanupResults.filter(r => r.status === 'rejected').length
+    if (failedCleanups > 0) {
+      console.warn('[settings.delete_user] some cleanup operations failed', { failed: failedCleanups, total: cleanupPromises.length })
+    }
+
+    // Phase 3: Delete the user from the database (cascades to sessions, accounts, tweets, knowledge, media)
+    console.log('[settings.delete_user] deleting user from database', { id: user.id, at: new Date().toISOString() })
     try {
       await db.delete(userSchema).where(eq(userSchema.id, user.id))
     } catch (err) {
@@ -296,7 +481,16 @@ export const settingsRouter = j.router({
       throw new HTTPException(500, { message: 'Failed to delete user account' })
     }
 
-    console.log('[settings.delete_user] user deleted successfully', { id: user.id, email: user.email, at: new Date().toISOString() })
+    console.log('[settings.delete_user] user deleted successfully', { 
+      id: user.id, 
+      email: user.email, 
+      qstashCleaned: scheduledTweets.length,
+      s3Cleaned: s3Keys.length,
+      stripeCleaned: !!user.stripeId,
+      posthogCleaned: !!posthog,
+      at: new Date().toISOString() 
+    })
+    
     return c.json({ success: true })
   }),
 })
