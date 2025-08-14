@@ -156,7 +156,13 @@ function ThreadTweetContent({
 
   // Update editor when content is set from AI (only for first tweet)
   useEffect(() => {
-    if (editor && isFirstTweet && currentTweet.content) {
+    if (editor && isFirstTweet && currentTweet.content && !hasBeenCleared) {
+      console.log('[ThreadTweet] AI content sync triggered:', {
+        hasBeenCleared,
+        currentTweetContent: currentTweet.content.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      })
+      
       editor.update(() => {
         const root = $getRoot()
         root.clear()
@@ -173,8 +179,18 @@ function ThreadTweetContent({
           media_id: m.media_id || '' 
         })))
       }
+    } else if (hasBeenCleared) {
+      console.log('[ThreadTweet] Skipping AI content sync due to hasBeenCleared flag')
     }
-  }, [editor, isFirstTweet, currentTweet.content])
+  }, [editor, isFirstTweet, currentTweet.content, hasBeenCleared])
+
+  // Reset the hasBeenCleared flag after we've handled it
+  useEffect(() => {
+    if (hasBeenCleared && onClearComplete) {
+      console.log('[ThreadTweet] Calling onClearComplete to reset hasBeenCleared flag')
+      onClearComplete()
+    }
+  }, [hasBeenCleared, onClearComplete])
 
   // Initialize media files when editing
   useEffect(() => {
