@@ -18,14 +18,14 @@ export const metadata: Metadata = {
   openGraph: {
     title,
     description,
-    images: [{ url: '/images/og-image.png' }],
+    images: [{ url: '/favicon.ico' }],
   },
   twitter: {
     card: 'summary_large_image',
     title,
     description,
-    images: ['/images/og-image.png'],
-    creator: '@joshtriedcoding',
+    images: ['/favicon.ico'],
+    creator: '@ReeceHarding',
   },
   metadataBase: new URL('https://trypostify.ai'),
 }

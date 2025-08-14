@@ -12,5 +12,5 @@ export const HOMEPAGE_CONTENT = {
   title: 'Your content engine for growing on Twitter',
   subtitle: 'Postify helps you create, schedule & manage twitter content at scale. Perfect for busy founders & content managers.',
   ctaText: 'Start Posting More →',
-  trustedByCount: '1.140',
+  trustedByCount: '1,140',
 }

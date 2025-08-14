@@ -125,6 +125,24 @@ export default function ThreadTweetEditor({
     }, 100)
   }
 
+  // Helper function to find currently focused tweet
+  const getCurrentlyFocusedTweetIndex = (): number => {
+    if (!document.activeElement) return -1
+    
+    for (let i = 0; i < threadTweets.length; i++) {
+      const tweet = threadTweets[i]
+      if (!tweet) continue
+      
+      const tweetId = tweet.id
+      // Look for the tweet container that contains the focused element
+      const tweetContainer = document.querySelector(`[data-tweet-id="${tweetId}"]`)
+      if (tweetContainer && tweetContainer.contains(document.activeElement)) {
+        return i
+      }
+    }
+    return -1
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -136,6 +154,30 @@ export default function ThreadTweetEditor({
         const firstTweetId = threadTweets[0]?.id
         if (firstTweetId && tweetRefs.current[firstTweetId]) {
           tweetRefs.current[firstTweetId]?.focus()
+        }
+      }
+      // Navigate to next tweet: Cmd/Ctrl + Down Arrow
+      else if (actualMetaKey && e.key === 'ArrowDown') {
+        e.preventDefault()
+        const currentIndex = getCurrentlyFocusedTweetIndex()
+        const nextIndex = currentIndex + 1
+        if (nextIndex < threadTweets.length) {
+          const nextTweetId = threadTweets[nextIndex]?.id
+          if (nextTweetId && tweetRefs.current[nextTweetId]) {
+            tweetRefs.current[nextTweetId].focus()
+          }
+        }
+      }
+      // Navigate to previous tweet: Cmd/Ctrl + Up Arrow
+      else if (actualMetaKey && e.key === 'ArrowUp') {
+        e.preventDefault()
+        const currentIndex = getCurrentlyFocusedTweetIndex()
+        const prevIndex = currentIndex - 1
+        if (prevIndex >= 0) {
+          const prevTweetId = threadTweets[prevIndex]?.id
+          if (prevTweetId && tweetRefs.current[prevTweetId]) {
+            tweetRefs.current[prevTweetId].focus()
+          }
         }
       }
       // Add new tweet to thread: Cmd/Ctrl + Shift + Enter
@@ -530,7 +572,7 @@ export default function ThreadTweetEditor({
     <div className={cn('relative z-10 w-full rounded-lg font-sans', className)}>
       <div className="space-y-4 w-full">
         {threadTweets.map((tweet, index) => (
-          <div key={tweet.id} className="relative">
+          <div key={tweet.id} className="relative" data-tweet-id={tweet.id}>
             {/* Connecting line between tweets */}
             {index < threadTweets.length - 1 && (
               <div
@@ -554,11 +596,11 @@ export default function ThreadTweetEditor({
               onClearComplete={index === 0 ? () => setHasBeenCleared(false) : undefined}
               onRemove={() => handleRemoveTweet(tweet.id)}
 
-              onPostThread={index === 0 && !editMode ? handlePostThread : undefined}
-              onQueueThread={index === 0 && !editMode ? handleQueueThread : undefined}
-              onScheduleThread={index === 0 && !editMode ? handleScheduleThread : undefined}
-              onUpdateThread={index === 0 && editMode ? handleUpdateThread : undefined}
-              onCancelEdit={index === 0 && editMode ? handleCancelEdit : undefined}
+              onPostThread={!editMode ? handlePostThread : undefined}
+              onQueueThread={!editMode ? handleQueueThread : undefined}
+              onScheduleThread={!editMode ? handleScheduleThread : undefined}
+              onUpdateThread={editMode ? handleUpdateThread : undefined}
+              onCancelEdit={editMode ? handleCancelEdit : undefined}
               isPosting={isPosting}
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
               initialContent={tweet.content}
