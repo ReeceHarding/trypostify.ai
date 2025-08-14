@@ -581,8 +581,8 @@ function ThreadTweetContent({
           e.preventDefault()
           handlePostClick()
         }
-        // Queue: Cmd/Ctrl + Q
-        else if (actualMetaKey && e.key.toLowerCase() === 'q' && onQueueThread) {
+        // Queue: Cmd/Ctrl + Shift + Q (avoids conflict with macOS Quit)
+        else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'q' && onQueueThread) {
           e.preventDefault()
           onQueueThread()
         }
@@ -1093,13 +1093,13 @@ function ThreadTweetContent({
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Add to next queue slot</p>
-                                    <p className="text-xs text-neutral-400">{metaKey} + Q</p>
+                                    <p className="text-xs text-neutral-400">{metaKey} + Shift + Q</p>
                                   </div>
                                 </TooltipContent>
                               </Tooltip>
 
                               <Tooltip>
-                                <Popover>
+                                <Popover open={open} onOpenChange={setOpen}>
                                   <TooltipTrigger asChild>
                                     <PopoverTrigger asChild>
                                       <DuolingoButton
@@ -1127,10 +1127,16 @@ function ThreadTweetContent({
                                             time,
                                             combinedIso: scheduled.toISOString(),
                                           })
-                                          if (onScheduleThread) onScheduleThread(scheduled)
+                                          if (onScheduleThread) {
+                                            onScheduleThread(scheduled)
+                                            setOpen(false)
+                                          }
                                         } catch (e) {
                                           console.error('[ThreadTweet] onSchedule combine error', e)
-                                          if (onScheduleThread) onScheduleThread(date)
+                                          if (onScheduleThread) {
+                                            onScheduleThread(date)
+                                            setOpen(false)
+                                          }
                                         }
                                       }}
                                       isPending={isPosting}
