@@ -22,7 +22,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarInset className="w-full flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200">
+    <SidebarInset className="flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200">
       {/* Dot Pattern Background */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"

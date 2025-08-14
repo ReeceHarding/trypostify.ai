@@ -49,23 +49,21 @@ export default function ClientLayout({
         defaultLeftOpen={false}
         defaultRightOpen={defaultOpen}
       >
-        <div className="flex">
-          <Sidebar side="left" className="w-fit">
-            <LeftSidebar />
-          </Sidebar>
+        <Sidebar side="left" className="w-fit">
+          <LeftSidebar />
+        </Sidebar>
 
-          <Sidebar side="right" variant="sidebar">
-            {hideAppSidebar ? (
-              <AppSidebarInset>{children}</AppSidebarInset>
-            ) : (
-              <LexicalComposer initialConfig={initialConfig}>
-                <AppSidebar>
-                  <AppSidebarInset>{children}</AppSidebarInset>
-                </AppSidebar>
-              </LexicalComposer>
-            )}
-          </Sidebar>
-        </div>
+        <Sidebar side="right" variant="sidebar">
+          {hideAppSidebar ? (
+            <AppSidebarInset>{children}</AppSidebarInset>
+          ) : (
+            <LexicalComposer initialConfig={initialConfig}>
+              <AppSidebar>
+                <AppSidebarInset>{children}</AppSidebarInset>
+              </AppSidebar>
+            </LexicalComposer>
+          )}
+        </Sidebar>
       </MultiSidebarProvider>
     </DashboardProviders>
   )
