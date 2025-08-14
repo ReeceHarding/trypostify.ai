@@ -777,6 +777,13 @@ function ThreadTweetContent({
                 </Tooltip>
               </TooltipProvider>
 
+              {/* Hint for @ mentions */}
+              {isFirstTweet && (
+                <p className="text-xs text-neutral-400 mt-2">
+                  Tip: Type @ or / to mention someone
+                </p>
+              )}
+
               {/* Media Files Display */}
               {mediaFiles.length > 0 && (
                 <div className="mt-3">
