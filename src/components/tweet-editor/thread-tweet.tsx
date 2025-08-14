@@ -594,13 +594,13 @@ function ThreadTweetContent({
       }
 
       // Common shortcuts for both modes
-      // Upload: Cmd/Ctrl + U
-      if (actualMetaKey && e.key.toLowerCase() === 'u') {
+      // Upload: Cmd/Ctrl + Option + U (avoids conflict with View Source)
+      if (actualMetaKey && (isMac ? e.altKey : e.altKey) && e.key.toLowerCase() === 'u') {
         e.preventDefault()
         fileInputRef.current?.click()
       }
-      // Media Library: Cmd/Ctrl + M
-      else if (actualMetaKey && e.key.toLowerCase() === 'm') {
+      // Media Library: Cmd/Ctrl + Option + M (avoids conflict with Minimize Window)
+      else if (actualMetaKey && (isMac ? e.altKey : e.altKey) && e.key.toLowerCase() === 'm') {
         e.preventDefault()
         setMediaLibraryOpen(true)
       }
@@ -921,7 +921,7 @@ function ThreadTweetContent({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Upload media</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + U</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + U</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>

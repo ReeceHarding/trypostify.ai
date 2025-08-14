@@ -97,8 +97,8 @@ const ChatInput = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
       
-      // Attach files: Cmd/Ctrl + Shift + U
-      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'u') {
+      // Attach files: Cmd/Ctrl + Shift + A (avoids conflict with Upload)
+      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         fileInputRef.current?.click()
       }
@@ -411,7 +411,7 @@ const ChatInput = ({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Attach files</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + Shift + U</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + Shift + A</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>
