@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, History, Paperclip, Plus, RotateCcw, Square, X } from 'lucide-react'
+import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X } from 'lucide-react'
 import { useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
 
 import {
@@ -82,6 +82,7 @@ const ChatInput = ({
   const [isChooserOpen, setIsChooserOpen] = useState(false)
   const [chooserQuery, setChooserQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+  const [showAddOptions, setShowAddOptions] = useState(false)
 
   // Register file input ref and keyboard shortcut
   useEffect(() => {
@@ -129,6 +130,7 @@ const ChatInput = ({
         } else {
           setIsChooserOpen(false)
           setChooserQuery('')
+          setShowAddOptions(false)
         }
       })
     })
@@ -148,6 +150,7 @@ const ChatInput = ({
       if (!exists) addKnowledgeAttachment(doc)
       setIsChooserOpen(false)
       setChooserQuery('')
+      setShowAddOptions(false)
       // Remove the trailing "@/query" trigger text from the editor after selection
       editor.update(() => {
         const root = $getRoot()
@@ -171,26 +174,56 @@ const ChatInput = ({
     if (!isChooserOpen) return
     const onKeyDown = (e: KeyboardEvent) => {
       if (!isChooserOpen) return
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setActiveIndex((i) => (i + 1) % Math.max(filteredDocs.length, 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setActiveIndex((i) => (i - 1 + Math.max(filteredDocs.length, 1)) % Math.max(filteredDocs.length, 1))
-      } else if (e.key === 'Enter') {
-        if (filteredDocs[activeIndex]) {
+      
+      // Calculate total items including "Add new" button
+      const totalItems = filteredDocs.length + 1
+      
+      if (showAddOptions) {
+        // Handle navigation in add options submenu
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault()
-          commitSelection(filteredDocs[activeIndex])
+          setActiveIndex((i) => i === 0 ? 1 : 0)
+        } else if (e.key === 'Enter') {
+          e.preventDefault()
+          const path = activeIndex === 0 ? '/studio/knowledge/new?type=upload' : '/studio/knowledge/new?type=url'
+          window.location.href = path
+          setIsChooserOpen(false)
+          setChooserQuery('')
+          setShowAddOptions(false)
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          setShowAddOptions(false)
+          setActiveIndex(filteredDocs.length) // Back to "Add new" button
         }
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        setIsChooserOpen(false)
-        setChooserQuery('')
+      } else {
+        // Handle navigation in main menu
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          setActiveIndex((i) => (i + 1) % totalItems)
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          setActiveIndex((i) => (i - 1 + totalItems) % totalItems)
+        } else if (e.key === 'Enter') {
+          e.preventDefault()
+          if (activeIndex < filteredDocs.length && filteredDocs[activeIndex]) {
+            // Select a document
+            commitSelection(filteredDocs[activeIndex])
+          } else {
+            // "Add new" button selected
+            setShowAddOptions(true)
+            setActiveIndex(0) // Start at first option in submenu
+          }
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          setIsChooserOpen(false)
+          setChooserQuery('')
+          setShowAddOptions(false)
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true })
-  }, [isChooserOpen, filteredDocs, activeIndex, commitSelection])
+  }, [isChooserOpen, filteredDocs, activeIndex, commitSelection, showAddOptions])
 
   const handleSubmit = () => {
     const editorContent = shadowEditor.read(() => $getRoot().getTextContent().trim())
@@ -432,44 +465,94 @@ const ChatInput = ({
 
               {isChooserOpen ? (
                 <div className="absolute bottom-16 left-3 right-3 z-50 bg-white border-2 border-neutral-200 rounded-xl shadow-[0_6px_0_hsl(var(--neutral-200))] p-1">
-                  <div className="max-h-64 overflow-auto">
-                    {filteredDocs.length > 0 ? (
-                      <>
-                        {filteredDocs.map((doc, idx) => (
-                          <button
-                            key={doc.id}
-                            type="button"
-                            className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-                              idx === activeIndex ? 'bg-neutral-100' : 'bg-white'
-                            }`}
-                            onMouseEnter={() => setActiveIndex(idx)}
-                            onClick={() => commitSelection(doc)}
-                          >
-                            {doc.title}
-                            <span className="ml-2 text-xs text-neutral-400">{doc.type}</span>
-                          </button>
-                        ))}
-                      </>
-                    ) : (
-                      <div className="px-3 py-2 text-sm text-neutral-500">
-                        No knowledge documents found
+                  {showAddOptions ? (
+                    // Add options submenu
+                    <div className="p-2">
+                      <p className="text-xs text-neutral-500 mb-2">Choose knowledge type:</p>
+                      <button
+                        type="button"
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm mb-1 flex items-center gap-2 ${
+                          activeIndex === 0 ? 'bg-neutral-100' : 'hover:bg-neutral-100'
+                        }`}
+                        onMouseEnter={() => setActiveIndex(0)}
+                        onClick={() => {
+                          window.location.href = '/studio/knowledge/new?type=upload'
+                          setIsChooserOpen(false)
+                          setChooserQuery('')
+                          setShowAddOptions(false)
+                        }}
+                      >
+                        <Upload className="size-4" />
+                        Upload Document
+                      </button>
+                      <button
+                        type="button"
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
+                          activeIndex === 1 ? 'bg-neutral-100' : 'hover:bg-neutral-100'
+                        }`}
+                        onMouseEnter={() => setActiveIndex(1)}
+                        onClick={() => {
+                          window.location.href = '/studio/knowledge/new?type=url'
+                          setIsChooserOpen(false)
+                          setChooserQuery('')
+                          setShowAddOptions(false)
+                        }}
+                      >
+                        <Globe className="size-4" />
+                        Add from Website
+                      </button>
+                    </div>
+                  ) : (
+                    // Main menu
+                    <>
+                      <div className="max-h-64 overflow-auto">
+                        {filteredDocs.length > 0 ? (
+                          <>
+                            {filteredDocs.map((doc, idx) => (
+                              <button
+                                key={doc.id}
+                                type="button"
+                                className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+                                  idx === activeIndex && !showAddOptions ? 'bg-neutral-100' : 'bg-white'
+                                }`}
+                                onMouseEnter={() => {
+                                  setActiveIndex(idx)
+                                  setShowAddOptions(false)
+                                }}
+                                onClick={() => commitSelection(doc)}
+                              >
+                                {doc.title}
+                                <span className="ml-2 text-xs text-neutral-400">{doc.type}</span>
+                              </button>
+                            ))}
+                          </>
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-neutral-500">
+                            No knowledge documents found
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="border-t border-neutral-200 mt-1 pt-1">
-                    <button
-                      type="button"
-                      className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-neutral-100 flex items-center gap-2"
-                      onClick={() => {
-                        window.open('/studio/knowledge/new', '_blank')
-                        setIsChooserOpen(false)
-                        setChooserQuery('')
-                      }}
-                    >
-                      <Plus className="size-4" />
-                      Add new knowledge document
-                    </button>
-                  </div>
+                      <div className="border-t border-neutral-200 mt-1 pt-1">
+                        <button
+                          type="button"
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
+                            activeIndex === filteredDocs.length && !showAddOptions ? 'bg-neutral-100' : 'hover:bg-neutral-100'
+                          }`}
+                          onMouseEnter={() => {
+                            setActiveIndex(filteredDocs.length)
+                            setShowAddOptions(false)
+                          }}
+                          onClick={() => {
+                            setShowAddOptions(true)
+                            setActiveIndex(0)
+                          }}
+                        >
+                          <Plus className="size-4" />
+                          Add new knowledge document
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : null}
             </div>
