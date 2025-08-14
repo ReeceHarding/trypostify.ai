@@ -444,8 +444,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
-      // New Chat: Cmd/Ctrl + N
-      if (actualMetaKey && e.key.toLowerCase() === 'n') {
+      // New Chat: Cmd/Ctrl + Shift + N (avoids conflict with browser New Window)
+      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'n') {
         e.preventDefault()
         handleNewChat()
       }
@@ -504,7 +504,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Start a new conversation</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + N</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + Shift + N</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>

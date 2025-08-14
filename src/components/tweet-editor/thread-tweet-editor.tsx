@@ -112,13 +112,26 @@ export default function ThreadTweetEditor({
     }
   }, [threadData])
 
+  const handleAddTweet = () => {
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([...threadTweets, { id: newTweetId, content: '', media: [] }])
+    
+    // Focus the new tweet after it's added
+    setTimeout(() => {
+      const newTweetRef = tweetRefs.current[newTweetId]
+      if (newTweetRef) {
+        newTweetRef.focus()
+      }
+    }, 100)
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
-      // Focus first tweet: Cmd/Ctrl + K
-      if (actualMetaKey && e.key.toLowerCase() === 'k') {
+      // Focus first tweet: Cmd/Ctrl + Shift + F (avoids conflict with browser search)
+      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         const firstTweetId = threadTweets[0]?.id
         if (firstTweetId && tweetRefs.current[firstTweetId]) {
@@ -316,19 +329,6 @@ export default function ThreadTweetEditor({
   })
 
 
-
-  const handleAddTweet = () => {
-    const newTweetId = crypto.randomUUID()
-    setThreadTweets([...threadTweets, { id: newTweetId, content: '', media: [] }])
-    
-    // Focus the new tweet after it's added
-    setTimeout(() => {
-      const newTweetRef = tweetRefs.current[newTweetId]
-      if (newTweetRef) {
-        newTweetRef.focus()
-      }
-    }, 100)
-  }
 
   const handleRemoveTweet = (id: string) => {
     setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
@@ -590,7 +590,7 @@ export default function ThreadTweetEditor({
                 type: m.type || 'image'
               })) || []}
               showFocusTooltip={index === 0}
-              focusShortcut={`${metaKey} + K`}
+              focusShortcut={`${metaKey} + Shift + F`}
             />
           </div>
         ))}

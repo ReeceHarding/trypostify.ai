@@ -565,8 +565,8 @@ function ThreadTweetContent({
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
       if (editMode) {
-        // Save: Cmd/Ctrl + S
-        if (actualMetaKey && e.key.toLowerCase() === 's' && onUpdateThread) {
+        // Save: Cmd/Ctrl + Shift + S (avoids conflict with browser Save)
+        if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 's' && onUpdateThread) {
           e.preventDefault()
           onUpdateThread()
         }
@@ -586,8 +586,8 @@ function ThreadTweetContent({
           e.preventDefault()
           onQueueThread()
         }
-        // Schedule: Cmd/Ctrl + S
-        else if (actualMetaKey && e.key.toLowerCase() === 's' && onScheduleThread) {
+        // Schedule: Cmd/Ctrl + Shift + S (avoids conflict with browser Save)
+        else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 's' && onScheduleThread) {
           e.preventDefault()
           setOpen(true)
         }
@@ -604,8 +604,8 @@ function ThreadTweetContent({
         e.preventDefault()
         setMediaLibraryOpen(true)
       }
-      // Clear/Delete: Cmd/Ctrl + D
-      else if (actualMetaKey && e.key.toLowerCase() === 'd') {
+      // Clear/Delete: Cmd/Ctrl + Shift + D (avoids conflict with browser Bookmark)
+      else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault()
         if (canDelete && onRemove) {
           onRemove()
@@ -980,7 +980,7 @@ function ThreadTweetContent({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>{canDelete ? 'Remove from thread' : 'Clear post'}</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + D</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + Shift + D</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -1035,7 +1035,7 @@ function ThreadTweetContent({
                               <TooltipContent>
                                 <div className="space-y-1">
                                   <p>Save changes</p>
-                                  <p className="text-xs text-neutral-400">{metaKey} + S</p>
+                                  <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -1148,7 +1148,7 @@ function ThreadTweetContent({
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Schedule manually</p>
-                                    <p className="text-xs text-neutral-400">{metaKey} + S</p>
+                                    <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
                                   </div>
                                 </TooltipContent>
                               </Tooltip>
