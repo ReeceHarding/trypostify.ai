@@ -185,8 +185,8 @@ export function TweetProvider({ children }: PropsWithChildren) {
 
   const setToolError = (toolName: string, error: string) => {
     setToolErrors((prev) => ({ ...prev, [toolName]: error }))
-    // Clear drafts if the three_drafts tool failed
-    if (toolName === 'three_drafts') {
+    // Clear drafts if the writeTweet tool failed
+    if (toolName === 'writeTweet') {
       setDrafts([])
     }
   }
