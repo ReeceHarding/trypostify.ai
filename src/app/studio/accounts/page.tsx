@@ -110,14 +110,14 @@ export default function AccountsPage() {
   }
 
   const { mutate: createOAuthLink, isPending: isCreatingOAuthLink } = useMutation({
-    mutationFn: async () => {
-      const res = await client.auth_router.createTwitterLink.$get({
-        action: 'add-account',
-      })
+    mutationFn: async (action: 'onboarding' | 'add-account') => {
+      const res = await client.auth_router.createTwitterLink.$get({ action })
       return await res.json()
     },
-    onError: () => {
-      toast.error('Error, please try again')
+    onError: (error: HTTPException | any) => {
+      // Surface backend message (e.g., upgrade required) instead of a generic error
+      const msg = error?.message || 'Error, please try again'
+      toast.error(msg)
     },
     onSuccess: ({ url }) => {
       window.location.href = url
@@ -300,78 +300,57 @@ export default function AccountsPage() {
             </p>
           </div>
 
-          {data?.user.plan === 'free' ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DuolingoButton
-                  size="sm"
-                  onClick={() => {
-                    toast('Please upgrade to Pro to add unlimited accounts')
-                  }}
-                  className="w-auto relative z-20 transition-all duration-200"
-                >
-                  <Lock className="size-4 mr-2" />
-                  <span className="whitespace-nowrap">Add Account</span>
-                  <ChevronDown className="size-4 ml-2" />
-                </DuolingoButton>
-              </TooltipTrigger>
-              <TooltipContent className="bg-neutral-900 text-white border-neutral-700">
-                <p className="font-medium">Upgrade to Pro to add unlimited accounts</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <DuolingoButton size="sm" className="w-auto relative z-20">
-                  <Plus className="size-4 mr-2" />
-                  <span className="whitespace-nowrap">Add Account</span>
-                  <ChevronDown className="size-4 ml-2" />
-                </DuolingoButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="p-3 border-2 shadow-xl">
-                <div className="space-y-2">
-                  <DropdownMenuItem asChild>
-                    <button
-                      onClick={() => setShowConnectDialog(true)}
-                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-twitter-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
-                    >
-                      <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
-                        <Plus className="size-5 text-neutral-600 transition-colors" />
-                      </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-neutral-900 group-hover:text-twitter-900 transition-colors">
-                          Personal Account
-                        </h4>
-                        <p className="text-sm opacity-60 leading-relaxed">
-                          Add a personal Twitter account
-                        </p>
-                      </div>
-                    </button>
-                  </DropdownMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <DuolingoButton size="sm" className="w-auto relative z-20">
+                <Plus className="size-4 mr-2" />
+                <span className="whitespace-nowrap">Add Account</span>
+                <ChevronDown className="size-4 ml-2" />
+              </DuolingoButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="p-3 border-2 shadow-xl">
+              <div className="space-y-2">
+                <DropdownMenuItem asChild>
+                  <button
+                    onClick={() => setShowConnectDialog(true)}
+                    className="flex items-center gap-4 p-4 rounded-xl hover:bg-twitter-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm"
+                  >
+                    <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
+                      <Plus className="size-5 text-neutral-600 transition-colors" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <h4 className="font-semibold text-neutral-900 group-hover:text-twitter-900 transition-colors">
+                        Personal Account
+                      </h4>
+                      <p className="text-sm opacity-60 leading-relaxed">
+                        Add a personal Twitter account
+                      </p>
+                    </div>
+                  </button>
+                </DropdownMenuItem>
 
-                  <DropdownMenuItem asChild>
-                    <button
-                      onClick={() => createInviteLink()}
-                      disabled={isCreatingInviteLink}
-                      className="flex items-center gap-4 p-4 rounded-xl hover:bg-primary-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm disabled:opacity-50"
-                    >
-                      <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
-                        <UserPlus className="size-5 text-neutral-600 transition-colors" />
-                      </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <h4 className="font-semibold text-neutral-900 group-hover:text-twitter-900 transition-colors">
-                          Delegate Access
-                        </h4>
-                        <p className="text-sm opacity-60 leading-relaxed">
-                          Add a client/brand account
-                        </p>
-                      </div>
-                    </button>
-                  </DropdownMenuItem>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+                <DropdownMenuItem asChild>
+                  <button
+                    onClick={() => createInviteLink()}
+                    disabled={isCreatingInviteLink}
+                    className="flex items-center gap-4 p-4 rounded-xl hover:bg-primary-50 transition-all cursor-pointer border-0 w-full group hover:shadow-sm disabled:opacity-50"
+                  >
+                    <div className="flex-shrink-0 size-10 bg-neutral-100 border border-neutral-900 border-opacity-10 bg-clip-padding shadow-sm rounded-md flex items-center justify-center transition-all">
+                      <UserPlus className="size-5 text-neutral-600 transition-colors" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <h4 className="font-semibold text-neutral-900 group-hover:text-twitter-900 transition-colors">
+                        Delegate Access
+                      </h4>
+                      <p className="text-sm opacity-60 leading-relaxed">
+                        Add a client/brand account
+                      </p>
+                    </div>
+                  </button>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {isLoadingAccounts ? (
@@ -436,7 +415,7 @@ export default function AccountsPage() {
                     {acc.isActive ? (
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
                         <DuolingoButton
-                          onClick={() => createOAuthLink()}
+                          onClick={() => createOAuthLink('onboarding')}
                           variant="secondary"
                           size="sm"
                           className="w-fit"
@@ -460,7 +439,7 @@ export default function AccountsPage() {
                           Switch
                         </DuolingoButton>
                         <DuolingoButton
-                          onClick={() => createOAuthLink()}
+                          onClick={() => createOAuthLink('onboarding')}
                           variant="secondary"
                           size="sm"
                           className="w-fit"
@@ -488,9 +467,17 @@ export default function AccountsPage() {
               </div>
             ))}
           </div>
-        ) : (
+            ) : (
           <div className="rounded-lg bg-white border border-dashed border-neutral-300 p-8 text-center space-y-4">
             <p className="text-neutral-600">No accounts connected yet</p>
+            <DuolingoButton
+              size="sm"
+              onClick={() => setShowConnectDialog(true)}
+              className="w-fit"
+            >
+              <Plus className="size-4 mr-2" />
+              Connect account
+            </DuolingoButton>
           </div>
         )}
       </div>
@@ -705,7 +692,7 @@ export default function AccountsPage() {
             </DuolingoButton>
             <DuolingoButton
               onClick={() => {
-                createOAuthLink()
+                createOAuthLink('add-account')
                 setShowConnectDialog(false)
               }}
               size="sm"

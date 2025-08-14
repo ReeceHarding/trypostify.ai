@@ -89,10 +89,23 @@ export const authRouter = j.router({
         throw new HTTPException(400, { message: 'Failed to create Twitter link' })
       }
 
-      if (input.action === 'add-account' && ctx.user.plan !== 'pro') {
-        throw new HTTPException(402, {
-          message: 'Upgrade to Pro to connect more accounts.',
-        })
+      // Gating rule: Free plan can connect exactly ONE account. Pro can add unlimited.
+      if (input.action === 'add-account') {
+        // Check whether the user already has at least one connected Twitter account in the DB
+        const existing = await db
+          .select({ id: account.id })
+          .from(account)
+          .where(and(eq(account.userId, ctx.user.id), eq(account.providerId, 'twitter')))
+          .limit(1)
+
+        const hasAtLeastOne = existing.length > 0
+
+        if (ctx.user.plan !== 'pro' && hasAtLeastOne) {
+          // Non-pro users attempting to add a second account must upgrade
+          throw new HTTPException(402, {
+            message: 'Upgrade to Pro to connect more accounts.',
+          })
+        }
       }
 
       try {

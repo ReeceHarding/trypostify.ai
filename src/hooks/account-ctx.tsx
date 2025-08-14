@@ -68,8 +68,9 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
 
   const { data, isPending } = useQuery({
     queryKey: ['get-active-account'],
-    // Show cached value immediately to eliminate loading delay
-    initialData: initialAccount,
+    // Use placeholderData so the query is still considered pending until the network request resolves.
+    // This prevents consumers (e.g., StudioPage) from treating "no account" as final too early and popping the onboarding again.
+    placeholderData: initialAccount,
     queryFn: async () => {
       const startedAt = Date.now()
       console.log(`[AccountProvider ${ts()}] fetching active account from API: client.settings.active_account`)
@@ -126,6 +127,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     staleTime: 1000 * 30, // Shorter stale time for faster updates
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes in memory
     refetchOnWindowFocus: false, // Avoid jarring refreshes when tab changes
+    refetchOnMount: 'always', // Ensure we always verify server state after mount
     retry: 1, // Reduce retry attempts for faster failure
     retryDelay: 500, // Faster retry
   })

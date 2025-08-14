@@ -84,11 +84,13 @@ const Page = () => {
     })
     
     // Only open onboarding if no account exists AND we're not coming from Twitter connection
-    if (!Boolean(account) && !Boolean(isLoading) && !isEditMode && !oauthOnboarding) {
+    // Guard against the OAuth redirect race by not opening when account_connected flag is present
+    const cameFromOAuth = searchParams?.get('account_connected') === 'true'
+    if (!Boolean(account) && !Boolean(isLoading) && !isEditMode && !oauthOnboarding && !cameFromOAuth) {
       console.log('[StudioPage] No account found, opening onboarding modal')
       setIsOpen(true)
     }
-  }, [account, isLoading, isEditMode, oauthOnboarding])
+  }, [account, isLoading, isEditMode, oauthOnboarding, searchParams])
 
   return (
     <>
