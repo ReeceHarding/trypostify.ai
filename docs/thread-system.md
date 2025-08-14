@@ -10,7 +10,7 @@
 2. **Position-Based Order**: `position` field (0-based) determines tweet order
 3. **Single Posts**: Have `threadId` === `id` and `position` = 0
 4. **Edit = Replace**: Updates delete and recreate all tweets in thread
-5. **Soft Delete**: Posts marked as `isPosted`, never actually deleted
+5. **Soft Delete**: Posts marked as `isPublished`, never actually deleted
 
 ## Database Schema
 
@@ -27,8 +27,8 @@
   scheduledFor: Date         // When to post (user timezone)
   scheduledUnix: bigint      // Unix ms for sorting
   qstashId: string          // QStash message ID
-  isPosted: boolean         // Already posted to Twitter/X
-  postedAt: Date            // When actually posted
+  isPublished: boolean      // Already posted to Twitter/X
+  updatedAt: Date           // When actually posted
   tweetId: string           // Twitter's ID after posting
   delayMs: number           // Delay before next tweet
 }
@@ -205,7 +205,7 @@ initialMedia={tweet.media?.map(m => ({
 - Assume single tweets have special handling (they're 1-tweet threads)
 - Store media in database (use S3 references only)
 - Use milliseconds for QStash (it expects seconds)
-- Delete posted tweets (mark as posted instead)
+- Delete posted tweets (mark as published instead)
 
 ### ALWAYS Do These
 - Group all operations by threadId
@@ -218,7 +218,7 @@ initialMedia={tweet.media?.map(m => ({
 
 **Thread not showing?**
 - Verify all tweets have same threadId
-- Check isScheduled/isPosted flags
+- Check isScheduled/isPublished flags
 - Confirm scheduledFor is set
 
 **Media missing on edit?**

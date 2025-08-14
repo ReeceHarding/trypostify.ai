@@ -112,7 +112,7 @@ export type MyUIMessage = UIMessage<
       text: string
       status: 'streaming' | 'complete'
     }
-    'tool-output': {
+    'data-tool-output': {
       text: string
       status: 'processing' | 'streaming' | 'complete'
     }

@@ -196,7 +196,7 @@ export function useAttachments() {
   const context = useContext(AttachmentsContext)
 
   if (!context) {
-    throw new Error('useChat must be used within a ChatProvider')
+    throw new Error('useAttachments must be used within an AttachmentsProvider')
   }
 
   return context
