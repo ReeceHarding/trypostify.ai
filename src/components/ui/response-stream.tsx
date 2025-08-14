@@ -30,7 +30,7 @@ export type UseTextStreamResult = {
 
 function useTextStream({
   textStream,
-  speed = 20,
+  speed = 5,
   mode = "typewriter",
   onComplete,
   fadeDuration,
@@ -89,8 +89,10 @@ function useTextStream({
       return Math.max(0, segmentDelayRef.current)
     }
 
+    // Direct mapping: speed value = milliseconds delay
+    // So speed=5 means 5ms delay (matching the documentation)
     const normalizedSpeed = Math.min(100, Math.max(1, speedRef.current))
-    return Math.max(1, Math.round(100 / Math.sqrt(normalizedSpeed)))
+    return normalizedSpeed
   }, [])
 
   const getFadeDuration = useCallback(() => {

@@ -1,4 +1,4 @@
-import { PropsWithChildren, memo } from 'react'
+import { PropsWithChildren, memo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Icons } from '../icons'
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
@@ -6,6 +6,7 @@ import { ChevronsLeft, RotateCcw } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
 import { useTweets } from '@/hooks/use-tweets'
 import { usePathname, useRouter } from 'next/navigation'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 
 export const TweetMockup = memo(
   ({
@@ -48,6 +49,25 @@ export const TweetMockup = memo(
       }
     }
 
+    const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+    const metaKey = isMac ? 'Cmd' : 'Ctrl'
+
+    // Keyboard shortcut for Apply
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+
+        // Apply: Cmd/Ctrl + Shift + E (for "Execute/Apply")
+        if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'e' && text && !isLoading) {
+          e.preventDefault()
+          apply()
+        }
+      }
+
+      window.addEventListener('keydown', handleKeyDown)
+      return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [text, isLoading, isMac])
+
     return (
       <motion.div
         variants={isLoading ? containerVariants : undefined}
@@ -72,14 +92,28 @@ export const TweetMockup = memo(
               }}
               className="flex items-center gap-2"
             >
-            <DuolingoButton
-              onClick={apply}
-              variant="secondary"
-              size="sm"
-              className="text-sm w-fit h-8 px-2"
-            >
-              <ChevronsLeft className="size-4 mr-1" /> Apply
-            </DuolingoButton>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DuolingoButton
+                    onClick={apply}
+                    variant="secondary"
+                    size="sm"
+                    className="text-sm w-fit h-8 px-2"
+                  >
+                    <ChevronsLeft className="size-4 mr-1" /> Apply
+                  </DuolingoButton>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="space-y-1">
+                    <p>Apply AI-generated content</p>
+                    <p className="text-xs text-neutral-400">
+                      {metaKey} + Shift + E
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             </motion.div>
           )}
         </div>
