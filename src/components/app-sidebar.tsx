@@ -1,7 +1,7 @@
 'use client'
 
 import { ArrowUp, History, Paperclip, Plus, RotateCcw, Square, X } from 'lucide-react'
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
 
 import {
   Sidebar,
@@ -75,10 +75,40 @@ const ChatInput = ({
 
   const { shadowEditor } = useTweets()
 
+  // File input ref for keyboard shortcut
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
   // Basic "@/" mention support for knowledge documents
   const [isChooserOpen, setIsChooserOpen] = useState(false)
   const [chooserQuery, setChooserQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+
+  // Register file input ref and keyboard shortcut
+  useEffect(() => {
+    // Find the file input element
+    const timer = setTimeout(() => {
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+      if (fileInput) {
+        fileInputRef.current = fileInput
+      }
+    }, 100)
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+      
+      // Attach files: Cmd/Ctrl + Shift + U
+      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault()
+        fileInputRef.current?.click()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      clearTimeout(timer)
+    }
+  }, [isMac])
 
   const filteredDocs = useMemo(() => {
     const docs = (knowledgeDocuments || []).filter((d) => !d.isDeleted)
@@ -348,7 +378,7 @@ const ChatInput = ({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Attach files</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + Shift + A</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + Shift + U</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -500,8 +530,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
-      // New Chat: Cmd/Ctrl + Shift + N (avoids conflict with browser New Window)
-      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+      // New Chat: Cmd/Ctrl + Alt + N (avoids conflict with browser Incognito Window)
+      if (actualMetaKey && e.altKey && e.key.toLowerCase() === 'n') {
         e.preventDefault()
         handleNewChat()
       }
@@ -570,7 +600,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Start a new conversation</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + Shift + N</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + N</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
