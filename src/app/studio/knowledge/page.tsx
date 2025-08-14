@@ -32,7 +32,6 @@ import Link from 'next/link'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Document {
   id: string
@@ -210,23 +209,11 @@ const Page = () => {
             </div>
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DuolingoButton className="w-auto">
-                        <Plus className="size-5 mr-2" />
-                        <span className="whitespace-nowrap">Add Knowledge</span>
-                        <ChevronDown className="size-4 ml-2" />
-                      </DuolingoButton>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="space-y-1">
-                        <p>Add new knowledge</p>
-                        <p className="text-xs text-neutral-400">{metaKey} + K</p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <DuolingoButton className="w-auto">
+                  <Plus className="size-5 mr-2" />
+                  <span className="whitespace-nowrap">Add Knowledge</span>
+                  <ChevronDown className="size-4 ml-2" />
+                </DuolingoButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="p-3 border-2 shadow-xl">
                 <div className="space-y-2">
