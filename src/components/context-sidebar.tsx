@@ -6,9 +6,11 @@ import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 import { ArrowLeftFromLine, ArrowRightFromLine, PanelLeft, Settings, Crown } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createSerializer, parseAsString } from 'nuqs'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
+import { useEffect } from 'react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +45,37 @@ export const LeftSidebar = () => {
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const metaKey = isMac ? 'Cmd' : 'Ctrl'
+  
+  const router = useRouter()
+
+  // Keyboard shortcuts for navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
+
+      // Navigation shortcuts
+      if (actualMetaKey && e.key >= '1' && e.key <= '5') {
+        e.preventDefault()
+        const paths = [
+          '/studio',
+          '/studio/knowledge',
+          '/studio/scheduled',
+          '/studio/posted',
+          '/studio/accounts',
+        ]
+        const index = parseInt(e.key) - 1
+        if (paths[index]) {
+          router.push({
+            pathname: paths[index],
+            search: id ? serialize({ chatId: id }) : undefined,
+          } as any)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMac, router, id])
 
   return (
     <Sidebar collapsible="icon" side="left" className="border-r border-border/40">
@@ -85,32 +118,44 @@ export const LeftSidebar = () => {
             Create
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <Link
-              href={{
-                pathname: '/studio',
-                search: serialize({ chatId: id }),
-              }}
-              className={cn(
-                buttonVariants({
-                  variant: 'ghost',
-                  className: 'w-full justify-start gap-2 px-3 py-2',
-                }),
-                pathname === '/studio' &&
-                  'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
-              )}
-            >
-              <div className="size-6 flex items-center justify-center flex-shrink-0">
-                <span aria-hidden="true" className="text-base">📝</span>
-              </div>
-              <span
-                className={cn(
-                  'transition-all opacity-0 duration-200 ease-out delay-200',
-                  isCollapsed ? 'opacity-0 w-0 overflow-hidden hidden' : 'opacity-100',
-                )}
-              >
-                Studio
-              </span>
-            </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={{
+                      pathname: '/studio',
+                      search: serialize({ chatId: id }),
+                    }}
+                    className={cn(
+                      buttonVariants({
+                        variant: 'ghost',
+                        className: 'w-full justify-start gap-2 px-3 py-2',
+                      }),
+                      pathname === '/studio' &&
+                        'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
+                    )}
+                  >
+                    <div className="size-6 flex items-center justify-center flex-shrink-0">
+                      <span aria-hidden="true" className="text-base">📝</span>
+                    </div>
+                    <span
+                      className={cn(
+                        'transition-all opacity-0 duration-200 ease-out delay-200',
+                        isCollapsed ? 'opacity-0 w-0 overflow-hidden hidden' : 'opacity-100',
+                      )}
+                    >
+                      Studio
+                    </span>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <div className="space-y-1">
+                    <p>Studio</p>
+                    <p className="text-xs text-neutral-400">{metaKey} + 1</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </SidebarGroupContent>
         </SidebarGroup>
 
