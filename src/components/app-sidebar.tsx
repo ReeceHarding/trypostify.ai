@@ -8,9 +8,8 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
-  SidebarRail,
 } from '@/components/ui/sidebar'
-import { Sidebar, useMultiSidebar } from '@/components/ui/multi-sidebar-provider'
+import { Sidebar, useMultiSidebar, SidebarRail } from '@/components/ui/multi-sidebar-provider'
 import { useAttachments } from '@/hooks/use-attachments'
 import { useChatContext } from '@/hooks/use-chat'
 import { useTweets } from '@/hooks/use-tweets'
@@ -884,7 +883,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             />
           </FileUpload>
         </SidebarFooter>
-        <SidebarRail />
+        <SidebarRail side="right" />
       </Sidebar>
 
       <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
