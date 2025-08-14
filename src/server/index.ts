@@ -46,6 +46,7 @@ const appRouter = j.mergeRouters(api, {
   auth_router: dynamic(() => import('./routers/auth-router')),
   stripe: dynamic(() => import('./routers/stripe-router')),
   media: dynamic(() => import('./routers/media-router')),
+  stats: dynamic(() => import('./routers/stats-router')),
 })
 
 export type AppRouter = typeof appRouter

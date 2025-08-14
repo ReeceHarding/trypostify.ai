@@ -569,8 +569,8 @@ export default function ThreadTweetEditor({
 
   // Render the tweets
   return (
-    <div className={cn('relative z-10 w-full rounded-lg font-sans', className)}>
-      <div className="space-y-4 w-full">
+    <div className={cn('relative z-10 w-full rounded-lg font-sans min-w-0', className)}>
+      <div className="space-y-3 lg:space-y-4 w-full">
         {threadTweets.map((tweet, index) => (
           <div key={tweet.id} className="relative" data-tweet-id={tweet.id}>
             {/* Connecting line between tweets */}

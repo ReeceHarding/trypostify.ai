@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Script from 'next/script'
 import { redirect } from 'next/navigation'
 import { HOMEPAGE_VIDEO, HOMEPAGE_CONTENT } from '@/constants/homepage'
+import { client } from '@/lib/client'
 
 const Page = async () => {
   console.log('[Homepage] Checking user session at', new Date().toISOString())
@@ -29,6 +30,23 @@ const Page = async () => {
   }
   
   console.log('[Homepage] User not signed in, showing homepage content')
+
+  // Fetch user count for trusted by section
+  let userCount = HOMEPAGE_CONTENT.trustedByCount // fallback to hardcoded value
+  try {
+    console.log('[Homepage] Fetching user count...')
+    const statsResponse = await client.stats.getUserCount.$get()
+    if (statsResponse.ok) {
+      const data = await statsResponse.json()
+      userCount = data.formattedCount
+      console.log('[Homepage] User count fetched successfully:', userCount)
+    } else {
+      console.warn('[Homepage] Failed to fetch user count, using fallback')
+    }
+  } catch (error) {
+    console.error('[Homepage] Error fetching user count:', error)
+    // Keep using fallback value
+  }
 
   return (
     <>
@@ -126,7 +144,7 @@ const Page = async () => {
                         </div>
                         <p className="text-base text-neutral-600">
                           Trusted by{' '}
-                          <span className="font-medium text-neutral-900">{HOMEPAGE_CONTENT.trustedByCount}</span> founders
+                          <span className="font-medium text-neutral-900">{userCount}</span> founders
                         </p>
                       </div>
                     </div>
