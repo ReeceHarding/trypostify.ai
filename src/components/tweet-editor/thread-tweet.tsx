@@ -581,8 +581,8 @@ function ThreadTweetContent({
           e.preventDefault()
           handlePostClick()
         }
-        // Queue: Cmd/Ctrl + Shift + Q (avoids conflict with macOS Quit)
-        else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'q' && onQueueThread) {
+        // Queue: Cmd/Ctrl + E (for "Enqueue")
+        else if (actualMetaKey && !e.shiftKey && e.key.toLowerCase() === 'e' && onQueueThread) {
           e.preventDefault()
           onQueueThread()
         }
@@ -1093,7 +1093,7 @@ function ThreadTweetContent({
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Add to next queue slot</p>
-                                    <p className="text-xs text-neutral-400">{metaKey} + Shift + Q</p>
+                                    <p className="text-xs text-neutral-400">{metaKey} + E</p>
                                   </div>
                                 </TooltipContent>
                               </Tooltip>
