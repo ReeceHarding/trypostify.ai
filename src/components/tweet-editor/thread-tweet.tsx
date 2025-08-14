@@ -1191,7 +1191,7 @@ function ThreadTweetContent({
       <Dialog open={showPostConfirmModal} onOpenChange={setShowPostConfirmModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Post Now?</DialogTitle>
+            <DialogTitle>Post?</DialogTitle>
             <DialogDescription>
               Are you sure you want to post this immediately?
             </DialogDescription>
@@ -1219,7 +1219,7 @@ function ThreadTweetContent({
                 Cancel
               </DuolingoButton>
               <DuolingoButton onClick={handleConfirmPost}>
-                Post Now
+                Post
               </DuolingoButton>
             </div>
           </DialogFooter>

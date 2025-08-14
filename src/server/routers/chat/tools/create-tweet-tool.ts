@@ -13,7 +13,8 @@ export const createTweetTool = (
   account: Account,
   style: Style,
   hasXPremium: boolean,
-  conversationContext?: string
+  conversationContext?: string,
+  websiteContent?: any[]
 ) => {
   return tool({
     description: 'Write a tweet based on user instruction',

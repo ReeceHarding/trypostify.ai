@@ -226,7 +226,7 @@ const Page = () => {
               ) : (
                 <>
                   <Trash2 className="size-4 mr-2" />
-                  Delete my account
+                  Delete
                 </>
               )}
             </DuolingoButton>

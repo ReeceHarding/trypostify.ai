@@ -359,13 +359,14 @@ export const chatRouter = j.router({
             })
           }
 
-          // Create writeTweet tool with conversation context
+          // Create writeTweet tool with conversation context and website content
           const writeTweet = createTweetTool(
             writer, 
             accountData, 
             style, 
             user.hasXPremium || false,
-            conversationContext
+            conversationContext,
+            websiteContent
           )
 
           // Log attachment composition for debugging

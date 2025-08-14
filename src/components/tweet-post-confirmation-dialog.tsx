@@ -71,7 +71,7 @@ export default function TweetPostConfirmationDialog({
           </DuolingoButton>
           <DuolingoButton size="sm" onClick={handleConfirm} disabled={isPosting}>
             <Icons.twitter className="size-4 mr-2" />
-            {isPosting ? 'Posting...' : 'Post Now'}
+            {isPosting ? 'Posting...' : 'Post'}
           </DuolingoButton>
         </div>
       </DialogContent>

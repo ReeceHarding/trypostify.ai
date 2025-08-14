@@ -336,34 +336,67 @@ const ChatInput = ({
 
               <div className="flex items-center justify-between px-3 pb-3">
                 <div className="flex gap-1.5 items-center">
-                  <FileUploadTrigger asChild>
-                    <DuolingoButton type="button" variant="secondary" size="icon">
-                      <Paperclip className="text-neutral-600 size-5" />
-                    </DuolingoButton>
-                  </FileUploadTrigger>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <FileUploadTrigger asChild>
+                          <DuolingoButton type="button" variant="secondary" size="icon">
+                            <Paperclip className="text-neutral-600 size-5" />
+                          </DuolingoButton>
+                        </FileUploadTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>Attach files</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + Shift + A</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
 
                   <KnowledgeSelector onSelectDocument={handleAddKnowledgeDoc} />
                 </div>
 
                 {disabled ? (
-                  <DuolingoButton
-                    onClick={onStop}
-                    variant="icon"
-                    size="icon"
-                    aria-label="Stop message"
-                  >
-                    <Square className="size-3 fill-white" />
-                  </DuolingoButton>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DuolingoButton
+                          onClick={onStop}
+                          variant="icon"
+                          size="icon"
+                          aria-label="Stop message"
+                        >
+                          <Square className="size-3 fill-white" />
+                        </DuolingoButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Stop generating</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 ) : (
-                  <DuolingoButton
-                    disabled={hasUploading}
-                    onClick={handleSubmit}
-                    variant="icon"
-                    size="icon"
-                    aria-label="Send message"
-                  >
-                    <ArrowUp className="size-5" />
-                  </DuolingoButton>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DuolingoButton
+                          disabled={hasUploading}
+                          onClick={handleSubmit}
+                          variant="icon"
+                          size="icon"
+                          aria-label="Send message"
+                        >
+                          <ArrowUp className="size-5" />
+                        </DuolingoButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>Send message</p>
+                          <p className="text-xs text-neutral-400">Enter</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
               </div>
 
@@ -477,11 +510,21 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         e.preventDefault()
         editor.focus()
       }
+      // History: Cmd/Ctrl + H
+      else if (actualMetaKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault()
+        setIsHistoryOpen(true)
+      }
+      // Close sidebar: Cmd/Ctrl + B
+      else if (actualMetaKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        toggleSidebar()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isMac, handleNewChat, editor])
+  }, [isMac, handleNewChat, editor, toggleSidebar])
 
   const { setId } = useChatContext()
 
@@ -544,7 +587,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     </DuolingoButton>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Open chat history</p>
+                    <div className="space-y-1">
+                      <p>Open chat history</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + H</p>
+                    </div>
                   </TooltipContent>
                 </Tooltip>
 
@@ -560,7 +606,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                     </DuolingoButton>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Close sidebar</p>
+                    <div className="space-y-1">
+                      <p>Close sidebar</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + B</p>
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

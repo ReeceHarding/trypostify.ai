@@ -39,6 +39,10 @@ export const LeftSidebar = () => {
   const isCollapsed = state === 'collapsed'
 
   const { toggleSidebar } = useSidebar()
+  
+  // Detect OS for keyboard shortcuts
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const metaKey = isMac ? 'Cmd' : 'Ctrl'
 
   return (
     <Sidebar collapsible="icon" side="left" className="border-r border-border/40">

@@ -434,7 +434,7 @@ export default function TweetQueue() {
                                   <DialogTrigger>
                                     <Send className="size-4 mr-1" />
                                     <div className="flex items-start flex-col">
-                                      <p>Post Now</p>
+                                      <p>Post</p>
                                       <p className="text-xs text-neutral-500">
                                         {skipPostConfirmation
                                           ? 'Tweet will be posted immediately'
@@ -531,7 +531,7 @@ export default function TweetQueue() {
                                   }}
                                 >
                                   <Icons.twitter className="size-4 mr-2" />
-                                  {isPosting || isPostingThread ? 'Posting...' : 'Post Now'}
+                                  {isPosting || isPostingThread ? 'Posting...' : 'Post'}
                                 </DuolingoButton>
                               </DialogFooter>
                             </DialogContent>
