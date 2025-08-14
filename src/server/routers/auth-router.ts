@@ -89,9 +89,9 @@ export const authRouter = j.router({
         throw new HTTPException(400, { message: 'Failed to create Twitter link' })
       }
 
-      // Gating rule: Free plan can connect exactly ONE account. Pro can add unlimited.
+      // All users can now connect unlimited accounts
       if (input.action === 'add-account') {
-        // Check whether the user already has at least one connected Twitter account in the DB
+        // Log account connection attempt for monitoring
         const existing = await db
           .select({ id: account.id })
           .from(account)
@@ -99,13 +99,7 @@ export const authRouter = j.router({
           .limit(1)
 
         const hasAtLeastOne = existing.length > 0
-
-        if (ctx.user.plan !== 'pro' && hasAtLeastOne) {
-          // Non-pro users attempting to add a second account must upgrade
-          throw new HTTPException(402, {
-            message: 'Upgrade to Pro to connect more accounts.',
-          })
-        }
+        console.log(`[AUTH_ROUTER] User ${ctx.user.email} connecting additional account (has existing: ${hasAtLeastOne})`)
       }
 
       try {
@@ -158,11 +152,8 @@ export const authRouter = j.router({
     }),
 
   createInviteLink: privateProcedure.query(async ({ c, input, ctx }) => {
-    if (ctx.user.plan !== 'pro') {
-      throw new HTTPException(402, {
-        message: 'Upgrade to Pro to connect more accounts.',
-      })
-    }
+    // All users can now create invite links
+    console.log(`[AUTH_ROUTER] User ${ctx.user.email} creating invite link`)
 
     const inviteId = nanoid()
 

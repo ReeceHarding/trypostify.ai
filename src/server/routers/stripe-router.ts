@@ -181,12 +181,7 @@ export const stripeRouter = j.router({
   ),
 
   subscription: privateProcedure.query(async ({ c, ctx }) => {
-    const { user } = ctx
-
-    if (user.plan === 'pro') {
-      return c.json({ status: 'active' })
-    }
-
-    return c.json({ status: 'inactive' })
+    // All users are now pro, so always return active status
+    return c.json({ status: 'active' })
   }),
 })

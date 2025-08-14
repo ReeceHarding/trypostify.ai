@@ -142,7 +142,7 @@ const Page = () => {
               <p className="text-sm text-neutral-500">{data?.user.email}</p>
             </div>
             <DuolingoBadge className="mb-6 px-3">
-              {data?.user.plan === 'free' ? 'Free Plan' : 'Pro Plan'}
+              Pro Plan
             </DuolingoBadge>
           </div>
 
@@ -171,20 +171,15 @@ const Page = () => {
             </div> */}
             <div className="flex flex-col items-center justify-center gap-2">
               {/* <Separator className="my-4" /> */}
-              {data?.user.plan === 'free' ? (
-                <p className="text-sm opacity-60">
-                  Get unlimited access to Postify for $20/mo - cancel anytime.
-                </p>
-              ) : null}
-              {data?.user.plan === 'free' ? <UpgradeDrawer /> : null}
-              {data?.user.plan === 'pro' ? (
-                <DuolingoButton
-                  onClick={() => createBillingPortalUrl()}
-                  loading={isCreatingBillingPortalUrl}
-                >
-                  Manage plan
-                </DuolingoButton>
-              ) : null}
+              <p className="text-sm opacity-60">
+                You have unlimited access to all features!
+              </p>
+              <DuolingoButton
+                onClick={() => createBillingPortalUrl()}
+                loading={isCreatingBillingPortalUrl}
+              >
+                Manage plan
+              </DuolingoButton>
             </div>
           </div>
         </div>

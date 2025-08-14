@@ -28,7 +28,11 @@ export const Messages = memo(
     const visibleMessages = useMemo(
       () =>
         messages.filter((message) =>
-          message.parts.some((part) => part.type === 'text' && Boolean(part.text)),
+          message.parts.some((part) => 
+            (part.type === 'text' && Boolean(part.text)) ||
+            part.type === 'data-tool-output' ||
+            part.type === 'tool-readWebsiteContent'
+          ),
         ),
       [messages],
     )

@@ -181,10 +181,8 @@ export const chatRouter = j.router({
       const { user } = ctx
       const { id, message } = input as { message: MyUIMessage; id: string }
 
-      const limiter =
-        user.plan === 'pro'
-          ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(80, '4h') })
-          : new Ratelimit({ redis, limiter: Ratelimit.fixedWindow(5, '1d') })
+      // All users now have pro-level rate limiting
+      const limiter = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(80, '4h') })
 
       const [account, history, parsedAttachments, limitResult] = await Promise.all([
         getAccount({ email: user.email }),
@@ -199,15 +197,9 @@ export const chatRouter = j.router({
         const { success } = limitResult
 
         if (!success) {
-          if (user.plan === 'pro') {
-            throw new HTTPException(429, {
-              message: `You've reached your hourly message limit. Please try again in a few hours.`,
-            })
-          } else {
-            throw new HTTPException(429, {
-              message: 'Free plan limit reached, please upgrade to continue.',
-            })
-          }
+          throw new HTTPException(429, {
+            message: `You've reached your hourly message limit. Please try again in a few hours.`,
+          })
         }
       }
 

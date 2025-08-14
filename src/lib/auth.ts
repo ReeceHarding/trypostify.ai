@@ -84,7 +84,7 @@ function initializeAuth() {
     },
     user: {
       additionalFields: {
-        plan: { type: 'string', defaultValue: 'free' },
+        plan: { type: 'string', defaultValue: 'pro' },
         stripeId: { type: 'string', defaultValue: null, required: false },
         hadTrial: { type: 'boolean', defaultValue: false, required: true },
         hasXPremium: { type: 'boolean', defaultValue: false, required: true },
