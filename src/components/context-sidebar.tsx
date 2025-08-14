@@ -12,15 +12,14 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import {
-  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
-  useSidebar,
 } from './ui/sidebar'
+import { Sidebar, useMultiSidebar } from './ui/multi-sidebar-provider'
 import { Icons } from './icons'
 
 const searchParams = {
@@ -31,7 +30,8 @@ const searchParams = {
 const serialize = createSerializer(searchParams)
 
 export const LeftSidebar = () => {
-  const { state } = useSidebar()
+  const { leftSidebar } = useMultiSidebar()
+  const { state, toggleSidebar } = leftSidebar
   const { data } = authClient.useSession()
 
   const pathname = usePathname()
@@ -39,8 +39,6 @@ export const LeftSidebar = () => {
   const { id } = useChatContext()
 
   const isCollapsed = state === 'collapsed'
-
-  const { toggleSidebar } = useSidebar()
   
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0

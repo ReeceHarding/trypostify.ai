@@ -4,14 +4,13 @@ import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X 
 import { useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
 
 import {
-  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarRail,
-  useSidebar,
 } from '@/components/ui/sidebar'
+import { Sidebar, useMultiSidebar } from '@/components/ui/multi-sidebar-provider'
 import { useAttachments } from '@/hooks/use-attachments'
 import { useChatContext } from '@/hooks/use-chat'
 import { useTweets } from '@/hooks/use-tweets'
@@ -569,7 +568,8 @@ const ChatInput = ({
 }
 
 export function AppSidebar({ children }: { children: React.ReactNode }) {
-  const { toggleSidebar } = useSidebar()
+  const { rightSidebar } = useMultiSidebar()
+  const { toggleSidebar } = rightSidebar
   const router = useRouter()
   const searchParams = useSearchParams()
   const [editor] = useLexicalComposerContext()
