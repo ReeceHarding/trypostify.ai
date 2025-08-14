@@ -138,8 +138,7 @@ export default function ThreadTweetEditor({
       toast.success('Thread posted successfully!')
       fire()
       
-      // Clear the thread
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      // No need to clear here since we clear immediately on click
       
       if (data.threadUrl) {
         window.open(data.threadUrl, '_blank')
@@ -180,8 +179,7 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      // Clear the thread
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      // No need to clear here since we clear immediately on click
       router.push('/studio/scheduled')
     },
   })
@@ -204,8 +202,7 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      // Clear the thread
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      // No need to clear here since we clear immediately on click
       
       // Navigate to the queue page - no need for a toast since we're redirecting
       router.push('/studio/scheduled')
@@ -276,10 +273,16 @@ export default function ThreadTweetEditor({
 
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
+    // Store current content in case we need to restore on error
+    const currentTweets = [...threadTweets]
+    
+    // Clear content immediately when user clicks post
+    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+
     try {
       // Post thread immediately with combined mutation
       const result = await postThreadMutation.mutateAsync(
-        threadTweets.map((tweet, index) => ({
+        currentTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
@@ -287,10 +290,12 @@ export default function ThreadTweetEditor({
       )
       
       posthog.capture('thread_posted', {
-        tweet_count: threadTweets.length,
+        tweet_count: currentTweets.length,
         thread_id: result.threadId,
       })
     } catch (error) {
+      // Restore content on error so user doesn't lose their work
+      setThreadTweets(currentTweets)
       // Already handled by mutation onError
     }
   }
@@ -367,10 +372,16 @@ export default function ThreadTweetEditor({
 
     posthog.capture('thread_queue_started', { tweet_count: threadTweets.length })
 
+    // Store current content in case we need to restore on error
+    const currentTweets = [...threadTweets]
+    
+    // Clear content immediately when user clicks queue
+    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+
     try {
       // Create thread first
       const createResult = await client.tweet.createThread.$post({
-        tweets: threadTweets.map((tweet, index) => ({
+        tweets: currentTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
@@ -395,11 +406,13 @@ export default function ThreadTweetEditor({
       
       posthog.capture('thread_queued', {
         thread_id: threadId,
-        tweet_count: threadTweets.length,
+        tweet_count: currentTweets.length,
       })
       
       toast.success('Thread added to queue!')
     } catch (error) {
+      // Restore content on error so user doesn't lose their work
+      setThreadTweets(currentTweets)
       console.error('[ThreadTweetEditor] Failed to queue thread:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
     }
