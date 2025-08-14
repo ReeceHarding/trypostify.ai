@@ -171,86 +171,122 @@ export const LeftSidebar = () => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="flex flex-col gap-1">
-              <Link
-                href={{
-                  pathname: '/studio/knowledge',
-                  search: serialize({ chatId: id }),
-                }}
-                className={cn(
-                  buttonVariants({
-                    variant: 'ghost',
-                    className: 'justify-start gap-2 px-3 py-2',
-                  }),
-                  pathname.includes('/studio/knowledge') &&
-                    'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
-                )}
-              >
-                <div className="size-6 flex items-center justify-center flex-shrink-0">
-                  <span aria-hidden="true" className="text-base">🧠</span>
-                </div>
-                <span
-                  className={cn(
-                    'transition-all duration-200 ease-out',
-                    isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
-                  )}
-                >
-                  Knowledge Base
-                </span>
-              </Link>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={{
+                        pathname: '/studio/knowledge',
+                        search: serialize({ chatId: id }),
+                      }}
+                      className={cn(
+                        buttonVariants({
+                          variant: 'ghost',
+                          className: 'justify-start gap-2 px-3 py-2',
+                        }),
+                        pathname.includes('/studio/knowledge') &&
+                          'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
+                      )}
+                    >
+                      <div className="size-6 flex items-center justify-center flex-shrink-0">
+                        <span aria-hidden="true" className="text-base">🧠</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'transition-all duration-200 ease-out',
+                          isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
+                        )}
+                      >
+                        Knowledge Base
+                      </span>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <div className="space-y-1">
+                      <p>Knowledge Base</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + 2</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-              <Link
-                href={{
-                  pathname: '/studio/scheduled',
-                  search: serialize({ chatId: id }),
-                }}
-                className={cn(
-                  buttonVariants({
-                    variant: 'ghost',
-                    className: 'justify-start gap-2 px-3 py-2',
-                  }),
-                  pathname === '/studio/scheduled' &&
-                    'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
-                )}
-              >
-                <div className="size-6 flex items-center justify-center flex-shrink-0">
-                  <span aria-hidden="true" className="text-base">🗓️</span>
-                </div>
-                <span
-                  className={cn(
-                    'transition-all duration-200 ease-out',
-                    isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
-                  )}
-                >
-                  Schedule
-                </span>
-              </Link>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={{
+                        pathname: '/studio/scheduled',
+                        search: serialize({ chatId: id }),
+                      }}
+                      className={cn(
+                        buttonVariants({
+                          variant: 'ghost',
+                          className: 'justify-start gap-2 px-3 py-2',
+                        }),
+                        pathname === '/studio/scheduled' &&
+                          'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
+                      )}
+                    >
+                      <div className="size-6 flex items-center justify-center flex-shrink-0">
+                        <span aria-hidden="true" className="text-base">🗓️</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'transition-all duration-200 ease-out',
+                          isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
+                        )}
+                      >
+                        Schedule
+                      </span>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <div className="space-y-1">
+                      <p>Schedule</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + 3</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-              <Link
-                href={{
-                  pathname: '/studio/posted',
-                  search: serialize({ chatId: id }),
-                }}
-                className={cn(
-                  buttonVariants({
-                    variant: 'ghost',
-                    className: 'justify-start gap-2 px-3 py-2',
-                  }),
-                  pathname === '/studio/posted' &&
-                    'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
-                )}
-              >
-                <div className="size-6 flex items-center justify-center flex-shrink-0">
-                  <span aria-hidden="true" className="text-base">📤</span>
-                </div>
-                <span
-                  className={cn(
-                    'transition-all duration-200 ease-out',
-                    isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
-                  )}
-                >
-                  Posted
-                </span>
-              </Link>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={{
+                        pathname: '/studio/posted',
+                        search: serialize({ chatId: id }),
+                      }}
+                      className={cn(
+                        buttonVariants({
+                          variant: 'ghost',
+                          className: 'justify-start gap-2 px-3 py-2',
+                        }),
+                        pathname === '/studio/posted' &&
+                          'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
+                      )}
+                    >
+                      <div className="size-6 flex items-center justify-center flex-shrink-0">
+                        <span aria-hidden="true" className="text-base">📤</span>
+                      </div>
+                      <span
+                        className={cn(
+                          'transition-all duration-200 ease-out',
+                          isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
+                        )}
+                      >
+                        Posted
+                      </span>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <div className="space-y-1">
+                      <p>Posted</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + 4</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -266,32 +302,44 @@ export const LeftSidebar = () => {
             Account
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <Link
-              href={{
-                pathname: '/studio/accounts',
-                search: serialize({ chatId: id }),
-              }}
-              className={cn(
-                buttonVariants({
-                  variant: 'ghost',
-                  className: 'w-full justify-start gap-2 px-3 py-2',
-                }),
-                pathname.includes('/studio/accounts') &&
-                  'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
-              )}
-            >
-              <div className="size-6 flex items-center justify-center flex-shrink-0">
-                <span aria-hidden="true" className="text-base">👤</span>
-              </div>
-              <span
-                className={cn(
-                  'transition-all duration-200 ease-out',
-                  isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
-                )}
-              >
-                Accounts
-              </span>
-            </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={{
+                      pathname: '/studio/accounts',
+                      search: serialize({ chatId: id }),
+                    }}
+                    className={cn(
+                      buttonVariants({
+                        variant: 'ghost',
+                        className: 'w-full justify-start gap-2 px-3 py-2',
+                      }),
+                      pathname.includes('/studio/accounts') &&
+                        'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
+                    )}
+                  >
+                    <div className="size-6 flex items-center justify-center flex-shrink-0">
+                      <span aria-hidden="true" className="text-base">👤</span>
+                    </div>
+                    <span
+                      className={cn(
+                        'transition-all duration-200 ease-out',
+                        isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100',
+                      )}
+                    >
+                      Accounts
+                    </span>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <div className="space-y-1">
+                    <p>Accounts</p>
+                    <p className="text-xs text-neutral-400">{metaKey} + 5</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
