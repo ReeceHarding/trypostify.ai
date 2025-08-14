@@ -67,7 +67,8 @@ Use this context to understand what the user is referring to when creating the t
 ` : ''}
 
 STYLE GUIDE:
-${JSON.stringify(style, null, 2)}
+${style.prompt ? `Custom Instructions: ${style.prompt}\n` : ''}
+Example Tweets: ${style.tweets?.slice(0, 3).map(t => t.text).join('\n')}
 
 CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
 
@@ -107,7 +108,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
         type: 'data-tool-output',
         id: generationId,
         data: {
-          text: 'Sorry, I encountered an error while creating your tweet. Please try again.',
+          text: `Sorry, I encountered an error while creating your tweet: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
           status: 'error',
         },
       })

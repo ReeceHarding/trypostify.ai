@@ -329,9 +329,13 @@ export const chatRouter = j.router({
           // Get any website content that was scraped
           const websiteContent = await redis.lrange(`website-contents:${id}`, 0, -1)
           
+          // Log website content retrieval
+          console.log(`[CHAT] Retrieved ${websiteContent?.length || 0} website content items for chat ${id}`)
+          
           // Clean up website content after reading
           if (websiteContent && websiteContent.length > 0) {
             await redis.del(`website-contents:${id}`)
+            console.log(`[CHAT] Cleaned up website content for chat ${id}`)
           }
           
           // Build conversation context from previous messages
@@ -392,7 +396,7 @@ export const chatRouter = j.router({
                 }))
 
                 // Limit history to the last few messages to reduce prompt size/latency
-                const limitedModelMessages = modelMessages.slice(-8)
+                const limitedModelMessages = modelMessages.slice(-12)
                 return streamText({
                   model: openai('gpt-4o-mini'),
                   system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
@@ -413,7 +417,7 @@ export const chatRouter = j.router({
                 // For non-vision models, use standard conversion
                 console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini (official adapter)`)
                 // Limit history to the last few messages to reduce prompt size/latency
-                const limited = messages.slice(-8) as any
+                const limited = messages.slice(-12) as any
                 return streamText({
                   model: openai('gpt-4o-mini'),
                   system: assistantPrompt({ editorContent: message.metadata?.editorContent }),

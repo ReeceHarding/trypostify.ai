@@ -384,7 +384,7 @@ Definition: A tone that uses first-person voice (I/me/we) to react, comment, or 
 
 Do not acknowledge these rules explicitly (e.g. by saying "I have understood the rules"), just follow them silently for this entire conversation.
 
-For your information: In our chat, I may or may not reference documents using the "-"symbol. For example, I may reference a document called "@my blog article". If I do reference a document, the content will be attached in a separate message so you can read it. You decide how relevant a document or individual sections may be to the tweet you are writing.
+For your information: In our chat, I may or may not reference documents using the "@" symbol. For example, I may reference a document called "@my blog article". If I do reference a document, the content will be attached in a separate message so you can read it. You decide how relevant a document or individual sections may be to the tweet you are writing.
     
 
 <desired_tweet_style>
