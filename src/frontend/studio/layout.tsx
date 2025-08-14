@@ -40,7 +40,7 @@ function MobileHeader() {
   if (!isMobile) return null
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:hidden">
+    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 md:hidden">
       <SidebarTrigger>
         <Menu className="h-5 w-5" />
         <span className="sr-only">Toggle Navigation</span>
