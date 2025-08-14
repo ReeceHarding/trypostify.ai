@@ -26,14 +26,21 @@ export const Messages = memo(
     )
 
     const visibleMessages = useMemo(
-      () =>
-        messages.filter((message) =>
-          message.parts.some((part) => 
+      () => {
+        console.log('[Messages] Total messages:', messages.length)
+        const filtered = messages.filter((message) => {
+          const hasVisiblePart = message.parts.some((part) => 
             (part.type === 'text' && Boolean(part.text)) ||
             part.type === 'data-tool-output' ||
             part.type === 'tool-readWebsiteContent'
-          ),
-        ),
+          )
+          console.log('[Messages] Message visible:', message.id, hasVisiblePart, 
+            'parts:', message.parts.map(p => ({ type: p.type, hasText: p.type === 'text' ? Boolean(p.text) : 'N/A' })))
+          return hasVisiblePart
+        })
+        console.log('[Messages] Visible messages:', filtered.length)
+        return filtered
+      },
       [messages],
     )
 
@@ -44,7 +51,10 @@ export const Messages = memo(
           (status === 'streaming' &&
             !Boolean(
               messages[messages.length - 1]?.parts.some(
-                (part) => part.type === 'text' && Boolean(part.text),
+                (part) => 
+                  (part.type === 'text' && Boolean(part.text)) ||
+                  part.type === 'data-tool-output' ||
+                  part.type === 'tool-readWebsiteContent'
               ),
             )))
       )
