@@ -1016,7 +1016,7 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-2 md:flex-row flex-col md:gap-2 gap-3">
+                <div className="flex items-center gap-2">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>
@@ -1028,7 +1028,7 @@ function ThreadTweetContent({
                               <TooltipTrigger asChild>
                                 <DuolingoButton
                                   variant="secondary"
-                                  className="h-11 w-full md:w-auto"
+                                  className="h-11 px-4 whitespace-nowrap"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
@@ -1048,7 +1048,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 w-full md:w-auto"
+                                  className="h-11 px-4 whitespace-nowrap"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
@@ -1073,7 +1073,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 w-full md:w-auto"
+                                  className="h-11 px-4 whitespace-nowrap"
                                   variant="secondary"
                                   onClick={handlePostClick}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
@@ -1097,14 +1097,14 @@ function ThreadTweetContent({
                             </Tooltip>
                           </TooltipProvider>
 
-                          <div className="flex md:flex-row flex-col md:gap-0 gap-2">
+                          <div className="flex items-stretch">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <DuolingoButton
                                     loading={isPosting}
                                     disabled={mediaFiles.some((f) => f.uploading)}
-                                    className="h-11 px-3 md:rounded-r-none md:border-r-0 rounded border w-full md:w-auto"
+                                    className="h-11 px-3 rounded-l-full border-r-0 whitespace-nowrap"
                                     onClick={() => {
                                       if (onQueueThread) {
                                         onQueueThread()
@@ -1131,7 +1131,7 @@ function ThreadTweetContent({
                                         loading={isPosting}
                                         disabled={mediaFiles.some((f) => f.uploading)}
                                         size="icon"
-                                        className="h-11 w-14 md:rounded-l-none md:border-l rounded border md:w-14 w-full"
+                                        className="h-11 w-12 rounded-r-full border-l-0"
                                       >
                                         <ChevronDown className="size-4" />
                                         <span className="sr-only">Schedule manually</span>
