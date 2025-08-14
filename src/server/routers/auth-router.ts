@@ -279,13 +279,24 @@ export const authRouter = j.router({
 
         console.log('[AUTH_ROUTER] Successfully updated database tokens for existing account:', existingAccount.id)
 
+        // Update Redis with fresh profile data in case it changed
+        const updatedAccount = {
+          ...existingAccount,
+          username: userProfile.screen_name,
+          name: userProfile.name,
+          profile_image_url: userProfile.profile_image_url_https,
+          verified: data.verified,
+        }
+        
+        await redis.json.set(`account:${user.email}:${existingAccount.id}`, '$', updatedAccount)
+
         // Always set the active account when returning from OAuth for existing accounts
         try {
-          await redis.json.set(`active-account:${user.email}`, '$', existingAccount)
-          console.log('[AUTH_ROUTER] Set active-account for existing account', {
+          await redis.json.set(`active-account:${user.email}`, '$', updatedAccount)
+          console.log('[AUTH_ROUTER] Set active-account for existing account with updated profile', {
             email: user.email,
-            id: existingAccount?.id,
-            username: existingAccount?.username,
+            id: updatedAccount.id,
+            username: updatedAccount.username,
           })
         } catch (e) {
           console.error('[AUTH_ROUTER] Failed to set active-account for existing account', e)

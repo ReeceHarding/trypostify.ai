@@ -63,27 +63,33 @@ export const settingsRouter = j.router({
       const { user } = ctx
       const { accountId } = input
 
-      const activeAccount = await redis.json.get<Account>(`active-account:${user.email}`)
-
-      if (activeAccount?.id === accountId) {
-        await redis.del(`active-account:${user.email}`)
-      }
-
+      // First verify the account exists in DB and belongs to this user
       const [dbAccount] = await db
         .select()
         .from(accountSchema)
         .where(and(eq(accountSchema.userId, user.id), eq(accountSchema.id, accountId)))
 
-      if (dbAccount) {
-        await db.delete(accountSchema).where(eq(accountSchema.id, accountId))
+      if (!dbAccount) {
+        throw new HTTPException(404, { message: 'Account not found' })
       }
 
-      await redis.json.del(`account:${user.email}:${accountId}`)
-      // Also remove any style data cached for this account
+      // Delete from database first (source of truth)
+      await db.delete(accountSchema).where(eq(accountSchema.id, accountId))
+
+      // Then clean up Redis caches (best effort)
       try {
+        const activeAccount = await redis.json.get<Account>(`active-account:${user.email}`)
+        if (activeAccount?.id === accountId) {
+          await redis.del(`active-account:${user.email}`)
+        }
+
+        await redis.json.del(`account:${user.email}:${accountId}`)
+        
+        // Also remove any style data cached for this account
         await redis.json.del(`style:${user.email}:${accountId}`)
       } catch (err) {
-        console.log('[settings.delete_account] style json del failed (may be absent)', {
+        // Log but don't fail - Redis is just cache
+        console.log('[settings.delete_account] redis cleanup error (non-critical)', {
           email: user.email,
           accountId,
           err,
@@ -96,9 +102,13 @@ export const settingsRouter = j.router({
 
   list_accounts: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
-    const accountIds = await db
+    
+    // Get all accounts from DB (source of truth)
+    const dbAccounts = await db
       .select({
         id: accountSchema.id,
+        accessToken: accountSchema.accessToken,
+        accessSecret: accountSchema.accessSecret,
       })
       .from(accountSchema)
       .where(
@@ -109,19 +119,30 @@ export const settingsRouter = j.router({
     const activeAccount = await redis.json.get<Account>(`active-account:${user.email}`)
 
     const accounts = await Promise.all(
-      accountIds.map(async (accountRecord) => {
-        const accountData = await redis.json.get<Account>(
-          `account:${user.email}:${accountRecord.id}`,
+      dbAccounts.map(async (dbAccount) => {
+        const redisData = await redis.json.get<Account>(
+          `account:${user.email}:${dbAccount.id}`,
         )
+        
+        if (!redisData) {
+          // Account exists in DB but not Redis - shouldn't happen
+          console.log(`[list_accounts] Missing Redis data for account ${dbAccount.id}`)
+          return null
+        }
+        
         return {
-          ...accountRecord,
-          ...accountData,
-          isActive: activeAccount?.id === accountRecord.id,
+          ...redisData,
+          isActive: activeAccount?.id === dbAccount.id,
+          hasValidTokens: Boolean(dbAccount.accessToken && dbAccount.accessSecret),
+          needsReconnection: !dbAccount.accessToken || !dbAccount.accessSecret,
         }
       }),
     )
 
-    return c.superjson({ accounts })
+    // Filter out any null accounts (missing Redis data)
+    const validAccounts = accounts.filter(Boolean)
+
+    return c.superjson({ accounts: validAccounts })
   }),
 
   connect: privateProcedure
@@ -201,10 +222,27 @@ export const settingsRouter = j.router({
       const { user } = ctx
       const { accountId } = input
 
+      // First verify the account exists in DB with valid tokens
+      const [dbAccount] = await db
+        .select()
+        .from(accountSchema)
+        .where(and(eq(accountSchema.userId, user.id), eq(accountSchema.id, accountId)))
+        .limit(1)
+
+      if (!dbAccount) {
+        throw new HTTPException(404, { message: `Account not found` })
+      }
+
+      if (!dbAccount.accessToken || !dbAccount.accessSecret) {
+        throw new HTTPException(400, { message: `Account needs to be reconnected` })
+      }
+
+      // Get the Redis profile data
       const account = await redis.json.get<Account>(`account:${user.email}:${accountId}`)
 
       if (!account) {
-        throw new HTTPException(404, { message: `Account "${accountId}" not found` })
+        // Redis data missing - this shouldn't happen but handle gracefully
+        throw new HTTPException(500, { message: `Account profile data missing` })
       }
 
       await redis.json.set(`active-account:${user.email}`, '$', account)

@@ -50,3 +50,31 @@ export const getAccount = async ({ email }: { email: string }) => {
   // Return the Redis account data
   return redisAccount
 }
+
+// Helper to sync account data between DB and Redis
+export const syncAccountData = async (userId: string, accountId: string, email: string) => {
+  const [dbAccount] = await db
+    .select()
+    .from(accountSchema)
+    .where(and(eq(accountSchema.userId, userId), eq(accountSchema.id, accountId)))
+    .limit(1)
+
+  if (!dbAccount) {
+    return null
+  }
+
+  const redisAccount = await redis.json.get<Account>(`account:${email}:${accountId}`)
+  
+  if (!redisAccount) {
+    // Redis missing but DB exists - shouldn't happen but handle gracefully
+    console.log(`[SYNC_ACCOUNT] Redis data missing for account ${accountId}, cannot sync`)
+    return null
+  }
+
+  // Return combined data with DB validation
+  return {
+    ...redisAccount,
+    hasValidTokens: Boolean(dbAccount.accessToken && dbAccount.accessSecret),
+    needsReconnection: !dbAccount.accessToken || !dbAccount.accessSecret
+  }
+}
