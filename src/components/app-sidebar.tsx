@@ -64,6 +64,11 @@ const ChatInput = ({
 }) => {
   const [editor] = useLexicalComposerContext()
   const { isDragging } = useContext(FileUploadContext)
+  const [showTooltip, setShowTooltip] = useState(false)
+  
+  // Detect OS for keyboard shortcuts
+  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const metaKey = isMac ? 'Cmd' : 'Ctrl'
 
   const { attachments, removeAttachment, addKnowledgeAttachment, hasUploading } =
     useAttachments()
@@ -296,20 +301,38 @@ const ChatInput = ({
                   : 'border-neutral-200'
               }`}
             >
-              <PlainTextPlugin
-                contentEditable={
-                  <ContentEditable
-                    autoFocus
-                    className="w-full px-4 py-3 outline-none min-h-[4.5rem] text-base placeholder:text-neutral-400"
-                    style={{ minHeight: '4.5rem' }}
-                    onPaste={handlePaste}
-                  />
-                }
-                ErrorBoundary={LexicalErrorBoundary}
-              />
-              <PlaceholderPlugin placeholder="Post about..." />
-              <HistoryPlugin />
-              <MultipleEditorStorePlugin id="app-sidebar" />
+              <TooltipProvider>
+                <Tooltip open={showTooltip && !editor.getRootElement()?.matches(':focus-within')}>
+                  <TooltipTrigger asChild>
+                    <div 
+                      onMouseEnter={() => setShowTooltip(true)}
+                      onMouseLeave={() => setShowTooltip(false)}
+                      className="relative"
+                    >
+                      <PlainTextPlugin
+                        contentEditable={
+                          <ContentEditable
+                            autoFocus
+                            className="w-full px-4 py-3 outline-none min-h-[4.5rem] text-base placeholder:text-neutral-400"
+                            style={{ minHeight: '4.5rem' }}
+                            onPaste={handlePaste}
+                          />
+                        }
+                        ErrorBoundary={LexicalErrorBoundary}
+                      />
+                      <PlaceholderPlugin placeholder="Post about..." />
+                      <HistoryPlugin />
+                      <MultipleEditorStorePlugin id="app-sidebar" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p>Focus chat input</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + /</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
               <div className="flex items-center justify-between px-3 pb-3">
                 <div className="flex gap-1.5 items-center">
