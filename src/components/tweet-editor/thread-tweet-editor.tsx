@@ -264,21 +264,7 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      // Clear the thread content only after successful queuing
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
-      
-      // Stay on current page instead of redirecting
-      toast.success(
-        <div className="flex items-center gap-2">
-          <p>Thread queued!</p>
-          <Link
-            href="/studio/scheduled"
-            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
-          >
-            View here
-          </Link>
-        </div>
-      )
+      // Success handling is done in handleQueueThread to avoid duplicate toasts
     },
     onError: (error: HTTPException) => {
       // console.error('[ThreadTweetEditor] Failed to queue thread:', error)
