@@ -132,7 +132,7 @@ export const settingsRouter = j.router({
     )
     .mutation(async ({ c, ctx, input }) => {
       const { user } = ctx
-      const account = await redis.get<Account>(`account:${user.email}:${input.accountId}`)
+      const account = await redis.json.get<Account>(`account:${user.email}:${input.accountId}`)
 
       if (!account) {
         throw new HTTPException(404, {
@@ -153,7 +153,7 @@ export const settingsRouter = j.router({
     // Read the active account pointer from Redis
     account = await redis.json.get<Account>(`active-account:${user.email}`)
 
-    // Validate against the database to avoid stale pointers that make the UI inconsistent
+    // Validate against the database to ensure tokens exist
     if (account?.id) {
       try {
         const [dbAccount] = await db
@@ -162,34 +162,33 @@ export const settingsRouter = j.router({
           .where(and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)))
           .limit(1)
 
-        // If no DB record or missing tokens, clear the Redis pointer and return null
+        // If no DB record or missing tokens, return null but DON'T delete the pointer
+        // This allows the UI to show the account exists but needs reconnection
         if (!dbAccount || !dbAccount.accessToken || !dbAccount.accessSecret) {
-          try {
-            await redis.del(`active-account:${user.email}`)
-            console.log('[settings.active_account] cleared stale active-account pointer', {
-              email: user.email,
-              accountId: account.id,
-              reason: !dbAccount
-                ? 'db-record-missing'
-                : 'missing-access-tokens',
-              at: new Date().toISOString(),
-            })
-          } catch (err) {
-            console.log('[settings.active_account] failed clearing stale pointer', {
-              email: user.email,
-              accountId: account.id,
-              err,
-            })
-          }
-          account = null
+          console.log('[settings.active_account] active account needs reconnection', {
+            email: user.email,
+            accountId: account.id,
+            reason: !dbAccount
+              ? 'db-record-missing'
+              : 'missing-access-tokens',
+            at: new Date().toISOString(),
+          })
+          // Return account info with a flag indicating it needs reconnection
+          return c.json({ 
+            account: {
+              ...account,
+              needsReconnection: true
+            }
+          })
         }
       } catch (err) {
-        console.log('[settings.active_account] db validation failed; returning null', {
+        console.log('[settings.active_account] db validation failed; returning account anyway', {
           email: user.email,
           accountId: account.id,
           err,
         })
-        account = null
+        // Return the account even if DB validation fails - let UI handle it
+        return c.json({ account })
       }
     }
 

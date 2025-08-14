@@ -305,7 +305,8 @@ export const authRouter = j.router({
 
     const dbAccountId = nanoid()
 
-    await db
+    // Insert into database first
+    const insertResult = await db
       .insert(account)
       .values({
         id: dbAccountId,
@@ -318,6 +319,17 @@ export const authRouter = j.router({
         accessSecret,
       })
       .onConflictDoNothing()
+      .returning({ id: account.id })
+
+    // Verify the insert succeeded before proceeding
+    if (!insertResult || insertResult.length === 0) {
+      console.error('[AUTH_ROUTER] Failed to insert account into database', {
+        dbAccountId,
+        userId,
+        accountId,
+      })
+      throw new HTTPException(500, { message: 'Failed to save account' })
+    }
 
     const connectedAccount = {
       id: dbAccountId,
@@ -327,6 +339,7 @@ export const authRouter = j.router({
       verified: data.verified,
     }
 
+    // Only set Redis data after confirming DB write succeeded
     await redis.json.set(`account:${user.email}:${dbAccountId}`, '$', connectedAccount)
 
     // For onboarding and invite flows, always set the connected account as active to avoid UI race conditions
