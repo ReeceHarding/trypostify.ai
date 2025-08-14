@@ -150,16 +150,6 @@ const Page = () => {
         e.preventDefault()
         setDropdownOpen(true)
       }
-      // Upload Document: Cmd/Ctrl + Option + U (avoids conflict with View Source)  
-      else if (actualMetaKey && (isMac ? e.altKey : e.altKey) && e.key.toLowerCase() === 'u') {
-        e.preventDefault()
-        router.push('/studio/knowledge/new?type=upload')
-      }
-      // Add from Website: Cmd/Ctrl + Shift + W (avoids conflict with Close Window)
-      else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'w') {
-        e.preventDefault()
-        router.push('/studio/knowledge/new?type=url')
-      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -235,7 +225,7 @@ const Page = () => {
                         <p className="text-sm opacity-60 leading-relaxed">
                           Upload pdf, docx, text or images
                         </p>
-                        <p className="text-xs text-neutral-400 mt-1">{metaKey} + {isMac ? 'Option' : 'Alt'} + U</p>
+
                       </div>
                     </Link>
                   </DropdownMenuItem>
@@ -258,7 +248,7 @@ const Page = () => {
                         <p className="text-sm opacity-60 leading-relaxed">
                           Extract knowledge from articles and blog posts
                         </p>
-                        <p className="text-xs text-neutral-400 mt-1">{metaKey} + Shift + W</p>
+
                       </div>
                     </Link>
                   </DropdownMenuItem>
