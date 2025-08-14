@@ -17,7 +17,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarInset className="w-full flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200 min-w-0">
+    <SidebarInset className="w-full flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200">
       {/* Dot Pattern Background */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"
@@ -35,7 +35,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
         />
       </div>
 
-      <header className="relative z-10 flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 justify-between hidden md:flex">
+      <header className="relative z-10 flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 justify-between">
         <div className="flex w-full justify-end items-center gap-2 px-4">
           <div className="flex items-center gap-2">
             <TooltipProvider delayDuration={0}>
@@ -65,9 +65,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <div className="min-w-0 px-2 md:px-0">
-        {children}
-      </div>
+      {children}
     </SidebarInset>
   )
 }

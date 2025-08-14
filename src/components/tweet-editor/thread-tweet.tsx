@@ -765,15 +765,15 @@ function ThreadTweetContent({
       <Drawer modal={false} open={open} onOpenChange={setOpen}>
         <div
           className={cn(
-            'relative bg-white p-4 lg:p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors min-w-0',
+            'relative bg-white p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
             isDragging && 'border-primary border-dashed',
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex gap-2 lg:gap-3 relative z-10">
-            <AccountAvatar className="size-10 lg:size-12" />
+          <div className="flex gap-3 relative z-10">
+            <AccountAvatar className="size-12" />
 
             <div className="flex-1">
               <div className="flex items-center gap-1">
@@ -923,10 +923,10 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-neutral-200 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between">
                 <div
                   className={cn(
-                    'flex items-center gap-1 lg:gap-1.5 bg-neutral-100 p-1 lg:p-1.5 rounded-lg',
+                    'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
                   )}
                 >
                   <TooltipProvider>
@@ -1016,7 +1016,7 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-1 lg:gap-2 w-full lg:w-auto justify-end">
+                <div className="flex items-center gap-2">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>
@@ -1028,7 +1028,7 @@ function ThreadTweetContent({
                               <TooltipTrigger asChild>
                                 <DuolingoButton
                                   variant="secondary"
-                                  className="h-9 lg:h-11 text-xs lg:text-sm px-3 lg:px-4"
+                                  className="h-11"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
@@ -1048,11 +1048,11 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-9 lg:h-11 text-xs lg:text-sm px-3 lg:px-4"
+                                  className="h-11"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
-                                  <span className="text-xs lg:text-sm">
+                                  <span className="text-sm">
                                     {isPosting ? 'Saving...' : 'Save'}
                                   </span>
                                 </DuolingoButton>
@@ -1073,12 +1073,12 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-9 lg:h-11 text-xs lg:text-sm px-3 lg:px-4"
+                                  className="h-11"
                                   variant="secondary"
                                   onClick={handlePostClick}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
-                                  <span className="text-xs lg:text-sm">
+                                  <span className="text-sm">
                                     {isPosting ? 'Posting...' : 'Post'}
                                   </span>
                                   <span className="sr-only">Post to Twitter</span>
@@ -1104,15 +1104,15 @@ function ThreadTweetContent({
                                   <DuolingoButton
                                     loading={isPosting}
                                     disabled={mediaFiles.some((f) => f.uploading)}
-                                    className="h-9 lg:h-11 px-2 lg:px-3 rounded-r-none border-r-0"
+                                    className="h-11 px-3 rounded-r-none border-r-0"
                                     onClick={() => {
                                       if (onQueueThread) {
                                         onQueueThread()
                                       }
                                     }}
                                   >
-                                    <Clock className="size-3 lg:size-4 mr-1 lg:mr-2" />
-                                    <span className="text-xs lg:text-sm">Queue</span>
+                                    <Clock className="size-4 mr-2" />
+                                    <span className="text-sm">Queue</span>
                                   </DuolingoButton>
                                 </TooltipTrigger>
                                 <TooltipContent>
@@ -1131,7 +1131,7 @@ function ThreadTweetContent({
                                         loading={isPosting}
                                         disabled={mediaFiles.some((f) => f.uploading)}
                                         size="icon"
-                                        className="h-9 lg:h-11 w-10 lg:w-14 rounded-l-none border-l"
+                                        className="h-11 w-14 rounded-l-none border-l"
                                       >
                                         <ChevronDown className="size-4" />
                                         <span className="sr-only">Schedule manually</span>
