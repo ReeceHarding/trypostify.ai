@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
-      // Minimal PostHog setup - only essential endpoints to prevent 431 errors
+      // Complete PostHog setup - proxy all ingest endpoints to prevent CORS and routing issues
       {
         source: '/ingest/batch',
         destination: 'https://us.i.posthog.com/batch',
@@ -32,6 +32,14 @@ const nextConfig: NextConfig = {
       {
         source: '/ingest/capture',
         destination: 'https://us.i.posthog.com/capture',
+      },
+      {
+        source: '/ingest/e/:path*',
+        destination: 'https://us.i.posthog.com/e/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
       },
     ]
   },
