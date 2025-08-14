@@ -650,8 +650,8 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         e.preventDefault()
         editor.focus()
       }
-      // History: Cmd/Ctrl + H
-      else if (actualMetaKey && e.key.toLowerCase() === 'h') {
+      // History: Cmd/Ctrl + Shift + H (avoids conflict with Hide App)
+      else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'h') {
         e.preventDefault()
         setIsHistoryOpen(true)
       }
@@ -729,7 +729,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Open chat history</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + H</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + Shift + H</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>

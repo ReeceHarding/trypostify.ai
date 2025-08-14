@@ -957,7 +957,7 @@ function ThreadTweetContent({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Choose from library</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + M</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + M</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>
