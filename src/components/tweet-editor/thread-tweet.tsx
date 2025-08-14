@@ -70,6 +70,8 @@ interface ThreadTweetProps {
   isLastTweet: boolean
   canDelete: boolean
   editMode?: boolean
+  hasBeenCleared?: boolean
+  onClearComplete?: () => void
   onRemove?: () => void
   onPostThread?: () => void
   onQueueThread?: () => void
@@ -103,6 +105,8 @@ function ThreadTweetContent({
   isLastTweet,
   canDelete,
   editMode = false,
+  hasBeenCleared = false,
+  onClearComplete,
   onRemove,
   onPostThread,
   onQueueThread,

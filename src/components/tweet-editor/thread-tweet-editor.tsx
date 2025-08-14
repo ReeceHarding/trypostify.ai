@@ -58,6 +58,7 @@ export default function ThreadTweetEditor({
   const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
     { id: crypto.randomUUID(), content: '', media: [] },
   ])
+  const [hasBeenCleared, setHasBeenCleared] = useState(false)
   const router = useRouter()
   const { fire } = useConfetti()
   const queryClient = useQueryClient()
@@ -306,6 +307,7 @@ export default function ThreadTweetEditor({
       
       // Clear content immediately after successful post
       console.log('[ThreadTweetEditor] Clearing thread content after successful post in handlePostThread')
+      setHasBeenCleared(true)
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
       posthog.capture('thread_posted', {
@@ -418,6 +420,7 @@ export default function ThreadTweetEditor({
       
       // Clear content immediately after successful queue
       console.log('[ThreadTweetEditor] Clearing thread content after successful queue in handleQueueThread')
+      setHasBeenCleared(true)
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
       posthog.capture('thread_queued', {
@@ -492,6 +495,8 @@ export default function ThreadTweetEditor({
               isLastTweet={index === threadTweets.length - 1}
               canDelete={index > 0}
               editMode={editMode}
+              hasBeenCleared={index === 0 ? hasBeenCleared : false}
+              onClearComplete={index === 0 ? () => setHasBeenCleared(false) : undefined}
               onRemove={() => handleRemoveTweet(tweet.id)}
 
               onPostThread={index === 0 && !editMode ? handlePostThread : undefined}

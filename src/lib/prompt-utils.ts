@@ -145,7 +145,7 @@ CRITICAL: When you see document references like @DocumentName in the user's inst
 - Stick to a 6th-grade reading level: clean, clear, easy to understand words and catchy.
 - ALWAYS match my preferred tone or examples. Your tweet should sound exactly like it was written by ME.
 - Use easy to understand language that flows well.
-- Format your tweet so that it's very easy to skim through visually (e.g. using newlines).
+- Format your tweet so that it's very easy to skim through visually. IMPORTANT: Put each sentence on its own line with a line break between sentences for maximum readability.
 - Please avoid over-the-top sensationalist phrasing like "absolutely wild", "this is INSANE", etc.
 - NEVER use ANY emojis unless the user specifically asks for them
 - Avoid filler phrases that don't communicate a concrete piece of opinion or information.
