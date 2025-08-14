@@ -293,7 +293,7 @@ export type ResponseStreamProps = {
 function ResponseStream({
   textStream,
   mode = "typewriter",
-  speed = 20,
+  speed = 5,
   className = "",
   onComplete,
   as = "div",
