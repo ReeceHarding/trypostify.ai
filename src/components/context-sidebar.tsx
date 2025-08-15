@@ -102,7 +102,6 @@ export const LeftSidebar = () => {
   }, [isMac, router, id, toggleSidebar])
 
   return (
-    <>
     <Sidebar collapsible="icon" side="left" className="border-r border-border/40">
       <SidebarHeader className="border-b border-border/40 p-4">
         <div className="flex items-center justify-start gap-2">
@@ -448,16 +447,5 @@ export const LeftSidebar = () => {
         </div>
       </SidebarFooter>
     </Sidebar>
-    
-    {/* Navigation feedback overlay */}
-    {navigatingTo && (
-      <div className="fixed top-4 left-4 z-50 bg-primary text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-left duration-200">
-        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-        <span className="text-sm font-medium">
-          Opening {navigatingTo}...
-        </span>
-      </div>
-    )}
-    </>
   )
 }
