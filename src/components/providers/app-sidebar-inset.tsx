@@ -1,6 +1,6 @@
 'use client'
 
-import { SidebarInset } from '../ui/multi-sidebar-provider'
+import { SidebarInset } from '../ui/sidebar'
 
 import {
   Tooltip,
@@ -8,21 +8,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { ArrowLeftFromLine, ArrowRightFromLine, PanelLeft, Menu } from 'lucide-react'
+import { ArrowLeftFromLine, ArrowRightFromLine, PanelLeft } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
-import { useMultiSidebar, SidebarTrigger } from '../ui/multi-sidebar-provider'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { useSidebar } from '../ui/sidebar'
 
 export function AppSidebarInset({ children }: { children: React.ReactNode }) {
-  const isMobile = useIsMobile()
-  
-  // Access both sidebars from multi-sidebar context
-  const { leftSidebar, rightSidebar } = useMultiSidebar()
-  const { state, toggleSidebar } = rightSidebar
+  const { state, toggleSidebar } = useSidebar()
   const isCollapsed = state === 'collapsed'
 
   return (
-    <SidebarInset className="flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200">
+    <SidebarInset className="w-full flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200">
       {/* Dot Pattern Background */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"
@@ -41,29 +36,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
       </div>
 
       <header className="relative z-10 flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 justify-between">
-        <div className="flex w-full justify-between items-center gap-2 px-4">
-          {/* Left side - Mobile navigation trigger for left sidebar */}
-          <div className="flex items-center gap-2">
-            {isMobile && (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <SidebarTrigger 
-                      side="left"
-                      className="group/toggle-button h-8 w-8"
-                    >
-                      <Menu className="h-4 w-4" />
-                    </SidebarTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-neutral-800 text-white">
-                    Open Navigation
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          
-          {/* Right side - Right sidebar toggle (chat/AI sidebar) */}
+        <div className="flex w-full justify-end items-center gap-2 px-4">
           <div className="flex items-center gap-2">
             <TooltipProvider delayDuration={0}>
               <Tooltip>

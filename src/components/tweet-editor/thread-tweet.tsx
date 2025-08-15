@@ -133,6 +133,7 @@ function ThreadTweetContent({
   const [open, setOpen] = useState(false)
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
+  const [optimisticActionState, setOptimisticActionState] = useState<'post' | 'queue' | 'schedule' | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllersRef = useRef(new Map<string, AbortController>())
 
@@ -808,6 +809,16 @@ function ThreadTweetContent({
                       <KeyboardShortcutsPlugin 
                         onPost={handlePostClick}
                         onQueue={onQueueThread}
+                        onActionTriggered={(action) => {
+                          console.log(`[ThreadTweet] Hotkey triggered: ${action} at ${new Date().toISOString()}`)
+                          // Immediate optimistic feedback
+                          setOptimisticActionState(action)
+                        }}
+                        onActionComplete={() => {
+                          console.log(`[ThreadTweet] Hotkey action completed at ${new Date().toISOString()}`)
+                          // Clear optimistic state after brief delay
+                          setTimeout(() => setOptimisticActionState(null), 300)
+                        }}
                       />
                     </div>
                   </TooltipTrigger>
@@ -923,7 +934,7 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-neutral-200 flex md:flex-row flex-col md:items-center md:justify-between gap-3">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between">
                 <div
                   className={cn(
                     'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
@@ -1016,9 +1027,9 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                {/* Show Post/Queue buttons only on first tweet or single tweet */}
-                {(!isThread || isFirstTweet) && (
-                  <div className="flex md:flex-row flex-col gap-2 md:order-none order-1 md:w-auto w-full">
+                <div className="flex items-center gap-2">
+                  {/* Show Post/Queue buttons only on first tweet or single tweet */}
+                  {(!isThread || isFirstTweet) && (
                     <>
                       {editMode ? (
                         // Edit mode buttons
@@ -1028,7 +1039,7 @@ function ThreadTweetContent({
                               <TooltipTrigger asChild>
                                 <DuolingoButton
                                   variant="secondary"
-                                  className="h-11 px-4 whitespace-nowrap md:w-auto w-full"
+                                  className="h-11"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
@@ -1048,7 +1059,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 px-4 whitespace-nowrap md:w-auto w-full"
+                                  className="h-11"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
@@ -1073,13 +1084,14 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 px-4 whitespace-nowrap md:w-auto w-full"
+                                  className="h-11"
                                   variant="secondary"
                                   onClick={handlePostClick}
-                                  disabled={isPosting || mediaFiles.some((f) => f.uploading)}
+                                  disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
+                                  loading={isPosting || optimisticActionState === 'post'}
                                 >
                                   <span className="text-sm">
-                                    {isPosting ? 'Posting...' : 'Post'}
+                                    {isPosting || optimisticActionState === 'post' ? 'Posting...' : 'Post'}
                                   </span>
                                   <span className="sr-only">Post to Twitter</span>
                                 </DuolingoButton>
@@ -1097,17 +1109,20 @@ function ThreadTweetContent({
                             </Tooltip>
                           </TooltipProvider>
 
-                          <div className="flex items-stretch">
+                          <div className="flex">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <DuolingoButton
-                                    loading={isPosting}
-                                    disabled={mediaFiles.some((f) => f.uploading)}
-                                    className="h-11 px-3 rounded-l-full border-r-0 whitespace-nowrap"
+                                    loading={isPosting || optimisticActionState === 'queue'}
+                                    disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
+                                    className="h-11 px-3 rounded-r-none border-r-0"
                                     onClick={() => {
                                       if (onQueueThread) {
+                                        setOptimisticActionState('queue')
                                         onQueueThread()
+                                        // Clear optimistic state after action completes
+                                        setTimeout(() => setOptimisticActionState(null), 300)
                                       }
                                     }}
                                   >
@@ -1128,10 +1143,10 @@ function ThreadTweetContent({
                                   <TooltipTrigger asChild>
                                     <PopoverTrigger asChild>
                                       <DuolingoButton
-                                        loading={isPosting}
-                                        disabled={mediaFiles.some((f) => f.uploading)}
+                                        loading={isPosting || optimisticActionState === 'schedule'}
+                                        disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
                                         size="icon"
-                                        className="h-11 w-12 rounded-r-full border-l-0"
+                                        className="h-11 w-14 rounded-l-none border-l"
                                       >
                                         <ChevronDown className="size-4" />
                                         <span className="sr-only">Schedule manually</span>
@@ -1153,18 +1168,24 @@ function ThreadTweetContent({
                                             combinedIso: scheduled.toISOString(),
                                           })
                                           if (onScheduleThread) {
+                                            setOptimisticActionState('schedule')
                                             onScheduleThread(scheduled)
                                             setOpen(false)
+                                            // Clear optimistic state after action completes
+                                            setTimeout(() => setOptimisticActionState(null), 300)
                                           }
                                         } catch (e) {
                                           console.error('[ThreadTweet] onSchedule combine error', e)
                                           if (onScheduleThread) {
+                                            setOptimisticActionState('schedule')
                                             onScheduleThread(date)
                                             setOpen(false)
+                                            // Clear optimistic state after action completes
+                                            setTimeout(() => setOptimisticActionState(null), 300)
                                           }
                                         }
                                       }}
-                                      isPending={isPosting}
+                                      isPending={isPosting || optimisticActionState === 'schedule'}
                                     />
                                   </PopoverContent>
                                 </Popover>
@@ -1181,8 +1202,10 @@ function ThreadTweetContent({
                         </>
                       )}
                     </>
-                  </div>
-                )}
+                  )}
+
+
+                </div>
               </div>
             </div>
           </div>

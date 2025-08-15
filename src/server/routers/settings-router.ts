@@ -70,6 +70,69 @@ export const settingsRouter = j.router({
     return c.json({ remaining, reset })
   }),
 
+  getPostingWindow: privateProcedure.get(async ({ c, ctx }) => {
+    const { user } = ctx
+    
+    console.log('[SETTINGS] Fetching posting window for user:', user.email, 'at', new Date().toISOString())
+    
+    const userRecord = await db
+      .select({
+        postingWindowStart: userSchema.postingWindowStart,
+        postingWindowEnd: userSchema.postingWindowEnd,
+      })
+      .from(userSchema)
+      .where(eq(userSchema.id, user.id))
+      .limit(1)
+      .then(rows => rows[0])
+
+    const postingWindow = {
+      start: userRecord?.postingWindowStart ?? 8, // Default 8am
+      end: userRecord?.postingWindowEnd ?? 18, // Default 6pm
+    }
+
+    console.log('[SETTINGS] Retrieved posting window:', postingWindow)
+    
+    return c.json(postingWindow)
+  }),
+
+  updatePostingWindow: privateProcedure
+    .input(
+      z.object({
+        start: z.number().min(0).max(23), // Hour 0-23
+        end: z.number().min(0).max(23), // Hour 0-23
+      })
+    )
+    .mutation(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { start, end } = input
+
+      console.log('[SETTINGS] Updating posting window for user:', user.email, 'start:', start, 'end:', end, 'at', new Date().toISOString())
+
+      // Validate that start is before end
+      if (start >= end) {
+        console.log('[SETTINGS] Invalid posting window: start >= end')
+        throw new HTTPException(400, {
+          message: 'Posting window start time must be before end time',
+        })
+      }
+
+      await db
+        .update(userSchema)
+        .set({
+          postingWindowStart: start,
+          postingWindowEnd: end,
+          updatedAt: new Date(),
+        })
+        .where(eq(userSchema.id, user.id))
+
+      console.log('[SETTINGS] Posting window updated successfully')
+
+      return c.json({ 
+        success: true, 
+        postingWindow: { start, end } 
+      })
+    }),
+
   delete_account: privateProcedure
     .input(
       z.object({

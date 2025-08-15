@@ -7,7 +7,6 @@ import { LeftSidebar } from '@/components/context-sidebar'
 import { AppSidebarInset } from '@/components/providers/app-sidebar-inset'
 import { DashboardProviders } from '@/components/providers/dashboard-providers'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { MultiSidebarProvider, Sidebar } from '@/components/ui/multi-sidebar-provider'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 
 interface LayoutProps extends PropsWithChildren {
@@ -45,15 +44,12 @@ export default function ClientLayout({
 
   return (
     <DashboardProviders>
-      <MultiSidebarProvider 
-        defaultLeftOpen={false}
-        defaultRightOpen={defaultOpen}
-      >
-        <Sidebar side="left" className="w-fit">
+      <div className="flex">
+        <SidebarProvider className="w-fit" defaultOpen={false}>
           <LeftSidebar />
-        </Sidebar>
+        </SidebarProvider>
 
-        <Sidebar side="right" variant="sidebar">
+        <SidebarProvider defaultOpen={defaultOpen} defaultWidth={width?.value || '32rem'}>
           {hideAppSidebar ? (
             <AppSidebarInset>{children}</AppSidebarInset>
           ) : (
@@ -63,8 +59,8 @@ export default function ClientLayout({
               </AppSidebar>
             </LexicalComposer>
           )}
-        </Sidebar>
-      </MultiSidebarProvider>
+        </SidebarProvider>
+      </div>
     </DashboardProviders>
   )
 }

@@ -12,9 +12,9 @@ import { client } from '@/lib/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Loader2, Trash2, Clock } from 'lucide-react'
 
 const Page = () => {
   const router = useRouter()
@@ -120,6 +120,63 @@ const Page = () => {
     },
   })
 
+  // Posting window settings state
+  const [postingWindowStart, setPostingWindowStart] = useState<number>(8)
+  const [postingWindowEnd, setPostingWindowEnd] = useState<number>(18)
+
+  // Fetch posting window settings
+  const { data: postingWindow } = useQuery({
+    queryKey: ['posting-window'],
+    queryFn: async () => {
+      console.log('[SETTINGS] Fetching posting window...')
+      const res = await client.settings.getPostingWindow.$get()
+      const data = await res.json()
+      console.log('[SETTINGS] Posting window fetched:', data)
+      return data
+    },
+  })
+
+  // Update local state when data is fetched
+  useEffect(() => {
+    if (postingWindow) {
+      setPostingWindowStart(postingWindow.start)
+      setPostingWindowEnd(postingWindow.end)
+    }
+  }, [postingWindow])
+
+  // Update posting window mutation
+  const { mutate: updatePostingWindow, isPending: isUpdatingPostingWindow } = useMutation({
+    mutationFn: async (data: { start: number; end: number }) => {
+      console.log('[SETTINGS] Updating posting window:', data)
+      const res = await client.settings.updatePostingWindow.$post(data)
+      const result = await res.json()
+      return result
+    },
+    onSuccess: () => {
+      console.log('[SETTINGS] Posting window updated successfully')
+      toast.success('Posting window updated successfully!')
+    },
+    onError: (error) => {
+      console.error('[SETTINGS] Failed to update posting window:', error)
+      toast.error('Failed to update posting window')
+    },
+  })
+
+  const handlePostingWindowUpdate = () => {
+    if (postingWindowStart >= postingWindowEnd) {
+      toast.error('Start time must be before end time')
+      return
+    }
+    updatePostingWindow({ start: postingWindowStart, end: postingWindowEnd })
+  }
+
+  const formatHour = (hour: number) => {
+    if (hour === 0) return '12:00 AM'
+    if (hour === 12) return '12:00 PM'
+    if (hour < 12) return `${hour}:00 AM`
+    return `${hour - 12}:00 PM`
+  }
+
   return (
     <div className="relative w-full max-w-md mx-auto mt-12">
       <div className="relative w-full flex  flex-col gap-6 bg-white/90 shadow-xl rounded-2xl z-10 py-10 px-6 md:px-12">
@@ -191,6 +248,82 @@ const Page = () => {
           >
             Sign out
           </p>
+        </div>
+
+        {/* Posting Window Settings */}
+        <Separator className="my-6" />
+        <div className="bg-white border border-neutral-200 rounded-xl p-4">
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Clock className="size-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-base font-semibold text-neutral-900">Daily Posting Window</p>
+                  <p className="text-sm text-neutral-600 mt-1">
+                    Set the hours when you want your posts to be automatically queued. Posts will only be scheduled within this time window.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Start Time
+                  </label>
+                  <select
+                    value={postingWindowStart}
+                    onChange={(e) => setPostingWindowStart(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {formatHour(i)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    End Time
+                  </label>
+                  <select
+                    value={postingWindowEnd}
+                    onChange={(e) => setPostingWindowEnd(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {formatHour(i)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-neutral-600">
+                  Current window: {formatHour(postingWindowStart)} - {formatHour(postingWindowEnd)}
+                </div>
+                <DuolingoButton
+                  size="sm"
+                  onClick={handlePostingWindowUpdate}
+                  disabled={isUpdatingPostingWindow || postingWindowStart >= postingWindowEnd}
+                >
+                  {isUpdatingPostingWindow ? (
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Window'
+                  )}
+                </DuolingoButton>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Danger zone */}

@@ -373,30 +373,11 @@ const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"main">
 >(({ className, ...props }, ref) => {
-  const { leftSidebar, rightSidebar } = useMultiSidebar()
-  
-  // Debug log to understand sidebar states
-  React.useEffect(() => {
-    console.log('[SidebarInset] Sidebar states:', {
-      leftOpen: leftSidebar.open,
-      leftMobile: leftSidebar.isMobile,
-      rightOpen: rightSidebar.open,
-      rightMobile: rightSidebar.isMobile,
-      timestamp: new Date().toISOString()
-    })
-  }, [leftSidebar.open, leftSidebar.isMobile, rightSidebar.open, rightSidebar.isMobile])
-  
-  // Calculate margins based on sidebar states - desktop only
-  const leftMargin = leftSidebar.open && !leftSidebar.isMobile ? "md:ml-24" : ""  // 6rem = 24 in Tailwind
-  const rightMargin = rightSidebar.open && !rightSidebar.isMobile ? "md:mr-68" : ""  // 17rem = 68 in Tailwind
-  
   return (
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background transition-all duration-200 ease-linear",
-        leftMargin,
-        rightMargin,
+        "relative flex min-h-svh flex-1 flex-col bg-background",
         "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
         className
       )}

@@ -36,6 +36,13 @@
       "when": 1755202734714,
       "tag": "0004_make_all_users_pro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1755252018173,
+      "tag": "0005_closed_mac_gargan",
+      "breakpoints": true
     }
   ]
 }

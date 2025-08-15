@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   $getSelection,
   $isRangeSelection,
@@ -11,18 +11,25 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 interface KeyboardShortcutsPluginProps {
   onPost?: () => void
   onQueue?: () => void
+  onActionTriggered?: (action: 'post' | 'queue') => void
+  onActionComplete?: () => void
 }
 
 export function KeyboardShortcutsPlugin({ 
   onPost, 
-  onQueue 
+  onQueue,
+  onActionTriggered,
+  onActionComplete
 }: KeyboardShortcutsPluginProps) {
   const [editor] = useLexicalComposerContext()
+  const [pendingAction, setPendingAction] = useState<'post' | 'queue' | null>(null)
 
   useEffect(() => {
     console.log('[KeyboardShortcuts] Plugin mounted with handlers:', { 
       hasOnPost: !!onPost, 
-      hasOnQueue: !!onQueue 
+      hasOnQueue: !!onQueue,
+      hasActionTriggered: !!onActionTriggered,
+      hasActionComplete: !!onActionComplete
     })
 
     const removeCommand = editor.registerCommand(
@@ -47,11 +54,24 @@ export function KeyboardShortcutsPlugin({
           event.preventDefault()
           event.stopPropagation()
           
+          // Immediate optimistic feedback
+          setPendingAction('post')
+          onActionTriggered?.('post')
+          
           if (onPost) {
             console.log('[KeyboardShortcuts] Calling onPost handler')
-            onPost()
+            // Use a microtask to ensure immediate UI update
+            Promise.resolve().then(() => {
+              onPost()
+              // Reset pending state after a brief delay to show feedback
+              setTimeout(() => {
+                setPendingAction(null)
+                onActionComplete?.()
+              }, 100)
+            })
           } else {
             console.warn('[KeyboardShortcuts] No onPost handler provided')
+            setPendingAction(null)
           }
           
           return true
@@ -63,11 +83,24 @@ export function KeyboardShortcutsPlugin({
           event.preventDefault()
           event.stopPropagation()
           
+          // Immediate optimistic feedback
+          setPendingAction('queue')
+          onActionTriggered?.('queue')
+          
           if (onQueue) {
             console.log('[KeyboardShortcuts] Calling onQueue handler')
-            onQueue()
+            // Use a microtask to ensure immediate UI update
+            Promise.resolve().then(() => {
+              onQueue()
+              // Reset pending state after a brief delay to show feedback
+              setTimeout(() => {
+                setPendingAction(null)
+                onActionComplete?.()
+              }, 100)
+            })
           } else {
             console.warn('[KeyboardShortcuts] No onQueue handler provided')
+            setPendingAction(null)
           }
           
           return true
@@ -82,7 +115,19 @@ export function KeyboardShortcutsPlugin({
       console.log('[KeyboardShortcuts] Plugin unmounting, removing command listener')
       removeCommand()
     }
-  }, [editor, onPost, onQueue])
+  }, [editor, onPost, onQueue, onActionTriggered, onActionComplete])
+
+  // Return visual feedback for pending actions
+  if (pendingAction) {
+    return (
+      <div className="fixed top-4 right-4 z-50 bg-primary text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-right duration-200">
+        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+        <span className="text-sm font-medium">
+          {pendingAction === 'post' ? 'Posting...' : 'Adding to Queue...'}
+        </span>
+      </div>
+    )
+  }
 
   return null
 }

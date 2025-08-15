@@ -9,17 +9,18 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createSerializer, parseAsString } from 'nuqs'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import {
+  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
+  useSidebar,
 } from './ui/sidebar'
-import { Sidebar, useMultiSidebar } from './ui/multi-sidebar-provider'
 import { Icons } from './icons'
 
 const searchParams = {
@@ -30,8 +31,7 @@ const searchParams = {
 const serialize = createSerializer(searchParams)
 
 export const LeftSidebar = () => {
-  const { leftSidebar } = useMultiSidebar()
-  const { state, toggleSidebar } = leftSidebar
+  const { state } = useSidebar()
   const { data } = authClient.useSession()
 
   const pathname = usePathname()
@@ -39,12 +39,17 @@ export const LeftSidebar = () => {
   const { id } = useChatContext()
 
   const isCollapsed = state === 'collapsed'
+
+  const { toggleSidebar } = useSidebar()
   
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const metaKey = isMac ? 'Cmd' : 'Ctrl'
   
   const router = useRouter()
+  
+  // State for navigation feedback
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
 
   // Keyboard shortcuts for navigation
   useEffect(() => {

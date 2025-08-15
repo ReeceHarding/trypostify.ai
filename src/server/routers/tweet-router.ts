@@ -1,6 +1,6 @@
 import { getBaseUrl } from '@/constants/base-url'
 import { db } from '@/db'
-import { account as accountSchema, tweets, mediaLibrary } from '@/db/schema'
+import { account as accountSchema, tweets, mediaLibrary, user as userSchema } from '@/db/schema'
 import { qstash } from '@/lib/qstash'
 import { redis } from '@/lib/redis'
 import { BUCKET_NAME, s3Client } from '@/lib/s3'
@@ -748,16 +748,31 @@ export const tweetRouter = j.router({
         columns: { scheduledFor: true },
       })
 
-      // Queue times: 8am, 12pm, 2pm
-      const queueTimes = [8, 12, 14] // Hours in 24-hour format
+      // Get user's posting window settings
+      const userRecord = await db
+        .select({
+          postingWindowStart: userSchema.postingWindowStart,
+          postingWindowEnd: userSchema.postingWindowEnd,
+        })
+        .from(userSchema)
+        .where(eq(userSchema.id, user.id))
+        .limit(1)
+        .then(rows => rows[0])
+
+      const postingWindowStart = userRecord?.postingWindowStart ?? 8 // Default 8am
+      const postingWindowEnd = userRecord?.postingWindowEnd ?? 18 // Default 6pm
+
+      console.log('[getNextQueueSlot] User posting window:', postingWindowStart, '-', postingWindowEnd)
+
       const userNow = new Date(currentTimeUnix * 1000)
 
-      // Find next available slot
+      // Find next available slot within the user's posting window
       for (let daysAhead = 0; daysAhead < 365; daysAhead++) {
         const checkDate = new Date(userNow)
         checkDate.setDate(userNow.getDate() + daysAhead)
 
-        for (const hour of queueTimes) {
+        // Check every hour within the posting window
+        for (let hour = postingWindowStart; hour < postingWindowEnd; hour++) {
           // Create slot time in user's timezone
           const slotTime = new Date(checkDate)
           slotTime.setHours(hour, 0, 0, 0)
@@ -774,6 +789,7 @@ export const tweetRouter = j.router({
           })
 
           if (!isSlotTaken) {
+            console.log('[getNextQueueSlot] Found available slot:', slotTime, 'hour:', hour)
             return c.json({
               scheduledUnix: Math.floor(slotTime.getTime() / 1000),
             })
@@ -1597,6 +1613,22 @@ export const tweetRouter = j.router({
 
       console.log('[enqueueThread] Authentication successful for account:', account.id)
 
+      // Get user's posting window settings
+      const userRecord = await db
+        .select({
+          postingWindowStart: userSchema.postingWindowStart,
+          postingWindowEnd: userSchema.postingWindowEnd,
+        })
+        .from(userSchema)
+        .where(eq(userSchema.id, user.id))
+        .limit(1)
+        .then(rows => rows[0])
+
+      const postingWindowStart = userRecord?.postingWindowStart ?? 8 // Default 8am
+      const postingWindowEnd = userRecord?.postingWindowEnd ?? 18 // Default 6pm
+
+      console.log('[enqueueThread] User posting window:', postingWindowStart, '-', postingWindowEnd)
+
       // Get all tweets in the thread
       const threadTweets = await db.query.tweets.findMany({
         where: and(
@@ -1628,10 +1660,14 @@ export const tweetRouter = j.router({
         userNow,
         timezone,
         maxDaysAhead,
+        postingWindowStart,
+        postingWindowEnd,
       }: {
         userNow: Date
         timezone: string
         maxDaysAhead: number
+        postingWindowStart: number
+        postingWindowEnd: number
       }) {
         for (let dayOffset = 0; dayOffset <= maxDaysAhead; dayOffset++) {
           let checkDay: Date | undefined = undefined
@@ -1639,11 +1675,13 @@ export const tweetRouter = j.router({
           if (dayOffset === 0) checkDay = startOfDay(userNow)
           else checkDay = startOfDay(addDays(userNow, dayOffset))
 
-          for (const hour of SLOTS) {
+          // Generate hourly slots within the user's posting window
+          for (let hour = postingWindowStart; hour < postingWindowEnd; hour++) {
             const localSlotTime = startOfHour(setHours(checkDay, hour))
             const slotTime = fromZonedTime(localSlotTime, timezone)
 
             if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
+              console.log('[enqueueThread] Found available slot:', slotTime, 'hour:', hour)
               return slotTime
             }
           }
@@ -1652,7 +1690,13 @@ export const tweetRouter = j.router({
         return null // no slot found in next N days
       }
 
-      const nextSlot = getNextAvailableSlot({ userNow, timezone, maxDaysAhead: 90 })
+      const nextSlot = getNextAvailableSlot({ 
+        userNow, 
+        timezone, 
+        maxDaysAhead: 90,
+        postingWindowStart,
+        postingWindowEnd 
+      })
 
       // console.log('[enqueueThread] Next available slot:', nextSlot)
 

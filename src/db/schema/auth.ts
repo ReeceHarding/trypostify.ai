@@ -16,6 +16,8 @@ export const user = pgTable('user', {
   goals: json('goals').$type<string[]>().default([]),
   frequency: integer('frequency'),
   hasXPremium: boolean('has_x_premium').default(false),
+  postingWindowStart: integer('posting_window_start').default(8), // Hour (0-23) when posting window opens, default 8am
+  postingWindowEnd: integer('posting_window_end').default(18), // Hour (0-23) when posting window closes, default 6pm
 })
 
 export const session = pgTable('session', {
