@@ -368,9 +368,18 @@ export default function TweetQueue() {
                             )}
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 text-neutral-500">
-                            <span className="text-sm">Empty slot</span>
-                          </div>
+                          <DuolingoButton
+                            variant="ghost"
+                            className="flex items-center gap-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 w-full justify-start p-2 h-auto min-h-[2rem]"
+                            onClick={() => {
+                              console.log('[TweetQueue] Empty slot clicked:', { unix, time: new Date(unix).toISOString() })
+                              // Navigate to editor with pre-selected schedule time
+                              const scheduleTime = Math.floor(unix / 1000) // Convert to seconds for backend compatibility
+                              router.push(`/studio?scheduleTime=${scheduleTime}${chatId ? `&chatId=${chatId}` : ''}`)
+                            }}
+                          >
+                            <span className="text-sm">Empty slot - Click to schedule</span>
+                          </DuolingoButton>
                         )}
                       </div>
 

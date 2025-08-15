@@ -64,11 +64,129 @@ async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
   })
 }
 
+// Function to process a scheduled thread (extracted from postThread logic)
+async function processScheduledThread(threadId: string) {
+  console.log(`[LocalScheduler] Starting to process thread: ${threadId}`)
+  
+  try {
+    // Get the first tweet to find the user and account
+    const firstTweet = await db.query.tweets.findFirst({
+      where: and(
+        eq(tweets.threadId, threadId),
+        eq(tweets.isScheduled, true),
+        eq(tweets.isPublished, false),
+      ),
+    })
+
+    if (!firstTweet || !firstTweet.userId) {
+      console.log(`[LocalScheduler] No valid tweet found for thread ${threadId}`)
+      return
+    }
+
+    // Get all tweets in the thread
+    const threadTweets = await db.query.tweets.findMany({
+      where: and(
+        eq(tweets.threadId, threadId),
+        eq(tweets.isPublished, false),
+      ),
+      orderBy: asc(tweets.position),
+    })
+
+    if (threadTweets.length === 0) {
+      console.log(`[LocalScheduler] No unpublished tweets found for thread ${threadId}`)
+      return
+    }
+
+    // Find the user's Twitter account
+    const account = await db.query.account.findFirst({
+      where: and(
+        eq(accountSchema.userId, firstTweet.userId),
+        eq(accountSchema.provider, 'twitter'),
+      ),
+    })
+
+    if (!account || !account.accessToken) {
+      console.log(`[LocalScheduler] No Twitter account or access token found for user ${firstTweet.userId}`)
+      return
+    }
+
+    console.log(`[LocalScheduler] Found account for thread ${threadId}, posting ${threadTweets.length} tweets`)
+
+    const client = new TwitterApi({
+      appKey: consumerKey as string,
+      appSecret: consumerSecret as string,
+      accessToken: account.accessToken as string,
+      accessSecret: account.accessSecret as string,
+    })
+
+    let previousTweetId: string | null = null
+
+    // Post each tweet in sequence
+    for (const [index, tweet] of threadTweets.entries()) {
+      console.log(`[LocalScheduler] Posting tweet ${index + 1}/${threadTweets.length} for thread ${threadId}`)
+
+      try {
+        // Wait for delay if specified (except for first tweet)
+        if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
+          console.log(`[LocalScheduler] Waiting ${tweet.delayMs}ms before next tweet`)
+          await new Promise(resolve => setTimeout(resolve, tweet.delayMs!))
+        }
+
+        const tweetPayload: SendTweetV2Params = {
+          text: tweet.content,
+        }
+
+        // Add reply_to for subsequent tweets
+        if (previousTweetId && index > 0) {
+          console.log(`[LocalScheduler] Adding reply_to: ${previousTweetId}`)
+          tweetPayload.reply = {
+            in_reply_to_tweet_id: previousTweetId,
+          }
+        }
+
+        // Add media if present
+        if (tweet.media && tweet.media.length > 0) {
+          console.log(`[LocalScheduler] Adding ${tweet.media.length} media items to tweet`)
+          tweetPayload.media = {
+            // @ts-expect-error tuple type vs. string[]
+            media_ids: tweet.media.map((media) => media.media_id),
+          }
+        }
+
+        const res = await client.v2.tweet(tweetPayload)
+        console.log(`[LocalScheduler] Tweet posted successfully, ID: ${res.data.id}`)
+
+        // Update the tweet in the database
+        await db
+          .update(tweets)
+          .set({
+            isScheduled: false,
+            isPublished: true,
+            twitterId: res.data.id,
+            replyToTweetId: previousTweetId,
+            updatedAt: new Date(),
+          })
+          .where(eq(tweets.id, tweet.id))
+
+        previousTweetId = res.data.id
+      } catch (error) {
+        console.error(`[LocalScheduler] Failed to post tweet ${index + 1} in thread ${threadId}:`, error)
+        throw error
+      }
+    }
+
+    console.log(`[LocalScheduler] Thread ${threadId} posted successfully with ${threadTweets.length} tweets`)
+  } catch (error) {
+    console.error(`[LocalScheduler] Error processing thread ${threadId}:`, error)
+  }
+}
+
 // Simple in-memory scheduler for local development
 if (process.env.NODE_ENV === 'development') {
   // Check for scheduled tweets every minute in development
   setInterval(async () => {
     try {
+      console.log(`[LocalScheduler] Checking for scheduled tweets at ${new Date().toISOString()}`)
       const now = Date.now()
       const scheduledTweets = await db.query.tweets.findMany({
         where: and(
@@ -77,6 +195,8 @@ if (process.env.NODE_ENV === 'development') {
           lte(tweets.scheduledUnix, now),
         ),
       })
+      
+      console.log(`[LocalScheduler] Found ${scheduledTweets.length} scheduled tweets due for posting`)
       
       // Group by threadId
       const threads = scheduledTweets.reduce((acc, tweet) => {
@@ -89,12 +209,14 @@ if (process.env.NODE_ENV === 'development') {
         return acc
       }, {} as Record<string, typeof scheduledTweets>)
       
+      console.log(`[LocalScheduler] Found ${Object.keys(threads).length} unique threads to process`)
+      
       // Process each thread that's due
       for (const [threadId, threadTweets] of Object.entries(threads)) {
         if (threadTweets.length > 0) {
-          console.log(`[LocalScheduler] Processing scheduled thread ${threadId}`)
-          // In a real implementation, you'd call the postThread logic here
-          // For now, just log it
+          console.log(`[LocalScheduler] Processing scheduled thread ${threadId} with ${threadTweets.length} tweets`)
+          // Actually process the thread instead of just logging
+          await processScheduledThread(threadId)
         }
       }
     } catch (error) {

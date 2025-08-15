@@ -6,7 +6,7 @@ import { client } from '@/lib/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import posthog from 'posthog-js'
 import { useConfetti } from '@/hooks/use-confetti'
@@ -61,8 +61,13 @@ export default function ThreadTweetEditor({
   ])
   const [hasBeenCleared, setHasBeenCleared] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { fire } = useConfetti()
   const queryClient = useQueryClient()
+  
+  // Detect pre-selected schedule time from URL
+  const preScheduleTimeParam = searchParams?.get('scheduleTime')
+  const preScheduleTime = preScheduleTimeParam ? new Date(parseInt(preScheduleTimeParam) * 1000) : null
   
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
@@ -405,7 +410,22 @@ export default function ThreadTweetEditor({
 
 
 
-  const handleScheduleThread = async (scheduledDate: Date) => {
+  const handleScheduleThread = async (scheduledDate?: Date) => {
+    // Use pre-selected time from URL if available, otherwise use provided date
+    const finalScheduleDate = preScheduleTime || scheduledDate
+    
+    if (!finalScheduleDate) {
+      toast.error('No schedule time selected')
+      return
+    }
+
+    console.log('[ThreadTweetEditor] Scheduling thread:', {
+      preScheduleTime: preScheduleTime?.toISOString(),
+      providedDate: scheduledDate?.toISOString(),
+      finalDate: finalScheduleDate.toISOString(),
+      fromEmptySlot: !!preScheduleTime
+    })
+    
     // Validate tweets
     const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
@@ -413,7 +433,10 @@ export default function ThreadTweetEditor({
       return
     }
 
-    posthog.capture('thread_schedule_started', { tweet_count: threadTweets.length })
+    posthog.capture('thread_schedule_started', { 
+      tweet_count: threadTweets.length,
+      from_empty_slot: !!preScheduleTime
+    })
 
     try {
       // First create the thread
@@ -434,13 +457,14 @@ export default function ThreadTweetEditor({
       // Schedule the thread
       await scheduleThreadMutation.mutateAsync({
         threadId,
-        scheduledUnix: Math.floor(scheduledDate.getTime() / 1000),
+        scheduledUnix: Math.floor(finalScheduleDate.getTime() / 1000),
       })
       
       posthog.capture('thread_scheduled', {
         tweet_count: threadTweets.length,
         thread_id: threadId,
-        scheduled_for: scheduledDate.toISOString(),
+        scheduled_for: finalScheduleDate.toISOString(),
+        from_empty_slot: !!preScheduleTime
       })
       
       // Display a user-localized friendly time using the user's timezone
@@ -452,8 +476,15 @@ export default function ThreadTweetEditor({
         minute: '2-digit',
         hour12: true,
         timeZone: userTz,
-      }).format(scheduledDate)
+      }).format(finalScheduleDate)
       toast.success(`Thread scheduled for ${friendly}`)
+      
+      // Clear URL parameter after successful scheduling
+      if (preScheduleTime) {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('scheduleTime')
+        window.history.pushState({}, '', url.toString())
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to schedule thread')
     }
