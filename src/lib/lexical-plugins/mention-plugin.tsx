@@ -12,7 +12,7 @@ import {
   KEY_ENTER_COMMAND,
   KEY_ESCAPE_COMMAND,
 } from 'lexical'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { MentionNode2 } from '../nodes'
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
@@ -165,6 +165,74 @@ export default function MentionsPlugin() {
 
   console.log('🎯 MentionsPlugin current autocomplete state:', autocomplete)
 
+  // Handle autocomplete selection
+  const handleAutocompleteSelect = useCallback((username: string) => {
+    console.log('🎉 Handling autocomplete selection:', username)
+    
+    editor.update(() => {
+      const selection = $getSelection()
+      if (!$isRangeSelection(selection)) return
+
+      const anchorNode = selection.anchor.getNode()
+      
+      // If we're in a mention node, replace it
+      if ($isMentionNode2(anchorNode)) {
+        const newMentionNode = new MentionNode2(`@${username}`)
+        anchorNode.replace(newMentionNode)
+        
+        // Move cursor after the mention
+        const spaceNode = $createTextNode(' ')
+        newMentionNode.insertAfter(spaceNode)
+        selection.setTextNodeRange(spaceNode, 1, spaceNode, 1)
+      }
+      // If we're in a text node with partial mention
+      else if ($isTextNode(anchorNode)) {
+        const text = anchorNode.getTextContent()
+        const offset = selection.anchor.offset
+        const beforeCursor = text.slice(0, offset)
+        const afterCursor = text.slice(offset)
+        
+        // Find the @ and replace everything after it
+        const mentionMatch = beforeCursor.match(/@\w*$/)
+        if (mentionMatch) {
+          const mentionStart = beforeCursor.lastIndexOf('@')
+          const beforeMention = beforeCursor.slice(0, mentionStart)
+          
+          // Split the text
+          anchorNode.setTextContent(beforeMention)
+          
+          const mentionNode = new MentionNode2(`@${username}`)
+          anchorNode.insertAfter(mentionNode)
+          
+          if (afterCursor) {
+            const afterTextNode = $createTextNode(' ' + afterCursor)
+            mentionNode.insertAfter(afterTextNode)
+          } else {
+            const spaceNode = $createTextNode(' ')
+            mentionNode.insertAfter(spaceNode)
+            selection.setTextNodeRange(spaceNode, 1, spaceNode, 1)
+          }
+        }
+      }
+    })
+
+    // Hide autocomplete
+    setAutocomplete({
+      query: '',
+      position: null,
+      selectedIndex: 0,
+    })
+  }, [editor])
+
+  // Handle keyboard navigation in autocomplete
+  const handleKeyboardNavigation = useCallback((direction: 'up' | 'down') => {
+    // For simplicity, just select the first result for now
+    setAutocomplete(prev => ({
+      ...prev,
+      selectedIndex: 0,
+    }))
+  }, [])
+
   useEffect(() => {
     const removeTextContentListener = editor.registerTextContentListener(() => {
       editor.update(() => {
@@ -300,73 +368,7 @@ export default function MentionsPlugin() {
       3,
     )
 
-    // Handle autocomplete selection
-    const handleAutocompleteSelect = (username: string) => {
-      console.log('🎉 Handling autocomplete selection:', username)
-      
-      editor.update(() => {
-        const selection = $getSelection()
-        if (!$isRangeSelection(selection)) return
 
-        const anchorNode = selection.anchor.getNode()
-        
-        // If we're in a mention node, replace it
-        if ($isMentionNode2(anchorNode)) {
-          const newMentionNode = new MentionNode2(`@${username}`)
-          anchorNode.replace(newMentionNode)
-          
-          // Move cursor after the mention
-          const spaceNode = $createTextNode(' ')
-          newMentionNode.insertAfter(spaceNode)
-          selection.setTextNodeRange(spaceNode, 1, spaceNode, 1)
-        }
-        // If we're in a text node with partial mention
-        else if ($isTextNode(anchorNode)) {
-          const text = anchorNode.getTextContent()
-          const offset = selection.anchor.offset
-          const beforeCursor = text.slice(0, offset)
-          const afterCursor = text.slice(offset)
-          
-          // Find the @ and replace everything after it
-          const mentionMatch = beforeCursor.match(/@\w*$/)
-          if (mentionMatch) {
-            const mentionStart = beforeCursor.lastIndexOf('@')
-            const beforeMention = beforeCursor.slice(0, mentionStart)
-            
-            // Split the text
-            anchorNode.setTextContent(beforeMention)
-            
-            const mentionNode = new MentionNode2(`@${username}`)
-            anchorNode.insertAfter(mentionNode)
-            
-            if (afterCursor) {
-              const afterTextNode = $createTextNode(' ' + afterCursor)
-              mentionNode.insertAfter(afterTextNode)
-            } else {
-              const spaceNode = $createTextNode(' ')
-              mentionNode.insertAfter(spaceNode)
-              selection.setTextNodeRange(spaceNode, 1, spaceNode, 1)
-            }
-          }
-        }
-      })
-
-      // Hide autocomplete
-      setAutocomplete({
-        query: '',
-        position: null,
-        selectedIndex: 0,
-      })
-    }
-
-    // Handle keyboard navigation in autocomplete
-    const handleKeyboardNavigation = (direction: 'up' | 'down') => {
-      // For simplicity, just select the first result for now
-      setAutocomplete(prev => ({
-        ...prev,
-        selectedIndex: 0,
-      }))
-    }
 
     // Keyboard command handlers
     const removeEscapeListener = editor.registerCommand(
@@ -410,7 +412,7 @@ export default function MentionsPlugin() {
       removeEscapeListener()
       removeEnterListener()
     }
-  }, [editor, autocomplete])
+  }, [editor, handleAutocompleteSelect, handleKeyboardNavigation])
 
   return (
     <>

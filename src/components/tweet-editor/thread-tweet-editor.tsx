@@ -480,6 +480,10 @@ export default function ThreadTweetEditor({
       }).format(finalScheduleDate)
       toast.success(`Thread scheduled for ${friendly}`)
       
+      // Invalidate cache to update queue UI
+      queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
+      queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
+      
       // Clear URL parameter after successful scheduling
       if (preScheduleTime) {
         const url = new URL(window.location.href)
@@ -526,6 +530,10 @@ export default function ThreadTweetEditor({
         userNow: new Date(),
         timezone,
       })
+      
+      // Invalidate cache to update queue UI
+      queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
+      queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
       
       // Clear content immediately after successful queue
       setHasBeenCleared(true)
