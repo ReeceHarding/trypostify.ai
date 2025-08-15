@@ -524,37 +524,85 @@ export default function ThreadTweetEditor({
       // Get user's timezone
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
       
-      // Queue the thread
-      await enqueueThreadMutation.mutateAsync({
-        threadId,
-        userNow: new Date(),
-        timezone,
-      })
+      // If we have a pre-selected time from empty slot click, schedule for that exact time
+      if (preScheduleTime) {
+        console.log('[ThreadTweetEditor] Pre-schedule time detected, scheduling for exact time:', preScheduleTime.toISOString())
+        await scheduleThreadMutation.mutateAsync({
+          threadId,
+          scheduledUnix: Math.floor(preScheduleTime.getTime() / 1000),
+        })
+      } else {
+        // Otherwise, queue to next available slot
+        console.log('[ThreadTweetEditor] No pre-schedule time, queueing to next available slot')
+        await enqueueThreadMutation.mutateAsync({
+          threadId,
+          userNow: new Date(),
+          timezone,
+        })
+      }
       
       // Invalidate cache to update queue UI
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
       queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
       
-      // Clear content immediately after successful queue
+      // Clear content immediately after successful operation
       setHasBeenCleared(true)
       setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
       
-      posthog.capture('thread_queued', {
-        thread_id: threadId,
-        tweet_count: threadTweets.length,
-      })
-      
-      toast.success(
-        <div className="flex items-center gap-2">
-          <p>Thread queued!</p>
-          <Link
-            href="/studio/scheduled"
-            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
-          >
-            View here
-          </Link>
-        </div>
-      )
+      if (preScheduleTime) {
+        // Scheduled to specific time slot
+        posthog.capture('thread_scheduled', {
+          thread_id: threadId,
+          tweet_count: threadTweets.length,
+          scheduled_for: preScheduleTime.toISOString(),
+          from_empty_slot: true
+        })
+        
+        const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const friendly = new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+          timeZone: userTz,
+        }).format(preScheduleTime)
+        
+        toast.success(
+          <div className="flex items-center gap-2">
+            <p>Thread scheduled for {friendly}!</p>
+            <Link
+              href="/studio/scheduled"
+              className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+            >
+              View here
+            </Link>
+          </div>
+        )
+        
+        // Clear URL parameter after successful scheduling
+        const url = new URL(window.location.href)
+        url.searchParams.delete('scheduleTime')
+        window.history.pushState({}, '', url.toString())
+      } else {
+        // Queued to next available slot
+        posthog.capture('thread_queued', {
+          thread_id: threadId,
+          tweet_count: threadTweets.length,
+        })
+        
+        toast.success(
+          <div className="flex items-center gap-2">
+            <p>Thread queued!</p>
+            <Link
+              href="/studio/scheduled"
+              className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+            >
+              View here
+            </Link>
+          </div>
+        )
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
     }
