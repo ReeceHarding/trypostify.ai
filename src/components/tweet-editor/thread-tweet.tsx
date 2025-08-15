@@ -63,6 +63,7 @@ import ContentLengthIndicator from './content-length-indicator'
 import { Calendar20 } from './date-picker'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
+import { useHotkeyFeedback } from '../ui/hotkey-feedback'
 
 interface ThreadTweetProps {
   isThread: boolean
@@ -134,6 +135,7 @@ function ThreadTweetContent({
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
   const [optimisticActionState, setOptimisticActionState] = useState<'post' | 'queue' | 'schedule' | null>(null)
+  const { showAction } = useHotkeyFeedback()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllersRef = useRef(new Map<string, AbortController>())
 
@@ -625,17 +627,38 @@ function ThreadTweetContent({
         // Post: Cmd/Ctrl + Enter
         if (actualMetaKey && e.key === 'Enter' && !e.shiftKey && onPostThread) {
           e.preventDefault()
-          handlePostClick()
+          console.log(`[ThreadTweet] Post hotkey triggered at ${new Date().toISOString()}`)
+          setOptimisticActionState('post')
+          showAction('post')
+          // Use requestAnimationFrame for immediate UI update
+          requestAnimationFrame(() => {
+            handlePostClick()
+            setTimeout(() => setOptimisticActionState(null), 300)
+          })
         }
         // Queue: Cmd/Ctrl + E (for "Enqueue")
         else if (actualMetaKey && !e.shiftKey && e.key.toLowerCase() === 'e' && onQueueThread) {
           e.preventDefault()
-          onQueueThread()
+          console.log(`[ThreadTweet] Queue hotkey triggered at ${new Date().toISOString()}`)
+          setOptimisticActionState('queue')
+          showAction('queue')
+          // Use requestAnimationFrame for immediate UI update
+          requestAnimationFrame(() => {
+            onQueueThread()
+            setTimeout(() => setOptimisticActionState(null), 300)
+          })
         }
         // Schedule: Cmd/Ctrl + Shift + S (avoids conflict with browser Save)
         else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 's' && onScheduleThread) {
           e.preventDefault()
-          setOpen(true)
+          console.log(`[ThreadTweet] Schedule hotkey triggered at ${new Date().toISOString()}`)
+          setOptimisticActionState('schedule')
+          showAction('schedule')
+          // Use requestAnimationFrame for immediate UI update
+          requestAnimationFrame(() => {
+            setOpen(true)
+            setTimeout(() => setOptimisticActionState(null), 300)
+          })
         }
       }
 
@@ -1120,6 +1143,7 @@ function ThreadTweetContent({
                                     onClick={() => {
                                       if (onQueueThread) {
                                         setOptimisticActionState('queue')
+                                        showAction('queue')
                                         onQueueThread()
                                         // Clear optimistic state after action completes
                                         setTimeout(() => setOptimisticActionState(null), 300)
@@ -1169,6 +1193,7 @@ function ThreadTweetContent({
                                           })
                                           if (onScheduleThread) {
                                             setOptimisticActionState('schedule')
+                                            showAction('schedule')
                                             onScheduleThread(scheduled)
                                             setOpen(false)
                                             // Clear optimistic state after action completes
@@ -1178,6 +1203,7 @@ function ThreadTweetContent({
                                           console.error('[ThreadTweet] onSchedule combine error', e)
                                           if (onScheduleThread) {
                                             setOptimisticActionState('schedule')
+                                            showAction('schedule')
                                             onScheduleThread(date)
                                             setOpen(false)
                                             // Clear optimistic state after action completes

@@ -9,8 +9,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createSerializer, parseAsString } from 'nuqs'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
+import { useHotkeyFeedback } from './ui/hotkey-feedback'
 import {
   Sidebar,
   SidebarContent,
@@ -48,8 +49,8 @@ export const LeftSidebar = () => {
   
   const router = useRouter()
   
-  // State for navigation feedback
-  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
+  // Global hotkey feedback
+  const { showNavigation } = useHotkeyFeedback()
 
   // Keyboard shortcuts for navigation
   useEffect(() => {
@@ -66,11 +67,27 @@ export const LeftSidebar = () => {
           '/studio/posted',
           '/studio/accounts',
         ]
+        const pathNames = [
+          'Studio',
+          'Knowledge Base',
+          'Schedule',
+          'Posted',
+          'Accounts',
+        ]
         const index = parseInt(e.key) - 1
         if (paths[index]) {
+          console.log(`[LeftSidebar] Navigation shortcut triggered: ${pathNames[index]} at ${new Date().toISOString()}`)
+          
+          // Immediate visual feedback
+          showNavigation(pathNames[index])
+          
           const searchString = id ? serialize({ chatId: id }) : ''
           const url = searchString ? `${paths[index]}?${searchString}` : paths[index]
-          router.push(url)
+          
+          // Use Promise.resolve to ensure immediate UI update
+          Promise.resolve().then(() => {
+            router.push(url)
+          })
         }
       }
       // Toggle left sidebar: Cmd/Ctrl + \
@@ -85,6 +102,7 @@ export const LeftSidebar = () => {
   }, [isMac, router, id, toggleSidebar])
 
   return (
+    <>
     <Sidebar collapsible="icon" side="left" className="border-r border-border/40">
       <SidebarHeader className="border-b border-border/40 p-4">
         <div className="flex items-center justify-start gap-2">
@@ -430,5 +448,16 @@ export const LeftSidebar = () => {
         </div>
       </SidebarFooter>
     </Sidebar>
+    
+    {/* Navigation feedback overlay */}
+    {navigatingTo && (
+      <div className="fixed top-4 left-4 z-50 bg-primary text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-left duration-200">
+        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+        <span className="text-sm font-medium">
+          Opening {navigatingTo}...
+        </span>
+      </div>
+    )}
+    </>
   )
 }
