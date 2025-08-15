@@ -8,6 +8,8 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { DayFlag, DayPicker, SelectionState, UI } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import DuolingoButton from '../ui/duolingo-button'
+import { useQuery } from '@tanstack/react-query'
+import { client } from '@/lib/client'
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   onSchedule?: (date: Date, time: string) => void
@@ -30,6 +32,18 @@ export const Calendar20 = ({
   const currentHour = today.getHours()
   const currentMinute = today.getMinutes()
 
+  // Fetch user's posting window settings
+  const { data: postingWindow } = useQuery({
+    queryKey: ['posting-window'],
+    queryFn: async () => {
+      console.log('[DatePicker] Fetching posting window for time slots...')
+      const res = await client.settings.getPostingWindow.$get()
+      const data = await res.json()
+      console.log('[DatePicker] Retrieved posting window:', data)
+      return data
+    },
+  })
+
   // Helper to format a "HH:mm" string into a 12-hour time label like "1:30 PM"
   const formatHHmmTo12h = (hhmm: string | null): string => {
     if (!hhmm) return ''
@@ -41,12 +55,26 @@ export const Calendar20 = ({
     return `${hours12}:${mStr?.padStart(2, '0')} ${ampm}`
   }
 
-  const timeSlots = Array.from({ length: 37 }, (_, i) => {
-    const totalMinutes = i * 15
-    const hour = Math.floor(totalMinutes / 60) + 9
-    const minute = totalMinutes % 60
-    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-  })
+  // Generate time slots based on user's posting window (default: 9 AM - 6 PM if no settings)
+  const generateTimeSlots = (): string[] => {
+    const startHour = postingWindow?.start ?? 9 // Default 9 AM
+    const endHour = postingWindow?.end ?? 18 // Default 6 PM
+    
+    console.log('[DatePicker] Generating time slots from', startHour, 'to', endHour)
+    
+    const slots: string[] = []
+    // Generate 15-minute intervals within the posting window
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`)
+      }
+    }
+    
+    console.log('[DatePicker] Generated', slots.length, 'time slots:', slots.slice(0, 5), '...')
+    return slots
+  }
+
+  const timeSlots = generateTimeSlots()
 
   const getNextAvailableTime = (): string => {
     const currentTime = currentHour * 60 + currentMinute
