@@ -369,7 +369,7 @@ export default function TweetQueue() {
                           </div>
                         ) : (
                           <DuolingoButton
-                            variant="ghost"
+                            variant="secondary"
                             className="flex items-center gap-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 w-full justify-start p-2 h-auto min-h-[2rem]"
                             onClick={() => {
                               console.log('[TweetQueue] Empty slot clicked:', { unix, time: new Date(unix).toISOString() })
@@ -432,7 +432,7 @@ export default function TweetQueue() {
                                   <div className="flex flex-col">
                                     <p>Edit</p>
                                     <p className="text-xs text-neutral-500">
-                                      Open this {tweet?.isThread ? 'thread' : 'tweet'} in the editor.
+                                      Open this {tweet.tweets && tweet.tweets.length > 1 ? 'thread' : 'tweet'} in the editor.
                                     </p>
                                   </div>
                                 </DropdownMenuItem>
@@ -459,7 +459,7 @@ export default function TweetQueue() {
                                   variant="destructive"
                                   className="mt-1 w-full"
                                   onClick={() => {
-                                    if (tweet!.isThread && tweet!.tweets) {
+                                    if (tweet!.tweets && tweet!.tweets.length > 1) {
                                       // Delete all tweets in the thread
                                       tweet!.tweets.forEach((t: any) => {
                                         deleteTweet(t.id)
@@ -473,7 +473,7 @@ export default function TweetQueue() {
                                   <div className="flex text-error-600  flex-col">
                                     <p>Delete</p>
                                     <p className="text-xs text-error-600">
-                                      Delete this {tweet?.isThread ? 'thread' : 'tweet'} from the queue.
+                                      Delete this {tweet.tweets && tweet.tweets.length > 1 ? 'thread' : 'tweet'} from the queue.
                                     </p>
                                   </div>
                                 </DropdownMenuItem>
@@ -489,7 +489,7 @@ export default function TweetQueue() {
                                   Post to Twitter
                                 </DialogTitle>
                                 <DialogDescription>
-                                  {tweet.isThread 
+                                  {tweet.tweets && tweet.tweets.length > 1 
                                     ? `This thread (${tweet.tweets?.length || 0} posts) will be posted and removed from your queue immediately. Would you like to continue?`
                                     : 'This post will be posted and removed from your queue immediately. Would you like to continue?'
                                   }

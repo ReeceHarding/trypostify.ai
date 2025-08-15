@@ -14,6 +14,7 @@ import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
 import { useUser } from '@/hooks/use-tweets'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Clock } from 'lucide-react'
 
 interface ThreadTweetData {
   id: string
@@ -601,6 +602,19 @@ export default function ThreadTweetEditor({
   // Render the tweets
   return (
     <div className={cn('relative z-10 w-full rounded-lg font-sans', className)}>
+      {preScheduleTime && (
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2 text-primary-800">
+            <Clock className="size-4" />
+            <span className="text-sm font-medium">
+              Scheduling for: {format(preScheduleTime, 'MMM d, yyyy h:mm a')}
+            </span>
+          </div>
+          <p className="text-xs text-primary-600 mt-1">
+            Create your content and click Schedule to publish at this time.
+          </p>
+        </div>
+      )}
       <div className="space-y-4 w-full">
         {threadTweets.map((tweet, index) => (
           <div key={tweet.id} className="relative" data-tweet-id={tweet.id}>
@@ -633,6 +647,7 @@ export default function ThreadTweetEditor({
               onUpdateThread={editMode ? handleUpdateThread : undefined}
               onCancelEdit={editMode ? handleCancelEdit : undefined}
               isPosting={isPosting}
+              preScheduleTime={preScheduleTime}
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
               initialContent={tweet.content}
               initialMedia={tweet.media?.map((m: any) => ({

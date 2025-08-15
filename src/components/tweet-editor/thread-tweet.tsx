@@ -85,6 +85,7 @@ interface ThreadTweetProps {
   initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
   showFocusTooltip?: boolean
   focusShortcut?: string
+  preScheduleTime?: Date | null
 }
 
 // Twitter media type validation
@@ -122,6 +123,7 @@ function ThreadTweetContent({
   initialMedia = [],
   showFocusTooltip = false,
   focusShortcut,
+  preScheduleTime = null,
 }: ThreadTweetProps) {
 
   const [editor] = useLexicalComposerContext()
@@ -1179,6 +1181,7 @@ function ThreadTweetContent({
                                   </TooltipTrigger>
                                   <PopoverContent className="max-w-3xl w-full">
                                     <Calendar20
+                                      initialScheduledTime={preScheduleTime || undefined}
                                       onSchedule={(date, time) => {
                                         // Combine selected calendar date with the chosen HH:mm time
                                         try {
