@@ -87,6 +87,7 @@ interface ThreadTweetProps {
   showFocusTooltip?: boolean
   focusShortcut?: string
   preScheduleTime?: Date | null
+  mentionsInputRef?: React.RefObject<any>
 }
 
 // Twitter media type validation
@@ -125,9 +126,12 @@ function ThreadTweetContent({
   showFocusTooltip = false,
   focusShortcut,
   preScheduleTime = null,
+  mentionsInputRef,
 }: ThreadTweetProps) {
   // State for react-mentions content
   const [mentionsContent, setMentionsContent] = useState(initialContent || '')
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  const [charCount, setCharCount] = useState(0)
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -149,8 +153,6 @@ function ThreadTweetContent({
 
   const [editor] = useLexicalComposerContext()
   const { currentTweet } = useTweets()
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
-  const [charCount, setCharCount] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
@@ -283,24 +285,11 @@ function ThreadTweetContent({
     }
   }, [initialMedia])
 
-  // Update parent when content changes
+  // Character count is now handled in handleMentionsContentChange
+  // Keep this effect for initial character count setup
   useEffect(() => {
-    if (editor) {
-      const unregister = editor.registerUpdateListener(({ editorState }) => {
-        editorState.read(() => {
-          const content = $getRoot().getTextContent()
-          setCharCount(content.length)
-          if (onUpdate) {
-            onUpdate(content, mediaFiles.filter(f => f.media_id && f.s3Key).map(f => ({
-              s3Key: f.s3Key!,
-              media_id: f.media_id!,
-            })))
-          }
-        })
-      })
-      return () => unregister()
-    }
-  }, [editor, onUpdate, mediaFiles])
+    setCharCount(mentionsContent.length)
+  }, [mentionsContent])
 
   // Upload mutations
   const uploadToS3Mutation = useMutation({
@@ -837,6 +826,7 @@ function ThreadTweetContent({
                       onMouseLeave={() => setShowTooltip(false)}
                     >
                       <ReactMentionsInput
+                        ref={mentionsInputRef}
                         value={mentionsContent}
                         onChange={handleMentionsContentChange}
                         placeholder={isFirstTweet ? "What's happening?" : "Add another post..."}
@@ -1316,14 +1306,17 @@ function ThreadTweetContent({
 
 const ThreadTweetContentWithRef = React.forwardRef<any, ThreadTweetProps>((props, ref) => {
   const [editor] = useLexicalComposerContext()
+  const mentionsInputRef = useRef<any>(null)
   
   React.useImperativeHandle(ref, () => ({
     focus: () => {
-      editor.focus()
+      if (mentionsInputRef.current) {
+        mentionsInputRef.current.focus()
+      }
     }
   }))
   
-  return <ThreadTweetContent {...props} />
+  return <ThreadTweetContent {...props} mentionsInputRef={mentionsInputRef} />
 })
 
 ThreadTweetContentWithRef.displayName = 'ThreadTweetContentWithRef'

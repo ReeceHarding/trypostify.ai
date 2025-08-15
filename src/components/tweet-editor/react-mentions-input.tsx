@@ -11,17 +11,17 @@ interface ReactMentionsInputProps {
   placeholder?: string
   className?: string
   disabled?: boolean
-  onPaste?: (event: React.ClipboardEvent) => void
+  onPaste?: (event: React.ClipboardEvent<Element>) => void
 }
 
-export default function ReactMentionsInput({
+const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
   value,
   onChange,
   placeholder = "What's happening?",
   className,
   disabled = false,
   onPaste,
-}: ReactMentionsInputProps) {
+}, ref) => {
   console.log('🎯 ReactMentionsInput rendering with value:', value)
 
   // Fetch users for mentions
@@ -170,6 +170,7 @@ export default function ReactMentionsInput({
   return (
     <div className={cn('w-full', className)}>
       <MentionsInput
+        ref={ref}
         value={value}
         onChange={handleChange}
         style={mentionsInputStyle}
@@ -191,4 +192,8 @@ export default function ReactMentionsInput({
       </MentionsInput>
     </div>
   )
-}
+})
+
+ReactMentionsInput.displayName = 'ReactMentionsInput'
+
+export default ReactMentionsInput
