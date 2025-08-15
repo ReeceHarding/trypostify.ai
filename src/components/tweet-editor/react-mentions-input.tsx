@@ -22,7 +22,9 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
   disabled = false,
   onPaste,
 }, ref) => {
-  console.log('🎯 ReactMentionsInput rendering with value:', value)
+  // Ensure value is always a string to prevent react-mentions from calling .replace() on undefined
+  const safeValue = value ?? ''
+  console.log('🎯 ReactMentionsInput rendering with value:', value, 'safeValue:', safeValue)
 
   // Fetch users for mentions
   const fetchUsers = useCallback(async (query: string, callback: (data: any[]) => void) => {
@@ -171,7 +173,7 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
     <div className={cn('w-full', className)}>
       <MentionsInput
         ref={ref}
-        value={value}
+        value={safeValue}
         onChange={handleChange}
         style={mentionsInputStyle}
         placeholder={placeholder}

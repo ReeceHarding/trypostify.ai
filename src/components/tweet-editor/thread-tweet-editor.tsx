@@ -705,7 +705,7 @@ export default function ThreadTweetEditor({
               isPosting={isPosting}
               preScheduleTime={preScheduleTime}
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
-              initialContent={tweet.content}
+              initialContent={tweet.content ?? ''}
               initialMedia={tweet.media?.map((m: any) => ({
                 // Ensure a valid preview URL is always present. If the API didn't
                 // enrich media with a URL, derive it from the S3 key using the
