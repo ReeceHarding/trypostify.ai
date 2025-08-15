@@ -375,9 +375,20 @@ const SidebarInset = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const { leftSidebar, rightSidebar } = useMultiSidebar()
   
-  // Calculate margins based on sidebar states
-  const leftMargin = leftSidebar.open && !leftSidebar.isMobile ? "md:ml-[--sidebar-width]" : ""
-  const rightMargin = rightSidebar.open && !rightSidebar.isMobile ? "md:mr-[--right-sidebar-width]" : ""
+  // Debug log to understand sidebar states
+  React.useEffect(() => {
+    console.log('[SidebarInset] Sidebar states:', {
+      leftOpen: leftSidebar.open,
+      leftMobile: leftSidebar.isMobile,
+      rightOpen: rightSidebar.open,
+      rightMobile: rightSidebar.isMobile,
+      timestamp: new Date().toISOString()
+    })
+  }, [leftSidebar.open, leftSidebar.isMobile, rightSidebar.open, rightSidebar.isMobile])
+  
+  // Calculate margins based on sidebar states - desktop only
+  const leftMargin = leftSidebar.open && !leftSidebar.isMobile ? "md:ml-24" : ""  // 6rem = 24 in Tailwind
+  const rightMargin = rightSidebar.open && !rightSidebar.isMobile ? "md:mr-68" : ""  // 17rem = 68 in Tailwind
   
   return (
     <main
