@@ -30,7 +30,14 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
   const fetchUsers = useCallback(async (query: string, callback: (data: any[]) => void) => {
     console.log('📡 Fetching users for query:', query)
     
-    if (!query || query.length < 1) {
+    // Ensure callback is a function
+    if (typeof callback !== 'function') {
+      console.warn('⚠️ Invalid callback provided to fetchUsers')
+      return
+    }
+    
+    // Ensure query is a string
+    if (!query || typeof query !== 'string' || query.length < 1) {
       callback([])
       return
     }
@@ -43,14 +50,14 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
       
       console.log('✅ Received user data:', data)
       
-      if (data) {
-        // Format data for react-mentions
+      if (data && data.username) {
+        // Format data for react-mentions with validation
         const formattedUsers = [{
-          id: data.username,
-          display: `${data.name} (@${data.username})`,
-          username: data.username,
-          name: data.name,
-          profile_image_url: data.profile_image_url,
+          id: String(data.username || ''),
+          display: `${data.name || ''} (@${data.username || ''})`,
+          username: String(data.username || ''),
+          name: String(data.name || ''),
+          profile_image_url: data.profile_image_url || '',
         }]
         
         console.log('📋 Formatted users:', formattedUsers)
@@ -137,6 +144,12 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
   const renderSuggestion = (suggestion: any, search: string, highlightedDisplay: React.ReactNode, index: number, focused: boolean) => {
     console.log('🎨 Rendering suggestion:', suggestion, 'focused:', focused)
     
+    // Ensure suggestion object is valid
+    if (!suggestion || typeof suggestion !== 'object') {
+      console.warn('⚠️ Invalid suggestion object:', suggestion)
+      return null
+    }
+    
     return (
       <div 
         className={cn(
@@ -156,44 +169,77 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
           />
         )}
         <div className="flex-1">
-          <div className="font-medium text-sm text-neutral-900">{suggestion.name}</div>
-          <div className="text-xs text-neutral-600">@{suggestion.username}</div>
+          <div className="font-medium text-sm text-neutral-900">{suggestion.name || ''}</div>
+          <div className="text-xs text-neutral-600">@{suggestion.username || ''}</div>
         </div>
       </div>
     )
   }
 
   const handleChange = (event: { target: { value: string } }) => {
+    // Ensure the event and value are valid
+    if (!event || !event.target || typeof event.target.value !== 'string') {
+      console.warn('⚠️ Invalid change event:', event)
+      return
+    }
+    
     const newValue = event.target.value
     console.log('📝 Value changed:', newValue)
     onChange(newValue)
   }
 
-  return (
-    <div className={cn('w-full', className)}>
-      <MentionsInput
-        ref={ref}
-        value={safeValue}
-        onChange={handleChange}
-        style={mentionsInputStyle}
-        placeholder={placeholder}
-        disabled={disabled}
-        allowSpaceInQuery
-        allowSuggestionsAboveCursor
-        forceSuggestionsAboveCursor={false}
-        onPaste={onPaste}
-        className="w-full min-h-16 resize-none text-base leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none"
-      >
-        <Mention
-          trigger="@"
-          data={fetchUsers}
-          style={mentionStyle}
-          renderSuggestion={renderSuggestion}
-          displayTransform={(id: string, display: string) => `@${id}`}
+  try {
+    return (
+      <div className={cn('w-full', className)}>
+        <MentionsInput
+          ref={ref}
+          value={safeValue}
+          onChange={handleChange}
+          style={mentionsInputStyle}
+          placeholder={placeholder}
+          disabled={disabled}
+          allowSpaceInQuery
+          allowSuggestionsAboveCursor
+          forceSuggestionsAboveCursor={false}
+          onPaste={onPaste}
+          className="w-full min-h-16 resize-none text-base leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none"
+        >
+          <Mention
+            trigger="@"
+            data={fetchUsers}
+            style={mentionStyle}
+            renderSuggestion={renderSuggestion}
+            displayTransform={(id: string, display: string) => {
+              try {
+                // Ensure id is a string to prevent errors
+                const safeId = typeof id === 'string' ? id : String(id || '')
+                return `@${safeId}`
+              } catch (error) {
+                console.error('❌ Error in displayTransform:', error)
+                return '@'
+              }
+            }}
+          />
+        </MentionsInput>
+      </div>
+    )
+  } catch (error) {
+    console.error('❌ Critical error in ReactMentionsInput:', error)
+    // Fallback to a simple textarea
+    return (
+      <div className={cn('w-full', className)}>
+        <textarea
+          ref={ref}
+          value={safeValue}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          onPaste={onPaste}
+          className="w-full min-h-16 resize-none text-base leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none"
         />
-      </MentionsInput>
-    </div>
-  )
+      </div>
+    )
+  }
 })
 
 ReactMentionsInput.displayName = 'ReactMentionsInput'
