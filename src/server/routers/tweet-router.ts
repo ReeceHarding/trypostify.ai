@@ -101,7 +101,7 @@ async function processScheduledThread(threadId: string) {
     const account = await db.query.account.findFirst({
       where: and(
         eq(accountSchema.userId, firstTweet.userId),
-        eq(accountSchema.provider, 'twitter'),
+        eq(accountSchema.provider, 'twitter')
       ),
     })
 

@@ -24,6 +24,7 @@ import { useAttachments } from '@/hooks/use-attachments'
 import { client } from '@/lib/client'
 import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
 import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
+import ReactMentionsInput from './react-mentions-input'
 
 
 import { useMutation } from '@tanstack/react-query'
@@ -125,6 +126,26 @@ function ThreadTweetContent({
   focusShortcut,
   preScheduleTime = null,
 }: ThreadTweetProps) {
+  // State for react-mentions content
+  const [mentionsContent, setMentionsContent] = useState(initialContent || '')
+  
+  console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
+
+  // Handler for react-mentions content changes
+  const handleMentionsContentChange = useCallback((newContent: string) => {
+    console.log('📝 Mentions content changed:', newContent)
+    setMentionsContent(newContent)
+    setCharCount(newContent.length)
+    
+    // Notify parent component about the update
+    if (onUpdate) {
+      const filteredMedia = mediaFiles.filter(f => f.media_id && f.s3Key).map(f => ({
+        s3Key: f.s3Key!,
+        media_id: f.media_id!,
+      }))
+      onUpdate(newContent, filteredMedia)
+    }
+  }, [onUpdate, mediaFiles])
 
   const [editor] = useLexicalComposerContext()
   const { currentTweet } = useTweets()
@@ -815,22 +836,13 @@ function ThreadTweetContent({
                       onMouseEnter={() => setShowTooltip(true)}
                       onMouseLeave={() => setShowTooltip(false)}
                     >
-                      <PlainTextPlugin
-                        contentEditable={
-                          <ContentEditable
-                            spellCheck={false}
-                            onPaste={handlePaste}
-                            className={cn(
-                              'w-full !min-h-16 resize-none text-base/7 leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none',
-                            )}
-                          />
-                        }
-                        ErrorBoundary={LexicalErrorBoundary}
+                      <ReactMentionsInput
+                        value={mentionsContent}
+                        onChange={handleMentionsContentChange}
+                        placeholder={isFirstTweet ? "What's happening?" : "Add another post..."}
+                        onPaste={handlePaste}
+                        className="w-full !min-h-16 resize-none text-base/7 leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none"
                       />
-                      <PlaceholderPlugin placeholder={isFirstTweet ? "What's happening?" : "Add another post..."} />
-                      <HistoryPlugin />
-                      <MentionsPlugin />
-                      <MentionTooltipPlugin />
                       <KeyboardShortcutsPlugin 
                         onPost={handlePostClick}
                         onQueue={onQueueThread}
