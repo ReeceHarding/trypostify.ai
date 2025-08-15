@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { UpgradeDrawer } from '@/components/upgrade-drawer'
 import { authClient } from '@/lib/auth-client'
 import { client } from '@/lib/client'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, isToday, isTomorrow } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -19,6 +19,7 @@ import { Loader2, Trash2, Clock } from 'lucide-react'
 const Page = () => {
   const router = useRouter()
   const { data } = authClient.useSession()
+  const queryClient = useQueryClient()
 
   const searchParams = useSearchParams()
   const status = searchParams.get('s')
@@ -154,6 +155,8 @@ const Page = () => {
     },
     onSuccess: () => {
       console.log('[SETTINGS] Posting window updated successfully')
+      // Invalidate the posting window cache to refresh the display
+      queryClient.invalidateQueries({ queryKey: ['posting-window'] })
       toast.success('Posting window updated successfully!')
     },
     onError: (error) => {
