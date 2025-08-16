@@ -1015,6 +1015,49 @@ function ThreadTweetContent({
                 </div>
               )}
 
+              {/* OG Preview Section */}
+              {ogPreview && ogPreview.ogImage && (
+                <div className="mt-3">
+                  <div className="rounded-2xl overflow-hidden border border-neutral-200 relative group">
+                    {isLoadingOg && (
+                      <div className="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-10">
+                        <Loader2 className="size-6 animate-spin text-primary" />
+                      </div>
+                    )}
+                    <a 
+                      href={ogPreview.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block hover:opacity-90 transition-opacity"
+                    >
+                      <img
+                        src={ogPreview.ogImage}
+                        alt={ogPreview.title || 'Link preview'}
+                        className="w-full object-cover"
+                        onError={(e) => {
+                          // Hide the preview if image fails to load
+                          setOgPreview(null)
+                        }}
+                      />
+                      {ogPreview.title && (
+                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                          <p className="text-white text-sm font-medium line-clamp-2">
+                            {ogPreview.title}
+                          </p>
+                        </div>
+                      )}
+                    </a>
+                    <button
+                      onClick={() => setOgPreview(null)}
+                      className="absolute top-2 right-2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      type="button"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between max-[320px]:flex-col max-[320px]:gap-3">
                 <div
                   className={cn(
