@@ -7,6 +7,8 @@ import DuolingoButton from '../ui/duolingo-button'
 import { useTweets } from '@/hooks/use-tweets'
 import { usePathname, useRouter } from 'next/navigation'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useSidebar } from '@/components/ui/sidebar'
 
 export const TweetMockup = memo(
   ({
@@ -17,6 +19,8 @@ export const TweetMockup = memo(
     const { setTweetContent } = useTweets()
     const router = useRouter()
     const pathname = usePathname()
+    const isMobile = useIsMobile()
+    const { setOpenMobile } = useSidebar()
     
     const containerVariants = {
       hidden: { opacity: 0, y: 20, scale: 0.95 },
@@ -42,6 +46,11 @@ export const TweetMockup = memo(
           { pathname, textLen: text.length },
         )
       } catch {}
+
+      // Close the assistant sheet on mobile for a clean UX
+      if (isMobile) {
+        try { setOpenMobile(false) } catch {}
+      }
 
       // If we're not on the create page, navigate there so the editor can pick up the content
       if (pathname !== '/studio') {
@@ -96,19 +105,7 @@ export const TweetMockup = memo(
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DuolingoButton
-                    onClick={() => {
-                      apply()
-                      try {
-                        const isMobile =
-                          typeof window !== 'undefined' &&
-                          window.matchMedia &&
-                          window.matchMedia('(max-width: 480px)').matches
-                        if (isMobile) {
-                          // Ask sidebar to close on mobile
-                          window.dispatchEvent(new CustomEvent('sidebar:toggle-mobile'))
-                        }
-                      } catch {}
-                    }}
+                    onClick={apply}
                     variant="secondary"
                     size="sm"
                     className="text-sm w-fit h-8 px-2"
