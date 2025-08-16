@@ -1215,19 +1215,42 @@ export const tweetRouter = j.router({
           accessSecret: dbAccount.accessSecret as string,
         })
 
-        // Try to find exact username match on Twitter API
-        // Note: Twitter API v2 doesn't have a general user search, only exact username lookup
+        // Enhanced user search with follower prioritization
         let twitterUsers = []
+        
         try {
-          const { data } = await client.v2.userByUsername(cleanQuery, {
+          // First try to get users the current user is following that match the query
+          const { data: followingData } = await client.v2.following(account.providerAccountId, {
             'user.fields': ['profile_image_url', 'verified', 'public_metrics', 'description'],
+            max_results: 100 // Get more followers for better filtering
           })
-          if (data) {
-            twitterUsers = [data]
+          
+          if (followingData?.data) {
+            // Filter following users by the search query (fuzzy match on username and name)
+            const matchingFollowing = followingData.data.filter(user => 
+              user.username.toLowerCase().includes(cleanQuery) || 
+              user.name.toLowerCase().includes(cleanQuery)
+            ).slice(0, limit) // Take only what we need
+            
+            twitterUsers = [...matchingFollowing]
+            console.log(`[getHandles] Found ${matchingFollowing.length} matching users from following list`)
           }
         } catch (error) {
-          // If exact username doesn't exist, that's okay - we'll just use local results
-          console.log(`[getHandles] No exact Twitter user found for "${cleanQuery}"`)
+          console.log(`[getHandles] Could not fetch following list: ${error.message}`)
+        }
+        
+        // If we still need more results, try exact username lookup
+        if (twitterUsers.length < limit) {
+          try {
+            const { data } = await client.v2.userByUsername(cleanQuery, {
+              'user.fields': ['profile_image_url', 'verified', 'public_metrics', 'description'],
+            })
+            if (data && !twitterUsers.find(u => u.id === data.id)) {
+              twitterUsers.push(data)
+            }
+          } catch (error) {
+            console.log(`[getHandles] No exact Twitter user found for "${cleanQuery}"`)
+          }
         }
 
         console.log(`[getHandles] Found ${twitterUsers.length} users from Twitter API`)
@@ -1235,35 +1258,17 @@ export const tweetRouter = j.router({
         // TODO: Re-enable database storage once twitter_user table is created
         console.log(`[getHandles] Skipping database storage - twitter_user table not yet created`)
 
-        // Combine local and Twitter results, removing duplicates
-        const allUsers = [...localUsers]
-        for (const twitterUser of twitterUsers) {
-          if (!allUsers.find(u => u.username === twitterUser.username)) {
-            allUsers.push({
-              id: twitterUser.id,
-              username: twitterUser.username,
-              name: twitterUser.name,
-              profileImageUrl: twitterUser.profile_image_url || null,
-              verified: twitterUser.verified || false,
-              followersCount: twitterUser.public_metrics?.followers_count || 0,
-              description: twitterUser.description || null,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              lastSearchedAt: new Date(),
-              searchCount: 1
-            })
-          }
-        }
-
-        // Format results for frontend
-        const formattedUsers = allUsers.slice(0, limit).map(user => ({
+        // Format Twitter users for consistent response (prioritizing followers first)
+        const formattedUsers = twitterUsers.slice(0, limit).map((user, index) => ({
           id: user.username,
           display: `${user.name} (@${user.username})`,
           username: user.username,
           name: user.name,
-          profile_image_url: user.profileImageUrl,
-          verified: user.verified,
-          followers_count: user.followersCount
+          profile_image_url: user.profile_image_url,
+          verified: user.verified || false,
+          followers_count: user.public_metrics?.followers_count || 0,
+          description: user.description,
+          isFollowing: index < (twitterUsers.length - 1) // Mark followers vs general users
         }))
 
         console.log(`[getHandles] Returning ${formattedUsers.length} total users`)
