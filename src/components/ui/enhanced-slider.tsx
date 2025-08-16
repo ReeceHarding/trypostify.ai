@@ -88,7 +88,7 @@ export function EnhancedSlider({
           onClick={decrementValue}
           disabled={disabled || value <= min}
           className={cn(
-            "flex size-6 shrink-0 aspect-square items-center justify-center rounded-md transition-colors",
+            "flex size-6 shrink-0 aspect-square items-center justify-center rounded-md transition-colors max-[480px]:hidden",
             "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
             "disabled:pointer-events-none disabled:opacity-50"
           )}
@@ -128,7 +128,7 @@ export function EnhancedSlider({
           onClick={incrementValue}
           disabled={disabled || value >= max}
           className={cn(
-            "flex size-6 shrink-0 aspect-square items-center justify-center rounded-md transition-colors",
+            "flex size-6 shrink-0 aspect-square items-center justify-center rounded-md transition-colors max-[480px]:hidden",
             "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
             "disabled:pointer-events-none disabled:opacity-50"
           )}
