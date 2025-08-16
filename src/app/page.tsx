@@ -12,21 +12,28 @@ import { client } from '@/lib/client'
 const Page = async () => {
   console.log('[Homepage] Checking user session at', new Date().toISOString())
   
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
+  // Skip auth checks in development when SKIP_AUTH is enabled
+  const shouldSkipAuth = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
   
-  console.log('[Homepage] Session check result:', {
-    hasSession: !!session,
-    hasUser: !!session?.user,
-    userId: session?.user?.id || 'none',
-    timestamp: new Date().toISOString()
-  })
-  
-  // Redirect signed-in users directly to studio
-  if (session?.user) {
-    console.log('[Homepage] User is signed in, redirecting to /studio for user:', session.user.id)
-    redirect('/studio')
+  if (shouldSkipAuth) {
+    console.log('[Homepage] SKIP_AUTH enabled, bypassing session check and showing homepage')
+  } else {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    })
+    
+    console.log('[Homepage] Session check result:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: session?.user?.id || 'none',
+      timestamp: new Date().toISOString()
+    })
+    
+    // Redirect signed-in users directly to studio
+    if (session?.user) {
+      console.log('[Homepage] User is signed in, redirecting to /studio for user:', session.user.id)
+      redirect('/studio')
+    }
   }
   
   console.log('[Homepage] User not signed in, showing homepage content')

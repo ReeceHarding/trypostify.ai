@@ -1058,7 +1058,7 @@ function ThreadTweetContent({
                 </div>
 
                 {/* Action Buttons Section */}
-                <div className="flex items-center gap-2 max-[320px]:flex-col max-[320px]:items-stretch max-[320px]:gap-3 max-[320px]:w-full">
+                <div className="flex items-center gap-2 justify-end max-[320px]:flex-col max-[320px]:items-stretch max-[320px]:gap-3 max-[320px]:w-full max-[320px]:justify-start">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>

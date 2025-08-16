@@ -32,6 +32,15 @@ const LoginPage = () => {
     if (hasInitialized) return
     setHasInitialized(true)
 
+    // Skip auth in development when SKIP_AUTH is enabled - redirect directly to studio
+    const shouldSkipAuth = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+    
+    if (shouldSkipAuth) {
+      console.log('[LoginPage] SKIP_AUTH enabled, redirecting directly to studio')
+      router.push('/studio')
+      return
+    }
+
     checkIfLoggedIn().then((isLoggedIn) => {
       if (isLoggedIn) {
         console.log('[LoginPage] User already logged in, redirecting to studio')
