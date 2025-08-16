@@ -15,10 +15,12 @@ const Page = async () => {
   // Skip auth checks in development when SKIP_AUTH is enabled
   const shouldSkipAuth = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
   
+  let session = null
+  
   if (shouldSkipAuth) {
     console.log('[Homepage] SKIP_AUTH enabled, bypassing session check and showing homepage')
   } else {
-    const session = await auth.api.getSession({
+    session = await auth.api.getSession({
       headers: await headers(),
     })
     
