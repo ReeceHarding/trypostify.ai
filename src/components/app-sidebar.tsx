@@ -637,7 +637,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     [addChatAttachment],
   )
 
-  // Keyboard shortcut for New Chat
+  // Keyboard shortcut for New Chat and custom event for toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
@@ -664,8 +664,19 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Custom event listener for toggle from main content header
+    const handleToggleFromMainHeader = () => {
+      console.log('[AppSidebar] Received toggle event from main content header at', new Date().toISOString())
+      toggleSidebar()
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('toggleRightSidebar', handleToggleFromMainHeader)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('toggleRightSidebar', handleToggleFromMainHeader)
+    }
   }, [isMac, handleNewChat, editor, toggleSidebar])
 
   const { setId } = useChatContext()

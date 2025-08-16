@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Menu, PanelLeft, ArrowLeftFromLine, ArrowRightFromLine } from 'lucide-react'
+import { Menu, PanelRight, ArrowRightFromLine, ArrowLeftFromLine } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
 import { useSidebar } from '../ui/sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -112,11 +112,11 @@ function MobileNavigationMenu() {
 export function AppSidebarInset({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
   
-  // Function to toggle the left sidebar via custom event
-  const toggleLeftSidebar = () => {
-    console.log('[AppSidebarInset] Toggling left sidebar via custom event at', new Date().toISOString())
-    // Dispatch a custom event that the left sidebar can listen to
-    window.dispatchEvent(new CustomEvent('toggleLeftSidebar'))
+  // Function to toggle the right sidebar via custom event
+  const toggleRightSidebar = () => {
+    console.log('[AppSidebarInset] Toggling right sidebar via custom event at', new Date().toISOString())
+    // Dispatch a custom event that the right sidebar can listen to
+    window.dispatchEvent(new CustomEvent('toggleRightSidebar'))
   }
   
   // Detect OS for keyboard shortcuts
@@ -161,25 +161,25 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
           {/* Spacer for desktop when no mobile menu */}
           {!isMobile && <div />}
           
-          {/* Left Sidebar Toggle Button - Always show on right side */}
+          {/* Right Sidebar Toggle Button - Always show on right side */}
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DuolingoButton
-                  onClick={toggleLeftSidebar}
+                  onClick={toggleRightSidebar}
                   size="icon"
                   variant="secondary"
                   className="aspect-square group/toggle-button"
                 >
-                  <PanelLeft className="size-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
+                  <PanelRight className="size-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
                   <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">
-                    <ArrowLeftFromLine className="size-4" />
+                    <ArrowRightFromLine className="size-4" />
                   </div>
                 </DuolingoButton>
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 <div className="space-y-1">
-                  <p>Toggle navigation</p>
+                  <p>Toggle Assistant</p>
                   <p className="text-xs text-neutral-400">{metaKey} + \</p>
                 </div>
               </TooltipContent>
