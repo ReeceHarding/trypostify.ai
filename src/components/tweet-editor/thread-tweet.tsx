@@ -262,6 +262,9 @@ function ThreadTweetContent({
         timestamp: new Date().toISOString()
       })
       
+      // Ensure the visible mentions input reflects AI content
+      setMentionsContent(currentTweet.content)
+
       editor.update(() => {
         const root = $getRoot()
         root.clear()
@@ -269,7 +272,6 @@ function ThreadTweetContent({
         const text = $createTextNode(currentTweet.content)
         paragraph.append(text)
         root.append(paragraph)
-        setCharCount(currentTweet.content.length)
       })
       // Also notify the parent component about the update
       if (onUpdate) {
