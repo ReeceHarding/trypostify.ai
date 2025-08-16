@@ -1181,7 +1181,7 @@ function ThreadTweetContent({
                                       </DuolingoButton>
                                     </PopoverTrigger>
                                   </TooltipTrigger>
-                                  <PopoverContent className="max-w-3xl w-full">
+                                  <PopoverContent className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[90vh] overflow-hidden">
                                     <Calendar20
                                       initialScheduledTime={preScheduleTime || undefined}
                                       onSchedule={(date, time) => {
