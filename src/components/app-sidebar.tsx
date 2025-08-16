@@ -691,10 +691,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
       <Sidebar side="right" collapsible="offcanvas">
         <SidebarHeader className="flex flex-col border-b border-neutral-200 bg-neutral-100 items-center justify-end gap-2 px-4 py-2">
-          <div className="w-full flex items-center justify-between min-h-[2.5rem]">
+          <div className="w-full flex items-center min-h-[2.5rem]">
             {/* Hide label on small screens to save space */}
             <p className="text-sm/6 font-medium flex-shrink-0 hidden sm:block">Assistant</p>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2 flex-shrink-0 ml-auto">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
