@@ -657,6 +657,12 @@ function ThreadTweetContent({
     // Clear all controllers
     abortControllersRef.current.clear()
 
+    // Clear mentions input and all derived UI state
+    setMentionsContent('')
+    setCharCount(0)
+    setDetectedUrl(null)
+    setOgPreview(null)
+
     editor.update(
       () => {
         const root = $getRoot()
@@ -667,6 +673,11 @@ function ThreadTweetContent({
     )
 
     setMediaFiles([])
+
+    // Notify parent immediately
+    if (onUpdate) {
+      onUpdate('', [])
+    }
   }
 
   // Detect OS for keyboard shortcuts
