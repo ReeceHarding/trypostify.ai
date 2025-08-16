@@ -884,7 +884,7 @@ function ThreadTweetContent({
                         value={mentionsContent}
                         onChange={handleMentionsContentChange}
                         placeholder={isFirstTweet ? "What's happening?" : "Add another post..."}
-                        onPaste={handlePaste}
+                        onPaste={(e) => handlePaste(e as unknown as React.ClipboardEvent<HTMLDivElement>)}
                         className="w-full !min-h-16 resize-none text-base/7 leading-relaxed text-neutral-800 border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 outline-none"
                       />
                       <KeyboardShortcutsPlugin 
@@ -1282,11 +1282,9 @@ function ThreadTweetContent({
                                     side="bottom"
                                     align="center"
                                     sideOffset={8}
-                                    avoidCollisions={false}
+                                    avoidCollisions={true}
                                     collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                                    className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(90vh,calc(100vh-4rem))] overflow-hidden
-                                               md:relative md:transform-none
-                                               max-md:!fixed max-md:!top-1/2 max-md:!left-1/2 max-md:!-translate-x-1/2 max-md:!-translate-y-1/2 max-md:!transform"
+                                    className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(90vh,calc(100vh-4rem))] overflow-hidden"
                                   >
                                     <Calendar20
                                       initialScheduledTime={preScheduleTime || undefined}

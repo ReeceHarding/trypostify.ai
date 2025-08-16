@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X, PanelLeft, ArrowRightFromLine, ArrowLeftFromLine } from 'lucide-react'
+import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X } from 'lucide-react'
 import { useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
 
 import {
@@ -574,12 +574,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams()
   const [editor] = useLexicalComposerContext()
 
-  // Function to toggle the left sidebar via custom event
-  const toggleLeftSidebar = useCallback(() => {
-    console.log('[AppSidebar] Toggling left sidebar via custom event at', new Date().toISOString())
-    // Dispatch a custom event that the left sidebar can listen to
-    window.dispatchEvent(new CustomEvent('toggleLeftSidebar'))
-  }, [])
+
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   
   // Detect OS for keyboard shortcuts
@@ -703,28 +698,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
             <p className="text-sm/6 font-medium flex-shrink-0 hidden sm:block">Assistant</p>
             <div className="flex gap-2 flex-shrink-0 ml-auto">
               <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DuolingoButton
-                      onClick={toggleLeftSidebar}
-                      size="icon"
-                      variant="secondary"
-                      className="aspect-square group/toggle-button"
-                    >
-                      <PanelLeft className="size-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
-                      <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">
-                        <ArrowLeftFromLine className="size-4" />
-                      </div>
-                    </DuolingoButton>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p>Toggle navigation</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + \</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <DuolingoButton
