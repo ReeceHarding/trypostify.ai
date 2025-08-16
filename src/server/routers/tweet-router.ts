@@ -1,13 +1,13 @@
 import { getBaseUrl } from '@/constants/base-url'
 import { db } from '@/db'
-import { account as accountSchema, tweets as tweetsSchema, mediaLibrary, user as userSchema, twitterUser as twitterUserSchema } from '@/db/schema'
+import { account as accountSchema, tweets, mediaLibrary, user as userSchema } from '@/db/schema'
 import { qstash } from '@/lib/qstash'
 import { redis } from '@/lib/redis'
 import { BUCKET_NAME, s3Client } from '@/lib/s3'
 import { HeadObjectCommand } from '@aws-sdk/client-s3'
 import { Receiver } from '@upstash/qstash'
 import { Ratelimit } from '@upstash/ratelimit'
-import { and, desc, eq, asc, inArray, lte, or, like, sql } from 'drizzle-orm'
+import { and, desc, eq, asc, inArray, lte } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { SendTweetV2Params, TwitterApi, UserV2 } from 'twitter-api-v2'
 import { z } from 'zod'
@@ -1160,44 +1160,15 @@ export const tweetRouter = j.router({
         return c.json({ data: [] })
       }
 
-      // First, search our local database for cached users
-      const localUsers = await db.query.twitterUser.findMany({
-        where: or(
-          like(sql`lower(${twitterUserSchema.username})`, `%${cleanQuery}%`),
-          like(sql`lower(${twitterUserSchema.name})`, `%${cleanQuery}%`)
-        ),
-        orderBy: [
-          desc(twitterUserSchema.searchCount), // Popular users first
-          asc(twitterUserSchema.username)
-        ],
-        limit: Math.min(limit, 10)
-      })
+      // TODO: Re-enable local database search once twitter_user table is created
+      // For now, fall back to Twitter API only search
+      console.log(`[getHandles] Skipping local database search - twitter_user table not yet created`)
+      const localUsers = []
 
       console.log(`[getHandles] Found ${localUsers.length} users in local database`)
 
-      // If we have enough results from local DB, return them
-      if (localUsers.length >= limit) {
-        // Update search counts for returned users
-        const userIds = localUsers.map(u => u.id)
-        await db.update(twitterUserSchema)
-          .set({ 
-            searchCount: sql`${twitterUserSchema.searchCount} + 1`,
-            lastSearchedAt: new Date()
-          })
-          .where(inArray(twitterUserSchema.id, userIds))
-
-        const formattedUsers = localUsers.map(user => ({
-          id: user.username,
-          display: `${user.name} (@${user.username})`,
-          username: user.username,
-          name: user.name,
-          profile_image_url: user.profileImageUrl,
-          verified: user.verified,
-          followers_count: user.followersCount
-        }))
-
-        return c.json({ data: formattedUsers })
-      }
+      // Skip local database logic since table doesn't exist yet
+      // if (localUsers.length >= limit) { ... }
 
       // If we need more results, search Twitter API
       const account = await getAccount({
@@ -1261,47 +1232,8 @@ export const tweetRouter = j.router({
 
         console.log(`[getHandles] Found ${twitterUsers.length} users from Twitter API`)
         
-        // Store new users in our database for future searches
-        const newUsers = []
-        for (const twitterUser of twitterUsers) {
-          // Check if user already exists in our local DB
-          const existingUser = localUsers.find(u => u.username === twitterUser.username)
-          if (!existingUser) {
-            newUsers.push({
-              id: twitterUser.id,
-              username: twitterUser.username,
-              name: twitterUser.name,
-              profileImageUrl: twitterUser.profile_image_url || null,
-              verified: twitterUser.verified || false,
-              followersCount: twitterUser.public_metrics?.followers_count || 0,
-              description: twitterUser.description || null,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              lastSearchedAt: new Date(),
-              searchCount: 1
-            })
-          }
-        }
-
-        // Insert new users into database
-        if (newUsers.length > 0) {
-          await db.insert(twitterUserSchema).values(newUsers).onConflictDoNothing()
-          console.log(`[getHandles] Stored ${newUsers.length} new users in database`)
-        }
-
-        // Update search counts for existing users that were found via Twitter API
-        const existingUserIds = twitterUsers
-          .map(tu => localUsers.find(lu => lu.username === tu.username)?.id)
-          .filter(Boolean)
-        
-        if (existingUserIds.length > 0) {
-          await db.update(twitterUserSchema)
-            .set({ 
-              searchCount: sql`${twitterUserSchema.searchCount} + 1`,
-              lastSearchedAt: new Date()
-            })
-            .where(inArray(twitterUserSchema.id, existingUserIds))
-        }
+        // TODO: Re-enable database storage once twitter_user table is created
+        console.log(`[getHandles] Skipping database storage - twitter_user table not yet created`)
 
         // Combine local and Twitter results, removing duplicates
         const allUsers = [...localUsers]
