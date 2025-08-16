@@ -21,10 +21,17 @@ interface ProvidersProps {
 }
 
 export function DashboardProviders({ children }: ProvidersProps) {
-  const session = authClient.useSession()
+  // Skip session check in development when SKIP_AUTH is enabled
+  const shouldSkipAuth = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+  const session = shouldSkipAuth ? { data: null } : authClient.useSession()
   const isIdentifiedRef = useRef(false)
 
   useEffect(() => {
+    if (shouldSkipAuth) {
+      console.log('[DASHBOARD_PROVIDERS] SKIP_AUTH enabled, bypassing PostHog user identification')
+      return
+    }
+
     if (isIdentifiedRef.current) return
 
     if (session.data?.user) {
@@ -39,7 +46,7 @@ export function DashboardProviders({ children }: ProvidersProps) {
       isIdentifiedRef.current = true
       console.log('[DASHBOARD_PROVIDERS] User identified successfully')
     }
-  }, [session])
+  }, [session, shouldSkipAuth])
 
   return (
     <ConfettiProvider>
