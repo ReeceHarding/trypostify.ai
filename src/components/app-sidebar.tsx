@@ -580,6 +580,9 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     // Dispatch a custom event that the left sidebar can listen to
     window.dispatchEvent(new CustomEvent('toggleLeftSidebar'))
   }, [])
+
+  // Debug logging to check if component renders
+  console.log('[AppSidebar] Component rendering at', new Date().toISOString())
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   
   // Detect OS for keyboard shortcuts
@@ -709,7 +712,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                       onClick={toggleLeftSidebar}
                       size="icon"
                       variant="secondary"
-                      className="aspect-square group/toggle-button"
+                      className="aspect-square group/toggle-button bg-red-500 border-4 border-yellow-400"
                     >
                       <PanelLeft className="size-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
                       <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">

@@ -1184,10 +1184,10 @@ function ThreadTweetContent({
                                   <PopoverContent 
                                     side="bottom"
                                     align="center"
-                                    sideOffset={8}
+                                    sideOffset={80}
                                     avoidCollisions={true}
                                     collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                                    className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(90vh,calc(100vh-4rem))] overflow-hidden"
+                                    className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(85vh,calc(100vh-6rem))] overflow-hidden"
                                   >
                                     <Calendar20
                                       initialScheduledTime={preScheduleTime || undefined}
