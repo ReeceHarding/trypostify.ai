@@ -36,11 +36,27 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   // Simple timestamp helper for structured logs with millisecond precision
   const ts = () => new Date().toISOString()
 
+  // Development auth bypass - mock account for testing
+  const shouldSkipAuth = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+  const mockAccount: Account = {
+    id: 'mock-dev-user',
+    name: 'Dev User',
+    username: 'devuser',
+    profile_image_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+    verified: true,
+  }
+
   // Hydrate from localStorage immediately to avoid initial network delay
   const storageKey = 'active-account-cache-v1'
-  const initialAccount: Account | null =
+const initialAccount: Account | null =
     typeof window !== 'undefined'
       ? (() => {
+          // Return mock account immediately if auth is bypassed
+          if (shouldSkipAuth) {
+            console.log(`[AccountProvider ${ts()}] SKIP_AUTH enabled, using mock account for development testing`)
+            return mockAccount
+          }
+          
           try {
             const raw = window.localStorage.getItem(storageKey)
             if (!raw) {
@@ -64,11 +80,17 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
             return null
           }
         })()
-      : null
+      : shouldSkipAuth ? mockAccount : null
 
   const { data, isPending } = useQuery({
     queryKey: ['get-active-account'],
     queryFn: async () => {
+      // Skip API call and return mock account in development mode
+      if (shouldSkipAuth) {
+        console.log(`[AccountProvider ${ts()}] SKIP_AUTH enabled, returning mock account without API call`)
+        return mockAccount
+      }
+
       const startedAt = Date.now()
       console.log(`[AccountProvider ${ts()}] fetching active account from API: client.settings.active_account`)
 
@@ -112,10 +134,14 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     refetchOnMount: 'always', // Ensure we always verify server state after mount
     retry: 1, // Reduce retry attempts for faster failure
     retryDelay: 500, // Faster retry
+    enabled: !shouldSkipAuth, // Disable query when auth is bypassed
   })
 
   return (
-    <AccountContext.Provider value={{ account: data ?? null, isLoading: isPending }}>
+    <AccountContext.Provider value={{ 
+      account: shouldSkipAuth ? mockAccount : (data ?? initialAccount), 
+      isLoading: shouldSkipAuth ? false : isPending 
+    }}>
       {children}
     </AccountContext.Provider>
   )
