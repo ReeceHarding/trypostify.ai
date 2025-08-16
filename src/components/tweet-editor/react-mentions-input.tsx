@@ -232,7 +232,7 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
     return (
       <div className={cn('w-full', className)}>
         <MentionsInput
-          ref={ref}
+          inputRef={ref}
           value={safeValue}
           onChange={handleChange}
           style={mentionsInputStyle}
