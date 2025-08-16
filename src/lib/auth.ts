@@ -124,6 +124,14 @@ function initializeAuth() {
     },
     hooks: {
       after: createAuthMiddleware(async (ctx) => {
+        // Skip auth redirects in development when SKIP_AUTH is enabled
+        const shouldSkipAuth = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+        
+        if (shouldSkipAuth) {
+          console.log('[AUTH] SKIP_AUTH enabled, bypassing auth middleware redirects')
+          return
+        }
+
         const session = ctx.context.newSession
 
         if (session) {

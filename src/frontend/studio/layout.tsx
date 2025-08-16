@@ -5,7 +5,6 @@ import { PropsWithChildren } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { LeftSidebar } from '@/components/context-sidebar'
 import { AppSidebarInset } from '@/components/providers/app-sidebar-inset'
-import { DashboardProviders } from '@/components/providers/dashboard-providers'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { HotkeyFeedbackProvider } from '@/components/ui/hotkey-feedback'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
@@ -44,7 +43,6 @@ export default function ClientLayout({
   }
 
   return (
-    <DashboardProviders>
       <HotkeyFeedbackProvider>
         <div className="flex">
           <SidebarProvider className="w-fit" defaultOpen={false}>
@@ -64,6 +62,5 @@ export default function ClientLayout({
           </SidebarProvider>
         </div>
       </HotkeyFeedbackProvider>
-    </DashboardProviders>
   )
 }

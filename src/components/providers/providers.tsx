@@ -17,9 +17,12 @@ export function Providers({ children }: ProvidersProps) {
         queryCache: new QueryCache({
           onError(error, query) {
             if (error instanceof HTTPException) {
-              if (error.status === 401 && window.location.pathname !== '/login') {
+              // Skip 401 redirects in development when SKIP_AUTH is enabled
+              const shouldSkipAuth = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_SKIP_AUTH === 'true'
+              
+              if (error.status === 401 && window.location.pathname !== '/login' && !shouldSkipAuth) {
                 window.location.href = '/login'
-              } else {
+              } else if (error.status !== 401 || !shouldSkipAuth) {
                 toast.error(error.message)
               }
             }
