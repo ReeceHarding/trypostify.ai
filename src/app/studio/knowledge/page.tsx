@@ -183,7 +183,7 @@ const Page = () => {
     <div className="relative z-10 min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-4xl font-bold text-neutral-900">Knowledge Base</h1>
@@ -199,7 +199,7 @@ const Page = () => {
             </div>
             <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <DropdownMenuTrigger asChild>
-                <DuolingoButton className="w-auto">
+                <DuolingoButton className="w-full md:w-auto">
                   <Plus className="size-5 mr-2" />
                   <span className="whitespace-nowrap">Add Knowledge</span>
                   <ChevronDown className="size-4 ml-2" />
