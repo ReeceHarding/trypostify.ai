@@ -128,6 +128,15 @@ const SidebarProvider = React.forwardRef<
       // setOpenMobile
     ]);
 
+    // Allow external callers to toggle the mobile sheet via a window event
+    React.useEffect(() => {
+      const handler = () => {
+        if (isMobile) setOpenMobile((open) => !open);
+      };
+      window.addEventListener('sidebar:toggle-mobile', handler as EventListener);
+      return () => window.removeEventListener('sidebar:toggle-mobile', handler as EventListener);
+    }, [isMobile, setOpenMobile]);
+
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {

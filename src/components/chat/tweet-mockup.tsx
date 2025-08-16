@@ -96,7 +96,19 @@ export const TweetMockup = memo(
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DuolingoButton
-                    onClick={apply}
+                    onClick={() => {
+                      apply()
+                      try {
+                        const isMobile =
+                          typeof window !== 'undefined' &&
+                          window.matchMedia &&
+                          window.matchMedia('(max-width: 480px)').matches
+                        if (isMobile) {
+                          // Ask sidebar to close on mobile
+                          window.dispatchEvent(new CustomEvent('sidebar:toggle-mobile'))
+                        }
+                      } catch {}
+                    }}
                     variant="secondary"
                     size="sm"
                     className="text-sm w-fit h-8 px-2"
