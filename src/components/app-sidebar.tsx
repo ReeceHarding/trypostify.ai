@@ -690,10 +690,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
       {children}
 
       <Sidebar side="right" collapsible="offcanvas">
-        <SidebarHeader className="flex flex-col border-b border-neutral-200 bg-neutral-100 items-center justify-end gap-2 px-4">
-          <div className="w-full flex items-center justify-between">
-            <p className="text-sm/6 font-medium">Assistant</p>
-            <div className="flex gap-2">
+        <SidebarHeader className="flex flex-col border-b border-neutral-200 bg-neutral-100 items-center justify-end gap-2 px-4 py-2">
+          <div className="w-full flex items-center justify-between min-h-[2.5rem]">
+            <p className="text-sm/6 font-medium flex-shrink-0">Assistant</p>
+            <div className="flex gap-2 flex-shrink-0">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -701,7 +701,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                       onClick={handleNewChat}
                       size="sm"
                       variant="secondary"
-                      className="inline-flex items-center gap-1.5"
+                      className="inline-flex items-center gap-1.5 whitespace-nowrap"
                     >
                       <Plus className="size-4" />
                       <p className="text-sm">New Chat</p>
@@ -865,7 +865,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           ) : null}
 
           <SidebarGroup className="h-full py-0 px-0">
-            <div className="h-full space-y-6">
+            <div className="h-full space-y-6 min-h-[20rem] flex flex-col">
               <Messages status={status} messages={messages} />
             </div>
           </SidebarGroup>
