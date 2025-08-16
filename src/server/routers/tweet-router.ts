@@ -144,12 +144,27 @@ async function processScheduledThread(threadId: string) {
           }
         }
 
-        // Add media if present
+        // Add media if present and validate media_ids
         if (tweet.media && tweet.media.length > 0) {
-          console.log(`[LocalScheduler] Adding ${tweet.media.length} media items to tweet`)
+          console.log(`[LocalScheduler] Processing ${tweet.media.length} media items for tweet`)
+          
+          // Validate all media_ids are present and non-empty
+          const validMediaIds = tweet.media
+            .map((media: any) => media.media_id)
+            .filter((id: any) => id && typeof id === 'string' && id.trim().length > 0)
+          
+          if (validMediaIds.length === 0) {
+            console.error(`[LocalScheduler] All media_ids are invalid for tweet ${tweet.id}. Media:`, tweet.media)
+            throw new Error('Invalid media_ids: all media_ids are empty or undefined')
+          }
+          
+          if (validMediaIds.length !== tweet.media.length) {
+            console.warn(`[LocalScheduler] Some media_ids are invalid for tweet ${tweet.id}. Valid: ${validMediaIds.length}/${tweet.media.length}`)
+          }
+          
+          console.log(`[LocalScheduler] Adding ${validMediaIds.length} valid media items to tweet`)
           tweetPayload.media = {
-            // @ts-expect-error tuple type vs. string[]
-            media_ids: tweet.media.map((media) => media.media_id),
+            media_ids: validMediaIds,
           }
         }
 
@@ -171,6 +186,39 @@ async function processScheduledThread(threadId: string) {
         previousTweetId = res.data.id
       } catch (error) {
         console.error(`[LocalScheduler] Failed to post tweet ${index + 1} in thread ${threadId}:`, error)
+        
+        // Handle specific error types
+        if (error instanceof Error) {
+          const errorMessage = error.message.toLowerCase()
+          
+          // For invalid media or other 400 errors, mark tweet as failed to prevent retries
+          if (errorMessage.includes('invalid media_ids') || 
+              errorMessage.includes('invalid request') ||
+              errorMessage.includes('one or more parameters') ||
+              (error as any).code === 400) {
+            console.error(`[LocalScheduler] Marking tweet ${tweet.id} as failed due to invalid request`)
+            await db
+              .update(tweets)
+              .set({
+                isScheduled: false,
+                isPublished: false, // Mark as failed, not published
+                updatedAt: new Date(),
+              })
+              .where(eq(tweets.id, tweet.id))
+            
+            // Continue to next tweet instead of failing entire thread
+            console.log(`[LocalScheduler] Skipping failed tweet ${tweet.id}, continuing with remaining tweets`)
+            continue
+          }
+          
+          // For rate limiting (429), stop processing and let it retry later
+          if ((error as any).code === 429) {
+            console.error(`[LocalScheduler] Rate limited, stopping thread processing for now`)
+            throw error
+          }
+        }
+        
+        // For other errors, still throw to stop processing
         throw error
       }
     }
@@ -194,12 +242,31 @@ if (process.env.NODE_ENV === 'development') {
           eq(tweets.isPublished, false),
           lte(tweets.scheduledUnix, now),
         ),
+        columns: {
+          id: true,
+          threadId: true,
+          content: true,
+          media: true,
+          scheduledUnix: true,
+          position: true,
+        },
       })
+      
+      console.log(`[LocalScheduler] Debug - Found scheduled tweets:`, scheduledTweets.map((t: any) => ({
+        id: t.id,
+        threadId: t.threadId,
+        position: t.position,
+        contentPreview: t.content.substring(0, 50) + '...',
+        mediaCount: t.media?.length || 0,
+        mediaIds: t.media?.map((m: any) => ({ hasId: !!m.media_id, id: m.media_id?.substring(0, 10) + '...' })) || [],
+        scheduledUnix: t.scheduledUnix,
+        overdue: now - (t.scheduledUnix || 0)
+      })))
       
       console.log(`[LocalScheduler] Found ${scheduledTweets.length} scheduled tweets due for posting`)
       
       // Group by threadId
-      const threads = scheduledTweets.reduce((acc, tweet) => {
+      const threads = scheduledTweets.reduce((acc: any, tweet: any) => {
         if (tweet.threadId && tweet.scheduledUnix && tweet.scheduledUnix <= now) {
           if (!acc[tweet.threadId]) {
             acc[tweet.threadId] = []
