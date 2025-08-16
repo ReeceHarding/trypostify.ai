@@ -8,9 +8,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { ArrowLeftFromLine, ArrowRightFromLine, PanelLeft, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
-import { useSidebar } from '../ui/sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useState } from 'react'
 import { 
@@ -110,9 +109,7 @@ function MobileNavigationMenu() {
 }
 
 export function AppSidebarInset({ children }: { children: React.ReactNode }) {
-  const { state, toggleSidebar } = useSidebar()
   const isMobile = useIsMobile()
-  const isCollapsed = state === 'collapsed'
 
   return (
     <SidebarInset className="w-full flex-1 overflow-x-hidden bg-neutral-100 border border-neutral-200">
@@ -149,32 +146,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
             </TooltipProvider>
           )}
           
-          <div className="flex items-center gap-2">
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DuolingoButton
-                    variant="secondary"
-                    size="icon"
-                    onClick={toggleSidebar}
-                    className="group/toggle-button"
-                  >
-                    <PanelLeft className="h-4 w-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
-                    <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">
-                      {isCollapsed ? (
-                        <ArrowLeftFromLine className="h-4 w-4" />
-                      ) : (
-                        <ArrowRightFromLine className="h-4 w-4" />
-                      )}
-                    </div>
-                  </DuolingoButton>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-neutral-800 text-white ">
-                  Toggle Sidebar
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+
         </div>
       </header>
       {children}

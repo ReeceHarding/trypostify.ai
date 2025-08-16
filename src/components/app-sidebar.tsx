@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X } from 'lucide-react'
+import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X, PanelLeft, ArrowRightFromLine, ArrowLeftFromLine } from 'lucide-react'
 import { useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
 
 import {
@@ -573,6 +573,13 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [editor] = useLexicalComposerContext()
+
+  // Function to toggle the left sidebar via custom event
+  const toggleLeftSidebar = useCallback(() => {
+    console.log('[AppSidebar] Toggling left sidebar via custom event at', new Date().toISOString())
+    // Dispatch a custom event that the left sidebar can listen to
+    window.dispatchEvent(new CustomEvent('toggleLeftSidebar'))
+  }, [])
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   
   // Detect OS for keyboard shortcuts
