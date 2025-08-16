@@ -12,7 +12,7 @@ import posthog from 'posthog-js'
 import { useConfetti } from '@/hooks/use-confetti'
 import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
-import { useUser, useTweets } from '@/hooks/use-tweets'
+import { useUser } from '@/hooks/use-tweets'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
 
@@ -55,7 +55,6 @@ export default function ThreadTweetEditor({
 }: ThreadTweetEditorProps) {
   
   const { getCharacterLimit } = useUser()
-  const { currentTweet, setTweetContent } = useTweets()
   const characterLimit = getCharacterLimit()
   
   const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
@@ -119,38 +118,7 @@ export default function ThreadTweetEditor({
     }
   }, [threadData])
 
-  // Sync AI-generated content from TweetMockup Apply button to first tweet
-  useEffect(() => {
-    console.log('[ThreadTweetEditor] Checking for AI content sync:', {
-      hasTweets: threadTweets.length > 0,
-      currentTweetContent: currentTweet.content,
-      firstTweetContent: threadTweets[0]?.content,
-      editMode,
-      timestamp: new Date().toISOString()
-    })
-    
-    // Only sync if we have tweets, there's content from AI, we're not in edit mode, and first tweet is empty or different
-    if (
-      threadTweets.length > 0 && 
-      currentTweet.content && 
-      !editMode && 
-      currentTweet.content !== threadTweets[0].content
-    ) {
-      console.log('[ThreadTweetEditor] Syncing AI content to first tweet:', {
-        aiContent: currentTweet.content.substring(0, 100) + '...',
-        timestamp: new Date().toISOString()
-      })
-      
-      setThreadTweets(prevTweets => 
-        prevTweets.map((tweet, index) =>
-          index === 0 ? { ...tweet, content: currentTweet.content } : tweet
-        )
-      )
-      
-      // Clear the global content after syncing to prevent repeated syncing
-      setTweetContent('')
-    }
-  }, [currentTweet.content, threadTweets, editMode, setTweetContent])
+
 
   const handleAddTweet = () => {
     const newTweetId = crypto.randomUUID()
@@ -739,7 +707,7 @@ export default function ThreadTweetEditor({
               isPosting={isPosting}
               preScheduleTime={preScheduleTime}
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
-              initialContent={tweet.content ?? ''}
+              initialContent={editMode ? (tweet.content ?? '') : ''}
               initialMedia={tweet.media?.map((m: any) => ({
                 // Ensure a valid preview URL is always present. If the API didn't
                 // enrich media with a URL, derive it from the S3 key using the
