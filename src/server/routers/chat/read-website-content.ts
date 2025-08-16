@@ -25,7 +25,7 @@ export const create_read_website_content = ({ chatId }: { chatId: string }) =>
       const cachedContent = await redis.get(cacheKey)
       if (cachedContent) {
         await redis.lpush(`website-contents:${chatId}`, cachedContent)
-        return cachedContent as { url: string; title: string; content: string }
+        return cachedContent as { url: string; title: string; content: string; ogImage?: string }
       }
 
       if (isTwitterUrl(website_url)) {
@@ -37,20 +37,25 @@ export const create_read_website_content = ({ chatId }: { chatId: string }) =>
 
         try {
           const res = await client.v2.tweets(tweetId, {
-            'tweet.fields': ['id', 'text', 'created_at', 'author_id', 'note_tweet'],
+            'tweet.fields': ['id', 'text', 'created_at', 'author_id', 'note_tweet', 'entities'],
+            'media.fields': ['url', 'preview_image_url'],
             'user.fields': ['username', 'profile_image_url', 'name'],
-            expansions: ['author_id', 'referenced_tweets.id'],
+            expansions: ['author_id', 'referenced_tweets.id', 'attachments.media_keys'],
           })
 
           const [tweet] = res.data
           const includes = res.includes
 
           const author = includes?.users?.[0]
+          // Get first media image if available
+          const media = includes?.media?.[0]
+          const ogImage = media?.url || media?.preview_image_url
 
           const tweetContent = {
             url: website_url,
             title: `Tweet by @${author?.username}`,
             content: `**${author?.name || 'Unknown'} (@${author?.username || 'unknown'})**\n\n${tweet?.text}`,
+            ...(ogImage && { ogImage }),
           }
 
           await redis.setex(cacheKey, 86400, tweetContent)
@@ -71,10 +76,14 @@ export const create_read_website_content = ({ chatId }: { chatId: string }) =>
       })
 
       if (response.success) {
+        // Extract OG image from metadata
+        const ogImage = response.metadata?.ogImage || response.metadata?.['og:image'] || response.metadata?.image
+
         const websiteContent = {
           url: website_url,
           title: response.metadata?.title,
           content: response.markdown,
+          ...(ogImage && { ogImage }),
         }
 
         await redis.setex(cacheKey, 86400, websiteContent)

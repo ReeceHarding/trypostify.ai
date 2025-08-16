@@ -2452,5 +2452,44 @@ export const tweetRouter = j.router({
       }
     }),
 
+  // Fetch OG preview data for a URL
+  fetchOgPreview: privateProcedure
+    .input(
+      z.object({
+        url: z.string().url(),
+      }),
+    )
+    .post(async ({ c, input }) => {
+      const { url } = input
+
+      console.log('[fetchOgPreview] Fetching OG data for:', url)
+
+      try {
+        // Import the read website function
+        const { create_read_website_content } = await import('./chat/read-website-content')
+        
+        // Create the tool with a dummy chat ID since we don't need chat persistence
+        const readWebsite = create_read_website_content({ chatId: 'og-preview' })
+        
+        // Execute the tool to get website data
+        const result = await readWebsite.execute({ website_url: url })
+        
+        console.log('[fetchOgPreview] OG data received:', result)
+
+        return c.json({
+          url: result.url,
+          title: result.title,
+          ogImage: result.ogImage,
+        })
+      } catch (error) {
+        console.error('[fetchOgPreview] Error fetching OG data:', error)
+        return c.json({
+          url,
+          title: null,
+          ogImage: null,
+        })
+      }
+    }),
+
 
 })

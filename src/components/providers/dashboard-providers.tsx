@@ -6,15 +6,10 @@ import { ChatProvider } from '@/hooks/use-chat'
 import { EditorProvider } from '@/hooks/use-editors'
 import { TweetProvider } from '@/hooks/use-tweets'
 import { authClient } from '@/lib/auth-client'
-import dynamic from 'next/dynamic'
+import { ConfettiProvider } from '@/hooks/use-confetti'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { posthog } from 'posthog-js'
 import { ReactNode, useEffect, useRef } from 'react'
-
-const ConfettiProvider = dynamic(
-  () => import('@/hooks/use-confetti').then((mod) => ({ default: mod.ConfettiProvider })),
-  { ssr: false },
-)
 
 interface ProvidersProps {
   children: ReactNode

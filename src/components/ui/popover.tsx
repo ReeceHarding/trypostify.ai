@@ -23,38 +23,6 @@ function PopoverContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
-  // Check if we're on mobile to apply different positioning
-  const [isMobile, setIsMobile] = React.useState(false)
-  
-  React.useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  if (isMobile && className?.includes('max-w-[min(100vw-1rem,28rem)]')) {
-    // For mobile date picker specifically, use modal-like centering
-    return (
-      <PopoverPrimitive.Portal>
-        <>
-          {/* Dimmed background overlay when popover is open. */}
-          <div className="fixed inset-0 z-40 bg-neutral-950/50 backdrop-blur-[1px]" />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              data-slot="popover-content"
-              className={cn(
-                "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(90vh,calc(100vh-4rem))] rounded-md border shadow-md outline-hidden overflow-hidden",
-                className?.replace('max-w-[min(100vw-1rem,28rem)]', '').replace('max-h-[min(90vh,calc(100vh-4rem))]', '').replace('overflow-hidden', '').replace(/max-md:[^\s]*/g, '').replace(/md:[^\s]*/g, '').trim()
-              )}
-              {...props}
-            />
-          </div>
-        </>
-      </PopoverPrimitive.Portal>
-    )
-  }
-
   return (
     <PopoverPrimitive.Portal>
       <>

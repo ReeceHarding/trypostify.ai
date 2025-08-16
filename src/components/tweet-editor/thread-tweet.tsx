@@ -132,14 +132,35 @@ function ThreadTweetContent({
   const [mentionsContent, setMentionsContent] = useState(initialContent || '')
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [charCount, setCharCount] = useState(0)
+  // State for URL OG preview
+  const [detectedUrl, setDetectedUrl] = useState<string | null>(null)
+  const [ogPreview, setOgPreview] = useState<{ url: string; title?: string; ogImage?: string } | null>(null)
+  const [isLoadingOg, setIsLoadingOg] = useState(false)
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
+
+  // URL detection regex
+  const URL_REGEX = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/g
 
   // Handler for react-mentions content changes
   const handleMentionsContentChange = useCallback((newContent: string) => {
     console.log('📝 Mentions content changed:', newContent)
     setMentionsContent(newContent)
     setCharCount(newContent.length)
+    
+    // Detect URLs in content
+    const urls = newContent.match(URL_REGEX)
+    const firstUrl = urls?.[0]
+    
+    // If we detected a new URL, fetch its OG data
+    if (firstUrl && firstUrl !== detectedUrl) {
+      setDetectedUrl(firstUrl)
+      fetchOgData(firstUrl)
+    } else if (!firstUrl && detectedUrl) {
+      // Clear preview if URL was removed
+      setDetectedUrl(null)
+      setOgPreview(null)
+    }
     
     // Notify parent component about the update
     if (onUpdate) {
@@ -149,7 +170,7 @@ function ThreadTweetContent({
       }))
       onUpdate(newContent, filteredMedia)
     }
-  }, [onUpdate, mediaFiles])
+  }, [onUpdate, mediaFiles, detectedUrl])
 
   const [editor] = useLexicalComposerContext()
   const { currentTweet } = useTweets()
@@ -370,6 +391,39 @@ function ThreadTweetContent({
       return data
     },
   })
+
+  // Fetch OG data for URL
+  const fetchOgData = useCallback(async (url: string) => {
+    if (!url || isLoadingOg) return
+    
+    console.log('[ThreadTweet] Fetching OG data for:', url)
+    setIsLoadingOg(true)
+    
+    try {
+      // Use the tweet router endpoint to fetch OG data
+      const res = await client.tweet.fetchOgPreview.$post({
+        url,
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        console.log('[ThreadTweet] OG data received:', data)
+        setOgPreview({
+          url: data.url,
+          title: data.title || undefined,
+          ogImage: data.ogImage || undefined,
+        })
+      } else {
+        console.error('[ThreadTweet] Failed to fetch OG data')
+        setOgPreview(null)
+      }
+    } catch (error) {
+      console.error('[ThreadTweet] Error fetching OG data:', error)
+      setOgPreview(null)
+    } finally {
+      setIsLoadingOg(false)
+    }
+  }, [isLoadingOg])
 
   const validateFile = (file: File): { valid: boolean; error?: string; type?: 'image' | 'gif' | 'video' } => {
     const fileType = file.type.toLowerCase()
@@ -1184,10 +1238,10 @@ function ThreadTweetContent({
                                   <PopoverContent 
                                     side="bottom"
                                     align="center"
-                                    sideOffset={80}
+                                    sideOffset={8}
                                     avoidCollisions={true}
                                     collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                                    className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(85vh,calc(100vh-6rem))] overflow-hidden"
+                                    className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(90vh,calc(100vh-4rem))] overflow-hidden"
                                   >
                                     <Calendar20
                                       initialScheduledTime={preScheduleTime || undefined}
