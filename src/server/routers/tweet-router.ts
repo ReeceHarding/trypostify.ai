@@ -1207,20 +1207,38 @@ export const tweetRouter = j.router({
         return c.json({ data: formattedUsers })
       }
 
+      // Check if this is an OAuth 2.0 account (has refreshToken) or OAuth 1.0a (has accessSecret)
+      const isOAuth2 = Boolean(dbAccount.refreshToken)
+      console.log(`[getHandles] Using ${isOAuth2 ? 'OAuth 2.0' : 'OAuth 1.0a'} authentication for user search`)
+
       try {
-        const client = new TwitterApi({
-          appKey: consumerKey as string,
-          appSecret: consumerSecret as string,
-          accessToken: dbAccount.accessToken as string,
-          accessSecret: dbAccount.accessSecret as string,
-        })
+        let clientForFollows: TwitterApi
+        
+        if (isOAuth2) {
+          // Use OAuth 2.0 user context for follows lookup
+          clientForFollows = new TwitterApi(dbAccount.accessToken as string)
+          console.log(`[getHandles] Using OAuth 2.0 user context for follows lookup`)
+        } else {
+          // Fall back to OAuth 1.0a for legacy accounts
+          const clientV1 = new TwitterApi({
+            appKey: consumerKey as string,
+            appSecret: consumerSecret as string,
+            accessToken: dbAccount.accessToken as string,
+            accessSecret: dbAccount.accessSecret as string,
+          })
+          clientForFollows = clientV1
+          console.log(`[getHandles] Using OAuth 1.0a for follows lookup (limited functionality)`)
+        }
+
+        // Use app-only Bearer token as fallback for exact username lookup
+        const clientV2Fallback = new TwitterApi(process.env.TWITTER_BEARER_TOKEN!).readOnly
 
         // Enhanced user search with follower prioritization
         let twitterUsers = []
         
         try {
           // First try to get users the current user is following that match the query
-          const { data: followingData } = await client.v2.following(account.providerAccountId, {
+          const { data: followingData } = await clientForFollows.v2.following(account.providerAccountId, {
             'user.fields': ['profile_image_url', 'verified', 'public_metrics', 'description'],
             max_results: 100 // Get more followers for better filtering
           })
@@ -1242,7 +1260,7 @@ export const tweetRouter = j.router({
         // If we still need more results, try exact username lookup
         if (twitterUsers.length < limit) {
           try {
-            const { data } = await client.v2.userByUsername(cleanQuery, {
+            const { data } = await clientV2Fallback.v2.userByUsername(cleanQuery, {
               'user.fields': ['profile_image_url', 'verified', 'public_metrics', 'description'],
             })
             if (data && !twitterUsers.find(u => u.id === data.id)) {

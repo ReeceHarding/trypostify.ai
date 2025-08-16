@@ -36,14 +36,86 @@ const nanoid = customAlphabet(
 
 const consumerKey = process.env.TWITTER_CONSUMER_KEY as string
 const consumerSecret = process.env.TWITTER_CONSUMER_SECRET as string
+const clientId = process.env.TWITTER_CLIENT_ID as string
+const clientSecret = process.env.TWITTER_CLIENT_SECRET as string
 
-const client = new TwitterApi({ appKey: consumerKey, appSecret: consumerSecret })
+// OAuth 1.0a client for backwards compatibility (posting tweets)
+const clientV1 = new TwitterApi({ appKey: consumerKey, appSecret: consumerSecret })
+
+// OAuth 2.0 client for follows lookup and new features
+const clientV2OAuth = new TwitterApi({ clientId, clientSecret })
 
 type AuthAction = 'onboarding' | 'invite' | 'add-account'
 
 const clientV2 = new TwitterApi(process.env.TWITTER_BEARER_TOKEN!).readOnly
 
 export const authRouter = j.router({
+  createTwitterLinkV2: privateProcedure
+    .input(z.object({ action: z.enum(['onboarding', 'add-account']) }))
+    .query(async ({ c, input, ctx }) => {
+      const ts = new Date().toISOString()
+      const callbackUrl = `${getBaseUrl()}/api/auth_router/callbackV2`
+      console.log('[AUTH_ROUTER:createTwitterLinkV2]', JSON.stringify({
+        timestamp: ts,
+        message: 'Incoming createTwitterLinkV2 request (OAuth 2.0)',
+        userId: ctx.user?.id,
+        userPlan: ctx.user?.plan,
+        input,
+        baseUrl: getBaseUrl(),
+        callbackUrl,
+        env: {
+          hasClientId: Boolean(clientId),
+          hasClientSecret: Boolean(clientSecret),
+        },
+      }))
+
+      if (!clientId || !clientSecret) {
+        console.error('[AUTH_ROUTER:createTwitterLinkV2]', JSON.stringify({
+          timestamp: ts,
+          message: 'Missing Twitter OAuth 2.0 credentials in environment',
+          hasClientId: Boolean(clientId),
+          hasClientSecret: Boolean(clientSecret),
+        }))
+        throw new HTTPException(400, { message: 'Failed to create Twitter OAuth 2.0 link' })
+      }
+
+      try {
+        // Generate OAuth 2.0 authorization URL with PKCE
+        const { url, codeVerifier, state } = clientV2OAuth.generateOAuth2AuthLink(
+          callbackUrl,
+          {
+            scope: ['tweet.read', 'users.read', 'follows.read', 'offline.access'],
+          }
+        )
+
+        // Store the code verifier and user info in Redis for callback verification
+        const oauthToken = state // Use state as the temporary token for storage
+        await Promise.all([
+          redis.set(`twitter_oauth2_verifier:${oauthToken}`, codeVerifier, { ex: 900 }), // 15 minutes
+          redis.set(`twitter_oauth2_user_id:${oauthToken}`, ctx.user.id, { ex: 900 }),
+          redis.set(`auth_action_v2:${oauthToken}`, input.action, { ex: 900 }),
+        ])
+
+        console.log('[AUTH_ROUTER:createTwitterLinkV2]', JSON.stringify({
+          timestamp: ts,
+          message: 'OAuth 2.0 authorization URL generated successfully',
+          userId: ctx.user.id,
+          state,
+          hasUrl: Boolean(url),
+        }))
+
+        return c.json({ url })
+      } catch (error) {
+        console.error('[AUTH_ROUTER:createTwitterLinkV2]', JSON.stringify({
+          timestamp: ts,
+          message: 'Failed to generate OAuth 2.0 authorization URL',
+          error: error.message,
+          userId: ctx.user.id,
+        }))
+        throw new HTTPException(500, { message: 'Failed to create Twitter OAuth 2.0 link' })
+      }
+    }),
+
   updateOnboardingMetaData: privateProcedure
     .input(z.object({ userGoals: z.array(z.string()), userFrequency: z.number(), hasXPremium: z.boolean() }))
     .post(async ({ c, input, ctx }) => {
@@ -504,5 +576,123 @@ export const authRouter = j.router({
     }
 
     return c.redirect(`${getBaseUrl()}/studio?account_connected=true`)
+  }),
+
+  callbackV2: publicProcedure.get(async ({ c }) => {
+    const code = c.req.query('code')
+    const state = c.req.query('state')
+
+    const [storedVerifier, userId, authAction] = await Promise.all([
+      redis.get<string>(`twitter_oauth2_verifier:${state}`),
+      redis.get<string>(`twitter_oauth2_user_id:${state}`),
+      redis.get<AuthAction>(`auth_action_v2:${state}`),
+    ])
+
+    if (!userId) {
+      throw new HTTPException(400, { message: 'Missing user id' })
+    }
+
+    if (!storedVerifier || !code || !state) {
+      throw new HTTPException(400, { message: 'Missing or expired OAuth 2.0 state/code' })
+    }
+
+    try {
+      // Exchange authorization code for access token
+      const {
+        client: loggedInClient,
+        accessToken,
+        refreshToken,
+        expiresIn,
+      } = await clientV2OAuth.loginWithOAuth2({
+        code,
+        codeVerifier: storedVerifier,
+        redirectUri: `${getBaseUrl()}/api/auth_router/callbackV2`,
+      })
+
+      // Clean up Redis keys
+      await Promise.all([
+        redis.del(`twitter_oauth2_verifier:${state}`),
+        redis.del(`twitter_oauth2_user_id:${state}`),
+        redis.del(`auth_action_v2:${state}`),
+      ])
+
+      // Get user profile information using the OAuth 2.0 token
+      const { data: userData } = await loggedInClient.v2.me({
+        'user.fields': ['verified', 'verified_type', 'profile_image_url', 'public_metrics'],
+      })
+
+      const [user] = await db.select().from(userSchema).where(eq(userSchema.id, userId))
+
+      if (!user) {
+        throw new HTTPException(404, { message: 'user not found' })
+      }
+
+      // Check if account already exists
+      const existingAccount = await db.query.account.findFirst({
+        where: and(
+          eq(accountSchema.userId, user.id),
+          eq(accountSchema.providerId, 'twitter'),
+          eq(accountSchema.providerAccountId, userData.id)
+        ),
+      })
+
+      if (existingAccount) {
+        // Update existing account with new OAuth 2.0 tokens
+        await db
+          .update(accountSchema)
+          .set({
+            accessToken,
+            refreshToken,
+            expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
+            updatedAt: new Date(),
+          })
+          .where(eq(accountSchema.id, existingAccount.id))
+      } else {
+        // Create new account with OAuth 2.0 tokens
+        await db.insert(accountSchema).values({
+          id: nanoid(),
+          userId: user.id,
+          type: 'oauth',
+          provider: 'twitter',
+          providerId: 'twitter',
+          providerAccountId: userData.id,
+          accessToken,
+          refreshToken,
+          expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      }
+
+      // Store account info in Redis for quick access
+      const accountRedisKey = `account:${user.email}:${userData.id}`
+      await redis.json.set(accountRedisKey, '$', {
+        id: userData.id,
+        username: userData.username,
+        providerAccountId: userData.id,
+        provider: 'twitter',
+        isVerified: userData.verified || false,
+        profileImageUrl: userData.profile_image_url,
+        followersCount: userData.public_metrics?.followers_count || 0,
+        followingCount: userData.public_metrics?.following_count || 0,
+      })
+
+      console.log('[AUTH_ROUTER:callbackV2] OAuth 2.0 account connected successfully', {
+        userId: user.id,
+        twitterId: userData.id,
+        username: userData.username,
+        hasRefreshToken: Boolean(refreshToken),
+      })
+
+      // Redirect based on auth action
+      if (authAction === 'add-account') {
+        return c.redirect(`${getBaseUrl()}/studio/accounts`)
+      }
+
+      return c.redirect(`${getBaseUrl()}/studio?account_connected=true&oauth_version=2`)
+    } catch (error) {
+      console.error('[AUTH_ROUTER:callbackV2] OAuth 2.0 callback failed:', error.message)
+      throw new HTTPException(500, { message: 'OAuth 2.0 authentication failed' })
+    }
   }),
 })

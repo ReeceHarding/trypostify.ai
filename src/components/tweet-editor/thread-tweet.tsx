@@ -1143,7 +1143,7 @@ function ThreadTweetContent({
                                   <DuolingoButton
                                     loading={isPosting || optimisticActionState === 'queue'}
                                     disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
-                                    className="h-11 px-3 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border-r max-[320px]:w-full"
+                                    className="h-11 px-3 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
                                         setOptimisticActionState('queue')
@@ -1174,7 +1174,7 @@ function ThreadTweetContent({
                                         loading={isPosting || optimisticActionState === 'schedule'}
                                         disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
                                         size="icon"
-                                        className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border-l-0 max-[320px]:w-full max-[320px]:justify-center"
+                                        className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
                                       >
                                         <ChevronDown className="size-4" />
                                         <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
