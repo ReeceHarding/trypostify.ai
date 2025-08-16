@@ -1054,19 +1054,19 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 max-[320px]:flex-col max-[320px]:items-stretch max-[320px]:gap-3">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>
                       {editMode ? (
                         // Edit mode buttons
-                        <>
+                        <div className="flex gap-2 max-[320px]:flex-col max-[320px]:gap-3 max-[320px]:w-full">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
                                   variant="secondary"
-                                  className="h-11"
+                                  className="h-11 max-[320px]:w-full"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
@@ -1086,7 +1086,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11"
+                                  className="h-11 max-[320px]:w-full"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
@@ -1103,15 +1103,15 @@ function ThreadTweetContent({
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        </>
+                        </div>
                       ) : (
                         // Regular mode buttons
-                        <>
+                        <div className="flex gap-2 max-[320px]:flex-col max-[320px]:gap-3 max-[320px]:w-full">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11"
+                                  className="h-11 max-[320px]:w-full"
                                   variant="secondary"
                                   onClick={handlePostClick}
                                   disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
@@ -1136,14 +1136,14 @@ function ThreadTweetContent({
                             </Tooltip>
                           </TooltipProvider>
 
-                          <div className="flex">
+                          <div className="flex max-[320px]:w-full max-[320px]:flex-col max-[320px]:gap-3">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <DuolingoButton
                                     loading={isPosting || optimisticActionState === 'queue'}
                                     disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
-                                    className="h-11 px-3 rounded-r-none border-r-0"
+                                    className="h-11 px-3 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border-r max-[320px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
                                         setOptimisticActionState('queue')
@@ -1174,10 +1174,10 @@ function ThreadTweetContent({
                                         loading={isPosting || optimisticActionState === 'schedule'}
                                         disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
                                         size="icon"
-                                        className="h-11 w-14 rounded-l-none border-l"
+                                        className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border-l-0 max-[320px]:w-full max-[320px]:justify-center"
                                       >
                                         <ChevronDown className="size-4" />
-                                        <span className="sr-only">Schedule manually</span>
+                                        <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
                                       </DuolingoButton>
                                     </PopoverTrigger>
                                   </TooltipTrigger>
@@ -1230,7 +1230,7 @@ function ThreadTweetContent({
 
                             </TooltipProvider>
                           </div>
-                        </>
+                        </div>
                       )}
                     </>
                   )}
