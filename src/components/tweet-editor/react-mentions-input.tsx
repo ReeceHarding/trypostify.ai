@@ -26,7 +26,7 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
   const safeValue = value ?? ''
   console.log('🎯 ReactMentionsInput rendering with value:', value, 'safeValue:', safeValue)
 
-  // Fetch users for mentions
+  // Fetch users for mentions - now supports multiple results
   const fetchUsers = useCallback(async (query: string, callback: (data: any[]) => void) => {
     console.log('📡 Fetching users for query:', query)
     
@@ -45,20 +45,34 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
     try {
       const res = await client.tweet.getHandles.$get({
         query: query.trim(),
+        limit: 8, // Get up to 8 suggestions
       })
       const { data } = await res.json()
       
       console.log('✅ Received user data:', data)
       
-      if (data && data.username) {
+      // Handle both single user (legacy) and multiple users (new format)
+      let users = []
+      
+      if (Array.isArray(data)) {
+        // New format: array of users
+        users = data
+      } else if (data && data.username) {
+        // Legacy format: single user object
+        users = [data]
+      }
+      
+      if (users.length > 0) {
         // Format data for react-mentions with validation
-        const formattedUsers = [{
-          id: String(data.username || ''),
-          display: `${data.name || ''} (@${data.username || ''})`,
-          username: String(data.username || ''),
-          name: String(data.name || ''),
-          profile_image_url: data.profile_image_url || '',
-        }]
+        const formattedUsers = users.map(user => ({
+          id: String(user.username || user.id || ''),
+          display: `${user.name || ''} (@${user.username || user.id || ''})`,
+          username: String(user.username || user.id || ''),
+          name: String(user.name || ''),
+          profile_image_url: user.profile_image_url || '',
+          verified: user.verified || false,
+          followers_count: user.followers_count || 0,
+        }))
         
         console.log('📋 Formatted users:', formattedUsers)
         callback(formattedUsers)
@@ -140,7 +154,7 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
     padding: '0 2px',
   }
 
-  // Custom suggestion renderer with profile images
+  // Custom suggestion renderer with profile images and enhanced info
   const renderSuggestion = (suggestion: any, search: string, highlightedDisplay: React.ReactNode, index: number, focused: boolean) => {
     console.log('🎨 Rendering suggestion:', suggestion, 'focused:', focused)
     
@@ -153,24 +167,45 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
     return (
       <div 
         className={cn(
-          'flex items-center gap-3 p-3 cursor-pointer border-b border-neutral-100 last:border-b-0',
-          focused && 'bg-neutral-50'
+          'flex items-center gap-3 p-3 cursor-pointer border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 transition-colors',
+          focused && 'bg-neutral-100'
         )}
       >
-        {suggestion.profile_image_url && (
+        {suggestion.profile_image_url ? (
           <img 
             src={suggestion.profile_image_url} 
             alt="" 
-            className="w-8 h-8 rounded-full flex-shrink-0"
+            className="w-10 h-10 rounded-full flex-shrink-0 border border-neutral-200"
             onError={(e) => {
-              // Hide image if it fails to load
-              e.currentTarget.style.display = 'none'
+              // Show default avatar if image fails to load
+              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(suggestion.name || suggestion.username || 'U')}&size=40&background=e5e5e5&color=666`
             }}
           />
+        ) : (
+          <div className="w-10 h-10 rounded-full flex-shrink-0 bg-neutral-200 flex items-center justify-center text-neutral-600 text-sm font-medium">
+            {(suggestion.name || suggestion.username || 'U').charAt(0).toUpperCase()}
+          </div>
         )}
-        <div className="flex-1">
-          <div className="font-medium text-sm text-neutral-900">{suggestion.name || ''}</div>
-          <div className="text-xs text-neutral-600">@{suggestion.username || ''}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="font-medium text-sm text-neutral-900 truncate">
+              {suggestion.name || suggestion.username || 'Unknown User'}
+            </div>
+            {suggestion.verified && (
+              <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-neutral-600">
+            <span>@{suggestion.username || 'unknown'}</span>
+            {suggestion.followers_count && suggestion.followers_count > 0 && (
+              <>
+                <span>•</span>
+                <span>{suggestion.followers_count.toLocaleString()} followers</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     )

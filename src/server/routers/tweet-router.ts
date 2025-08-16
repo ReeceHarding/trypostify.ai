@@ -1,13 +1,13 @@
 import { getBaseUrl } from '@/constants/base-url'
 import { db } from '@/db'
-import { account as accountSchema, tweets, mediaLibrary, user as userSchema } from '@/db/schema'
+import { account as accountSchema, tweets as tweetsSchema, mediaLibrary, user as userSchema, twitterUser as twitterUserSchema } from '@/db/schema'
 import { qstash } from '@/lib/qstash'
 import { redis } from '@/lib/redis'
 import { BUCKET_NAME, s3Client } from '@/lib/s3'
 import { HeadObjectCommand } from '@aws-sdk/client-s3'
 import { Receiver } from '@upstash/qstash'
 import { Ratelimit } from '@upstash/ratelimit'
-import { and, desc, eq, asc, inArray, lte } from 'drizzle-orm'
+import { and, desc, eq, asc, inArray, lte, or, like, sql } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { SendTweetV2Params, TwitterApi, UserV2 } from 'twitter-api-v2'
 import { z } from 'zod'
@@ -1143,27 +1143,79 @@ export const tweetRouter = j.router({
   getHandles: privateProcedure
     .input(
       z.object({
-        query: z.string().min(1).max(15),
+        query: z.string().min(1).max(50),
+        limit: z.number().min(1).max(20).default(10),
       }),
     )
     .get(async ({ c, ctx, input }) => {
-      const { query } = input
+      const { query, limit } = input
       const { user } = ctx
+      
+      console.log(`[getHandles] Searching for users with query: "${query}", limit: ${limit}`)
 
-      const cached = await redis.get<UserV2>(`cache:mention:${query}`)
-
-      if (cached) {
-        return c.json({ data: cached })
+      // Clean the query
+      const cleanQuery = query.replaceAll('@', '').trim().toLowerCase()
+      
+      if (!cleanQuery) {
+        return c.json({ data: [] })
       }
 
+      // First, search our local database for cached users
+      const localUsers = await db.query.twitterUser.findMany({
+        where: or(
+          like(sql`lower(${twitterUserSchema.username})`, `%${cleanQuery}%`),
+          like(sql`lower(${twitterUserSchema.name})`, `%${cleanQuery}%`)
+        ),
+        orderBy: [
+          desc(twitterUserSchema.searchCount), // Popular users first
+          asc(twitterUserSchema.username)
+        ],
+        limit: Math.min(limit, 10)
+      })
+
+      console.log(`[getHandles] Found ${localUsers.length} users in local database`)
+
+      // If we have enough results from local DB, return them
+      if (localUsers.length >= limit) {
+        // Update search counts for returned users
+        const userIds = localUsers.map(u => u.id)
+        await db.update(twitterUserSchema)
+          .set({ 
+            searchCount: sql`${twitterUserSchema.searchCount} + 1`,
+            lastSearchedAt: new Date()
+          })
+          .where(inArray(twitterUserSchema.id, userIds))
+
+        const formattedUsers = localUsers.map(user => ({
+          id: user.username,
+          display: `${user.name} (@${user.username})`,
+          username: user.username,
+          name: user.name,
+          profile_image_url: user.profileImageUrl,
+          verified: user.verified,
+          followers_count: user.followersCount
+        }))
+
+        return c.json({ data: formattedUsers })
+      }
+
+      // If we need more results, search Twitter API
       const account = await getAccount({
         email: user.email,
       })
 
       if (!account?.id) {
-        throw new HTTPException(400, {
-          message: 'Please connect your X account',
-        })
+        // Return local results if no Twitter account connected
+        const formattedUsers = localUsers.map(user => ({
+          id: user.username,
+          display: `${user.name} (@${user.username})`,
+          username: user.username,
+          name: user.name,
+          profile_image_url: user.profileImageUrl,
+          verified: user.verified,
+          followers_count: user.followersCount
+        }))
+        return c.json({ data: formattedUsers })
       }
 
       const dbAccount = await db.query.account.findFirst({
@@ -1171,27 +1223,135 @@ export const tweetRouter = j.router({
       })
 
       if (!dbAccount || !dbAccount.accessToken) {
-        throw new HTTPException(400, {
-          message: 'X account not connected or access token missing',
+        // Return local results if no valid tokens
+        const formattedUsers = localUsers.map(user => ({
+          id: user.username,
+          display: `${user.name} (@${user.username})`,
+          username: user.username,
+          name: user.name,
+          profile_image_url: user.profileImageUrl,
+          verified: user.verified,
+          followers_count: user.followersCount
+        }))
+        return c.json({ data: formattedUsers })
+      }
+
+      try {
+        const client = new TwitterApi({
+          appKey: consumerKey as string,
+          appSecret: consumerSecret as string,
+          accessToken: dbAccount.accessToken as string,
+          accessSecret: dbAccount.accessSecret as string,
         })
+
+        // Try to find exact username match on Twitter API
+        // Note: Twitter API v2 doesn't have a general user search, only exact username lookup
+        let twitterUsers = []
+        try {
+          const { data } = await client.v2.userByUsername(cleanQuery, {
+            'user.fields': ['profile_image_url', 'verified', 'public_metrics', 'description'],
+          })
+          if (data) {
+            twitterUsers = [data]
+          }
+        } catch (error) {
+          // If exact username doesn't exist, that's okay - we'll just use local results
+          console.log(`[getHandles] No exact Twitter user found for "${cleanQuery}"`)
+        }
+
+        console.log(`[getHandles] Found ${twitterUsers.length} users from Twitter API`)
+        
+        // Store new users in our database for future searches
+        const newUsers = []
+        for (const twitterUser of twitterUsers) {
+          // Check if user already exists in our local DB
+          const existingUser = localUsers.find(u => u.username === twitterUser.username)
+          if (!existingUser) {
+            newUsers.push({
+              id: twitterUser.id,
+              username: twitterUser.username,
+              name: twitterUser.name,
+              profileImageUrl: twitterUser.profile_image_url || null,
+              verified: twitterUser.verified || false,
+              followersCount: twitterUser.public_metrics?.followers_count || 0,
+              description: twitterUser.description || null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              lastSearchedAt: new Date(),
+              searchCount: 1
+            })
+          }
+        }
+
+        // Insert new users into database
+        if (newUsers.length > 0) {
+          await db.insert(twitterUserSchema).values(newUsers).onConflictDoNothing()
+          console.log(`[getHandles] Stored ${newUsers.length} new users in database`)
+        }
+
+        // Update search counts for existing users that were found via Twitter API
+        const existingUserIds = twitterUsers
+          .map(tu => localUsers.find(lu => lu.username === tu.username)?.id)
+          .filter(Boolean)
+        
+        if (existingUserIds.length > 0) {
+          await db.update(twitterUserSchema)
+            .set({ 
+              searchCount: sql`${twitterUserSchema.searchCount} + 1`,
+              lastSearchedAt: new Date()
+            })
+            .where(inArray(twitterUserSchema.id, existingUserIds))
+        }
+
+        // Combine local and Twitter results, removing duplicates
+        const allUsers = [...localUsers]
+        for (const twitterUser of twitterUsers) {
+          if (!allUsers.find(u => u.username === twitterUser.username)) {
+            allUsers.push({
+              id: twitterUser.id,
+              username: twitterUser.username,
+              name: twitterUser.name,
+              profileImageUrl: twitterUser.profile_image_url || null,
+              verified: twitterUser.verified || false,
+              followersCount: twitterUser.public_metrics?.followers_count || 0,
+              description: twitterUser.description || null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              lastSearchedAt: new Date(),
+              searchCount: 1
+            })
+          }
+        }
+
+        // Format results for frontend
+        const formattedUsers = allUsers.slice(0, limit).map(user => ({
+          id: user.username,
+          display: `${user.name} (@${user.username})`,
+          username: user.username,
+          name: user.name,
+          profile_image_url: user.profileImageUrl,
+          verified: user.verified,
+          followers_count: user.followersCount
+        }))
+
+        console.log(`[getHandles] Returning ${formattedUsers.length} total users`)
+        return c.json({ data: formattedUsers })
+
+      } catch (error) {
+        console.error('[getHandles] Error searching Twitter API:', error)
+        
+        // Return local results if Twitter API fails
+        const formattedUsers = localUsers.map(user => ({
+          id: user.username,
+          display: `${user.name} (@${user.username})`,
+          username: user.username,
+          name: user.name,
+          profile_image_url: user.profileImageUrl,
+          verified: user.verified,
+          followers_count: user.followersCount
+        }))
+        return c.json({ data: formattedUsers })
       }
-
-      const client = new TwitterApi({
-        appKey: consumerKey as string,
-        appSecret: consumerSecret as string,
-        accessToken: dbAccount.accessToken as string,
-        accessSecret: dbAccount.accessSecret as string,
-      })
-
-      const { data } = await client.v2.userByUsername(query.replaceAll('@', ''), {
-        'user.fields': ['profile_image_url'],
-      })
-
-      if (data) {
-        waitUntil(redis.set(`cache:mention:${query}`, data))
-      }
-
-      return c.json({ data })
     }),
 
   // Thread-related endpoints

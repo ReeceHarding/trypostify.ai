@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, integer, json } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, boolean, integer, json, index, unique } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -51,6 +52,30 @@ export const account = pgTable('account', {
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
 })
+
+// Table to store Twitter user profiles for mention search
+export const twitterUser = pgTable('twitter_user', {
+  id: text('id').primaryKey(), // Twitter user ID
+  username: text('username').notNull(),
+  name: text('name').notNull(),
+  profileImageUrl: text('profile_image_url'),
+  verified: boolean('verified').default(false),
+  followersCount: integer('followers_count'),
+  description: text('description'),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
+  lastSearchedAt: timestamp('last_searched_at'), // Track when this user was last searched
+  searchCount: integer('search_count').default(0), // Track how often this user is searched
+}, (table) => [
+  // Index for fast username search (case-insensitive)
+  index('twitter_user_username_idx').on(sql`lower(${table.username})`),
+  // Index for fast name search (case-insensitive)  
+  index('twitter_user_name_idx').on(sql`lower(${table.name})`),
+  // Index for search popularity
+  index('twitter_user_search_count_idx').on(table.searchCount),
+  // Unique constraint on username
+  unique('twitter_user_username_unique').on(table.username),
+])
 
 export const verification = pgTable('verification', {
   id: text('id').primaryKey(),
