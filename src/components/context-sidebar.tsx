@@ -52,7 +52,7 @@ export const LeftSidebar = () => {
   // Global hotkey feedback
   const { showNavigation } = useHotkeyFeedback()
 
-  // Keyboard shortcuts for navigation
+  // Keyboard shortcuts for navigation and custom event listener for right sidebar toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
@@ -97,8 +97,19 @@ export const LeftSidebar = () => {
       }
     }
 
+    // Custom event listener for toggle from right sidebar
+    const handleToggleFromRightSidebar = () => {
+      console.log('[LeftSidebar] Received toggle event from right sidebar at', new Date().toISOString())
+      toggleSidebar()
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('toggleLeftSidebar', handleToggleFromRightSidebar)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('toggleLeftSidebar', handleToggleFromRightSidebar)
+    }
   }, [isMac, router, id, toggleSidebar])
 
   return (

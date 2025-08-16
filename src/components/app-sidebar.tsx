@@ -706,6 +706,28 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <DuolingoButton
+                      onClick={toggleLeftSidebar}
+                      size="icon"
+                      variant="secondary"
+                      className="aspect-square group/toggle-button"
+                    >
+                      <PanelLeft className="size-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
+                      <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">
+                        <ArrowLeftFromLine className="size-4" />
+                      </div>
+                    </DuolingoButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p>Toggle navigation</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + \</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DuolingoButton
                       onClick={handleNewChat}
                       size="sm"
                       variant="secondary"
