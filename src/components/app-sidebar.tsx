@@ -761,7 +761,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           {messages.length === 0 ? (
             <div className="absolute z-10 p-3 pb-5 inset-x-0 bottom-0">
               <p className="text-sm text-neutral-500 mb-2">Examples</p>
-              <div className="space-y-2">
+              <div className="space-y-2 max-[480px]:space-y-2 max-[480px]:px-1">
                 <PromptSuggestion
                   onClick={() => {
                     attachments.forEach((attachment) => {
