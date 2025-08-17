@@ -58,7 +58,7 @@ export default function ThreadTweetEditor({
   const characterLimit = getCharacterLimit()
   
   const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
-    { id: crypto.randomUUID(), content: '', media: [] },
+    { id: 'initial-tweet', content: '', media: [] },
   ])
   const [hasBeenCleared, setHasBeenCleared] = useState(false)
   const router = useRouter()
@@ -76,6 +76,14 @@ export default function ThreadTweetEditor({
   
   // Refs to focus tweets
   const tweetRefs = useRef<{ [key: string]: { focus: () => void } | null }>({})
+
+  // Generate proper UUID after mount to avoid hydration issues
+  useEffect(() => {
+    if (threadTweets.length === 1 && threadTweets[0]?.id === 'initial-tweet') {
+      console.log('[ThreadTweetEditor] Generating proper UUID after mount to avoid hydration mismatch')
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    }
+  }, [])
 
   // Load thread data if in edit mode
   const { data: threadData, isLoading: loadingThread } = useQuery({
