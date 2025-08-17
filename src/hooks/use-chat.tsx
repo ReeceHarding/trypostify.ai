@@ -18,12 +18,25 @@ interface ChatContext extends ReturnType<typeof useChat<MyUIMessage>> {
 
 const ChatContext = createContext<ChatContext | null>(null)
 
-const defaultValue = nanoid()
+// Important: Use a stable SSR-safe default so server and client render the same initial HTML.
+// We then generate a real id on the client after hydration.
+const defaultValue = ''
 
 export const ChatProvider = ({ children }: PropsWithChildren) => {
   const [id, setId] = useQueryState('chatId', {
     defaultValue,
   })
+
+  // After first client render, if no id exists, generate one and update the URL.
+  useEffect(() => {
+    if (!id) {
+      // Defer to next tick to avoid interfering with hydration
+      Promise.resolve().then(() => {
+        void setId(nanoid())
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const startNewChat = async (id?: string) => {
     setId(nanoid())

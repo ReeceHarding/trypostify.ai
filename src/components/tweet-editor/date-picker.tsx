@@ -131,8 +131,8 @@ export const Calendar20 = ({
   }
 
   return (
-    <Card className="w-full gap-0 p-0 max-h-[80vh] overflow-hidden flex flex-col">
-      <CardContent className="relative p-0 md:pr-48 flex-1 overflow-y-auto">
+    <Card className="w-full gap-0 p-0 max-h-[80dvh] overflow-hidden flex flex-col">
+      <CardContent className="relative p-0 md:pr-56 flex-1 min-h-0 overflow-y-auto">
         {/* Calendar Section */}
         <div className="p-5">
           <Calendar
@@ -151,7 +151,8 @@ export const Calendar20 = ({
             }}
             classNames={{
               day: 'size-10 rounded-lg max-[480px]:size-8 max-[480px]:text-xs',
-              selected: 'z-10 rounded-md',
+              // Remove z-index to prevent calendar day from overlaying the time panel
+              selected: 'rounded-md',
               [UI.Months]: 'relative',
               [UI.Month]: 'space-y-4 ml-0',
               [UI.MonthCaption]: 'flex w-full justify-center items-center h-7',
@@ -179,16 +180,24 @@ export const Calendar20 = ({
         </div>
         
         {/* Time Slots Section - Mobile First Design */}
-        <div className="flex w-full flex-col border-t p-4 md:absolute md:inset-y-0 md:right-0 md:w-48 md:border-l md:border-t-0 md:p-6 md:max-h-full">
+        <div className="flex w-full flex-col border-t p-4 md:absolute md:inset-y-0 md:right-0 md:w-56 md:border-l md:border-t-0 md:p-6 md:max-h-full md:z-10 bg-background">
           <h3 className="mb-3 text-sm font-medium text-neutral-700 md:hidden">Select Time</h3>
-          <div className="no-scrollbar flex max-h-[30vh] md:max-h-none flex-col gap-2 overflow-y-auto scroll-pb-4">
-            <div className="grid grid-cols-1 gap-2 min-[481px]:grid-cols-3 md:grid-cols-1">
+          <div className="no-scrollbar flex max-h-[30dvh] md:max-h-[calc(100%-2rem)] flex-col gap-2 overflow-y-auto scroll-pb-4">
+            <div className="grid grid-cols-1 gap-2 min-[481px]:grid-cols-3 md:grid-cols-1 md:pr-1">
               {timeSlots
-                .filter((time) => !isTimeSlotDisabled(time))
+                .filter((time) => {
+                  // Always show all time slots for future dates
+                  if (!date || date.toDateString() !== today.toDateString()) {
+                    return true
+                  }
+                  // Only filter past times for today
+                  return !isTimeSlotDisabled(time)
+                })
                 .map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? 'default' : 'outline'}
+                    disabled={isTimeSlotDisabled(time)}
                     onClick={() => setSelectedTime(time)}
                     className={cn(
                       'h-10 text-sm shadow-none min-[481px]:h-8 min-[481px]:text-xs md:h-9 md:text-sm md:w-full touch-manipulation',

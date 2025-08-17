@@ -1295,9 +1295,10 @@ function ThreadTweetContent({
                                     side="bottom"
                                     align="center"
                                     sideOffset={8}
-                                    avoidCollisions={true}
+                                    avoidCollisions
                                     collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                                    className="w-full max-w-[min(100vw-1rem,28rem)] max-h-[min(90vh,calc(100vh-4rem))] overflow-hidden"
+                                    updatePositionStrategy="always"
+                                    className="w-full max-w-[min(100dvw-1rem,28rem)] md:max-w-[min(100dvw-1rem,40rem)] max-h-[min(90dvh,calc(100dvh-4rem))] overflow-hidden p-0"
                                   >
                                     <Calendar20
                                       initialScheduledTime={preScheduleTime || undefined}
