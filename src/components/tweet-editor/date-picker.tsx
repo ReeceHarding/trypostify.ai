@@ -31,6 +31,10 @@ export const Calendar20 = ({
   const today = new Date()
   const currentHour = today.getHours()
   const currentMinute = today.getMinutes()
+  
+  console.log('[DatePicker] Current time:', today.toISOString())
+  console.log('[DatePicker] Current local time:', today.toLocaleString())
+  console.log('[DatePicker] Current hour:', currentHour, 'Current minute:', currentMinute)
 
   // Fetch user's posting window settings
   const { data: postingWindow } = useQuery({
@@ -61,6 +65,7 @@ export const Calendar20 = ({
     const endHour = postingWindow?.end ?? 18 // Default 6 PM
     
     console.log('[DatePicker] Generating time slots from', startHour, 'to', endHour)
+    console.log('[DatePicker] postingWindow object:', postingWindow)
     
     const slots: string[] = []
     // Generate 15-minute intervals within the posting window
@@ -71,10 +76,48 @@ export const Calendar20 = ({
     }
     
     console.log('[DatePicker] Generated', slots.length, 'time slots:', slots.slice(0, 5), '...')
+    console.log('[DatePicker] All generated slots:', slots)
     return slots
   }
 
   const timeSlots = generateTimeSlots()
+  
+  console.log('[DatePicker] Current date state:', date)
+  console.log('[DatePicker] Today:', today.toDateString())
+  console.log('[DatePicker] Time slots array length:', timeSlots.length)
+  console.log('[DatePicker] First few time slots:', timeSlots.slice(0, 5))
+  
+  // Fallback: if no time slots are generated, create some default ones
+  if (timeSlots.length === 0) {
+    console.log('[DatePicker] No time slots generated, using fallback')
+    const fallbackSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
+    return (
+      <Card className="w-full gap-0 p-0 max-h-[80dvh] overflow-hidden flex flex-col">
+        <CardContent className="relative p-0 md:pr-56 flex-1 min-h-0 overflow-y-auto">
+          <div className="p-5">
+            <p>Error: No time slots available. Using fallback times.</p>
+          </div>
+          <div className="flex w-full flex-col border-t p-4 md:absolute md:inset-y-0 md:right-0 md:w-56 md:border-l md:border-t-0 md:p-6 md:max-h-full md:z-10 bg-background">
+            <h3 className="mb-3 text-sm font-medium text-neutral-700 md:hidden">Select Time</h3>
+            <div className="no-scrollbar flex max-h-[30dvh] md:max-h-[calc(100%-2rem)] flex-col gap-2 overflow-y-auto scroll-pb-4">
+              <div className="grid grid-cols-1 gap-2 min-[481px]:grid-cols-3 md:grid-cols-1 md:pr-1">
+                {fallbackSlots.map((time) => (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? 'default' : 'outline'}
+                    onClick={() => setSelectedTime(time)}
+                    className="h-10 text-sm shadow-none min-[481px]:h-8 min-[481px]:text-xs md:h-9 md:text-sm md:w-full touch-manipulation"
+                  >
+                    {formatHHmmTo12h(time)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   const getNextAvailableTime = (): string => {
     const currentTime = currentHour * 60 + currentMinute
@@ -109,9 +152,13 @@ export const Calendar20 = ({
   const [selectedTime, setSelectedTime] = React.useState<string | null>(
     getInitialTime(),
   )
+  
+  console.log('[DatePicker] Component state - date:', date, 'selectedTime:', selectedTime)
+  console.log('[DatePicker] postingWindow:', postingWindow)
 
   const isTimeSlotDisabled = (timeString: string) => {
     if (!date || date.toDateString() !== today.toDateString()) {
+      console.log('[DatePicker] isTimeSlotDisabled - not today, returning false for:', timeString)
       return false
     }
 
@@ -120,8 +167,11 @@ export const Calendar20 = ({
     const minute = timeParts[1] ?? 0
     const slotTime = hour * 60 + minute
     const currentTime = currentHour * 60 + currentMinute
+    
+    const isDisabled = slotTime <= currentTime
+    console.log('[DatePicker] isTimeSlotDisabled -', timeString, 'slotTime:', slotTime, 'currentTime:', currentTime, 'disabled:', isDisabled)
 
-    return slotTime <= currentTime
+    return isDisabled
   }
 
   const isPastDate = (date: Date) => {
@@ -186,27 +236,34 @@ export const Calendar20 = ({
             <div className="grid grid-cols-1 gap-2 min-[481px]:grid-cols-3 md:grid-cols-1 md:pr-1">
               {timeSlots
                 .filter((time) => {
-                  // Always show all time slots for future dates
+                  console.log('[DatePicker] Processing time slot:', time)
+                  // Always show all time slots for future dates or if no date is selected
                   if (!date || date.toDateString() !== today.toDateString()) {
+                    console.log('[DatePicker] Future date or no date - showing slot:', time)
                     return true
                   }
-                  // Only filter past times for today
-                  return !isTimeSlotDisabled(time)
+                  // For today, only filter out past times
+                  const isDisabled = isTimeSlotDisabled(time)
+                  console.log('[DatePicker] Today - slot:', time, 'disabled:', isDisabled, 'showing:', !isDisabled)
+                  return !isDisabled
                 })
-                .map((time) => (
-                  <Button
-                    key={time}
-                    variant={selectedTime === time ? 'default' : 'outline'}
-                    disabled={isTimeSlotDisabled(time)}
-                    onClick={() => setSelectedTime(time)}
-                    className={cn(
-                      'h-10 text-sm shadow-none min-[481px]:h-8 min-[481px]:text-xs md:h-9 md:text-sm md:w-full touch-manipulation',
-                      selectedTime === time && 'text-success-600'
-                    )}
-                  >
-                    {formatHHmmTo12h(time)}
-                  </Button>
-                ))}
+                .map((time) => {
+                  console.log('[DatePicker] Rendering time slot button:', time)
+                  return (
+                    <Button
+                      key={time}
+                      variant={selectedTime === time ? 'default' : 'outline'}
+                      disabled={isTimeSlotDisabled(time)}
+                      onClick={() => setSelectedTime(time)}
+                      className={cn(
+                        'h-10 text-sm shadow-none min-[481px]:h-8 min-[481px]:text-xs md:h-9 md:text-sm md:w-full touch-manipulation',
+                        selectedTime === time && 'text-success-600'
+                      )}
+                    >
+                      {formatHHmmTo12h(time)}
+                    </Button>
+                  )
+                })}
             </div>
           </div>
         </div>
