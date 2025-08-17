@@ -81,7 +81,44 @@ export const Calendar20 = ({
   }
 
   const timeSlots = generateTimeSlots()
+
+  const getNextAvailableTime = (): string => {
+    const currentTime = currentHour * 60 + currentMinute
+    return (
+      timeSlots.find((timeSlot) => {
+        const timeParts = timeSlot.split(':').map(Number)
+        const hour = timeParts[0] ?? 0
+        const minute = timeParts[1] ?? 0
+        const slotTime = hour * 60 + minute
+        return slotTime > currentTime
+      }) ??
+      timeSlots[0] ??
+      '10:00'
+    )
+  }
+
+  const getInitialDate = (): Date => {
+    return initialScheduledTime ? new Date(initialScheduledTime) : new Date()
+  }
+
+  const getInitialTime = (): string => {
+    if (initialScheduledTime) {
+      const scheduledDate = new Date(initialScheduledTime)
+      const hour = scheduledDate.getHours().toString().padStart(2, '0')
+      const minute = scheduledDate.getMinutes().toString().padStart(2, '0')
+      return `${hour}:${minute}`
+    }
+    return getNextAvailableTime()
+  }
+
+  const [date, setDate] = React.useState<Date | undefined>(getInitialDate())
+  const [selectedTime, setSelectedTime] = React.useState<string | null>(
+    getInitialTime(),
+  )
   
+  // Debug logging after state initialization
+  console.log('[DatePicker] Component state - date:', date, 'selectedTime:', selectedTime)
+  console.log('[DatePicker] postingWindow:', postingWindow)
   console.log('[DatePicker] Current date state:', date)
   console.log('[DatePicker] Today:', today.toDateString())
   console.log('[DatePicker] Time slots array length:', timeSlots.length)
@@ -118,43 +155,6 @@ export const Calendar20 = ({
       </Card>
     )
   }
-
-  const getNextAvailableTime = (): string => {
-    const currentTime = currentHour * 60 + currentMinute
-    return (
-      timeSlots.find((timeSlot) => {
-        const timeParts = timeSlot.split(':').map(Number)
-        const hour = timeParts[0] ?? 0
-        const minute = timeParts[1] ?? 0
-        const slotTime = hour * 60 + minute
-        return slotTime > currentTime
-      }) ??
-      timeSlots[0] ??
-      '10:00'
-    )
-  }
-
-  const getInitialDate = (): Date => {
-    return initialScheduledTime ? new Date(initialScheduledTime) : new Date()
-  }
-
-  const getInitialTime = (): string => {
-    if (initialScheduledTime) {
-      const scheduledDate = new Date(initialScheduledTime)
-      const hour = scheduledDate.getHours().toString().padStart(2, '0')
-      const minute = scheduledDate.getMinutes().toString().padStart(2, '0')
-      return `${hour}:${minute}`
-    }
-    return getNextAvailableTime()
-  }
-
-  const [date, setDate] = React.useState<Date | undefined>(getInitialDate())
-  const [selectedTime, setSelectedTime] = React.useState<string | null>(
-    getInitialTime(),
-  )
-  
-  console.log('[DatePicker] Component state - date:', date, 'selectedTime:', selectedTime)
-  console.log('[DatePicker] postingWindow:', postingWindow)
 
   const isTimeSlotDisabled = (timeString: string) => {
     if (!date || date.toDateString() !== today.toDateString()) {
