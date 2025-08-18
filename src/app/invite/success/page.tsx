@@ -1,5 +1,5 @@
 import { redis } from '@/lib/redis'
-import { Check, CheckCircle, Users } from 'lucide-react'
+import { Check } from 'lucide-react'
 
 interface InvitePageProps {
   searchParams: Promise<{ id?: string }>

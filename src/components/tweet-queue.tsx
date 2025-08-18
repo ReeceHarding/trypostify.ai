@@ -7,7 +7,7 @@ import { format, isThisWeek, isToday, isTomorrow } from 'date-fns'
 import { Clock, Edit, MoreHorizontal, Send, Trash2, MessageSquare, Paperclip } from 'lucide-react'
 
 import { useConfetti } from '@/hooks/use-confetti'
-import { useTweets } from '@/hooks/use-tweets'
+import { useTweets } from '@/hooks/use-tweet-composer'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -44,7 +44,7 @@ export default function TweetQueue() {
   const [pendingPostId, setPendingPostId] = useState<string | null>(null)
   const [daysLoaded, setDaysLoaded] = useState(7) // Start with 7 days
 
-  const { shadowEditor, setMediaFiles } = useTweets()
+  const { shadowEditor, setMediaFiles } = useTweetComposer()
   const router = useRouter()
 
   const userNow = new Date()

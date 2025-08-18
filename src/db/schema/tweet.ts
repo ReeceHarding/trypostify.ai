@@ -22,8 +22,6 @@ export const tweets = pgTable('tweets', {
   content: text('content').default('').notNull(),
   editorState: json('editor_state').default(null),
   media: json('media').$type<Media[]>().default([]),
-  mediaIds: json('media_ids').$type<string[]>().default([]),
-  s3Keys: json('s3_keys').$type<string[]>().default([]),
   qstashId: text('qstash_id'),
   twitterId: text('twitter_id'),
   userId: text('user_id')

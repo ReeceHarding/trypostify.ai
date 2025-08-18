@@ -64,25 +64,17 @@ async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
   })
 }
 
-// Function to process a scheduled thread (extracted from postThread logic)
-async function processScheduledThread(threadId: string) {
-  console.log(`[LocalScheduler] Starting to process thread: ${threadId}`)
+// Unified function to publish a thread to Twitter
+async function publishThread(params: {
+  threadId: string
+  userId?: string
+  accountId?: string
+  context?: 'local' | 'webhook'
+}) {
+  const { threadId, userId, accountId, context = 'unknown' } = params
+  console.log(`[PublishThread:${context}] Starting to process thread: ${threadId}`)
   
   try {
-    // Get the first tweet to find the user and account
-    const firstTweet = await db.query.tweets.findFirst({
-      where: and(
-        eq(tweets.threadId, threadId),
-        eq(tweets.isScheduled, true),
-        eq(tweets.isPublished, false),
-      ),
-    })
-
-    if (!firstTweet || !firstTweet.userId) {
-      console.log(`[LocalScheduler] No valid tweet found for thread ${threadId}`)
-      return
-    }
-
     // Get all tweets in the thread
     const threadTweets = await db.query.tweets.findMany({
       where: and(
@@ -93,43 +85,66 @@ async function processScheduledThread(threadId: string) {
     })
 
     if (threadTweets.length === 0) {
-      console.log(`[LocalScheduler] No unpublished tweets found for thread ${threadId}`)
-      return
+      console.log(`[PublishThread:${context}] No unpublished tweets found for thread ${threadId}`)
+      return { success: true, reason: 'no_tweets' }
     }
 
-    // Find the user's Twitter account
-    const account = await db.query.account.findFirst({
-      where: and(
-        eq(accountSchema.userId, firstTweet.userId),
-        eq(accountSchema.providerId, 'twitter')
-      ),
-    })
+    // Find the account - try different approaches based on available params
+    let account: any = null
+    
+    if (accountId && userId) {
+      // Production webhook approach - use specific accountId
+      account = await db.query.account.findFirst({
+        where: and(
+          eq(accountSchema.userId, userId),
+          eq(accountSchema.id, accountId),
+        ),
+      })
+    } else {
+      // Local scheduler approach - find Twitter account via first tweet's user
+      const firstTweet = threadTweets[0]
+      if (firstTweet?.userId) {
+        account = await db.query.account.findFirst({
+          where: and(
+            eq(accountSchema.userId, firstTweet.userId),
+            eq(accountSchema.providerId, 'twitter')
+          ),
+        })
+      }
+    }
 
     if (!account || !account.accessToken) {
-      console.log(`[LocalScheduler] No Twitter account or access token found for user ${firstTweet.userId}`)
-      return
+      console.log(`[PublishThread:${context}] No Twitter account or access token found for thread ${threadId}`)
+      return { success: false, reason: 'no_account' }
     }
 
-    console.log(`[LocalScheduler] Found account for thread ${threadId}, posting ${threadTweets.length} tweets`)
+    console.log(`[PublishThread:${context}] Found account for thread ${threadId}, posting ${threadTweets.length} tweets`)
+
+    // Check for Twitter API credentials
+    if (!consumerKey || !consumerSecret) {
+      console.error(`[PublishThread:${context}] Missing Twitter API credentials`)
+      throw new Error('Twitter API credentials not configured')
+    }
 
     const client = new TwitterApi({
-      appKey: consumerKey as string,
-      appSecret: consumerSecret as string,
-      accessToken: account.accessToken as string,
-      accessSecret: account.accessSecret as string,
+      appKey: consumerKey,
+      appSecret: consumerSecret,
+      accessToken: account.accessToken,
+      accessSecret: account.accessSecret,
     })
 
     let previousTweetId: string | null = null
+    const postedTweets = []
 
     // Post each tweet in sequence
     for (const [index, tweet] of threadTweets.entries()) {
-      console.log(`[LocalScheduler] Posting tweet ${index + 1}/${threadTweets.length} for thread ${threadId}`)
+      console.log(`[PublishThread:${context}] Posting tweet ${index + 1}/${threadTweets.length} for thread ${threadId}`)
 
       try {
         // Wait for delay if specified (except for first tweet)
         if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
-          console.log(`[LocalScheduler] Waiting ${tweet.delayMs}ms before next tweet`)
-          await new Promise(resolve => setTimeout(resolve, tweet.delayMs!))
+          console.log(`[PublishThread:${context}] Waiting ${tweet.delayMs}ms before next tweet`)
+          await new Promise(resolve => setTimeout(resolve, tweet.delayMs))
         }
 
         const tweetPayload: SendTweetV2Params = {
@@ -138,7 +153,7 @@ async function processScheduledThread(threadId: string) {
 
         // Add reply_to for subsequent tweets
         if (previousTweetId && index > 0) {
-          console.log(`[LocalScheduler] Adding reply_to: ${previousTweetId}`)
+          console.log(`[PublishThread:${context}] Adding reply_to: ${previousTweetId}`)
           tweetPayload.reply = {
             in_reply_to_tweet_id: previousTweetId,
           }
@@ -146,7 +161,7 @@ async function processScheduledThread(threadId: string) {
 
         // Add media if present and validate media_ids
         if (tweet.media && tweet.media.length > 0) {
-          console.log(`[LocalScheduler] Processing ${tweet.media.length} media items for tweet`)
+          console.log(`[PublishThread:${context}] Processing ${tweet.media.length} media items for tweet`)
           
           // Validate all media_ids are present and non-empty
           const validMediaIds = tweet.media
@@ -154,22 +169,22 @@ async function processScheduledThread(threadId: string) {
             .filter((id: any) => id && typeof id === 'string' && id.trim().length > 0)
           
           if (validMediaIds.length === 0) {
-            console.error(`[LocalScheduler] All media_ids are invalid for tweet ${tweet.id}. Media:`, tweet.media)
+            console.error(`[PublishThread:${context}] All media_ids are invalid for tweet ${tweet.id}. Media:`, tweet.media)
             throw new Error('Invalid media_ids: all media_ids are empty or undefined')
           }
           
           if (validMediaIds.length !== tweet.media.length) {
-            console.warn(`[LocalScheduler] Some media_ids are invalid for tweet ${tweet.id}. Valid: ${validMediaIds.length}/${tweet.media.length}`)
+            console.warn(`[PublishThread:${context}] Some media_ids are invalid for tweet ${tweet.id}. Valid: ${validMediaIds.length}/${tweet.media.length}`)
           }
           
-          console.log(`[LocalScheduler] Adding ${validMediaIds.length} valid media items to tweet`)
+          console.log(`[PublishThread:${context}] Adding ${validMediaIds.length} valid media items to tweet`)
           tweetPayload.media = {
             media_ids: validMediaIds,
           }
         }
 
         const res = await client.v2.tweet(tweetPayload)
-        console.log(`[LocalScheduler] Tweet posted successfully, ID: ${res.data.id}`)
+        console.log(`[PublishThread:${context}] Tweet posted successfully, ID: ${res.data.id}`)
 
         // Update the tweet in the database
         await db
@@ -184,19 +199,20 @@ async function processScheduledThread(threadId: string) {
           .where(eq(tweets.id, tweet.id))
 
         previousTweetId = res.data.id
+        postedTweets.push(res.data)
       } catch (error) {
-        console.error(`[LocalScheduler] Failed to post tweet ${index + 1} in thread ${threadId}:`, error)
+        console.error(`[PublishThread:${context}] Failed to post tweet ${index + 1} in thread ${threadId}:`, error)
         
-        // Handle specific error types
-        if (error instanceof Error) {
+        // Handle specific error types (better error handling for local context)
+        if (context === 'local' && error instanceof Error) {
           const errorMessage = error.message.toLowerCase()
           
-          // For invalid media or other 400 errors, mark tweet as failed to prevent retries
+          // For invalid media or other 400 errors, mark tweet as failed and continue
           if (errorMessage.includes('invalid media_ids') || 
               errorMessage.includes('invalid request') ||
               errorMessage.includes('one or more parameters') ||
               (error as any).code === 400) {
-            console.error(`[LocalScheduler] Marking tweet ${tweet.id} as failed due to invalid request`)
+            console.error(`[PublishThread:${context}] Marking tweet ${tweet.id} as failed due to invalid request`)
             await db
               .update(tweets)
               .set({
@@ -207,26 +223,43 @@ async function processScheduledThread(threadId: string) {
               .where(eq(tweets.id, tweet.id))
             
             // Continue to next tweet instead of failing entire thread
-            console.log(`[LocalScheduler] Skipping failed tweet ${tweet.id}, continuing with remaining tweets`)
+            console.log(`[PublishThread:${context}] Skipping failed tweet ${tweet.id}, continuing with remaining tweets`)
             continue
           }
           
           // For rate limiting (429), stop processing and let it retry later
           if ((error as any).code === 429) {
-            console.error(`[LocalScheduler] Rate limited, stopping thread processing for now`)
+            console.error(`[PublishThread:${context}] Rate limited, stopping thread processing for now`)
             throw error
           }
         }
         
-        // For other errors, still throw to stop processing
-        throw error
+        // For webhook context or other errors, fail the entire thread
+        if (context === 'webhook') {
+          throw new HTTPException(500, {
+            message: `Failed to post tweet ${index + 1} in thread`,
+          })
+        } else {
+          throw error
+        }
       }
     }
 
-    console.log(`[LocalScheduler] Thread ${threadId} posted successfully with ${threadTweets.length} tweets`)
+    console.log(`[PublishThread:${context}] Thread ${threadId} posted successfully with ${postedTweets.length} tweets`)
+    return { success: true, postedTweets, totalTweets: threadTweets.length }
   } catch (error) {
-    console.error(`[LocalScheduler] Error processing thread ${threadId}:`, error)
+    console.error(`[PublishThread:${context}] Error processing thread ${threadId}:`, error)
+    if (context === 'webhook') {
+      throw error // Re-throw for webhook context
+    }
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
+}
+
+// Legacy wrapper for local development (DEPRECATED - use publishThread directly)
+async function processScheduledThread(threadId: string) {
+  const result = await publishThread({ threadId, context: 'local' })
+  return result
 }
 
 // Simple in-memory scheduler for local development
@@ -695,8 +728,7 @@ export const tweetRouter = j.router({
             s3Key: z.string(),
           }),
         ),
-        // mediaIds: z.array(z.string()).default([]),
-        // s3Keys: z.array(z.string()).default([]),
+
       }),
     )
     .post(async ({ c, ctx, input }) => {
@@ -2232,101 +2264,29 @@ export const tweetRouter = j.router({
       accountId: string
     }
 
-    // console.log('[postThread] Processing scheduled thread:', threadId)
+    console.log(`[PostThread] Processing scheduled thread via webhook: ${threadId}`)
 
-    // Get all tweets in the thread
-    const threadTweets = await db.query.tweets.findMany({
-      where: and(
-        eq(tweets.threadId, threadId),
-        eq(tweets.isPublished, false),
-      ),
-      orderBy: asc(tweets.position),
+    // Use the unified publishThread function
+    const result = await publishThread({
+      threadId,
+      userId,
+      accountId,
+      context: 'webhook'
     })
 
-    if (threadTweets.length === 0) {
-      // console.log('[postThread] No unpublished tweets found')
-      return c.json({ success: true })
-    }
-
-    const account = await db.query.account.findFirst({
-      where: and(
-        eq(accountSchema.userId, userId),
-        eq(accountSchema.id, accountId),
-      ),
-    })
-
-    if (!account || !account.accessToken) {
-      // console.log('[postThread] No account or access token')
-      throw new HTTPException(400, {
-        message: 'X account not connected or access token missing',
+    if (!result.success) {
+      console.error(`[PostThread] Failed to publish thread ${threadId}:`, result.error || result.reason)
+      if (result.reason === 'no_account') {
+        throw new HTTPException(400, {
+          message: 'X account not connected or access token missing',
+        })
+      }
+      throw new HTTPException(500, {
+        message: result.error || 'Failed to publish thread'
       })
     }
 
-    const client = new TwitterApi({
-      appKey: consumerKey as string,
-      appSecret: consumerSecret as string,
-      accessToken: account.accessToken as string,
-      accessSecret: account.accessSecret as string,
-    })
-
-    let previousTweetId: string | null = null
-
-    // Post each tweet in sequence
-    for (const [index, tweet] of threadTweets.entries()) {
-      // console.log(`[postThread] Posting tweet ${index + 1}/${threadTweets.length}`)
-
-      try {
-        // Wait for delay if specified (except for first tweet)
-        if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
-          // console.log(`[postThread] Waiting ${tweet.delayMs}ms`)
-          await new Promise(resolve => setTimeout(resolve, tweet.delayMs!))
-        }
-
-        const tweetPayload: SendTweetV2Params = {
-          text: tweet.content,
-        }
-
-        // Add reply_to for subsequent tweets
-        if (previousTweetId && index > 0) {
-          // console.log('[postThread] Adding reply_to:', previousTweetId)
-          tweetPayload.reply = {
-            in_reply_to_tweet_id: previousTweetId,
-          }
-        }
-
-        // Add media if present
-        if (tweet.media && tweet.media.length > 0) {
-          tweetPayload.media = {
-            // @ts-expect-error tuple type vs. string[]
-            media_ids: tweet.media.map((media) => media.media_id),
-          }
-        }
-
-        const res = await client.v2.tweet(tweetPayload)
-        // console.log('[postThread] Tweet posted, ID:', res.data.id)
-
-        // Update the tweet in the database
-        await db
-          .update(tweets)
-          .set({
-            isScheduled: false,
-            isPublished: true,
-            twitterId: res.data.id,
-            replyToTweetId: previousTweetId,
-            updatedAt: new Date(),
-          })
-          .where(eq(tweets.id, tweet.id))
-
-        previousTweetId = res.data.id
-      } catch (error) {
-        // console.error(`[postThread] Failed to post tweet ${index + 1}:`, error)
-        throw new HTTPException(500, {
-          message: `Failed to post tweet ${index + 1} in thread`,
-        })
-      }
-    }
-
-    // console.log('[postThread] Thread posted successfully')
+    console.log(`[PostThread] Thread ${threadId} posted successfully via webhook`)
     return c.json({ success: true })
   }),
 

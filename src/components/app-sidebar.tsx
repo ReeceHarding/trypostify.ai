@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useAttachments } from '@/hooks/use-attachments'
 import { useChatContext } from '@/hooks/use-chat'
-import { useTweets } from '@/hooks/use-tweets'
+import { useTweets } from '@/hooks/use-tweet-composer'
 import { client } from '@/lib/client'
 import { MultipleEditorStorePlugin } from '@/lib/lexical-plugins/multiple-editor-plugin'
 import PlaceholderPlugin from '@/lib/placeholder-plugin'
@@ -73,7 +73,7 @@ const ChatInput = ({
   const { attachments, removeAttachment, addKnowledgeAttachment, hasUploading } =
     useAttachments()
 
-  const { shadowEditor } = useTweets()
+  const { shadowEditor } = useTweetComposer()
 
   // File input ref for keyboard shortcut
   const fileInputRef = useRef<HTMLInputElement | null>(null)

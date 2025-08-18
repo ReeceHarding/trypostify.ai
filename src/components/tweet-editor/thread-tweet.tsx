@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import DuolingoButton from '@/components/ui/duolingo-button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
 import { useConfetti } from '@/hooks/use-confetti'
-import { MediaFile, useTweets } from '@/hooks/use-tweets'
+import { MediaFile, useTweetComposer } from '@/hooks/use-tweet-composer'
 import PlaceholderPlugin from '@/lib/placeholder-plugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -14,7 +14,7 @@ import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical'
-import { initialConfig } from '@/hooks/use-tweets'
+import { initialConfig } from '@/hooks/use-tweet-composer'
 import { KeyboardShortcutsPlugin } from '@/lib/lexical-plugins/keyboard-shortcuts-plugin'
 import MediaLibrary from '@/components/media-library'
 import { SelectedMedia } from '@/types/media'
@@ -173,7 +173,7 @@ function ThreadTweetContent({
   }, [onUpdate, mediaFiles, detectedUrl])
 
   const [editor] = useLexicalComposerContext()
-  const { currentTweet } = useTweets()
+  const { currentTweet } = useTweetComposer()
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)

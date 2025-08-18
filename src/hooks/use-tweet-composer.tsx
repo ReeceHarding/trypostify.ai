@@ -96,9 +96,9 @@ export const initialConfig = {
   ],
 }
 
-interface TweetContextType {
+interface TweetComposerContextType {
   // tweets: Tweet[]
-  currentTweet: { id: string; content: string; image?: TweetImage; mediaIds: string[] }
+  currentTweet: { id: string; content: string; image?: TweetImage }
   tweetId: string | null
   improvements: DiffWithReplacement[]
   drafts: Draft[]
@@ -127,13 +127,12 @@ interface TweetContextType {
   setCharCount: React.Dispatch<React.SetStateAction<number>>
 }
 
-const TweetContext = createContext<TweetContextType | undefined>(undefined)
+const TweetComposerContext = createContext<TweetComposerContextType | undefined>(undefined)
 
 export type CurrentTweet = {
   id: string
   content: string
   image?: TweetImage
-  mediaIds: string[]
 }
 
 export interface MediaFile {
@@ -148,7 +147,7 @@ export interface MediaFile {
   s3Key?: string
 }
 
-export function TweetProvider({ children }: PropsWithChildren) {
+export function TweetComposerProvider({ children }: PropsWithChildren) {
   const { tweetId } = useParams() as { tweetId: string | null }
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
 
@@ -158,7 +157,6 @@ export function TweetProvider({ children }: PropsWithChildren) {
   const [currentTweet, setCurrentTweet] = useState<CurrentTweet>({
     id: nanoid(),
     content: '',
-    mediaIds: [],
   })
 
   const [charCount, setCharCount] = useState(0)
@@ -545,7 +543,7 @@ export function TweetProvider({ children }: PropsWithChildren) {
   }, [])
 
   return (
-    <TweetContext.Provider
+    <TweetComposerContext.Provider
       value={{
         // tweets,
         charCount,
@@ -578,14 +576,14 @@ export function TweetProvider({ children }: PropsWithChildren) {
       }}
     >
       {children}
-    </TweetContext.Provider>
+    </TweetComposerContext.Provider>
   )
 }
 
-export function useTweets() {
-  const context = useContext(TweetContext)
+export function useTweetComposer() {
+  const context = useContext(TweetComposerContext)
   if (context === undefined) {
-    throw new Error('useTweets must be used within a TweetProvider')
+    throw new Error('useTweetComposer must be used within a TweetComposerProvider')
   }
   return context
 }

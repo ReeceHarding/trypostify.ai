@@ -12,7 +12,7 @@ import posthog from 'posthog-js'
 import { useConfetti } from '@/hooks/use-confetti'
 import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
-import { useUser } from '@/hooks/use-tweets'
+import { useUser } from '@/hooks/use-tweet-composer'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
 
