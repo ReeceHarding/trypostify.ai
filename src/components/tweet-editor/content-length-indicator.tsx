@@ -9,7 +9,11 @@ const ContentLengthIndicator = ({ length }: ContentLengthIndicatorProps = {}) =>
   const { charCount: hookCharCount } = useTweetMetadata()
   const { getCharacterLimit } = useUser()
   const charCount = length ?? hookCharCount
-  const characterLimit = getCharacterLimit()
+  // Posting limit can be higher for premium users, but visually we want to
+  // reflect Twitter's "Show more" threshold at 280 characters. Keep server
+  // validation unchanged elsewhere; this only affects the ring UI.
+  const postingLimit = getCharacterLimit()
+  const characterLimit = 280
 
   const getProgressColor = () => {
     const percentage = (charCount / characterLimit) * 100
