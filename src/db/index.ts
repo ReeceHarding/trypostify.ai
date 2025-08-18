@@ -31,14 +31,29 @@ function initializeDatabase() {
   _pool = new Pool({
     connectionString,
     ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
-    // Optimize connection pool for performance
-    max: 10, // Maximum number of connections
-    min: 1, // Minimum number of connections
-    idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
-    connectionTimeoutMillis: 5000, // Connection timeout
+    // In serverless environments, keep the pool small to avoid exhausting DB connections on cold starts
+    max: 3,
+    min: 1,
+    // Recycle idle connections sooner to reduce chance of provider-side termination
+    idleTimeoutMillis: 10000,
+    // Be more tolerant on initial connects
+    connectionTimeoutMillis: 10000,
     // Keep connections alive
     keepAlive: true,
     keepAliveInitialDelayMillis: 0,
+    // Periodically recycle connections after N uses to avoid long-lived stale sockets
+    // @ts-expect-error supported by node-postgres at runtime
+    maxUses: 7500,
+  })
+
+  // Proactively handle unexpected pool errors by resetting the pool so the next query re-initializes
+  _pool.on('error', (err) => {
+    console.error('[DB] Pool error, resetting pool at', new Date().toISOString(), err)
+    try {
+      _pool?.end().catch(() => {})
+    } catch {}
+    _pool = null
+    _db = null
   })
 
   _db = drizzle(_pool, { schema })
