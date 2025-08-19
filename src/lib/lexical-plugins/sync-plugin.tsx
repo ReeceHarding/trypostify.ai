@@ -1,12 +1,12 @@
 import useTweetMetadata from '@/hooks/use-tweet-metdata'
-import { useTweets } from '@/hooks/use-tweet-composer'
+import { useTweets } from '@/hooks/use-tweets'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot } from 'lexical'
 import { useEffect, useRef } from 'react'
 
 export function ShadowEditorSyncPlugin() {
   const [composerEditor] = useLexicalComposerContext()
-  const { shadowEditor } = useTweetComposer()
+  const { shadowEditor } = useTweets()
   const { setCharCount, setContent } = useTweetMetadata()
   const isInitialized = useRef(false)
   const instanceId = useRef(Math.random().toString(36).substring(7))

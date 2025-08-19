@@ -1,5 +1,5 @@
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
-import { useTweets } from '@/hooks/use-tweet-composer'
+import { useTweets } from '@/hooks/use-tweets'
 import { cn, DiffWithReplacement } from '@/lib/utils'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { Check, ChevronLeft, ChevronRight, Trash, X, PenTool, Lightbulb } from 'lucide-react'
@@ -137,7 +137,7 @@ interface Draft {
 
 function DraftsSelector({ drafts }: { drafts: Draft[] }) {
   const pathname = usePathname()
-  const { shadowEditor } = useTweetComposer()
+  const { shadowEditor } = useTweets()
 
   const [draftDecisionMade, setDraftDecisionMade] = useState<
     'applied' | 'rejected' | null
@@ -149,7 +149,7 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
     draftCheckpoint,
     selectedDraftIndex,
     setSelectedDraftIndex,
-  } = useTweetComposer()
+  } = useTweets()
 
   const currentDraft = drafts[selectedDraftIndex]
 
@@ -311,7 +311,7 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
 }
 
 export const Improvements = ({ empty }: { empty?: boolean }) => {
-  const { improvements, acceptImprovement, rejectImprovement, drafts } = useTweetComposer()
+  const { improvements, acceptImprovement, rejectImprovement, drafts } = useTweets()
 
   const visibleImprovements = empty
     ? []

@@ -20,6 +20,9 @@ import { j, privateProcedure } from '../../jstack'
 import { create_read_website_content } from './read-website-content'
 import { parseAttachments } from './utils'
 import { createTweetTool } from './tools/create-tweet-tool'
+import { createPostNowTool } from './tools/post-now-tool'
+import { createQueueTool } from './tools/queue-tool'
+import { createScheduleTool } from './tools/schedule-tool'
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { openai } from '@ai-sdk/openai'
@@ -357,6 +360,11 @@ export const chatRouter = j.router({
 
           // Create writeTweet tool with conversation context and website content
           console.log('[CHAT_ROUTER] Creating tweet tool for user:', user.id, 'account:', accountData?.name)
+          console.log('[CHAT_ROUTER] User message content:', userContent)
+          console.log('[CHAT_ROUTER] Has conversation context:', !!conversationContext)
+          console.log('[CHAT_ROUTER] Has website content:', websiteContent?.length || 0)
+          console.log('[CHAT_ROUTER] Editor content present:', !!message.metadata?.editorContent)
+          
           const writeTweet = createTweetTool(
             writer, 
             accountData, 
@@ -365,7 +373,13 @@ export const chatRouter = j.router({
             conversationContext,
             websiteContent
           )
-          console.log('[CHAT_ROUTER] Tweet tool created successfully')
+          
+          // Create posting/scheduling tools
+          const postNow = createPostNowTool(writer, user.id, accountData.id)
+          const queueTweet = createQueueTool(writer, user.id, accountData.id)
+          const scheduleTweet = createScheduleTool(writer, user.id, accountData.id)
+          
+          console.log('[CHAT_ROUTER] All tools created successfully')
 
           // Log attachment composition for debugging
           try {
@@ -380,8 +394,14 @@ export const chatRouter = j.router({
           let result
           try {
             result = await (async () => {
+              const systemPromptContent = assistantPrompt({ editorContent: message.metadata?.editorContent })
+              console.log('[CHAT_ROUTER] System prompt length:', systemPromptContent.length)
+              console.log('[CHAT_ROUTER] System prompt contains "writeTweet":', systemPromptContent.includes('writeTweet'))
+              console.log('[CHAT_ROUTER] System prompt contains "DEFAULT":', systemPromptContent.includes('DEFAULT'))
+              
               if (hasImage) {
                 // For vision models, convert the last message to include image format
+                console.log('[CHAT_ROUTER] Using vision model path with images')
                 const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
                 // Convert to Vercel AI SDK image format
                 const imageParts = imageFileParts.map((p: any) => ({
@@ -391,9 +411,11 @@ export const chatRouter = j.router({
 
                 // Limit history to the last few messages to reduce prompt size/latency
                 const limitedModelMessages = modelMessages.slice(-12)
+                console.log('[CHAT_ROUTER] Vision model - message count:', limitedModelMessages.length, 'image parts:', imageParts.length)
+                
                 return streamText({
                   model: openai('gpt-4o-mini'),
-                  system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
+                  system: systemPromptContent,
                   messages: [
                     ...limitedModelMessages,
                     {
@@ -404,26 +426,34 @@ export const chatRouter = j.router({
                       ],
                     },
                   ],
-                  tools: { readWebsiteContent, writeTweet },
+                  tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                   stopWhen: stepCountIs(2),
                 })
               } else {
                 // For non-vision models, use standard conversion
                 console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini (official adapter)`)
+                console.log('[CHAT_ROUTER] Standard model - final user message:', content.toString().substring(0, 200))
+                console.log('[CHAT_ROUTER] Available tools:', Object.keys({ readWebsiteContent, writeTweet }))
+                
                 // Limit history to the last few messages to reduce prompt size/latency
                 const limited = messages.slice(-12) as any
+                console.log('[CHAT_ROUTER] Standard model - message count:', limited.length)
+                
                 return streamText({
                   model: openai('gpt-4o-mini'),
-                  system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
+                  system: systemPromptContent,
                   messages: convertToModelMessages(limited),
-                  tools: { readWebsiteContent, writeTweet },
+                  tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                   stopWhen: stepCountIs(2),
                 })
               }
             })()
+            
+            console.log('[CHAT_ROUTER] Model stream initiated successfully')
           } catch (err: any) {
             // Fallback retry using official OpenAI adapter to avoid provider-specific annotations
             console.error(`[${new Date().toISOString()}] [chat-router] primary model failed, retrying with @ai-sdk/openai. errorName=${err?.name} message=${err?.message}`)
+            console.log('[CHAT_ROUTER] Attempting fallback with identical system prompt')
             if (hasImage) {
               const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
               const imageParts = imageFileParts.map((p: any) => ({
@@ -445,7 +475,7 @@ export const chatRouter = j.router({
                     ],
                   },
                 ],
-                tools: { readWebsiteContent, writeTweet },
+                tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                 stopWhen: stepCountIs(2),
               })
               console.log('[CHAT_ROUTER] Vision streamText call completed')
@@ -456,13 +486,14 @@ export const chatRouter = j.router({
                 model: openai('gpt-4o-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                 messages: convertToModelMessages(limited),
-                tools: { readWebsiteContent, writeTweet },
+                tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                 stopWhen: stepCountIs(2),
               })
               console.log('[CHAT_ROUTER] Standard streamText call completed')
             }
           }
 
+          console.log('[CHAT_ROUTER] About to merge result stream with writer')
           writer.merge(result.toUIMessageStream())
         },
       })

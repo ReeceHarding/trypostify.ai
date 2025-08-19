@@ -37,6 +37,10 @@ export const createTweetTool = (
       const generationId = nanoid()
 
       try {
+        console.log('[CREATE_TWEET_TOOL] ===== TOOL CALLED =====')
+        console.log('[CREATE_TWEET_TOOL] Instruction:', instruction)
+        console.log('[CREATE_TWEET_TOOL] Has existing content:', !!tweetContent)
+        console.log('[CREATE_TWEET_TOOL] Has images:', !!imageDescriptions?.length)
         console.log('[CREATE_TWEET_TOOL] Starting tweet generation with ID:', generationId)
         writer.write({
           type: 'data-tool-output',

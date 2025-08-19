@@ -1,5 +1,5 @@
 import useTweetMetadata from '@/hooks/use-tweet-metdata'
-import { useUser } from '@/hooks/use-tweet-composer'
+import { useUser } from '@/hooks/use-tweets'
 
 interface ContentLengthIndicatorProps {
   length?: number

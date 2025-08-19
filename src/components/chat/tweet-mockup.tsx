@@ -4,7 +4,7 @@ import { Icons } from '../icons'
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { ChevronsLeft, RotateCcw } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
-import { useTweets } from '@/hooks/use-tweet-composer'
+import { useTweets } from '@/hooks/use-tweets'
 import { usePathname, useRouter } from 'next/navigation'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -16,7 +16,7 @@ export const TweetMockup = memo(
     text,
     isLoading = false,
   }: PropsWithChildren<{ isLoading?: boolean; text?: string }>) => {
-    const { setTweetContent } = useTweetComposer()
+    const { setTweetContent } = useTweets()
     const router = useRouter()
     const pathname = usePathname()
     const isMobile = useIsMobile()

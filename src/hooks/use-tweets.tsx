@@ -96,7 +96,7 @@ export const initialConfig = {
   ],
 }
 
-interface TweetComposerContextType {
+interface TweetContextType {
   // tweets: Tweet[]
   currentTweet: { id: string; content: string; image?: TweetImage; mediaIds: string[] }
   tweetId: string | null
@@ -127,7 +127,7 @@ interface TweetComposerContextType {
   setCharCount: React.Dispatch<React.SetStateAction<number>>
 }
 
-const TweetComposerContext = createContext<TweetComposerContextType | undefined>(undefined)
+const TweetContext = createContext<TweetContextType | undefined>(undefined)
 
 export type CurrentTweet = {
   id: string
@@ -148,7 +148,7 @@ export interface MediaFile {
   s3Key?: string
 }
 
-export function TweetComposerProvider({ children }: PropsWithChildren) {
+export function TweetProvider({ children }: PropsWithChildren) {
   const { tweetId } = useParams() as { tweetId: string | null }
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
 
@@ -545,7 +545,7 @@ export function TweetComposerProvider({ children }: PropsWithChildren) {
   }, [])
 
   return (
-    <TweetComposerContext.Provider
+    <TweetContext.Provider
       value={{
         // tweets,
         charCount,
@@ -578,16 +578,30 @@ export function TweetComposerProvider({ children }: PropsWithChildren) {
       }}
     >
       {children}
-    </TweetComposerContext.Provider>
+    </TweetContext.Provider>
   )
 }
 
-export function useTweetComposer() {
-  const context = useContext(TweetComposerContext)
+export function useTweets() {
+  const context = useContext(TweetContext)
   if (context === undefined) {
-    throw new Error('useTweetComposer must be used within a TweetComposerProvider')
+    throw new Error('useTweets must be used within a TweetProvider')
   }
   return context
+}
+
+/**
+ * Alias provider for clarity without a breaking rename.
+ * This maps directly to `TweetProvider` but conveys composer intent.
+ */
+export const TweetComposerProvider = TweetProvider
+
+/**
+ * Alias hook for clarity without a breaking rename.
+ * This maps directly to `useTweets` but conveys composer intent.
+ */
+export function useTweetComposer() {
+  return useTweets()
 }
 
 // User hook to access user session data including hasXPremium
