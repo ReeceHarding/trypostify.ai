@@ -2,7 +2,7 @@ import { PropsWithChildren, memo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Icons } from '../icons'
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
-import { ChevronsLeft, RotateCcw } from 'lucide-react'
+import { ChevronsLeft, RotateCcw, ExternalLink } from 'lucide-react'
 import DuolingoButton from '../ui/duolingo-button'
 import { useTweets } from '@/hooks/use-tweets'
 import { usePathname, useRouter } from 'next/navigation'
@@ -15,7 +15,8 @@ export const TweetMockup = memo(
     children,
     text,
     isLoading = false,
-  }: PropsWithChildren<{ isLoading?: boolean; text?: string }>) => {
+    twitterUrl,
+  }: PropsWithChildren<{ isLoading?: boolean; text?: string; twitterUrl?: string }>) => {
     const { setTweetContent } = useTweets()
     const router = useRouter()
     const pathname = usePathname()
@@ -102,26 +103,44 @@ export const TweetMockup = memo(
               className="flex items-center gap-2"
             >
             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DuolingoButton
-                    onClick={apply}
-                    variant="secondary"
-                    size="sm"
-                    className="text-sm w-fit h-8 px-2"
-                  >
-                    <ChevronsLeft className="size-4 mr-1" /> Apply
-                  </DuolingoButton>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="space-y-1">
-                    <p>Apply AI-generated content</p>
-                    <p className="text-xs text-neutral-400">
-                      {metaKey} + Shift + E
-                    </p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
+              {twitterUrl ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DuolingoButton
+                      onClick={() => window.open(twitterUrl, '_blank')}
+                      variant="secondary"
+                      size="sm"
+                      className="text-sm w-fit h-8 px-2"
+                    >
+                      <ExternalLink className="size-4 mr-1" /> View Tweet
+                    </DuolingoButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>View posted tweet on Twitter/X</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DuolingoButton
+                      onClick={apply}
+                      variant="secondary"
+                      size="sm"
+                      className="text-sm w-fit h-8 px-2"
+                    >
+                      <ChevronsLeft className="size-4 mr-1" /> Apply
+                    </DuolingoButton>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p>Apply AI-generated content</p>
+                      <p className="text-xs text-neutral-400">
+                        {metaKey} + Shift + E
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </TooltipProvider>
             </motion.div>
           )}

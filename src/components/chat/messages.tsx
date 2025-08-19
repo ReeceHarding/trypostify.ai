@@ -130,7 +130,11 @@ export const Messages = memo(
                         }
 
                         return (
-                          <TweetMockup key={i} text={part.data.text}>
+                          <TweetMockup 
+                            key={i} 
+                            text={part.data.text}
+                            twitterUrl={part.data.twitterUrl}
+                          >
                             <StreamingMessage animate={true} text={part.data.text} />
                           </TweetMockup>
                         )
