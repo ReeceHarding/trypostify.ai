@@ -742,10 +742,10 @@ function ThreadTweetContent({
       }
 
       // Common shortcuts for both modes
-      // Upload: Cmd/Ctrl + U (safe across all browsers and systems)
-      if (actualMetaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'u') {
+      // Upload: Cmd/Ctrl + Shift + U (avoids View Source conflicts)
+      if (actualMetaKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'u') {
         e.preventDefault()
-        console.log('[ThreadTweet] File upload shortcut triggered (Cmd+U) at', new Date().toISOString())
+        console.log('[ThreadTweet] File upload shortcut triggered (Cmd+Shift+U) at', new Date().toISOString())
         fileInputRef.current?.click()
       }
       // Media Library: Ctrl + Shift + M (uses Control key to avoid minimize window conflicts)
