@@ -113,8 +113,8 @@ export default function NewKnowledgePage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
-      // Browse files: Cmd/Ctrl + Option + B (avoids conflict with Bookmarks)  
-      if (actualMetaKey && (isMac ? e.altKey : e.altKey) && e.key.toLowerCase() === 'b' && type === 'upload') {
+      // Browse files: Cmd/Ctrl + Shift + B (avoids Option key issues on Mac)  
+      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'b' && type === 'upload') {
         e.preventDefault()
         fileInputRef.current?.click()
       }
@@ -595,7 +595,7 @@ export default function NewKnowledgePage() {
                     <TooltipContent>
                       <div className="space-y-1">
                         <p>Browse files</p>
-                        <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + B</p>
+                        <p className="text-xs text-neutral-400">{metaKey} + Shift + B</p>
                       </div>
                     </TooltipContent>
                   </Tooltip>

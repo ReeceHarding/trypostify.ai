@@ -742,14 +742,16 @@ function ThreadTweetContent({
       }
 
       // Common shortcuts for both modes
-      // Upload: Cmd/Ctrl + Option + U (avoids conflict with View Source)
-      if (actualMetaKey && (isMac ? e.altKey : e.altKey) && e.key.toLowerCase() === 'u') {
+      // Upload: Cmd/Ctrl + Shift + U (avoids Option key issues on Mac)
+      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'u') {
         e.preventDefault()
+        console.log('[ThreadTweet] File upload shortcut triggered (Cmd+Shift+U) at', new Date().toISOString())
         fileInputRef.current?.click()
       }
-      // Media Library: Cmd/Ctrl + Option + M (avoids conflict with Minimize Window)
-      else if (actualMetaKey && (isMac ? e.altKey : e.altKey) && e.key.toLowerCase() === 'm') {
+      // Media Library: Cmd/Ctrl + Shift + M (avoids Option key issues on Mac)
+      else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'm') {
         e.preventDefault()
+        console.log('[ThreadTweet] Media library shortcut triggered (Cmd+Shift+M) at', new Date().toISOString())
         setMediaLibraryOpen(true)
       }
       // Clear/Delete: Cmd/Ctrl + Shift + D (avoids conflict with browser Bookmark)
