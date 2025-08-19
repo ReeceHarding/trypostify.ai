@@ -79,10 +79,32 @@ export const create_read_website_content = ({ chatId }: { chatId: string }) =>
         // Extract OG image from metadata
         const ogImage = response.metadata?.ogImage || response.metadata?.['og:image'] || response.metadata?.image
 
+        // Filter out boilerplate and template content from markdown
+        let cleanedContent = response.markdown || ''
+        
+        // Remove common boilerplate patterns
+        cleanedContent = cleanedContent
+          // Remove markdown images with placeholder services
+          .replace(/!\[.*?\]\(https:\/\/.*?dicebear\.com.*?\)/g, '')
+          .replace(/!\[.*?\]\(https:\/\/.*?placeholder.*?\)/g, '')
+          .replace(/!\[.*?\]\(https:\/\/.*?example\.com.*?\)/g, '')
+          .replace(/!\[.*?\]\(https:\/\/.*?lorem.*?\)/g, '')
+          // Remove generic placeholder text
+          .replace(/!\[.*?(placeholder|example|demo|sample|test).*?\]\(.*?\)/gi, '')
+          // Remove navigation and boilerplate sections
+          .replace(/^#+\s*(Navigation|Menu|Header|Footer|Sidebar).*$/gm, '')
+          // Remove empty lines and clean up
+          .replace(/\n\s*\n\s*\n/g, '\n\n')
+          .trim()
+
+        console.log('[READ_WEBSITE] Original content length:', response.markdown?.length || 0)
+        console.log('[READ_WEBSITE] Cleaned content length:', cleanedContent.length)
+        console.log('[READ_WEBSITE] Content preview:', cleanedContent.substring(0, 200) + '...')
+
         const websiteContent = {
           url: website_url,
           title: response.metadata?.title,
-          content: response.markdown,
+          content: cleanedContent,
           ...(ogImage && { ogImage }),
         }
 
