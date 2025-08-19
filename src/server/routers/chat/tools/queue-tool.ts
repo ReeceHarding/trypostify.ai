@@ -47,11 +47,32 @@ export const createQueueTool = (
           console.log('[QUEUE_TOOL] No content provided, extracting from conversation context')
           
           // Look for the most recent tweet in the conversation
-          const tweetMatch = conversationContext.match(/(?:Assistant|data-tool-output)[^]*?text['"]\s*:\s*['"]([^'"]+)['"]/i)
+          // Try multiple patterns to find tweet content
           
-          if (tweetMatch && tweetMatch[1]) {
+          // Pattern 1: Look for tool output with text field
+          let tweetMatch = conversationContext.match(/data-tool-output[^}]*?"text"\s*:\s*"([^"]+)"/i)
+          
+          // Pattern 2: If not found, look for text in conversation that looks like a tweet
+          if (!tweetMatch || !tweetMatch[1]) {
+            // Find the last assistant message with tweet-like content
+            const lines = conversationContext.split('\n')
+            for (let i = lines.length - 1; i >= 0; i--) {
+              const line = lines[i].trim()
+              // Skip short lines, tool outputs, and system messages
+              if (line.length > 20 && 
+                  !line.includes('Tool called:') && 
+                  !line.includes('Assistant:') &&
+                  !line.includes('User:') &&
+                  !line.includes('{') &&
+                  !line.includes('}')) {
+                finalContent = line
+                console.log('[QUEUE_TOOL] Extracted tweet from conversation line:', finalContent)
+                break
+              }
+            }
+          } else if (tweetMatch && tweetMatch[1]) {
             finalContent = tweetMatch[1]
-            console.log('[QUEUE_TOOL] Extracted tweet from context:', finalContent)
+            console.log('[QUEUE_TOOL] Extracted tweet from tool output:', finalContent)
           }
         }
         
