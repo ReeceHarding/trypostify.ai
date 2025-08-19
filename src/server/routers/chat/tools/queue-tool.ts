@@ -2,8 +2,14 @@ import { tool, UIMessageStreamWriter } from 'ai'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { redis } from '../../../../lib/redis'
-import { format, addDays } from 'date-fns'
-import { toZonedTime } from 'date-fns-tz'
+import { format, addDays, startOfDay, startOfHour, setHours, isAfter } from 'date-fns'
+import { toZonedTime, fromZonedTime } from 'date-fns-tz'
+import { db } from '../../../../db'
+import { tweets, account as accountSchema, user as userSchema } from '../../../../db/schema'
+import { and, eq, asc } from 'drizzle-orm'
+import { qstash } from '../../../../lib/qstash'
+import { getAccount } from '../../utils/get-account'
+import { HTTPException } from 'hono/http-exception'
 
 export const createQueueTool = (
   writer: UIMessageStreamWriter,
@@ -60,7 +66,7 @@ export const createQueueTool = (
             // Find the last assistant message with tweet-like content
             const lines = conversationContext.split('\n')
             for (let i = lines.length - 1; i >= 0; i--) {
-              const line = lines[i].trim()
+              const line = lines[i]?.trim() || ''
               // Skip short lines, tool outputs, and system messages
               if (line.length > 20 && 
                   !line.includes('Tool called:') && 
@@ -128,53 +134,47 @@ export const createQueueTool = (
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
         const userNow = new Date()
 
-        // Create the thread first
-        const createUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/createThread`
-        const createPayload = { tweets: tweetsToQueue }
-        console.log('[QUEUE_TOOL] createThread request', {
-          url: createUrl,
-          method: 'POST',
-          bodyPreview: JSON.stringify(createPayload).slice(0, 300),
-          bodyLength: JSON.stringify(createPayload).length,
-        })
-        const createRes = await fetch(createUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(createPayload),
-        })
+        // Create thread in database directly (instead of HTTP call)
+        const threadId = crypto.randomUUID()
+        console.log('[QUEUE_TOOL] Generated threadId:', threadId)
+        
+        // Insert tweets into database
+        const createdTweets = await Promise.all(
+          tweetsToQueue.map(async (tweet, index) => {
+            const tweetId = crypto.randomUUID()
+            console.log('[QUEUE_TOOL] Creating tweet', { tweetId, position: index, contentLength: tweet.content.length })
 
-        console.log('[QUEUE_TOOL] createThread response', {
-          status: createRes.status,
-          ok: createRes.ok,
-          contentType: createRes.headers.get('content-type') || null,
-        })
+            // Transform media to match database schema
+            const mediaForDb = (tweet.media || []).map(m => ({
+              s3Key: m.s3Key,
+              media_id: '', // Will be filled when uploaded to Twitter
+            }))
 
-        if (!createRes.ok) {
-          const ct = createRes.headers.get('content-type') || ''
-          let parsedMessage = 'Failed to create thread'
-          if (ct.includes('application/json')) {
-            try {
-              const error = await createRes.json() as { message?: string }
-              parsedMessage = error?.message || parsedMessage
-            } catch (e) {
-              console.log('[QUEUE_TOOL] createThread JSON parse failed, falling back to text')
-              const text = await createRes.text()
-              console.log('[QUEUE_TOOL] createThread error text preview:', text.slice(0, 200))
-              parsedMessage = text || parsedMessage
-            }
-          } else {
-            const text = await createRes.text()
-            console.log('[QUEUE_TOOL] createThread non-JSON error body preview:', text.slice(0, 200))
-            parsedMessage = text || parsedMessage
-          }
-          throw new Error(parsedMessage)
-        }
+            const [created] = await db
+              .insert(tweets)
+              .values({
+                id: tweetId,
+                threadId: threadId,
+                content: tweet.content,
+                media: mediaForDb,
+                userId: userId,
+                accountId: accountId,
+                position: index,
+                isThreadStart: index === 0,
+                delayMs: tweet.delayMs || 0,
+                isScheduled: false,
+                isPublished: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .returning()
 
-        const createResult = await createRes.json() as { threadId: string }
-        const { threadId } = createResult
-        console.log('[QUEUE_TOOL] Thread created with ID:', threadId)
+            console.log('[QUEUE_TOOL] Tweet created in database:', { tweetId, threadId, position: index })
+            return created
+          }),
+        )
+
+        console.log('[QUEUE_TOOL] Thread created with ID:', threadId, 'with', createdTweets.length, 'tweets')
 
         // Update status
         writer.write({
@@ -186,55 +186,188 @@ export const createQueueTool = (
           },
         })
 
-        // Add to queue
-        const enqueueUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/enqueueThread`
-        const enqueuePayload = {
-          threadId,
-          userNow: userNow.toISOString(),
-          timezone
+        // Now enqueue the thread directly using database operations
+        console.log('[QUEUE_TOOL] Starting authentication checks for user:', userId, 'at', new Date().toISOString())
+        
+        // Get the account information (same pattern as enqueueThread)
+        const userRecord = await db
+          .select()
+          .from(userSchema)
+          .where(eq(userSchema.id, userId))
+          .limit(1)
+          .then(rows => rows[0])
+        
+        if (!userRecord) {
+          throw new Error('User not found')
         }
-        console.log('[QUEUE_TOOL] enqueueThread request', {
-          url: enqueueUrl,
-          method: 'POST',
-          bodyPreview: JSON.stringify(enqueuePayload).slice(0, 300),
-          bodyLength: JSON.stringify(enqueuePayload).length,
-        })
-        const queueRes = await fetch(enqueueUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(enqueuePayload),
+        
+        const account = await getAccount({
+          email: userRecord.email,
         })
 
-        console.log('[QUEUE_TOOL] enqueueThread response', {
-          status: queueRes.status,
-          ok: queueRes.ok,
-          contentType: queueRes.headers.get('content-type') || null,
-        })
+        if (!account?.id) {
+          console.log('[QUEUE_TOOL] No active account found for user:', userRecord.email)
+          throw new Error('Please connect your X account. Go to Settings to link your Twitter account.')
+        }
 
-        if (!queueRes.ok) {
-          const ct = queueRes.headers.get('content-type') || ''
-          let parsedMessage = 'Failed to queue thread'
-          if (ct.includes('application/json')) {
-            try {
-              const error = await queueRes.json() as { message?: string }
-              parsedMessage = error?.message || parsedMessage
-            } catch (e) {
-              console.log('[QUEUE_TOOL] enqueueThread JSON parse failed, falling back to text')
-              const text = await queueRes.text()
-              console.log('[QUEUE_TOOL] enqueueThread error text preview:', text.slice(0, 200))
-              parsedMessage = text || parsedMessage
+        console.log('[QUEUE_TOOL] Found active account:', account.id, 'username:', account.username)
+
+        const dbAccount = await db
+          .select()
+          .from(accountSchema)
+          .where(and(eq(accountSchema.userId, userId), eq(accountSchema.id, account.id)))
+          .limit(1)
+          .then(rows => rows[0])
+
+        if (!dbAccount) {
+          console.log('[QUEUE_TOOL] Database account not found for account ID:', account.id)
+          throw new Error('X account database entry missing. Please reconnect your Twitter account in Settings.')
+        }
+
+        if (!dbAccount.accessToken || !dbAccount.accessSecret) {
+          console.log('[QUEUE_TOOL] Access tokens missing for account:', account.id, 'accessToken present:', Boolean(dbAccount.accessToken), 'accessSecret present:', Boolean(dbAccount.accessSecret))
+          throw new Error('X account authentication incomplete. Please reconnect your Twitter account in Settings to complete the OAuth flow.')
+        }
+
+        console.log('[QUEUE_TOOL] Authentication successful for account:', account.id)
+
+        // Get user's posting window settings
+        const userSettings = await db
+          .select({
+            postingWindowStart: userSchema.postingWindowStart,
+            postingWindowEnd: userSchema.postingWindowEnd,
+          })
+          .from(userSchema)
+          .where(eq(userSchema.id, userId))
+          .limit(1)
+          .then(rows => rows[0])
+
+        const postingWindowStart = userSettings?.postingWindowStart ?? 8 // Default 8am
+        const postingWindowEnd = userSettings?.postingWindowEnd ?? 18 // Default 6pm
+
+        console.log('[QUEUE_TOOL] User posting window:', postingWindowStart, '-', postingWindowEnd)
+
+        // Get all scheduled tweets to check for conflicts
+        const scheduledTweets = await db
+          .select({ scheduledUnix: tweets.scheduledUnix })
+          .from(tweets)
+          .where(and(eq(tweets.accountId, account.id), eq(tweets.isScheduled, true)))
+
+        function isSpotEmpty(time: Date) {
+          const unix = time.getTime()
+          return !Boolean(scheduledTweets.some((t: { scheduledUnix: number | null }) => t.scheduledUnix === unix))
+        }
+
+        function getNextAvailableSlot({
+          userNow,
+          timezone,
+          maxDaysAhead,
+          postingWindowStart,
+          postingWindowEnd,
+        }: {
+          userNow: Date
+          timezone: string
+          maxDaysAhead: number
+          postingWindowStart: number
+          postingWindowEnd: number
+        }) {
+          for (let dayOffset = 0; dayOffset <= maxDaysAhead; dayOffset++) {
+            let checkDay: Date | undefined = undefined
+
+            if (dayOffset === 0) checkDay = startOfDay(userNow)
+            else checkDay = startOfDay(addDays(userNow, dayOffset))
+
+            // Generate hourly slots within the user's posting window
+            for (let hour = postingWindowStart; hour < postingWindowEnd; hour++) {
+              const localSlotTime = startOfHour(setHours(checkDay, hour))
+              const slotTime = fromZonedTime(localSlotTime, timezone)
+
+              if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
+                console.log('[QUEUE_TOOL] Found available slot:', slotTime, 'hour:', hour)
+                return slotTime
+              }
             }
-          } else {
-            const text = await queueRes.text()
-            console.log('[QUEUE_TOOL] enqueueThread non-JSON error body preview:', text.slice(0, 200))
-            parsedMessage = text || parsedMessage
           }
-          throw new Error(parsedMessage)
+
+          return null // no slot found in next N days
         }
 
-        const result = await queueRes.json() as { time: string, dayName: string }
+        const nextSlot = getNextAvailableSlot({ 
+          userNow, 
+          timezone, 
+          maxDaysAhead: 90,
+          postingWindowStart,
+          postingWindowEnd 
+        })
+
+        console.log('[QUEUE_TOOL] Next available slot:', nextSlot)
+
+        if (!nextSlot) {
+          throw new Error('Queue for the next 3 months is already full!')
+        }
+
+        const scheduledUnix = nextSlot.getTime()
+
+        // For local development, skip QStash and just update the database
+        let messageId = null
+        
+        if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
+          // In development, generate a fake message ID
+          messageId = `local-${Date.now()}-${Math.random().toString(36).substring(7)}`
+          console.log('[QUEUE_TOOL] Local development - skipping QStash, using fake messageId:', messageId)
+        } else {
+          // In production, use QStash
+          const baseUrl = process.env.WEBHOOK_URL
+          const qstashResponse = await qstash.publishJSON({
+            url: baseUrl + '/api/tweet/postThread',
+            body: { threadId, userId: userId, accountId: dbAccount.id },
+            notBefore: scheduledUnix / 1000, // needs to be in seconds
+          })
+          messageId = qstashResponse.messageId
+        }
+
+        console.log('[QUEUE_TOOL] QStash message created:', messageId)
+
+        try {
+          // Update all tweets in the thread to queued
+          await db
+            .update(tweets)
+            .set({
+              isScheduled: true,
+              isQueued: true,
+              scheduledFor: new Date(scheduledUnix),
+              scheduledUnix: scheduledUnix,
+              qstashId: messageId,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(tweets.threadId, threadId),
+              eq(tweets.userId, userId),
+            ))
+
+          console.log('[QUEUE_TOOL] Thread queued successfully')
+        } catch (err) {
+          console.error('[QUEUE_TOOL] Database error:', err)
+          
+          // If QStash message was created, try to delete it
+          if (messageId && messageId !== `local-${Date.now()}-${Math.random().toString(36).substring(7)}`) {
+            try {
+              const messages = qstash.messages
+              await messages.delete(messageId)
+            } catch (deleteErr) {
+              console.error('[QUEUE_TOOL] Failed to delete QStash message:', deleteErr)
+            }
+          }
+
+          throw new Error('Problem with database')
+        }
+
+        const result = {
+          time: nextSlot.toISOString(),
+          dayName: format(nextSlot, 'EEEE'),
+          scheduledUnix: scheduledUnix,
+          threadId: threadId
+        }
         console.log('[QUEUE_TOOL] Queued successfully:', result)
 
         // Format the scheduled time for display
@@ -262,14 +395,15 @@ export const createQueueTool = (
             text: successMessage,
             status: 'complete',
             scheduledTime: result.time,
-            dayName: result.dayName
+            dayName: result.dayName,
+            threadId: result.threadId
           },
         })
 
         return {
           success: true,
           message: successMessage,
-          threadId: threadId,
+          threadId: result.threadId,
           scheduledTime: result.time,
           dayName: result.dayName
         }
