@@ -1,16 +1,18 @@
 import { db } from '@/db'
 import { tweets } from '@/db/schema'
 import { tool, UIMessageStreamWriter } from 'ai'
+import { redis } from '../../../../lib/redis'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
-import { client } from '@/lib/client'
 import { HTTPException } from 'hono/http-exception'
 
 export const createPostNowTool = (
   writer: UIMessageStreamWriter,
   userId: string,
   accountId: string,
-  conversationContext?: string
+  conversationContext?: string,
+  chatId?: string,
+  tweetRouterContext?: any
 ) => {
   return tool({
     description: 'Post a tweet immediately to Twitter/X. If content is not provided, uses the most recent tweet from the conversation.',
@@ -77,7 +79,19 @@ export const createPostNowTool = (
             console.log('[POST_NOW_TOOL] Extracted tweet from tool output:', finalContent)
           }
         }
-        
+        // Fallback to durable cache if still missing
+        if (!finalContent && chatId) {
+          try {
+            const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
+            if (cached && cached.trim().length > 0) {
+              finalContent = cached
+              console.log('[POST_NOW_TOOL] Loaded tweet from cache for chat:', chatId)
+            }
+          } catch (cacheErr) {
+            console.warn('[POST_NOW_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
+          }
+        }
+
         if (!finalContent) {
           throw new Error('No tweet content provided and could not find a recent tweet in the conversation')
         }
@@ -110,24 +124,32 @@ export const createPostNowTool = (
 
         console.log('[POST_NOW_TOOL] Posting', tweetsToPost.length, 'tweet(s)')
 
-        // Create and post the thread
-        const createRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/createThread`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            tweets: tweetsToPost
-          }),
-        })
-
-        if (!createRes.ok) {
-          const error = await createRes.json() as { message?: string }
-          throw new Error(error.message || 'Failed to create thread')
+        // Import the tweet router functions directly to avoid auth issues
+        const { publishThreadById } = await import('../../tweet-router')
+        
+        // Create thread in database directly
+        const threadId = crypto.randomUUID()
+        
+        // Insert tweets into database
+        for (let i = 0; i < tweetsToPost.length; i++) {
+          const tweet = tweetsToPost[i]
+          await db.insert(tweets).values({
+            id: crypto.randomUUID(),
+            threadId: threadId,
+            content: tweet.content,
+            media: tweet.media || [],
+            userId: userId,
+            accountId: accountId,
+            position: i,
+            isThreadStart: i === 0,
+            delayMs: tweet.delayMs || 0,
+            isScheduled: false,
+            isPublished: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
         }
-
-        const createResult = await createRes.json() as { threadId: string }
-        const { threadId } = createResult
+        
         console.log('[POST_NOW_TOOL] Thread created with ID:', threadId)
 
         // Update status
@@ -140,24 +162,15 @@ export const createPostNowTool = (
           },
         })
 
-        // Post the thread immediately
-        const postRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/postThreadNow`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            tweets: tweetsToPost
-          }),
+        // Post the thread immediately using the shared publisher
+        await publishThreadById({
+          threadId,
+          userId,
+          accountId,
+          logPrefix: 'POST_NOW_TOOL'
         })
-
-        if (!postRes.ok) {
-          const error = await postRes.json() as { message?: string }
-          throw new Error(error.message || 'Failed to post thread')
-        }
-
-        const result = await postRes.json() as { threadUrl?: string }
-        console.log('[POST_NOW_TOOL] Posted successfully:', result)
+        
+        console.log('[POST_NOW_TOOL] Posted successfully to Twitter')
 
         // Send success message
         const successMessage = tweetsToPost.length > 1 
@@ -170,14 +183,12 @@ export const createPostNowTool = (
           data: {
             text: successMessage,
             status: 'complete',
-            threadUrl: result.threadUrl,
           },
         })
 
         return {
           success: true,
           message: successMessage,
-          threadUrl: result.threadUrl,
           threadId: threadId
         }
 

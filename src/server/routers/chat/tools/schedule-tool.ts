@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { parse, format, addDays, setHours, setMinutes, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns'
 import { toZonedTime, fromZonedTime } from 'date-fns-tz'
+import { redis } from '../../../../lib/redis'
 
 // Helper to parse natural language time expressions
 function parseTimeExpression(expression: string, userTimezone: string): Date | null {
@@ -140,7 +141,8 @@ export const createScheduleTool = (
   writer: UIMessageStreamWriter,
   userId: string,
   accountId: string,
-  conversationContext?: string
+  conversationContext?: string,
+  chatId?: string
 ) => {
   return tool({
     description: 'Schedule a tweet to be posted at a specific time. If content is not provided, uses the most recent tweet from the conversation.',
@@ -174,7 +176,19 @@ export const createScheduleTool = (
         console.log('[SCHEDULE_TOOL] Has media:', !!media?.length)
         console.log('[SCHEDULE_TOOL] Is thread:', isThread)
         console.log('[SCHEDULE_TOOL] Additional tweets:', additionalTweets?.length || 0)
-        
+        // Fallback to durable cache if still missing
+        if (!finalContent && chatId) {
+          try {
+            const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
+            if (cached && cached.trim().length > 0) {
+              finalContent = cached
+              console.log('[SCHEDULE_TOOL] Loaded tweet from cache for chat:', chatId)
+            }
+          } catch (cacheErr) {
+            console.warn('[SCHEDULE_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
+          }
+        }
+
         // If no content provided, try to extract from conversation context
         let finalContent = content
         if (!finalContent && conversationContext) {

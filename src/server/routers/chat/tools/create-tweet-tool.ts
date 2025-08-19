@@ -4,6 +4,7 @@ import { openai } from '@ai-sdk/openai'
 import { nanoid } from 'nanoid'
 import { z } from 'zod'
 import { Account } from '../../settings-router'
+import { redis } from '../../../../lib/redis'
 import { Style } from '../../style-router'
 
 // Use official OpenAI adapter to ensure SDK-compliant chunks
@@ -14,7 +15,8 @@ export const createTweetTool = (
   style: Style,
   hasXPremium: boolean,
   conversationContext?: string,
-  websiteContent?: any[]
+  websiteContent?: any[],
+  chatId?: string
 ) => {
   return tool({
     description: 'Write a tweet based on user instruction',
@@ -108,6 +110,16 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
           },
         })
         console.log('[CREATE_TWEET_TOOL] Tweet generation completed successfully')
+
+        // Persist last generated tweet text for this chat to enable commands like "post it"
+        try {
+          if (chatId && fullText && fullText.trim().length > 0) {
+            await redis.setex(`chat:last-tweet:${chatId}`, 60 * 60, fullText)
+            console.log('[CREATE_TWEET_TOOL] Cached last tweet for chat:', chatId)
+          }
+        } catch (cacheErr) {
+          console.warn('[CREATE_TWEET_TOOL] Failed to cache last tweet:', (cacheErr as Error)?.message)
+        }
 
         return fullText
     } catch (error) {

@@ -1,6 +1,7 @@
 import { tool, UIMessageStreamWriter } from 'ai'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
+import { redis } from '../../../../lib/redis'
 import { format, addDays } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 
@@ -8,7 +9,8 @@ export const createQueueTool = (
   writer: UIMessageStreamWriter,
   userId: string,
   accountId: string,
-  conversationContext?: string
+  conversationContext?: string,
+  chatId?: string
 ) => {
   return tool({
     description: 'Add a tweet to the queue for automatic scheduling at the next available slot. If content is not provided, uses the most recent tweet from the conversation.',
@@ -40,7 +42,19 @@ export const createQueueTool = (
         console.log('[QUEUE_TOOL] Has media:', !!media?.length)
         console.log('[QUEUE_TOOL] Is thread:', isThread)
         console.log('[QUEUE_TOOL] Additional tweets:', additionalTweets?.length || 0)
-        
+        // Fallback to durable cache if still missing
+        if (!finalContent && chatId) {
+          try {
+            const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
+            if (cached && cached.trim().length > 0) {
+              finalContent = cached
+              console.log('[QUEUE_TOOL] Loaded tweet from cache for chat:', chatId)
+            }
+          } catch (cacheErr) {
+            console.warn('[QUEUE_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
+          }
+        }
+
         // If no content provided, try to extract from conversation context
         let finalContent = content
         if (!finalContent && conversationContext) {

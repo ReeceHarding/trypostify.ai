@@ -65,7 +65,7 @@ async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
 }
 
 // Shared publisher used by local scheduler and webhook
-async function publishThreadById({
+export async function publishThreadById({
   threadId,
   userId,
   accountId,
