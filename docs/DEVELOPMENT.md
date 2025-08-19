@@ -185,3 +185,12 @@ NEXT_PUBLIC_POSTHOG_KEY=<YOUR_KEY>
 NEXT_PUBLIC_POSTHOG_HOST=<YOUR_HOST>
 POSTHOG_API_KEY=<YOUR_API_KEY>
 ```
+
+## TODO: Queue flow hardening and diagnostics
+
+- [ ] Add end-to-end logs for queue flow showing request URLs, status codes, and content-type for both `createThread` and `enqueueThread`.
+- [ ] Improve error parsing in queue tool to handle non-JSON error bodies (done in server; confirm UIs surface concise messages).
+- [ ] Investigate 401 Unauthorized on `POST /api/tweet/createThread` when invoked from queue flow; likely missing auth cookies or base URL mis-match.
+  - Hypothesis: `NEXT_PUBLIC_APP_URL` points to a different origin than the current app, causing session cookies not to be sent.
+  - Fix: Use relative path `/api/tweet/createThread` when server-to-server inside the same origin, or forward auth headers explicitly.
+- [ ] Add structured logs in `tweetRouter.createThread` with `userId`, `threadId`, and counts (added).

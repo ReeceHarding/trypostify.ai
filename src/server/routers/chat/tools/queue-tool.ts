@@ -42,6 +42,7 @@ export const createQueueTool = (
         console.log('[QUEUE_TOOL] Has media:', !!media?.length)
         console.log('[QUEUE_TOOL] Is thread:', isThread)
         console.log('[QUEUE_TOOL] Additional tweets:', additionalTweets?.length || 0)
+        console.log('[QUEUE_TOOL] Timestamp:', new Date().toISOString())
         
         // If no content provided, try to extract from conversation context
         let finalContent = content
@@ -128,19 +129,47 @@ export const createQueueTool = (
         const userNow = new Date()
 
         // Create the thread first
-        const createRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/createThread`, {
+        const createUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/createThread`
+        const createPayload = { tweets: tweetsToQueue }
+        console.log('[QUEUE_TOOL] createThread request', {
+          url: createUrl,
+          method: 'POST',
+          bodyPreview: JSON.stringify(createPayload).slice(0, 300),
+          bodyLength: JSON.stringify(createPayload).length,
+        })
+        const createRes = await fetch(createUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            tweets: tweetsToQueue
-          }),
+          body: JSON.stringify(createPayload),
+        })
+
+        console.log('[QUEUE_TOOL] createThread response', {
+          status: createRes.status,
+          ok: createRes.ok,
+          contentType: createRes.headers.get('content-type') || null,
         })
 
         if (!createRes.ok) {
-          const error = await createRes.json() as { message?: string }
-          throw new Error(error.message || 'Failed to create thread')
+          const ct = createRes.headers.get('content-type') || ''
+          let parsedMessage = 'Failed to create thread'
+          if (ct.includes('application/json')) {
+            try {
+              const error = await createRes.json() as { message?: string }
+              parsedMessage = error?.message || parsedMessage
+            } catch (e) {
+              console.log('[QUEUE_TOOL] createThread JSON parse failed, falling back to text')
+              const text = await createRes.text()
+              console.log('[QUEUE_TOOL] createThread error text preview:', text.slice(0, 200))
+              parsedMessage = text || parsedMessage
+            }
+          } else {
+            const text = await createRes.text()
+            console.log('[QUEUE_TOOL] createThread non-JSON error body preview:', text.slice(0, 200))
+            parsedMessage = text || parsedMessage
+          }
+          throw new Error(parsedMessage)
         }
 
         const createResult = await createRes.json() as { threadId: string }
@@ -158,21 +187,51 @@ export const createQueueTool = (
         })
 
         // Add to queue
-        const queueRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/enqueueThread`, {
+        const enqueueUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/enqueueThread`
+        const enqueuePayload = {
+          threadId,
+          userNow: userNow.toISOString(),
+          timezone
+        }
+        console.log('[QUEUE_TOOL] enqueueThread request', {
+          url: enqueueUrl,
+          method: 'POST',
+          bodyPreview: JSON.stringify(enqueuePayload).slice(0, 300),
+          bodyLength: JSON.stringify(enqueuePayload).length,
+        })
+        const queueRes = await fetch(enqueueUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            threadId,
-            userNow: userNow.toISOString(),
-            timezone
-          }),
+          body: JSON.stringify(enqueuePayload),
+        })
+
+        console.log('[QUEUE_TOOL] enqueueThread response', {
+          status: queueRes.status,
+          ok: queueRes.ok,
+          contentType: queueRes.headers.get('content-type') || null,
         })
 
         if (!queueRes.ok) {
-          const error = await queueRes.json() as { message?: string }
-          throw new Error(error.message || 'Failed to queue thread')
+          const ct = queueRes.headers.get('content-type') || ''
+          let parsedMessage = 'Failed to queue thread'
+          if (ct.includes('application/json')) {
+            try {
+              const error = await queueRes.json() as { message?: string }
+              parsedMessage = error?.message || parsedMessage
+            } catch (e) {
+              console.log('[QUEUE_TOOL] enqueueThread JSON parse failed, falling back to text')
+              const text = await queueRes.text()
+              console.log('[QUEUE_TOOL] enqueueThread error text preview:', text.slice(0, 200))
+              parsedMessage = text || parsedMessage
+            }
+          } else {
+            const text = await queueRes.text()
+            console.log('[QUEUE_TOOL] enqueueThread non-JSON error body preview:', text.slice(0, 200))
+            parsedMessage = text || parsedMessage
+          }
+          throw new Error(parsedMessage)
         }
 
         const result = await queueRes.json() as { time: string, dayName: string }

@@ -1336,6 +1336,13 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { tweets: threadTweets } = input
 
+      console.log('[tweetRouter.createThread] invoked', {
+        at: new Date().toISOString(),
+        userId: user.id,
+        tweetsCount: threadTweets.length,
+        contentPreview: threadTweets.map((t, i) => ({ i, len: t.content.length })).slice(0, 3),
+      })
+
 
 
       const account = await getAccount({
@@ -1350,6 +1357,7 @@ export const tweetRouter = j.router({
       }
 
       const threadId = crypto.randomUUID()
+      console.log('[tweetRouter.createThread] generated threadId', threadId)
 
 
       // Create all thread tweets in the database
@@ -1380,6 +1388,11 @@ export const tweetRouter = j.router({
         }),
       )
 
+
+      console.log('[tweetRouter.createThread] success', {
+        threadId,
+        createdCount: createdTweets.length,
+      })
 
       return c.json({ 
         success: true, 
