@@ -63,7 +63,7 @@ export const parseAttachments = async ({
 }: {
   attachments?: Attachment[]
 }) => {
-  const validAttachments = attachments?.filter((a) => Boolean(a.fileKey)) ?? []
+  const validAttachments = attachments?.filter((a) => Boolean(a.fileKey) && a.fileKey?.trim().length > 0) ?? []
 
   const links = await Promise.all(
     attachments
@@ -83,52 +83,58 @@ export const parseAttachments = async ({
 
   const attachmentContents = await Promise.all(
     validAttachments.map(async (attachment) => {
-      const command = new HeadObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: attachment.fileKey,
-      })
-
-      const data = await s3Client.send(command)
-      const mediaType = (data.ContentType as string) || 'application/octet-stream'
-
-      const type = FILE_TYPE_MAP[mediaType as keyof typeof FILE_TYPE_MAP]
-      // Prefer a short-lived presigned S3 URL so external providers can fetch reliably
-      const signedUrl = await getSignedUrl(
-        s3Client,
-        new GetObjectCommand({ Bucket: BUCKET_NAME, Key: attachment.fileKey! }),
-        { expiresIn: 600 },
-      )
-
-      if (type === 'image') {
-        return { mediaType, url: signedUrl, filename: attachment.title, type: 'file' } as FileUIPart
-      } else if (type === 'docx') {
-        const response = await fetch(signedUrl)
-        const buffer = await response.arrayBuffer()
-        const { value } = await mammoth.extractRawText({
-          buffer: Buffer.from(buffer),
+      try {
+        const command = new HeadObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: attachment.fileKey,
         })
-        return {
-          type: 'text' as const,
-          text: `<attached_docx>${value}</attached_docx>`,
-        } as TextPart
-      } else if (attachment.type === 'video') {
-        // Handle video transcript
-        const transcript = await fetchVideoTranscript(attachment.fileKey!)
 
-        if (transcript) {
+        const data = await s3Client.send(command)
+        const mediaType = (data.ContentType as string) || 'application/octet-stream'
+
+        const type = FILE_TYPE_MAP[mediaType as keyof typeof FILE_TYPE_MAP]
+        // Prefer a short-lived presigned S3 URL so external providers can fetch reliably
+        const signedUrl = await getSignedUrl(
+          s3Client,
+          new GetObjectCommand({ Bucket: BUCKET_NAME, Key: attachment.fileKey! }),
+          { expiresIn: 600 },
+        )
+
+        if (type === 'image') {
+          return { mediaType, url: signedUrl, filename: attachment.title, type: 'file' } as FileUIPart
+        } else if (type === 'docx') {
+          const response = await fetch(signedUrl)
+          const buffer = await response.arrayBuffer()
+          const { value } = await mammoth.extractRawText({
+            buffer: Buffer.from(buffer),
+          })
           return {
             type: 'text' as const,
-            text: `<video_transcript>${transcript}</video_transcript>`,
+            text: `<attached_docx>${value}</attached_docx>`,
           } as TextPart
+        } else if (attachment.type === 'video') {
+          // Handle video transcript
+          const transcript = await fetchVideoTranscript(attachment.fileKey!)
+
+          if (transcript) {
+            return {
+              type: 'text' as const,
+              text: `<video_transcript>${transcript}</video_transcript>`,
+            } as TextPart
+          } else {
+            // If transcript is not ready, return a placeholder
+            return {
+              type: 'text' as const,
+              text: `<video_transcript>Video transcript is being processed and is not yet available. Please try again in a few moments.</video_transcript>`,
+            } as TextPart
+          }
         } else {
-          // If transcript is not ready, return a placeholder
-          return {
-            type: 'text' as const,
-            text: `<video_transcript>Video transcript is being processed and is not yet available. Please try again in a few moments.</video_transcript>`,
-          } as TextPart
+          return { mediaType, url: signedUrl, type: 'file' } as FileUIPart
         }
-      } else {
-        return { mediaType, url: signedUrl, type: 'file' } as FileUIPart
+      } catch (error) {
+        console.error('[PARSE_ATTACHMENTS] Error accessing S3 file:', attachment.fileKey, error)
+        // Return null for missing files - they'll be filtered out
+        return null
       }
     }),
   )
@@ -139,7 +145,7 @@ export const parseAttachments = async ({
   //   .filter((a) => a.type !== 'image' && a.type !== 'link')
   // const links = attachmentContents.filter(Boolean).filter((a) => a.type === 'link')
 
-  return { links, attachments: attachmentContents }
+  return { links, attachments: attachmentContents.filter(Boolean) }
 }
 
 export class PromptBuilder {
