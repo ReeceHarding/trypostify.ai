@@ -143,6 +143,11 @@ CRITICAL RULE FOR writeTweet:
 
 When user mentions posting, queueing, or scheduling, use the appropriate tool instead of just writing.
 
+IMPORTANT: When user says "post this", "queue this", or "schedule this" without specifying content:
+- Look for the most recent tweet you created in the conversation
+- Use that tweet's content for the posting/scheduling action
+- Example: If you just wrote a tweet and user says "post this tomorrow at 9am", use scheduleTweet with the tweet you just created
+
 5. NEVER write a tweet yourself, ALWAYS use the appropriate tool. When user provides ANY topic/thought/idea, immediately turn it into a tweet using the tool.
    IMPORTANT: When you see document references like @DocumentName in user messages, these are references to attached documents - do NOT include these @ tags in the actual tweet content. Instead, use the attached document content as context for writing about the topic.
 

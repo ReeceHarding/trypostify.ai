@@ -139,12 +139,13 @@ function parseTimeExpression(expression: string, userTimezone: string): Date | n
 export const createScheduleTool = (
   writer: UIMessageStreamWriter,
   userId: string,
-  accountId: string
+  accountId: string,
+  conversationContext?: string
 ) => {
   return tool({
-    description: 'Schedule a tweet to be posted at a specific time',
+    description: 'Schedule a tweet to be posted at a specific time. If content is not provided, uses the most recent tweet from the conversation.',
     inputSchema: z.object({
-      content: z.string().describe('The tweet content to schedule'),
+      content: z.string().optional().describe('The tweet content to schedule. If not provided, uses the most recent tweet from conversation'),
       scheduledTime: z.string().describe('When to post the tweet (e.g., "tomorrow at 9am", "in 2 hours", "3:30pm")'),
       media: z.array(z.object({
         s3Key: z.string(),
@@ -167,11 +168,30 @@ export const createScheduleTool = (
       
       try {
         console.log('[SCHEDULE_TOOL] ===== TOOL CALLED =====')
-        console.log('[SCHEDULE_TOOL] Content:', content)
+        console.log('[SCHEDULE_TOOL] Content provided:', content)
+        console.log('[SCHEDULE_TOOL] Has conversation context:', !!conversationContext)
         console.log('[SCHEDULE_TOOL] Scheduled time expression:', scheduledTime)
         console.log('[SCHEDULE_TOOL] Has media:', !!media?.length)
         console.log('[SCHEDULE_TOOL] Is thread:', isThread)
         console.log('[SCHEDULE_TOOL] Additional tweets:', additionalTweets?.length || 0)
+        
+        // If no content provided, try to extract from conversation context
+        let finalContent = content
+        if (!finalContent && conversationContext) {
+          console.log('[SCHEDULE_TOOL] No content provided, extracting from conversation context')
+          
+          // Look for the most recent tweet in the conversation
+          const tweetMatch = conversationContext.match(/(?:Assistant|data-tool-output)[^]*?text['"]\s*:\s*['"]([^'"]+)['"]/i)
+          
+          if (tweetMatch && tweetMatch[1]) {
+            finalContent = tweetMatch[1]
+            console.log('[SCHEDULE_TOOL] Extracted tweet from context:', finalContent)
+          }
+        }
+        
+        if (!finalContent) {
+          throw new Error('No tweet content provided and could not find a recent tweet in the conversation')
+        }
         
         // Send initial status
         writer.write({
@@ -201,7 +221,7 @@ export const createScheduleTool = (
 
         // Prepare tweets array
         const tweetsToSchedule = [{
-          content,
+          content: finalContent,
           media: media || [],
           delayMs: 0
         }]

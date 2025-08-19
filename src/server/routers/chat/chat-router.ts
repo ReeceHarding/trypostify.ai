@@ -374,10 +374,10 @@ export const chatRouter = j.router({
             websiteContent
           )
           
-          // Create posting/scheduling tools
-          const postNow = createPostNowTool(writer, user.id, accountData.id)
-          const queueTweet = createQueueTool(writer, user.id, accountData.id)
-          const scheduleTweet = createScheduleTool(writer, user.id, accountData.id)
+          // Create posting/scheduling tools with conversation context
+          const postNow = createPostNowTool(writer, user.id, accountData.id, conversationContext)
+          const queueTweet = createQueueTool(writer, user.id, accountData.id, conversationContext)
+          const scheduleTweet = createScheduleTool(writer, user.id, accountData.id, conversationContext)
           
           console.log('[CHAT_ROUTER] All tools created successfully')
 
