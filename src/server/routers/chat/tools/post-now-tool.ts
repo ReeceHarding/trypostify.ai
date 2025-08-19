@@ -188,10 +188,15 @@ export const createPostNowTool = (
         })
 
         let twitterUrl = ''
-        if (postedTweets.length > 0 && postedTweets[0]?.twitterId && account?.username) {
-          // Construct Twitter URL for the first tweet
-          twitterUrl = `https://twitter.com/${account.username}/status/${postedTweets[0].twitterId}`
-          console.log('[POST_NOW_TOOL] Generated Twitter URL:', twitterUrl)
+        if (postedTweets.length > 0 && postedTweets[0]?.twitterId) {
+          const firstId = postedTweets[0].twitterId
+          if (account?.username) {
+            twitterUrl = `https://x.com/${account.username}/status/${firstId}`
+            console.log('[POST_NOW_TOOL] Generated Twitter URL with username:', twitterUrl)
+          } else {
+            twitterUrl = `https://x.com/i/web/status/${firstId}`
+            console.log('[POST_NOW_TOOL] Generated Twitter URL without username (fallback):', twitterUrl)
+          }
         }
 
         // Send success message with link
