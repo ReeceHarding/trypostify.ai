@@ -193,14 +193,22 @@ export const createScheduleTool = (
             // Find the last assistant message with tweet-like content
             const lines = conversationContext.split('\n')
             for (let i = lines.length - 1; i >= 0; i--) {
-              const line = lines[i].trim()
-              // Skip short lines, tool outputs, and system messages
+              const line = lines[i]?.trim() || ''
+              // Skip short lines, tool outputs, system messages, and markdown content
               if (line.length > 20 && 
                   !line.includes('Tool called:') && 
                   !line.includes('Assistant:') &&
                   !line.includes('User:') &&
                   !line.includes('{') &&
-                  !line.includes('}')) {
+                  !line.includes('}') &&
+                  !line.includes('![') && // Skip markdown images
+                  !line.includes('](') && // Skip markdown links
+                  !line.includes('**') && // Skip markdown bold
+                  !line.includes('*') && // Skip markdown italic
+                  !line.includes('https://timebacklearn.com') && // Skip website URLs
+                  !line.includes('dicebear.com') && // Skip image service URLs
+                  !line.includes('<') && // Skip HTML tags
+                  !line.includes('>')) { // Skip HTML tags
                 finalContent = line
                 console.log('[SCHEDULE_TOOL] Extracted tweet from conversation line:', finalContent)
                 break

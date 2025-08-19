@@ -47,41 +47,8 @@ export const createPostNowTool = (
         console.log('[POST_NOW_TOOL] Is thread:', isThread)
         console.log('[POST_NOW_TOOL] Additional tweets:', additionalTweets?.length || 0)
         
-        // If no content provided, try to extract from conversation context
+        // If no content provided, try to get from Redis cache first (most reliable)
         let finalContent = content
-        if (!finalContent && conversationContext) {
-          console.log('[POST_NOW_TOOL] No content provided, extracting from conversation context')
-          
-          // Look for the most recent tweet in the conversation
-          // Try multiple patterns to find tweet content
-          
-          // Pattern 1: Look for tool output with text field
-          let tweetMatch = conversationContext.match(/data-tool-output[^}]*?"text"\s*:\s*"([^"]+)"/i)
-          
-          // Pattern 2: If not found, look for text in conversation that looks like a tweet
-          if (!tweetMatch || !tweetMatch[1]) {
-            // Find the last assistant message with tweet-like content
-            const lines = conversationContext.split('\n')
-            for (let i = lines.length - 1; i >= 0; i--) {
-              const line = lines[i]?.trim() || ''
-              // Skip short lines, tool outputs, and system messages
-              if (line.length > 20 && 
-                  !line.includes('Tool called:') && 
-                  !line.includes('Assistant:') &&
-                  !line.includes('User:') &&
-                  !line.includes('{') &&
-                  !line.includes('}')) {
-                finalContent = line
-                console.log('[POST_NOW_TOOL] Extracted tweet from conversation line:', finalContent)
-                break
-              }
-            }
-          } else if (tweetMatch && tweetMatch[1]) {
-            finalContent = tweetMatch[1]
-            console.log('[POST_NOW_TOOL] Extracted tweet from tool output:', finalContent)
-          }
-        }
-        // Fallback to durable cache if still missing
         if (!finalContent && chatId) {
           try {
             const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
@@ -91,6 +58,47 @@ export const createPostNowTool = (
             }
           } catch (cacheErr) {
             console.warn('[POST_NOW_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
+          }
+        }
+        
+        // Fallback to conversation context extraction if cache is empty
+        if (!finalContent && conversationContext) {
+          console.log('[POST_NOW_TOOL] No cached content, extracting from conversation context')
+          
+          // Look for the most recent tweet in the conversation
+          // Try multiple patterns to find tweet content
+          
+          // Pattern 1: Look for tool output with text field (improved regex)
+          let tweetMatch = conversationContext.match(/"text"\s*:\s*"([^"]{20,}?)"/i)
+          
+          // Pattern 2: If not found, look for text in conversation that looks like a tweet
+          if (!tweetMatch || !tweetMatch[1]) {
+            // Find the last assistant message with tweet-like content
+            const lines = conversationContext.split('\n')
+            for (let i = lines.length - 1; i >= 0; i--) {
+              const line = lines[i]?.trim() || ''
+              // Skip short lines, tool outputs, system messages, and markdown content
+              if (line.length > 20 && 
+                  !line.includes('Tool called:') && 
+                  !line.includes('Assistant:') &&
+                  !line.includes('User:') &&
+                  !line.includes('{') &&
+                  !line.includes('}') &&
+                  !line.includes('![') && // Skip markdown images
+                  !line.includes('](') && // Skip markdown links
+                  !line.includes('**') && // Skip markdown bold
+                  !line.includes('*') && // Skip markdown italic
+                  !line.includes('https://') && // Skip all URLs
+                  !line.includes('<') && // Skip HTML tags
+                  !line.includes('>')) { // Skip HTML tags
+                finalContent = line
+                console.log('[POST_NOW_TOOL] Extracted tweet from conversation line:', finalContent)
+                break
+              }
+            }
+          } else if (tweetMatch && tweetMatch[1]) {
+            finalContent = tweetMatch[1]
+            console.log('[POST_NOW_TOOL] Extracted tweet from tool output:', finalContent)
           }
         }
 
