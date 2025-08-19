@@ -97,10 +97,10 @@ const ChatInput = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
       
-      // Attach files: Cmd/Ctrl + Shift + A (avoids conflict with Upload)
-      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+      // Attach files: Cmd/Ctrl + U (safe across all browsers and systems)
+      if (actualMetaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'u') {
         e.preventDefault()
-        console.log('[AppSidebar] File attach shortcut triggered (Cmd+Shift+A) at', new Date().toISOString())
+        console.log('[AppSidebar] File attach shortcut triggered (Cmd+U) at', new Date().toISOString())
         fileInputRef.current?.click()
       }
     }
@@ -643,10 +643,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
-      // New Chat: Cmd/Ctrl + Shift + N (avoids Option key issues on Mac)
-      if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+      // New Chat: Cmd/Ctrl + N (standard new document shortcut, safe across all platforms)
+      if (actualMetaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'n') {
         e.preventDefault()
-        console.log('[AppSidebar] New Chat shortcut triggered (Cmd+Shift+N) at', new Date().toISOString())
+        console.log('[AppSidebar] New Chat shortcut triggered (Cmd+N) at', new Date().toISOString())
         handleNewChat()
       }
       // Focus chat input: Cmd/Ctrl + /
@@ -659,10 +659,10 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
         e.preventDefault()
         setIsHistoryOpen(true)
       }
-      // Close sidebar: Cmd/Ctrl + Shift + B (avoids Option key issues on Mac)
-      else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 'b') {
+      // Close sidebar: Cmd/Ctrl + \ (backslash - standard sidebar toggle, safe across all platforms)
+      else if (actualMetaKey && !e.shiftKey && !e.altKey && e.key === '\\') {
         e.preventDefault()
-        console.log('[AppSidebar] Close sidebar shortcut triggered (Cmd+Shift+B) at', new Date().toISOString())
+        console.log('[AppSidebar] Close sidebar shortcut triggered (Cmd+\\) at', new Date().toISOString())
         toggleSidebar()
       }
     }
@@ -727,7 +727,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Start a new conversation</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + Shift + N</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + N</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -765,7 +765,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Close sidebar</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + Shift + B</p>
+                      <p className="text-xs text-neutral-400">{metaKey} + \</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>

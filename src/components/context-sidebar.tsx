@@ -57,8 +57,8 @@ export const LeftSidebar = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
-      // Navigation shortcuts: Cmd/Ctrl + Shift + 1-5 (avoids Option key issues and browser tab conflicts)
-      if (actualMetaKey && e.shiftKey && e.key >= '1' && e.key <= '5') {
+      // Navigation shortcuts: Ctrl + 1-5 (cross-platform safe, avoids all browser conflicts)
+      if (e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '5') {
         e.preventDefault()
         const paths = [
           '/studio',
@@ -76,7 +76,7 @@ export const LeftSidebar = () => {
         ]
         const index = parseInt(e.key) - 1
         if (paths[index]) {
-          console.log(`[LeftSidebar] Navigation shortcut triggered: ${pathNames[index]} (Cmd+Shift+${e.key}) at ${new Date().toISOString()}`)
+          console.log(`[LeftSidebar] Navigation shortcut triggered: ${pathNames[index]} (Ctrl+${e.key}) at ${new Date().toISOString()}`)
           
           // Immediate visual feedback
           showNavigation(pathNames[index])
