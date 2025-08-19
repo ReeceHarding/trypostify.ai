@@ -1,4 +1,5 @@
 import { DEFAULT_TWEETS } from '@/constants/default-tweet-preset'
+import { createExampleDocument } from '@/constants/default-context-docs'
 import { db } from '@/db'
 import { account, knowledgeDocument, user, user as userSchema } from '@/db/schema'
 import { redis } from '@/lib/redis'
@@ -538,12 +539,14 @@ export const authRouter = j.router({
         },
         {
           userId: userId,
-          fileName: 'data-fetching.png',
-          type: 'image',
-          s3Key: 'knowledge/4bBacfDWPhQzOzN479b605xuippnbKzF/Lsv-t_5_EMwNXW8jptBYG.png',
-          title: 'React Hooks Cheatsheet - Visual Guide',
+          fileName: 'react-hooks-guide.txt',
+          type: 'manual',
+          s3Key: '',
+          title: 'React Hooks Essential Guide',
+          description: 'Comprehensive guide to React Hooks including useState, useEffect, useContext, and custom hooks with practical examples',
           isExample: true,
           sourceUrl: '',
+          editorState: JSON.parse(createExampleDocument('react-hooks-guide')?.content || '{}'),
         },
       ])
     }
