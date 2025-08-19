@@ -125,8 +125,8 @@ export const createPostNowTool = (
 
         console.log('[POST_NOW_TOOL] Posting', tweetsToPost.length, 'tweet(s)')
 
-        // Import the tweet router functions directly to avoid auth issues
-        const { publishThreadById } = await import('../../tweet-router')
+        // Import the shared publisher from chat utils to avoid loading router modules
+        const { publishThreadById } = await import('../utils')
         
         // Create thread in database directly
         const threadId = crypto.randomUUID()
