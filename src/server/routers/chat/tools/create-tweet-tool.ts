@@ -80,6 +80,9 @@ ${style.tweets && style.tweets.length > 0 ? `\nExample tweets that demonstrate t
 
 CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
 
+        console.log('[CREATE_TWEET_TOOL] System prompt being sent to AI:', systemPrompt.substring(0, 500) + '...')
+        console.log('[CREATE_TWEET_TOOL] Full prompt being sent to AI:', fullPrompt)
+        
         const result = streamText({
           model: openai('gpt-4o-mini'),
           system: systemPrompt,
@@ -89,7 +92,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
         let fullText = ''
         for await (const textPart of result.textStream) {
           fullText += textPart
-          console.log('[CREATE_TWEET_TOOL] Streaming text chunk, total length:', fullText.length)
+          console.log('[CREATE_TWEET_TOOL] Streaming text chunk:', JSON.stringify(textPart), 'total length:', fullText.length)
           writer.write({
             type: 'data-tool-output',
             id: generationId,
@@ -101,6 +104,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
         }
 
         console.log('[CREATE_TWEET_TOOL] Sending final result, text length:', fullText.length)
+        console.log('[CREATE_TWEET_TOOL] Final generated content:', JSON.stringify(fullText))
         writer.write({
           type: 'data-tool-output',
           id: generationId,
@@ -115,7 +119,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
         try {
           if (chatId && fullText && fullText.trim().length > 0) {
             await redis.setex(`chat:last-tweet:${chatId}`, 60 * 60, fullText)
-            console.log('[CREATE_TWEET_TOOL] Cached last tweet for chat:', chatId, 'Content length:', fullText.length, 'Content preview:', fullText.substring(0, 100) + '...')
+            console.log('[CREATE_TWEET_TOOL] Cached last tweet for chat:', chatId, 'Content length:', fullText.length, 'Content preview:', fullText.substring(0, 100) + '...', 'Full content:', JSON.stringify(fullText))
           }
         } catch (cacheErr) {
           console.warn('[CREATE_TWEET_TOOL] Failed to cache last tweet:', (cacheErr as Error)?.message)
