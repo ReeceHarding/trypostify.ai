@@ -1,5 +1,6 @@
 import { db } from '@/db'
-import { tweets } from '@/db/schema'
+import { tweets, account as accountSchema } from '@/db/schema'
+import { and, eq, asc } from 'drizzle-orm'
 import { tool, UIMessageStreamWriter } from 'ai'
 import { redis } from '../../../../lib/redis'
 import { z } from 'zod'
@@ -172,24 +173,51 @@ export const createPostNowTool = (
         
         console.log('[POST_NOW_TOOL] Posted successfully to Twitter')
 
-        // Send success message
+        // Get the posted tweets to construct Twitter URLs
+        const postedTweets = await db.query.tweets.findMany({
+          where: and(
+            eq(tweets.threadId, threadId),
+            eq(tweets.isPublished, true)
+          ),
+          orderBy: asc(tweets.position),
+        })
+
+        // Get account info for username
+        const account = await db.query.account.findFirst({
+          where: eq(accountSchema.id, accountId),
+        })
+
+        let twitterUrl = ''
+        if (postedTweets.length > 0 && postedTweets[0]?.twitterId && account?.username) {
+          // Construct Twitter URL for the first tweet
+          twitterUrl = `https://twitter.com/${account.username}/status/${postedTweets[0].twitterId}`
+          console.log('[POST_NOW_TOOL] Generated Twitter URL:', twitterUrl)
+        }
+
+        // Send success message with link
         const successMessage = tweetsToPost.length > 1 
           ? `Thread posted successfully! ${tweetsToPost.length} tweets sent.`
           : 'Tweet posted successfully!'
+
+        const finalMessage = twitterUrl 
+          ? `${successMessage}\n\nView on Twitter: ${twitterUrl}`
+          : successMessage
 
         writer.write({
           type: 'data-tool-output',
           id: toolId,
           data: {
-            text: successMessage,
+            text: finalMessage,
             status: 'complete',
+            twitterUrl: twitterUrl || undefined,
           },
         })
 
         return {
           success: true,
-          message: successMessage,
-          threadId: threadId
+          message: finalMessage,
+          threadId: threadId,
+          twitterUrl: twitterUrl || undefined
         }
 
       } catch (error) {

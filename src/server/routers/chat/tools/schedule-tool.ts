@@ -176,19 +176,7 @@ export const createScheduleTool = (
         console.log('[SCHEDULE_TOOL] Has media:', !!media?.length)
         console.log('[SCHEDULE_TOOL] Is thread:', isThread)
         console.log('[SCHEDULE_TOOL] Additional tweets:', additionalTweets?.length || 0)
-        // Fallback to durable cache if still missing
-        if (!finalContent && chatId) {
-          try {
-            const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
-            if (cached && cached.trim().length > 0) {
-              finalContent = cached
-              console.log('[SCHEDULE_TOOL] Loaded tweet from cache for chat:', chatId)
-            }
-          } catch (cacheErr) {
-            console.warn('[SCHEDULE_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
-          }
-        }
-
+        
         // If no content provided, try to extract from conversation context
         let finalContent = content
         if (!finalContent && conversationContext) {
@@ -221,6 +209,19 @@ export const createScheduleTool = (
           } else if (tweetMatch && tweetMatch[1]) {
             finalContent = tweetMatch[1]
             console.log('[SCHEDULE_TOOL] Extracted tweet from tool output:', finalContent)
+          }
+        }
+        
+        // Fallback to durable cache if still missing
+        if (!finalContent && chatId) {
+          try {
+            const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
+            if (cached && cached.trim().length > 0) {
+              finalContent = cached
+              console.log('[SCHEDULE_TOOL] Loaded tweet from cache for chat:', chatId)
+            }
+          } catch (cacheErr) {
+            console.warn('[SCHEDULE_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
           }
         }
         
