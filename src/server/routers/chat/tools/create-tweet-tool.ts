@@ -115,7 +115,7 @@ CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
         try {
           if (chatId && fullText && fullText.trim().length > 0) {
             await redis.setex(`chat:last-tweet:${chatId}`, 60 * 60, fullText)
-            console.log('[CREATE_TWEET_TOOL] Cached last tweet for chat:', chatId)
+            console.log('[CREATE_TWEET_TOOL] Cached last tweet for chat:', chatId, 'Content length:', fullText.length, 'Content preview:', fullText.substring(0, 100) + '...')
           }
         } catch (cacheErr) {
           console.warn('[CREATE_TWEET_TOOL] Failed to cache last tweet:', (cacheErr as Error)?.message)

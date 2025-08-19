@@ -1,11 +1,12 @@
 import { db } from '@/db'
-import { tweets, account as accountSchema } from '@/db/schema'
+import { tweets, account as accountSchema, user as userSchema } from '@/db/schema'
 import { and, eq, asc } from 'drizzle-orm'
 import { tool, UIMessageStreamWriter } from 'ai'
 import { redis } from '../../../../lib/redis'
 import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { HTTPException } from 'hono/http-exception'
+import { getAccount } from '../../utils/get-account'
 
 export const createPostNowTool = (
   writer: UIMessageStreamWriter,
@@ -62,7 +63,7 @@ export const createPostNowTool = (
             // Find the last assistant message with tweet-like content
             const lines = conversationContext.split('\n')
             for (let i = lines.length - 1; i >= 0; i--) {
-              const line = lines[i].trim()
+              const line = lines[i]?.trim() || ''
               // Skip short lines, tool outputs, and system messages
               if (line.length > 20 && 
                   !line.includes('Tool called:') && 
@@ -86,7 +87,7 @@ export const createPostNowTool = (
             const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
             if (cached && cached.trim().length > 0) {
               finalContent = cached
-              console.log('[POST_NOW_TOOL] Loaded tweet from cache for chat:', chatId)
+              console.log('[POST_NOW_TOOL] Loaded tweet from cache for chat:', chatId, 'Content length:', cached.length, 'Content preview:', cached.substring(0, 100) + '...')
             }
           } catch (cacheErr) {
             console.warn('[POST_NOW_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
@@ -134,11 +135,30 @@ export const createPostNowTool = (
         // Insert tweets into database
         for (let i = 0; i < tweetsToPost.length; i++) {
           const tweet = tweetsToPost[i]
+          if (!tweet) {
+            console.error('[POST_NOW_TOOL] Tweet at index', i, 'is undefined, skipping')
+            continue
+          }
+          
+          console.log('[POST_NOW_TOOL] Inserting tweet into database:', {
+            position: i,
+            contentLength: tweet.content?.length || 0,
+            contentPreview: tweet.content?.substring(0, 100) + '...',
+            mediaCount: tweet.media?.length || 0,
+            threadId: threadId
+          })
+          
+          // Transform media to match database schema
+          const mediaForDb = (tweet.media || []).map(m => ({
+            s3Key: m.s3Key,
+            media_id: '', // Will be filled when uploaded to Twitter
+          }))
+          
           await db.insert(tweets).values({
             id: crypto.randomUUID(),
             threadId: threadId,
             content: tweet.content,
-            media: tweet.media || [],
+            media: mediaForDb,
             userId: userId,
             accountId: accountId,
             position: i,
@@ -174,24 +194,33 @@ export const createPostNowTool = (
         console.log('[POST_NOW_TOOL] Posted successfully to Twitter')
 
         // Get the posted tweets to construct Twitter URLs
-        const postedTweets = await db.query.tweets.findMany({
-          where: and(
+        const postedTweets = await db
+          .select()
+          .from(tweets)
+          .where(and(
             eq(tweets.threadId, threadId),
             eq(tweets.isPublished, true)
-          ),
-          orderBy: asc(tweets.position),
-        })
+          ))
+          .orderBy(asc(tweets.position))
 
-        // Get account info for username
-        const account = await db.query.account.findFirst({
-          where: eq(accountSchema.id, accountId),
-        })
+        // Get account info for username from Redis
+        const userRecord = await db
+          .select()
+          .from(userSchema)
+          .where(eq(userSchema.id, userId))
+          .limit(1)
+          .then(rows => rows[0])
+          
+        let accountWithUsername = null
+        if (userRecord) {
+          accountWithUsername = await getAccount({ email: userRecord.email })
+        }
 
         let twitterUrl = ''
         if (postedTweets.length > 0 && postedTweets[0]?.twitterId) {
           const firstId = postedTweets[0].twitterId
-          if (account?.username) {
-            twitterUrl = `https://x.com/${account.username}/status/${firstId}`
+          if (accountWithUsername?.username) {
+            twitterUrl = `https://x.com/${accountWithUsername.username}/status/${firstId}`
             console.log('[POST_NOW_TOOL] Generated Twitter URL with username:', twitterUrl)
           } else {
             twitterUrl = `https://x.com/i/web/status/${firstId}`

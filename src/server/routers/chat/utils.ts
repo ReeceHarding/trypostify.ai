@@ -230,22 +230,56 @@ export async function publishThreadById({
   let previousTweetId: string | null = null
   for (const [index, tweet] of threadTweets.entries()) {
     try {
+      console.log(`[${logPrefix}] Processing tweet ${index + 1}/${threadTweets.length}:`, {
+        tweetId: tweet.id,
+        contentLength: tweet.content?.length || 0,
+        contentPreview: tweet.content?.substring(0, 100) + '...',
+        mediaCount: tweet.media?.length || 0,
+        position: tweet.position,
+        timestamp: new Date().toISOString()
+      })
+      
       if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
+        console.log(`[${logPrefix}] Waiting ${tweet.delayMs}ms before posting tweet ${index + 1}`)
         await new Promise((r) => setTimeout(r, tweet.delayMs))
       }
+      
       const payload: SendTweetV2Params = { text: tweet.content }
+      console.log(`[${logPrefix}] Tweet payload being sent to Twitter:`, {
+        textLength: payload.text?.length || 0,
+        textContent: payload.text,
+        hasReply: !!previousTweetId,
+        replyToId: previousTweetId
+      })
+      
       if (previousTweetId && index > 0) {
         payload.reply = { in_reply_to_tweet_id: previousTweetId }
+        console.log(`[${logPrefix}] Adding reply reference to tweet ${previousTweetId}`)
       }
+      
       if (tweet.media?.length) {
         const ids = tweet.media
           .map((m: any) => m.media_id)
           .filter((id: any) => typeof id === 'string' && id.trim().length > 0)
+        console.log(`[${logPrefix}] Media processing:`, {
+          originalMediaCount: tweet.media.length,
+          validMediaIds: ids,
+          mediaData: tweet.media
+        })
         if (ids.length) {
           payload.media = { media_ids: ids as any }
+          console.log(`[${logPrefix}] Added media to payload:`, payload.media)
         }
       }
+      
+      console.log(`[${logPrefix}] Final payload before Twitter API call:`, JSON.stringify(payload, null, 2))
       const res = await client.v2.tweet(payload)
+      console.log(`[${logPrefix}] Twitter API response:`, {
+        success: true,
+        tweetId: res.data.id,
+        text: res.data.text,
+        timestamp: new Date().toISOString()
+      })
       await db
         .update(tweets)
         .set({
