@@ -258,7 +258,16 @@ export const chatRouter = j.router({
 
       try {
         console.log('[CHAT] file parts mediaTypes', (fileParts as any[]).map((p: any) => p.mediaType))
-      } catch {}
+        if (hasImage) {
+          console.log('[CHAT] Image parts for OpenAI:', imageFileParts.map((p: any) => ({
+            mediaType: p.mediaType,
+            url: p.url?.substring(0, 100) + '...', // Log truncated URL for debugging
+            filename: p.filename
+          })))
+        }
+      } catch (error) {
+        console.error('[CHAT] Error logging file parts:', error)
+      }
 
       const userMessage: MyUIMessage = {
         ...message,
@@ -495,7 +504,28 @@ export const chatRouter = j.router({
           }
 
           console.log('[CHAT_ROUTER] About to merge result stream with writer')
-          writer.merge(result.toUIMessageStream())
+          
+          // Add error handling for S3 download failures
+          try {
+            writer.merge(result.toUIMessageStream())
+          } catch (error: any) {
+            console.error('[CHAT_ROUTER] Stream error:', error)
+            
+            // Check if it's an S3 download error
+            if (error?.message?.includes('Error while downloading') && error?.message?.includes('s3.us-east-1.amazonaws.com')) {
+              console.error('[CHAT_ROUTER] S3 download error detected - OpenAI cannot access S3 presigned URL')
+              console.error('[CHAT_ROUTER] This is likely due to CORS or bucket permissions')
+              
+              // Write error message to stream
+              writer.write({
+                type: 'text',
+                text: 'Image processing failed: Unable to access uploaded image. This may be due to S3 configuration issues. Please try uploading the image again or contact support.'
+              })
+            } else {
+              // Re-throw other errors
+              throw error
+            }
+          }
         },
       })
 

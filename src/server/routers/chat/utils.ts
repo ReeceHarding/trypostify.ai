@@ -93,15 +93,51 @@ export const parseAttachments = async ({
         const mediaType = (data.ContentType as string) || 'application/octet-stream'
 
         const type = FILE_TYPE_MAP[mediaType as keyof typeof FILE_TYPE_MAP]
-        // Prefer a short-lived presigned S3 URL so external providers can fetch reliably
+        // Prefer a longer-lived presigned S3 URL so external providers can fetch reliably
+        // OpenAI needs more time to download, especially for larger images
         const signedUrl = await getSignedUrl(
           s3Client,
-          new GetObjectCommand({ Bucket: BUCKET_NAME, Key: attachment.fileKey! }),
-          { expiresIn: 600 },
+          new GetObjectCommand({ 
+            Bucket: BUCKET_NAME, 
+            Key: attachment.fileKey!,
+            // Add response headers to ensure proper content type and caching
+            ResponseContentType: mediaType,
+            ResponseCacheControl: 'max-age=3600'
+          }),
+          { expiresIn: 3600 }, // Extend to 1 hour for OpenAI processing
         )
 
         if (type === 'image') {
-          return { mediaType, url: signedUrl, filename: attachment.title, type: 'file' } as FileUIPart
+          // Try to fetch image and convert to base64 to avoid OpenAI S3 download issues
+          try {
+            console.log('[PARSE_ATTACHMENTS] Fetching image from S3 for base64 conversion:', attachment.fileKey)
+            const imageResponse = await fetch(signedUrl)
+            
+            if (!imageResponse.ok) {
+              console.error('[PARSE_ATTACHMENTS] Failed to fetch image from S3:', imageResponse.status, imageResponse.statusText)
+              // Fallback to URL approach
+              return { mediaType, url: signedUrl, filename: attachment.title, type: 'file' } as FileUIPart
+            }
+            
+            const imageBuffer = await imageResponse.arrayBuffer()
+            const base64Image = Buffer.from(imageBuffer).toString('base64')
+            const dataUrl = `data:${mediaType};base64,${base64Image}`
+            
+            console.log('[PARSE_ATTACHMENTS] Successfully converted image to base64, size:', base64Image.length, 'chars')
+            
+            return { 
+              mediaType, 
+              url: dataUrl, // Use data URL instead of S3 URL
+              filename: attachment.title, 
+              type: 'file' 
+            } as FileUIPart
+            
+          } catch (error) {
+            console.error('[PARSE_ATTACHMENTS] Failed to convert image to base64:', error)
+            // Fallback to presigned URL approach
+            console.log('[PARSE_ATTACHMENTS] Falling back to presigned URL approach')
+            return { mediaType, url: signedUrl, filename: attachment.title, type: 'file' } as FileUIPart
+          }
         } else if (type === 'docx') {
           const response = await fetch(signedUrl)
           const buffer = await response.arrayBuffer()
