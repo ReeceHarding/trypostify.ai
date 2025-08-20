@@ -176,7 +176,7 @@ export const authRouter = j.router({
       }
 
       try {
-        const { url, oauth_token, oauth_token_secret } = await client.generateAuthLink(
+        const { url, oauth_token, oauth_token_secret } = await clientV1.generateAuthLink(
           callbackUrl,
         )
 
@@ -248,7 +248,7 @@ export const authRouter = j.router({
         throw new HTTPException(400, { message: 'Invite has expired or is invalid' })
       }
 
-      const { url, oauth_token, oauth_token_secret } = await client.generateAuthLink(
+      const { url, oauth_token, oauth_token_secret } = await clientV1.generateAuthLink(
         `${getBaseUrl()}/api/auth_router/callback`,
       )
 
@@ -633,35 +633,31 @@ export const authRouter = j.router({
       // Check if account already exists
       const existingAccount = await db.query.account.findFirst({
         where: and(
-          eq(accountSchema.userId, user.id),
-          eq(accountSchema.providerId, 'twitter'),
-          eq(accountSchema.providerAccountId, userData.id)
+          eq(account.userId, user.id),
+          eq(account.providerId, 'twitter'),
+          eq(account.accountId, userData.id)
         ),
       })
 
       if (existingAccount) {
         // Update existing account with new OAuth 2.0 tokens
         await db
-          .update(accountSchema)
+          .update(account)
           .set({
             accessToken,
             refreshToken,
-            expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
             updatedAt: new Date(),
           })
-          .where(eq(accountSchema.id, existingAccount.id))
+          .where(eq(account.id, existingAccount.id))
       } else {
         // Create new account with OAuth 2.0 tokens
-        await db.insert(accountSchema).values({
+        await db.insert(account).values({
           id: nanoid(),
           userId: user.id,
-          type: 'oauth',
-          provider: 'twitter',
+          accountId: userData.id,
           providerId: 'twitter',
-          providerAccountId: userData.id,
           accessToken,
           refreshToken,
-          expiresAt: expiresIn ? new Date(Date.now() + expiresIn * 1000) : null,
           createdAt: new Date(),
           updatedAt: new Date(),
         })

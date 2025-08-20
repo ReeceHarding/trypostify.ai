@@ -2,6 +2,7 @@
 
 import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X } from 'lucide-react'
 import { useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 import {
   Sidebar,
@@ -593,7 +594,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [editor] = useLexicalComposerContext()
-
+  const isMobile = useIsMobile()
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   
@@ -742,67 +743,142 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
           <div className="w-full flex items-center min-h-[2.5rem]">
             {/* Hide label on small screens to save space */}
             <p className="text-sm/6 font-medium flex-shrink-0 hidden sm:block">Assistant</p>
-            <div className="flex gap-2 flex-shrink-0 ml-auto">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DuolingoButton
-                      onClick={handleNewChat}
-                      size="sm"
-                      variant="secondary"
-                      className="inline-flex items-center gap-1.5 whitespace-nowrap"
-                    >
-                      <Plus className="size-4" />
-                      <p className="text-sm">New Chat</p>
-                    </DuolingoButton>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p>Start a new conversation</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + K</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+            
+            {/* Mobile Layout: Split buttons to left and right */}
+            {isMobile ? (
+              <>
+                {/* Left side - New Chat button */}
+                <div className="flex flex-shrink-0">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DuolingoButton
+                          onClick={handleNewChat}
+                          size="sm"
+                          variant="secondary"
+                          className="inline-flex items-center gap-1.5 whitespace-nowrap"
+                        >
+                          <Plus className="size-4" />
+                          <p className="text-sm">New Chat</p>
+                        </DuolingoButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>Start a new conversation</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + K</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                {/* Right side - History and Close buttons */}
+                <div className="flex gap-2 flex-shrink-0 ml-auto">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DuolingoButton
+                          onClick={() => setIsHistoryOpen(true)}
+                          size="icon"
+                          variant="secondary"
+                          className="aspect-square"
+                        >
+                          <History className="size-4" />
+                        </DuolingoButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>Open chat history</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + Shift + H</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DuolingoButton
-                      onClick={() => setIsHistoryOpen(true)}
-                      size="icon"
-                      variant="secondary"
-                      className="aspect-square"
-                    >
-                      <History className="size-4" />
-                    </DuolingoButton>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p>Open chat history</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + Shift + H</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DuolingoButton
+                          onClick={toggleSidebar}
+                          variant="secondary"
+                          className="aspect-square"
+                          size="icon"
+                        >
+                          <X className="size-4" />
+                        </DuolingoButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>Close sidebar</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + J</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </>
+            ) : (
+              /* Desktop Layout: Keep original layout */
+              <div className="flex gap-2 flex-shrink-0 ml-auto">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DuolingoButton
+                        onClick={handleNewChat}
+                        size="sm"
+                        variant="secondary"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <Plus className="size-4" />
+                        <p className="text-sm">New Chat</p>
+                      </DuolingoButton>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>Start a new conversation</p>
+                        <p className="text-xs text-neutral-400">{metaKey} + K</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DuolingoButton
-                      onClick={toggleSidebar}
-                      variant="secondary"
-                      className="aspect-square"
-                      size="icon"
-                    >
-                      <X className="size-4" />
-                    </DuolingoButton>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p>Close sidebar</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + J</p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DuolingoButton
+                        onClick={() => setIsHistoryOpen(true)}
+                        size="icon"
+                        variant="secondary"
+                        className="aspect-square"
+                      >
+                        <History className="size-4" />
+                      </DuolingoButton>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>Open chat history</p>
+                        <p className="text-xs text-neutral-400">{metaKey} + Shift + H</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DuolingoButton
+                        onClick={toggleSidebar}
+                        variant="secondary"
+                        className="aspect-square"
+                        size="icon"
+                      >
+                        <X className="size-4" />
+                      </DuolingoButton>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>Close sidebar</p>
+                        <p className="text-xs text-neutral-400">{metaKey} + J</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </div>
         </SidebarHeader>
         <SidebarContent className="relative h-full py-0 bg-neutral-50 bg-opacity-25">
