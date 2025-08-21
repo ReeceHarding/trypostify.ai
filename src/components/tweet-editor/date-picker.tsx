@@ -105,7 +105,28 @@ export const Calendar20 = ({
   }
 
   const getInitialDate = (): Date => {
-    return initialScheduledTime ? new Date(initialScheduledTime) : new Date()
+    if (initialScheduledTime) {
+      return new Date(initialScheduledTime)
+    }
+    
+    // If all today's time slots are in the past, start with tomorrow
+    const hasAvailableSlots = timeSlots.some(timeSlot => {
+      const timeParts = timeSlot.split(':').map(Number)
+      const hour = timeParts[0] ?? 0
+      const minute = timeParts[1] ?? 0
+      const slotTime = hour * 60 + minute
+      const currentTime = currentHour * 60 + currentMinute
+      return slotTime > currentTime
+    })
+    
+    if (!hasAvailableSlots) {
+      console.log('[DatePicker] All today\'s slots are past, defaulting to tomorrow')
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return tomorrow
+    }
+    
+    return new Date()
   }
 
   const getInitialTime = (): string => {
@@ -242,29 +263,20 @@ export const Calendar20 = ({
           <div className="no-scrollbar flex max-h-[30dvh] md:max-h-[calc(100%-2rem)] flex-col gap-2 overflow-y-auto scroll-pb-4">
             <div className="grid grid-cols-1 gap-2 min-[481px]:grid-cols-3 md:grid-cols-1 md:pr-1">
               {timeSlots
-                .filter((time) => {
-                  console.log('[DatePicker] Processing time slot:', time)
-                  // Always show all time slots for future dates or if no date is selected
-                  if (!date || date.toDateString() !== today.toDateString()) {
-                    console.log('[DatePicker] Future date or no date - showing slot:', time)
-                    return true
-                  }
-                  // For today, only filter out past times
-                  const isDisabled = isTimeSlotDisabled(time)
-                  console.log('[DatePicker] Today - slot:', time, 'disabled:', isDisabled, 'showing:', !isDisabled)
-                  return !isDisabled
-                })
                 .map((time) => {
-                  console.log('[DatePicker] Rendering time slot button:', time)
+                  console.log('[DatePicker] Processing time slot:', time)
+                  const isDisabled = isTimeSlotDisabled(time)
+                  console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
                   return (
                     <Button
                       key={time}
                       variant={selectedTime === time ? 'default' : 'outline'}
-                      disabled={isTimeSlotDisabled(time)}
+                      disabled={isDisabled}
                       onClick={() => setSelectedTime(time)}
                       className={cn(
                         'h-10 text-sm shadow-none min-[481px]:h-8 min-[481px]:text-xs md:h-9 md:text-sm md:w-full touch-manipulation',
-                        selectedTime === time && 'text-success-600'
+                        selectedTime === time && 'text-success-600',
+                        isDisabled && 'opacity-50'
                       )}
                     >
                       {formatHHmmTo12h(time)}
