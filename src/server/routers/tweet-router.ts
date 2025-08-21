@@ -1868,11 +1868,12 @@ export const tweetRouter = j.router({
 
       console.log('[enqueueThread] Authentication successful for account:', account.id)
 
-      // Get user's posting window settings
+      // Get user's frequency and posting window settings
       const userRecord = await db
         .select({
           postingWindowStart: userSchema.postingWindowStart,
           postingWindowEnd: userSchema.postingWindowEnd,
+          frequency: userSchema.frequency,
         })
         .from(userSchema)
         .where(eq(userSchema.id, user.id))
@@ -1881,8 +1882,10 @@ export const tweetRouter = j.router({
 
       const postingWindowStart = userRecord?.postingWindowStart ?? 8 // Default 8am
       const postingWindowEnd = userRecord?.postingWindowEnd ?? 18 // Default 6pm
+      const userFrequency = userRecord?.frequency ?? 3 // Default 3 posts per day
 
       console.log('[enqueueThread] User posting window:', postingWindowStart, '-', postingWindowEnd)
+      console.log('[enqueueThread] User frequency:', userFrequency, 'posts per day')
 
       // Get all tweets in the thread
       const threadTweets = await db.query.tweets.findMany({
@@ -1915,28 +1918,41 @@ export const tweetRouter = j.router({
         userNow,
         timezone,
         maxDaysAhead,
-        postingWindowStart,
-        postingWindowEnd,
+        userFrequency,
       }: {
         userNow: Date
         timezone: string
         maxDaysAhead: number
-        postingWindowStart: number
-        postingWindowEnd: number
+        userFrequency: number
       }) {
+        // Get preset slots based on user frequency
+        // 1 post per day: noon (12pm)
+        // 2 posts per day: 10am, 12pm  
+        // 3 posts per day: 10am, 12pm, 2pm
+        let presetSlots: number[]
+        if (userFrequency === 1) {
+          presetSlots = [12] // Just noon
+        } else if (userFrequency === 2) {
+          presetSlots = [10, 12] // 10am and noon
+        } else {
+          presetSlots = [10, 12, 14] // 10am, noon, 2pm (default for 3+ posts)
+        }
+
+        console.log('[enqueueThread] Using preset slots for', userFrequency, 'posts per day:', presetSlots)
+
         for (let dayOffset = 0; dayOffset <= maxDaysAhead; dayOffset++) {
           let checkDay: Date | undefined = undefined
 
           if (dayOffset === 0) checkDay = startOfDay(userNow)
           else checkDay = startOfDay(addDays(userNow, dayOffset))
 
-          // Generate hourly slots within the user's posting window
-          for (let hour = postingWindowStart; hour < postingWindowEnd; hour++) {
+          // Check preset slots for this day
+          for (const hour of presetSlots) {
             const localSlotTime = startOfHour(setHours(checkDay, hour))
             const slotTime = fromZonedTime(localSlotTime, timezone)
 
             if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
-              console.log('[enqueueThread] Found available slot:', slotTime, 'hour:', hour)
+              console.log('[enqueueThread] Found available preset slot:', slotTime, 'hour:', hour)
               return slotTime
             }
           }
@@ -1949,8 +1965,7 @@ export const tweetRouter = j.router({
         userNow, 
         timezone, 
         maxDaysAhead: 90,
-        postingWindowStart,
-        postingWindowEnd 
+        userFrequency 
       })
 
       // console.log('[enqueueThread] Next available slot:', nextSlot)
