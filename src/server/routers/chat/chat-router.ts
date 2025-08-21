@@ -160,33 +160,43 @@ export const chatRouter = j.router({
         const refreshedParts = await Promise.all(message.parts.map(async (part) => {
           // Check if this is a file part with an S3 URL that might be expired
           if (part.type === 'file' && 'url' in part && part.url?.includes('s3.us-east-1.amazonaws.com')) {
-            console.log('[CHAT_HISTORY] Found S3 URL in chat history, checking expiration:', part.url.substring(0, 100) + '...')
+            console.log('[CHAT_HISTORY] Found S3 URL in chat history, regenerating fresh URL...')
             
-            // Check if URL has expired by looking at X-Amz-Date and X-Amz-Expires
-            try {
-              const url = new URL(part.url)
-              const amzDate = url.searchParams.get('X-Amz-Date')
-              const amzExpires = url.searchParams.get('X-Amz-Expires')
-              
-              if (amzDate && amzExpires) {
-                const signedTime = new Date(amzDate.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z'))
-                const expiresInMs = parseInt(amzExpires) * 1000
-                const expirationTime = new Date(signedTime.getTime() + expiresInMs)
+            // Check if we have a permanent file key to regenerate from
+            const fileKey = (part as any)._permanentFileKey || (part as any).fileKey
+            
+            if (fileKey) {
+              try {
+                // Import S3 utilities
+                const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner')
+                const { GetObjectCommand } = await import('@aws-sdk/client-s3')
+                const { s3Client, BUCKET_NAME } = await import('@/lib/s3')
                 
-                if (new Date() > expirationTime) {
-                  console.log('[CHAT_HISTORY] S3 URL expired, removing from chat history to prevent OpenAI errors')
-                  // Return a text part explaining the image was removed due to expiration
-                  return {
-                    type: 'text' as const,
-                    text: '[Image removed - expired]'
-                  }
+                // Generate fresh signed URL
+                const freshUrl = await getSignedUrl(
+                  s3Client,
+                  new GetObjectCommand({ Bucket: BUCKET_NAME, Key: fileKey }),
+                  { expiresIn: 3600 } // 1 hour
+                )
+                
+                console.log('[CHAT_HISTORY] Generated fresh S3 URL for fileKey:', fileKey.substring(0, 50) + '...')
+                return { 
+                  ...part, 
+                  url: freshUrl,
+                  _permanentFileKey: fileKey // Preserve the file key for future regeneration
+                }
+              } catch (error) {
+                console.log('[CHAT_HISTORY] Error regenerating S3 URL, removing to prevent errors:', error)
+                return {
+                  type: 'text' as const,
+                  text: '[Image unavailable - file may have been deleted]'
                 }
               }
-            } catch (error) {
-              console.log('[CHAT_HISTORY] Error parsing S3 URL, removing to be safe:', error)
+            } else {
+              console.log('[CHAT_HISTORY] No permanent file key found, removing expired image')
               return {
                 type: 'text' as const,
-                text: '[Image removed - invalid URL]'
+                text: '[Image removed - no file key available]'
               }
             }
           }

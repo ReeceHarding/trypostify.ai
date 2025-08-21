@@ -101,7 +101,15 @@ export const parseAttachments = async ({
         )
 
         if (type === 'image') {
-          return { mediaType, url: signedUrl, filename: attachment.title, type: 'file', fileKey: attachment.fileKey } as FileUIPart & { fileKey: string }
+          return { 
+            mediaType, 
+            url: signedUrl, 
+            filename: attachment.title, 
+            type: 'file', 
+            fileKey: attachment.fileKey,
+            // Store both URL and fileKey so we can regenerate URL later if needed
+            _permanentFileKey: attachment.fileKey 
+          } as FileUIPart & { fileKey: string; _permanentFileKey: string }
         } else if (type === 'docx') {
           const response = await fetch(signedUrl)
           const buffer = await response.arrayBuffer()
@@ -129,7 +137,13 @@ export const parseAttachments = async ({
             } as TextPart
           }
         } else {
-          return { mediaType, url: signedUrl, type: 'file', fileKey: attachment.fileKey } as FileUIPart & { fileKey: string }
+          return { 
+            mediaType, 
+            url: signedUrl, 
+            type: 'file', 
+            fileKey: attachment.fileKey,
+            _permanentFileKey: attachment.fileKey 
+          } as FileUIPart & { fileKey: string; _permanentFileKey: string }
         }
       } catch (error) {
         console.error('[PARSE_ATTACHMENTS] Error accessing S3 file:', attachment.fileKey, error)
