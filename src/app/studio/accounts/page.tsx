@@ -84,6 +84,129 @@ const TweetCard = ({ name, username, src, text }: TweetCard) => {
   )
 }
 
+const PostsPerDaySettings = () => {
+  const [selectedFrequency, setSelectedFrequency] = useState<number>(3)
+  const queryClient = useQueryClient()
+
+  // Fetch current frequency setting
+  const { data: frequencyData, isPending: isLoadingFrequency } = useQuery({
+    queryKey: ['user-frequency'],
+    queryFn: async () => {
+      const res = await client.settings.getFrequency.$get()
+      return await res.json()
+    },
+  })
+
+  // Update frequency mutation
+  const { mutate: updateFrequency, isPending: isUpdatingFrequency } = useMutation({
+    mutationFn: async (frequency: number) => {
+      const res = await client.settings.updateFrequency.$post({ frequency })
+      return await res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user-frequency'], data)
+      toast.success(`Updated to ${data.frequency} posts per day`)
+      console.log('[ACCOUNTS] Frequency updated successfully:', data.frequency, 'posts per day')
+    },
+    onError: (error: HTTPException) => {
+      toast.error(error.message || 'Failed to update frequency')
+      console.error('[ACCOUNTS] Failed to update frequency:', error)
+    },
+  })
+
+  // Set initial frequency when data loads
+  useEffect(() => {
+    if (frequencyData?.frequency) {
+      setSelectedFrequency(frequencyData.frequency)
+      console.log('[ACCOUNTS] Loaded current frequency:', frequencyData.frequency, 'posts per day')
+    }
+  }, [frequencyData])
+
+  const handleFrequencyChange = (frequency: number) => {
+    console.log('[ACCOUNTS] Changing frequency from', selectedFrequency, 'to', frequency, 'posts per day')
+    setSelectedFrequency(frequency)
+    updateFrequency(frequency)
+  }
+
+  const getSlotDescription = (freq: number) => {
+    if (freq === 1) return 'Noon (12pm)'
+    if (freq === 2) return '10am, 12pm'
+    return '10am, 12pm, 2pm'
+  }
+
+  if (isLoadingFrequency) {
+    return (
+      <div className="bg-white border border-neutral-200 rounded-lg p-4">
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-lg p-4">
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold text-neutral-800">
+            Posts Per Day
+          </h3>
+          <p className="text-sm text-neutral-600">
+            Choose how many posts you want to schedule per day. This affects your queue slot allocation.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3].map((freq) => (
+            <button
+              key={freq}
+              onClick={() => handleFrequencyChange(freq)}
+              disabled={isUpdatingFrequency}
+              className={`
+                relative p-4 rounded-lg border-2 transition-all duration-200
+                ${selectedFrequency === freq
+                  ? 'border-primary bg-primary/5 text-primary'
+                  : 'border-neutral-200 hover:border-neutral-300 text-neutral-700'
+                }
+                ${isUpdatingFrequency ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02]'}
+              `}
+            >
+              {isUpdatingFrequency && selectedFrequency === freq && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
+                  <Loader2 className="size-4 animate-spin text-primary" />
+                </div>
+              )}
+              
+              <div className="text-center space-y-2">
+                <div className="text-2xl font-bold">{freq}</div>
+                <div className="text-sm font-medium">
+                  {freq === 1 ? 'Post' : 'Posts'} per day
+                </div>
+                <div className="text-xs opacity-70">
+                  {getSlotDescription(freq)}
+                </div>
+              </div>
+
+              {selectedFrequency === freq && (
+                <div className="absolute -top-2 -right-2 size-6 bg-primary rounded-full flex items-center justify-center">
+                  <Check className="size-4 text-white" />
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="text-xs text-neutral-500 bg-neutral-50 p-3 rounded-lg">
+          <strong>How it works:</strong> When you click "Queue", your posts will be scheduled to the preset time slots based on your selection. 
+          Once all slots for a day are filled, posts will be scheduled for the next day.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AccountsPage() {
   const [tweetLink, setTweetLink] = useState('')
   const [prompt, setPrompt] = useState('')
@@ -507,6 +630,8 @@ export default function AccountsPage() {
             />
           </div>
         </div>
+
+        <PostsPerDaySettings />
       </div>
 
       <Separator />

@@ -95,6 +95,27 @@ export const settingsRouter = j.router({
     return c.json(postingWindow)
   }),
 
+  getFrequency: privateProcedure.get(async ({ c, ctx }) => {
+    const { user } = ctx
+    
+    console.log('[SETTINGS] Fetching posting frequency for user:', user.email, 'at', new Date().toISOString())
+    
+    const userRecord = await db
+      .select({
+        frequency: userSchema.frequency,
+      })
+      .from(userSchema)
+      .where(eq(userSchema.id, user.id))
+      .limit(1)
+      .then(rows => rows[0])
+
+    const frequency = userRecord?.frequency ?? 3 // Default 3 posts per day
+
+    console.log('[SETTINGS] Retrieved posting frequency:', frequency, 'posts per day')
+    
+    return c.json({ frequency })
+  }),
+
   updatePostingWindow: privateProcedure
     .input(
       z.object({
@@ -130,6 +151,34 @@ export const settingsRouter = j.router({
       return c.json({ 
         success: true, 
         postingWindow: { start, end } 
+      })
+    }),
+
+  updateFrequency: privateProcedure
+    .input(
+      z.object({
+        frequency: z.number().min(1).max(10), // 1-10 posts per day
+      })
+    )
+    .mutation(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { frequency } = input
+
+      console.log('[SETTINGS] Updating posting frequency for user:', user.email, 'frequency:', frequency, 'posts per day at', new Date().toISOString())
+
+      await db
+        .update(userSchema)
+        .set({
+          frequency,
+          updatedAt: new Date(),
+        })
+        .where(eq(userSchema.id, user.id))
+
+      console.log('[SETTINGS] Posting frequency updated successfully to', frequency, 'posts per day')
+
+      return c.json({ 
+        success: true, 
+        frequency 
       })
     }),
 
