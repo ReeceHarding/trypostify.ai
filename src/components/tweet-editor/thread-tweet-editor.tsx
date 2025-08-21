@@ -393,7 +393,17 @@ export default function ThreadTweetEditor({
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content at', new Date().toISOString())
     setHasBeenCleared(true)
-    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([{ id: newTweetId, content: '', media: [] }])
+    
+    // AUTO-FOCUS: Focus the new empty tweet for instant typing
+    setTimeout(() => {
+      const firstTweetRef = tweetRefs.current[newTweetId]
+      if (firstTweetRef) {
+        console.log('[ThreadTweetEditor] Auto-focusing new tweet after post at', new Date().toISOString())
+        firstTweetRef.focus()
+      }
+    }, 100)
 
     try {
       // Post thread in background
@@ -416,6 +426,15 @@ export default function ThreadTweetEditor({
       // ROLLBACK: Restore content if operation failed
       setThreadTweets(currentContent)
       setHasBeenCleared(false)
+      
+      // ROLLBACK FOCUS: Re-focus the first tweet after rollback
+      setTimeout(() => {
+        const firstTweetId = currentContent[0]?.id
+        if (firstTweetId && tweetRefs.current[firstTweetId]) {
+          console.log('[ThreadTweetEditor] Re-focusing original tweet after post rollback at', new Date().toISOString())
+          tweetRefs.current[firstTweetId].focus()
+        }
+      }, 100)
       // Error toast is already handled by mutation onError
     }
   }
@@ -456,7 +475,17 @@ export default function ThreadTweetEditor({
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content for schedule at', new Date().toISOString())
     setHasBeenCleared(true)
-    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([{ id: newTweetId, content: '', media: [] }])
+    
+    // AUTO-FOCUS: Focus the new empty tweet for instant typing
+    setTimeout(() => {
+      const firstTweetRef = tweetRefs.current[newTweetId]
+      if (firstTweetRef) {
+        console.log('[ThreadTweetEditor] Auto-focusing new tweet after schedule at', new Date().toISOString())
+        firstTweetRef.focus()
+      }
+    }, 100)
 
     try {
       // First create the thread in background
@@ -517,6 +546,15 @@ export default function ThreadTweetEditor({
       // ROLLBACK: Restore content if operation failed
       setThreadTweets(currentContent)
       setHasBeenCleared(false)
+      
+      // ROLLBACK FOCUS: Re-focus the first tweet after rollback
+      setTimeout(() => {
+        const firstTweetId = currentContent[0]?.id
+        if (firstTweetId && tweetRefs.current[firstTweetId]) {
+          console.log('[ThreadTweetEditor] Re-focusing original tweet after schedule rollback at', new Date().toISOString())
+          tweetRefs.current[firstTweetId].focus()
+        }
+      }, 100)
       toast.error(error instanceof Error ? error.message : 'Failed to schedule thread')
     }
   }
@@ -538,7 +576,17 @@ export default function ThreadTweetEditor({
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content for queue at', new Date().toISOString())
     setHasBeenCleared(true)
-    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([{ id: newTweetId, content: '', media: [] }])
+    
+    // AUTO-FOCUS: Focus the new empty tweet for instant typing
+    setTimeout(() => {
+      const firstTweetRef = tweetRefs.current[newTweetId]
+      if (firstTweetRef) {
+        console.log('[ThreadTweetEditor] Auto-focusing new tweet after queue at', new Date().toISOString())
+        firstTweetRef.focus()
+      }
+    }, 100)
 
     try {
       // Create thread first in background
@@ -642,6 +690,15 @@ export default function ThreadTweetEditor({
       // ROLLBACK: Restore content if operation failed
       setThreadTweets(currentContent)
       setHasBeenCleared(false)
+      
+      // ROLLBACK FOCUS: Re-focus the first tweet after rollback
+      setTimeout(() => {
+        const firstTweetId = currentContent[0]?.id
+        if (firstTweetId && tweetRefs.current[firstTweetId]) {
+          console.log('[ThreadTweetEditor] Re-focusing original tweet after queue rollback at', new Date().toISOString())
+          tweetRefs.current[firstTweetId].focus()
+        }
+      }, 100)
       toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
     }
   }
