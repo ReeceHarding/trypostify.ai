@@ -1289,7 +1289,6 @@ function ThreadTweetContent({
                                   })
                                   setOpen(isOpen)
                                 }}>
-                                  <Tooltip>
                                     <TooltipTrigger asChild>
                                       <PopoverTrigger asChild>
                                         <button
@@ -1371,15 +1370,14 @@ function ThreadTweetContent({
                                       isPending={isPosting || optimisticActionState === 'schedule'}
                                     />
                                   </PopoverContent>
-                                    <TooltipContent>
-                                      <div className="space-y-1">
-                                        <p>Schedule manually</p>
-                                        <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
                                 </Popover>
-
+                                <TooltipContent>
+                                  <div className="space-y-1">
+                                    <p>Schedule manually</p>
+                                    <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             </TooltipProvider>
                           </div>
                         </div>
