@@ -360,7 +360,20 @@ export const chatRouter = j.router({
             redis.json.get<Account>(`account:${user.email}:${account.id}`),
           ])
 
+          console.log('[CHAT] ===== STYLE RETRIEVAL DEBUG =====')
+          console.log('[CHAT] Style key used:', `style:${user.email}:${account.id}`)
+          console.log('[CHAT] Style retrieved:', !!style)
+          console.log('[CHAT] Style prompt:', style?.prompt ? 'EXISTS' : 'EMPTY')
+          console.log('[CHAT] Style tweets count:', style?.tweets?.length || 0)
+          console.log('[CHAT] Account data retrieved:', !!accountData)
+          console.log('[CHAT] ===== END STYLE RETRIEVAL DEBUG =====')
+
           if (!style || !accountData) {
+            console.log('[CHAT] ERROR: Missing style or account data', { 
+              hasStyle: !!style, 
+              hasAccountData: !!accountData,
+              styleKey: `style:${user.email}:${account.id}`
+            })
             throw new HTTPException(412, { 
               message: 'Account settings not found. Please configure your account settings first.' 
             })

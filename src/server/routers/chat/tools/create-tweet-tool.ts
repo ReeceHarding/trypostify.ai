@@ -66,6 +66,37 @@ export const createTweetTool = (
           fullPrompt += `\n\nExisting tweet to edit:\n${tweetContent}`
         }
 
+        // Log style data for debugging
+        console.log('[CREATE_TWEET_TOOL] ===== STYLE DATA DEBUG =====')
+        console.log('[CREATE_TWEET_TOOL] Style prompt exists:', !!style.prompt)
+        console.log('[CREATE_TWEET_TOOL] Style prompt content:', JSON.stringify(style.prompt))
+        console.log('[CREATE_TWEET_TOOL] Style tweets count:', style.tweets?.length || 0)
+        console.log('[CREATE_TWEET_TOOL] Style tweets preview:', style.tweets?.slice(0, 2).map(t => t.text.substring(0, 50) + '...'))
+        console.log('[CREATE_TWEET_TOOL] Account name for style:', account.name)
+        console.log('[CREATE_TWEET_TOOL] ===== END STYLE DEBUG =====')
+
+        // Build comprehensive style section
+        let styleSection = '\n\n=== CRITICAL WRITING STYLE REQUIREMENTS ===\n'
+        styleSection += `You are writing as ${account.name} (@${account.username}). Match their exact writing style.\n\n`
+        
+        if (style.prompt && style.prompt.trim()) {
+          styleSection += `CUSTOM STYLE INSTRUCTIONS (HIGHEST PRIORITY):\n${style.prompt}\n\n`
+        }
+        
+        if (style.tweets && style.tweets.length > 0) {
+          styleSection += `REFERENCE TWEETS TO MATCH EXACTLY:\n`
+          styleSection += `Study these tweets carefully and mirror the tone, vocabulary, punctuation, and structure:\n\n`
+          style.tweets.forEach((tweet, i) => {
+            styleSection += `Example ${i + 1}: "${tweet.text}"\n\n`
+          })
+        }
+        
+        if (!style.prompt?.trim() && (!style.tweets || style.tweets.length === 0)) {
+          styleSection += `WARNING: No custom style data available. Use natural, engaging Twitter style.\n\n`
+        }
+        
+        styleSection += '=== END STYLE REQUIREMENTS ===\n\n'
+
         const systemPrompt = `${editToolSystemPrompt({ name: account.name, hasXPremium })}
 
 ${conversationContext ? `CONVERSATION CONTEXT:
@@ -74,9 +105,7 @@ ${conversationContext}
 Use this context to understand what the user is referring to when creating the tweet.
 ` : ''}
 
-STYLE GUIDE:
-${style.prompt ? `Custom Instructions: ${style.prompt}\n` : ''}
-${style.tweets && style.tweets.length > 0 ? `\nExample tweets that demonstrate the writing style to follow:\n${style.tweets.map((t, i) => `${i + 1}. ${t.text}`).join('\n')}\n` : ''}
+${styleSection}
 
 CHARACTER LIMIT: ${hasXPremium ? 25000 : 280}`
 

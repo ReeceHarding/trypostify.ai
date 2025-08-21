@@ -49,10 +49,22 @@ export const styleRouter = j.router({
     }
 
     let style: Style | null = null
+    const styleKey = `style:${user.email}:${account?.id}`
 
-    style = await redis.json.get<Style>(`style:${user.email}:${account?.id}`)
+    console.log('[STYLE_ROUTER] ===== STYLE GET DEBUG =====')
+    console.log('[STYLE_ROUTER] Style key:', styleKey)
+    console.log('[STYLE_ROUTER] User email:', user.email)
+    console.log('[STYLE_ROUTER] Account ID:', account?.id)
+
+    style = await redis.json.get<Style>(styleKey)
+
+    console.log('[STYLE_ROUTER] Style retrieved:', !!style)
+    console.log('[STYLE_ROUTER] Style tweets count:', style?.tweets?.length || 0)
+    console.log('[STYLE_ROUTER] Style prompt exists:', !!style?.prompt)
+    console.log('[STYLE_ROUTER] ===== END STYLE GET DEBUG =====')
 
     if (!style) {
+      console.log('[STYLE_ROUTER] No style found, returning empty style')
       return c.json({
         tweets: [] as Tweet[],
         prompt: null,
@@ -217,15 +229,31 @@ export const styleRouter = j.router({
       }
       const styleKey = `style:${user.email}:${account.id}`
 
+      console.log('[STYLE_ROUTER] ===== STYLE SAVE DEBUG =====')
+      console.log('[STYLE_ROUTER] Saving prompt to key:', styleKey)
+      console.log('[STYLE_ROUTER] Prompt content:', JSON.stringify(prompt))
+      console.log('[STYLE_ROUTER] Prompt length:', prompt?.length || 0)
+
       if (typeof prompt !== 'undefined') {
         const exists = await redis.exists(styleKey)
+        console.log('[STYLE_ROUTER] Style key exists:', exists)
+        
         if (!exists) {
           await redis.json.set(styleKey, '$', { tweets: [], prompt })
+          console.log('[STYLE_ROUTER] Created new style with prompt')
         } else {
           await redis.json.merge(styleKey, '$', { prompt })
+          console.log('[STYLE_ROUTER] Updated existing style prompt')
         }
+        
+        // Verify the save
+        const verifyStyle = await redis.json.get<any>(styleKey)
+        console.log('[STYLE_ROUTER] Verification - prompt saved:', verifyStyle?.prompt === prompt)
+        console.log('[STYLE_ROUTER] Verification - tweets count:', verifyStyle?.tweets?.length || 0)
       }
-
+      
+      console.log('[STYLE_ROUTER] ===== END STYLE SAVE DEBUG =====')
+      
       return c.json({
         success: true,
       })

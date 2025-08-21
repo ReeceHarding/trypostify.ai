@@ -460,14 +460,21 @@ export const authRouter = j.router({
       expansions: ['author_id'],
     })
 
-    // NEW
+    // NEW - Initialize style data
     const styleKey = `style:${user.email}:${dbAccountId}`
 
+    console.log('[AUTH] ===== STYLE INITIALIZATION DEBUG =====')
+    console.log('[AUTH] Style key:', styleKey)
+    console.log('[AUTH] User tweets available:', !!userTweets.data.data)
+    console.log('[AUTH] User tweets count:', userTweets.data.data?.length || 0)
+
     if (!userTweets.data.data) {
+      console.log('[AUTH] No user tweets found, using default tweets')
       await redis.json.set(styleKey, '$', {
         tweets: DEFAULT_TWEETS,
         prompt: '',
       })
+      console.log('[AUTH] Set default style with', DEFAULT_TWEETS.length, 'default tweets')
     } else {
       const filteredTweets = userTweets.data.data?.filter(
         (tweet) =>
@@ -515,7 +522,15 @@ export const authRouter = j.router({
         tweets: formattedTweets.reverse(),
         prompt: '',
       })
+      console.log('[AUTH] Set style with', formattedTweets.length, 'user tweets')
     }
+    
+    console.log('[AUTH] ===== END STYLE INITIALIZATION DEBUG =====')
+    
+    // Verify style was set correctly
+    const verifyStyle = await redis.json.get<any>(styleKey)
+    console.log('[AUTH] Style verification - tweets count:', verifyStyle?.tweets?.length || 0)
+    console.log('[AUTH] Style verification - prompt exists:', !!verifyStyle?.prompt)
 
     const hasExistingExamples = await db.query.knowledgeDocument.findFirst({
       where: and(
@@ -527,7 +542,7 @@ export const authRouter = j.router({
     if (!Boolean(hasExistingExamples)) {
       await db.insert(knowledgeDocument).values([
         {
-          userId: userId,
+          userId: user.id,
           fileName: '',
           type: 'url',
           s3Key: '',
@@ -538,7 +553,7 @@ export const authRouter = j.router({
           sourceUrl: 'https://zod.dev/v4',
         },
         {
-          userId: userId,
+          userId: user.id,
           fileName: 'react-hooks-guide.txt',
           type: 'manual',
           s3Key: '',
