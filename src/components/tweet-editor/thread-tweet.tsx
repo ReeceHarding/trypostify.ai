@@ -1289,30 +1289,33 @@ function ThreadTweetContent({
                                   })
                                   setOpen(isOpen)
                                 }}>
-                                  <TooltipTrigger asChild>
-                                    <PopoverTrigger asChild>
-                                      <DuolingoButton
-                                        loading={isPosting || optimisticActionState === 'schedule'}
-                                        disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
-                                        size="icon"
-                                        className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
-                                        onClick={(event) => {
-                                          const triggerElement = event.currentTarget
-                                          console.log('[ThreadTweet] Schedule button clicked with FIXED positioning, button details:', {
-                                            triggerRect: triggerElement.getBoundingClientRect(),
-                                            triggerElement: triggerElement,
-                                            dataSlotQuery: document.querySelector('[data-slot="popover-trigger"]')?.getBoundingClientRect(),
-                                            viewportHeight: window.innerHeight,
-                                            scrollY: window.scrollY,
-                                            timestamp: new Date().toISOString()
-                                          })
-                                        }}
-                                      >
-                                        <ChevronDown className="size-4" />
-                                        <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
-                                      </DuolingoButton>
-                                    </PopoverTrigger>
-                                  </TooltipTrigger>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <PopoverTrigger asChild>
+                                        <button
+                                          className={cn(
+                                            "font-semibold rounded-lg relative transition-transform active:translate-y-0.5 active:shadow-none focus:outline-none flex items-center justify-center",
+                                            "bg-white border bg-clip-padding text-neutral-700 border-b-2 border-neutral-300 hover:bg-neutral-50 shadow-[0_3px_0_hsl(var(--neutral-300))] focus:ring-neutral-300",
+                                            "h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
+                                          )}
+                                          disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
+                                          onClick={(event) => {
+                                            const triggerElement = event.currentTarget
+                                            console.log('[ThreadTweet] Schedule button clicked with FIXED positioning, button details:', {
+                                              triggerRect: triggerElement.getBoundingClientRect(),
+                                              triggerElement: triggerElement,
+                                              dataSlotQuery: document.querySelector('[data-slot="popover-trigger"]')?.getBoundingClientRect(),
+                                              viewportHeight: window.innerHeight,
+                                              scrollY: window.scrollY,
+                                              timestamp: new Date().toISOString()
+                                            })
+                                          }}
+                                        >
+                                          <ChevronDown className="size-4" />
+                                          <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
+                                        </button>
+                                      </PopoverTrigger>
+                                    </TooltipTrigger>
                                   <PopoverContent 
                                     side="bottom"
                                     align="center"
@@ -1368,14 +1371,14 @@ function ThreadTweetContent({
                                       isPending={isPosting || optimisticActionState === 'schedule'}
                                     />
                                   </PopoverContent>
+                                    <TooltipContent>
+                                      <div className="space-y-1">
+                                        <p>Schedule manually</p>
+                                        <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 </Popover>
-                                <TooltipContent>
-                                  <div className="space-y-1">
-                                    <p>Schedule manually</p>
-                                    <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
 
                             </TooltipProvider>
                           </div>
