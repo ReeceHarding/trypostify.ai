@@ -709,11 +709,10 @@ function ThreadTweetContent({
           console.log(`[ThreadTweet] Post hotkey triggered at ${new Date().toISOString()}`)
           setOptimisticActionState('post')
           showAction('post')
-          // Use requestAnimationFrame for immediate UI update
-          requestAnimationFrame(() => {
-            handlePostClick()
-            setTimeout(() => setOptimisticActionState(null), 300)
-          })
+          // Trigger post action immediately for instant UI feedback
+          handlePostClick()
+          // Clear optimistic state after brief feedback period
+          setTimeout(() => setOptimisticActionState(null), 500)
         }
         // Queue: Cmd/Ctrl + E (for "Enqueue")
         else if (actualMetaKey && !e.shiftKey && e.key.toLowerCase() === 'e' && onQueueThread) {
@@ -721,11 +720,10 @@ function ThreadTweetContent({
           console.log(`[ThreadTweet] Queue hotkey triggered at ${new Date().toISOString()}`)
           setOptimisticActionState('queue')
           showAction('queue')
-          // Use requestAnimationFrame for immediate UI update
-          requestAnimationFrame(() => {
-            onQueueThread()
-            setTimeout(() => setOptimisticActionState(null), 300)
-          })
+          // Trigger queue action immediately for instant UI feedback
+          onQueueThread()
+          // Clear optimistic state after brief feedback period
+          setTimeout(() => setOptimisticActionState(null), 500)
         }
         // Schedule: Cmd/Ctrl + Shift + S (avoids conflict with browser Save)
         else if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 's' && onScheduleThread) {
@@ -733,11 +731,10 @@ function ThreadTweetContent({
           console.log(`[ThreadTweet] Schedule hotkey triggered at ${new Date().toISOString()}`)
           setOptimisticActionState('schedule')
           showAction('schedule')
-          // Use requestAnimationFrame for immediate UI update
-          requestAnimationFrame(() => {
-            setOpen(true)
-            setTimeout(() => setOptimisticActionState(null), 300)
-          })
+          // Open schedule modal immediately for instant UI feedback
+          setOpen(true)
+          // Clear optimistic state after brief feedback period
+          setTimeout(() => setOptimisticActionState(null), 500)
         }
       }
 
@@ -770,9 +767,13 @@ function ThreadTweetContent({
   }, [isFirstTweet, editMode, isMac, onPostThread, onQueueThread, onScheduleThread, onUpdateThread, onCancelEdit, onRemove, canDelete])
 
   const handlePostClick = () => {
+    console.log(`[ThreadTweet] Post button clicked at ${new Date().toISOString()}`)
     if (skipPostConfirmation) {
       if (onPostThread) {
+        // Provide immediate optimistic feedback for direct posting
+        setOptimisticActionState('post')
         onPostThread()
+        setTimeout(() => setOptimisticActionState(null), 500)
       }
     } else {
       setShowPostConfirmModal(true)
@@ -780,9 +781,13 @@ function ThreadTweetContent({
   }
 
   const handleConfirmPost = () => {
+    console.log(`[ThreadTweet] Post confirmed via modal at ${new Date().toISOString()}`)
     setShowPostConfirmModal(false)
     if (onPostThread) {
+      // Provide immediate optimistic feedback for confirmed posting
+      setOptimisticActionState('post')
       onPostThread()
+      setTimeout(() => setOptimisticActionState(null), 500)
     }
   }
 
@@ -1258,11 +1263,12 @@ function ThreadTweetContent({
                                     className="h-11 px-3 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
+                                        console.log(`[ThreadTweet] Queue button clicked at ${new Date().toISOString()}`)
                                         setOptimisticActionState('queue')
                                         showAction('queue')
                                         onQueueThread()
-                                        // Clear optimistic state after action completes
-                                        setTimeout(() => setOptimisticActionState(null), 300)
+                                        // Clear optimistic state after feedback period
+                                        setTimeout(() => setOptimisticActionState(null), 500)
                                       }
                                     }}
                                   >
@@ -1319,22 +1325,24 @@ function ThreadTweetContent({
                                             combinedIso: scheduled.toISOString(),
                                           })
                                           if (onScheduleThread) {
+                                            console.log(`[ThreadTweet] Schedule button clicked at ${new Date().toISOString()}`)
                                             setOptimisticActionState('schedule')
                                             showAction('schedule')
                                             onScheduleThread(scheduled)
                                             setOpen(false)
-                                            // Clear optimistic state after action completes
-                                            setTimeout(() => setOptimisticActionState(null), 300)
+                                            // Clear optimistic state after feedback period
+                                            setTimeout(() => setOptimisticActionState(null), 500)
                                           }
                                         } catch (e) {
                                           console.error('[ThreadTweet] onSchedule combine error', e)
                                           if (onScheduleThread) {
+                                            console.log(`[ThreadTweet] Schedule fallback button clicked at ${new Date().toISOString()}`)
                                             setOptimisticActionState('schedule')
                                             showAction('schedule')
                                             onScheduleThread(date)
                                             setOpen(false)
-                                            // Clear optimistic state after action completes
-                                            setTimeout(() => setOptimisticActionState(null), 300)
+                                            // Clear optimistic state after feedback period
+                                            setTimeout(() => setOptimisticActionState(null), 500)
                                           }
                                         }
                                       }}

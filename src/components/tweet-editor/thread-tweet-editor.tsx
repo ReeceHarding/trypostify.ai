@@ -230,6 +230,7 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
+      console.log('[postThreadMutation] Success callback triggered at', new Date().toISOString())
       toast.success(
         <div className="flex items-center gap-2">
           <p>Tweet posted!</p>
@@ -247,9 +248,7 @@ export default function ThreadTweetEditor({
       )
       fire()
       
-      // Clear the thread content only after successful posting
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
-      
+      // Note: Content clearing is now handled optimistically in handlePostThread
       // Note: Twitter URL available in data.threadUrl if needed for future features
     },
     onError: (error: any) => {
@@ -287,11 +286,11 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      // Clear the thread content only after successful scheduling.
+      console.log('[scheduleThreadMutation] Success callback triggered at', new Date().toISOString())
+      // Note: Content clearing is now handled optimistically in calling functions
       // Note: We intentionally do NOT show a toast here to avoid duplication,
       // since callers (handleScheduleThread / handleQueueThread) present the
       // single source of truth toast with contextual details.
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
     },
   })
 
@@ -385,28 +384,39 @@ export default function ThreadTweetEditor({
       return
     }
 
+    console.log('[ThreadTweetEditor] Starting optimistic post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
+    // Store current content for potential rollback
+    const currentContent = [...threadTweets]
+    
+    // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
+    console.log('[ThreadTweetEditor] Optimistically clearing UI content at', new Date().toISOString())
+    setHasBeenCleared(true)
+    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+
     try {
-      // Post thread immediately with combined mutation
+      // Post thread in background
+      console.log('[ThreadTweetEditor] Starting background post operation at', new Date().toISOString())
       const result = await postThreadMutation.mutateAsync(
-        threadTweets.map((tweet, index) => ({
+        currentContent.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
         }))
       )
       
-      // Clear content immediately after successful post
-      setHasBeenCleared(true)
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
-      
+      console.log('[ThreadTweetEditor] Background post operation completed successfully at', new Date().toISOString())
       posthog.capture('thread_posted', {
-        tweet_count: threadTweets.length,
+        tweet_count: currentContent.length,
         thread_id: result.threadId,
       })
     } catch (error) {
-      // Already handled by mutation onError
+      console.error('[ThreadTweetEditor] Background post operation failed, rolling back UI at', new Date().toISOString(), error)
+      // ROLLBACK: Restore content if operation failed
+      setThreadTweets(currentContent)
+      setHasBeenCleared(false)
+      // Error toast is already handled by mutation onError
     }
   }
 
@@ -421,7 +431,7 @@ export default function ThreadTweetEditor({
       return
     }
 
-    console.log('[ThreadTweetEditor] Scheduling thread:', {
+    console.log('[ThreadTweetEditor] Starting optimistic schedule flow at', new Date().toISOString(), {
       preScheduleTime: preScheduleTime?.toISOString(),
       providedDate: scheduledDate?.toISOString(),
       finalDate: finalScheduleDate.toISOString(),
@@ -440,10 +450,19 @@ export default function ThreadTweetEditor({
       from_empty_slot: !!preScheduleTime
     })
 
+    // Store current content for potential rollback
+    const currentContent = [...threadTweets]
+    
+    // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
+    console.log('[ThreadTweetEditor] Optimistically clearing UI content for schedule at', new Date().toISOString())
+    setHasBeenCleared(true)
+    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+
     try {
-      // First create the thread
+      // First create the thread in background
+      console.log('[ThreadTweetEditor] Starting background schedule operation at', new Date().toISOString())
       const createResult = await client.tweet.createThread.$post({
-        tweets: threadTweets.map((tweet, index) => ({
+        tweets: currentContent.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
@@ -462,8 +481,10 @@ export default function ThreadTweetEditor({
         scheduledUnix: Math.floor(finalScheduleDate.getTime() / 1000),
       })
       
+      console.log('[ThreadTweetEditor] Background schedule operation completed successfully at', new Date().toISOString())
+      
       posthog.capture('thread_scheduled', {
-        tweet_count: threadTweets.length,
+        tweet_count: currentContent.length,
         thread_id: threadId,
         scheduled_for: finalScheduleDate.toISOString(),
         from_empty_slot: !!preScheduleTime
@@ -492,6 +513,10 @@ export default function ThreadTweetEditor({
         window.history.pushState({}, '', url.toString())
       }
     } catch (error) {
+      console.error('[ThreadTweetEditor] Background schedule operation failed, rolling back UI at', new Date().toISOString(), error)
+      // ROLLBACK: Restore content if operation failed
+      setThreadTweets(currentContent)
+      setHasBeenCleared(false)
       toast.error(error instanceof Error ? error.message : 'Failed to schedule thread')
     }
   }
@@ -504,12 +529,22 @@ export default function ThreadTweetEditor({
       return
     }
 
+    console.log('[ThreadTweetEditor] Starting optimistic queue flow at', new Date().toISOString())
     posthog.capture('thread_queue_started', { tweet_count: threadTweets.length })
 
+    // Store current content for potential rollback
+    const currentContent = [...threadTweets]
+    
+    // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
+    console.log('[ThreadTweetEditor] Optimistically clearing UI content for queue at', new Date().toISOString())
+    setHasBeenCleared(true)
+    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+
     try {
-      // Create thread first
+      // Create thread first in background
+      console.log('[ThreadTweetEditor] Starting background queue operation at', new Date().toISOString())
       const createResult = await client.tweet.createThread.$post({
-        tweets: threadTweets.map((tweet, index) => ({
+        tweets: currentContent.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
@@ -546,15 +581,13 @@ export default function ThreadTweetEditor({
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
       queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
       
-      // Clear content immediately after successful operation
-      setHasBeenCleared(true)
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      console.log('[ThreadTweetEditor] Background queue operation completed successfully at', new Date().toISOString())
       
       if (preScheduleTime) {
         // Scheduled to specific time slot
         posthog.capture('thread_scheduled', {
           thread_id: threadId,
-          tweet_count: threadTweets.length,
+          tweet_count: currentContent.length,
           scheduled_for: preScheduleTime.toISOString(),
           from_empty_slot: true
         })
@@ -589,7 +622,7 @@ export default function ThreadTweetEditor({
         // Queued to next available slot
         posthog.capture('thread_queued', {
           thread_id: threadId,
-          tweet_count: threadTweets.length,
+          tweet_count: currentContent.length,
         })
         
         toast.success(
@@ -605,6 +638,10 @@ export default function ThreadTweetEditor({
         )
       }
     } catch (error) {
+      console.error('[ThreadTweetEditor] Background queue operation failed, rolling back UI at', new Date().toISOString(), error)
+      // ROLLBACK: Restore content if operation failed
+      setThreadTweets(currentContent)
+      setHasBeenCleared(false)
       toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
     }
   }
