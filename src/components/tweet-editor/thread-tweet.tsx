@@ -1309,9 +1309,9 @@ function ThreadTweetContent({
                                               timestamp: new Date().toISOString()
                                             })
                                           }}
+                                          aria-label="Schedule manually"
                                         >
                                           <ChevronDown className="size-4" />
-                                          <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
                                         </button>
                                       </PopoverTrigger>
                                     </TooltipTrigger>
