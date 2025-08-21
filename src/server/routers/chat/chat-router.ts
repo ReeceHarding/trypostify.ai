@@ -158,61 +158,40 @@ export const chatRouter = j.router({
         if (!message.parts) return message;
         
         const refreshedParts = await Promise.all(message.parts.map(async (part) => {
-          // Check if this is a file part with an image URL that might be expired
-          if (part.type === 'file' && 'url' in part && part.url && 'fileKey' in part && part.fileKey && typeof part.fileKey === 'string') {
+          // Check if this is a file part with an S3 URL that might be expired
+          if (part.type === 'file' && 'url' in part && part.url?.includes('s3.us-east-1.amazonaws.com')) {
+            console.log('[CHAT_HISTORY] Found S3 URL in chat history, checking expiration:', part.url.substring(0, 100) + '...')
+            
+            // Check if URL has expired by looking at X-Amz-Date and X-Amz-Expires
             try {
-              // Check if URL is expired by looking at the expiration time in the URL
-              const url = new URL(part.url);
-              const expiresParam = url.searchParams.get('X-Amz-Expires');
-              const dateParam = url.searchParams.get('X-Amz-Date');
+              const url = new URL(part.url)
+              const amzDate = url.searchParams.get('X-Amz-Date')
+              const amzExpires = url.searchParams.get('X-Amz-Expires')
               
-              console.log('[CHAT_HISTORY] Checking S3 URL expiration:', {
-                fileKey: part.fileKey,
-                dateParam,
-                expiresParam,
-                currentTime: new Date().toISOString()
-              });
-              
-              if (expiresParam && dateParam) {
-                // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
-                const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
-                const signedDate = new Date(formattedDate);
-                const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
+              if (amzDate && amzExpires) {
+                const signedTime = new Date(amzDate.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z'))
+                const expiresInMs = parseInt(amzExpires) * 1000
+                const expirationTime = new Date(signedTime.getTime() + expiresInMs)
                 
-                console.log('[CHAT_HISTORY] URL expiration details:', {
-                  formattedDate,
-                  signedDate: signedDate.toISOString(),
-                  expirationDate: expirationDate.toISOString(),
-                  isExpired: expirationDate.getTime() < Date.now(),
-                  fileKey: part.fileKey
-                });
-                
-                // If URL expires within the next 5 minutes, regenerate it
-                if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
-                  console.log('[CHAT_HISTORY] Regenerating expired S3 URL for fileKey:', part.fileKey);
-                  
-                  // Import S3 utilities
-                  const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-                  const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-                  const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
-                  
-                  // Generate fresh signed URL
-                  const freshUrl = await getSignedUrl(
-                    s3Client,
-                    new GetObjectCommand({ Bucket: BUCKET_NAME, Key: part.fileKey }),
-                    { expiresIn: 3600 } // 1 hour
-                  );
-                  
-                  console.log('[CHAT_HISTORY] Generated fresh S3 URL for fileKey:', part.fileKey);
-                  return { ...part, url: freshUrl };
+                if (new Date() > expirationTime) {
+                  console.log('[CHAT_HISTORY] S3 URL expired, removing from chat history to prevent OpenAI errors')
+                  // Return a text part explaining the image was removed due to expiration
+                  return {
+                    type: 'text' as const,
+                    text: '[Image removed - expired]'
+                  }
                 }
               }
             } catch (error) {
-              console.error('[CHAT_HISTORY] Error checking/regenerating S3 URL:', error);
-              // If we can't regenerate, remove the file part to prevent OpenAI errors
-              return null;
+              console.log('[CHAT_HISTORY] Error parsing S3 URL, removing to be safe:', error)
+              return {
+                type: 'text' as const,
+                text: '[Image removed - invalid URL]'
+              }
             }
           }
+          
+
           return part;
         }));
         
@@ -367,9 +346,10 @@ export const chatRouter = j.router({
           // Check if this is an S3 URL download error from OpenAI
           const errorMessage = error instanceof Error ? error.message : 'Something went wrong.'
           if (errorMessage.includes('Error while downloading') && errorMessage.includes('s3.us-east-1.amazonaws.com')) {
-            console.log('[CHAT_ROUTER] S3 URL download error detected, providing fallback response')
+            console.log('[CHAT_ROUTER] S3 URL download error detected - this should have been prevented by URL filtering')
+            console.log('[CHAT_ROUTER] Please check the chat history filtering logic')
             // Return a helpful message instead of throwing
-            return 'I encountered an issue processing the uploaded image. Please try uploading the image again or continue without it.'
+            return 'I encountered an issue with an expired image from your chat history. The image has been removed to prevent future errors.'
           }
 
           throw new HTTPException(500, {
