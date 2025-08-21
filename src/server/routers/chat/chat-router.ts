@@ -448,7 +448,61 @@ export const chatRouter = j.router({
               if (hasImage) {
                 // For vision models, convert the last message to include image format
                 console.log('[CHAT_ROUTER] Using vision model path with images')
-                const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
+                
+                // Validate and potentially regenerate URLs in historical messages before converting
+                const historicalMessages = messages.slice(0, -1);
+                const validatedHistoricalMessages = await Promise.all(historicalMessages.map(async (msg) => {
+                  if (!msg.parts) return msg;
+                  
+                  const validatedParts = await Promise.all(msg.parts.map(async (part) => {
+                    // Check if this is a file part with an image URL that might be expired
+                    if (part.type === 'file' && 'url' in part && part.url && 'fileKey' in part && part.fileKey && typeof part.fileKey === 'string') {
+                      try {
+                        // Check if URL is expired by looking at the expiration time in the URL
+                        const url = new URL(part.url);
+                        const expiresParam = url.searchParams.get('X-Amz-Expires');
+                        const dateParam = url.searchParams.get('X-Amz-Date');
+                        
+                        if (expiresParam && dateParam) {
+                          const expirationDate = new Date(dateParam);
+                          expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                          
+                          // If URL expires within the next 5 minutes, regenerate it
+                          if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                            console.log('[CHAT_ROUTER] Regenerating expired S3 URL in historical message for fileKey:', part.fileKey);
+                            
+                            // Import S3 utilities
+                            const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                            const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                            const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                            
+                            // Generate fresh signed URL
+                            const freshUrl = await getSignedUrl(
+                              s3Client,
+                              new GetObjectCommand({ Bucket: BUCKET_NAME, Key: part.fileKey }),
+                              { expiresIn: 3600 } // 1 hour
+                            );
+                            
+                            console.log('[CHAT_ROUTER] Generated fresh S3 URL in historical message for fileKey:', part.fileKey);
+                            return { ...part, url: freshUrl };
+                          }
+                        }
+                        return part;
+                      } catch (error) {
+                        console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL in historical message:', error);
+                        // If we can't validate/regenerate, exclude this image to prevent OpenAI errors
+                        return null;
+                      }
+                    }
+                    return part;
+                  }));
+                  
+                  // Filter out any null parts (failed URL regenerations)
+                  const validParts = validatedParts.filter(Boolean);
+                  return { ...msg, parts: validParts };
+                }));
+                
+                const modelMessages = convertToModelMessages(validatedHistoricalMessages as any)
                 
                 // Validate and potentially regenerate image URLs before sending to OpenAI
                 const validatedImageParts = await Promise.all(imageFileParts.map(async (p: any) => {
@@ -496,9 +550,9 @@ export const chatRouter = j.router({
                 const imageParts = validatedImageParts
                   .filter(Boolean)
                   .map((p: any) => ({
-                    type: 'image' as const,
-                    image: p.url,
-                  }))
+                  type: 'image' as const,
+                  image: p.url,
+                }))
 
                 // Limit history to the last few messages to reduce prompt size/latency
                 const limitedModelMessages = modelMessages.slice(-12)
@@ -526,8 +580,60 @@ export const chatRouter = j.router({
                 console.log('[CHAT_ROUTER] Standard model - final user message:', content.toString().substring(0, 200))
                 console.log('[CHAT_ROUTER] Available tools:', Object.keys({ readWebsiteContent, writeTweet }))
                 
-                // Limit history to the last few messages to reduce prompt size/latency
-                const limited = messages.slice(-12) as any
+                // Validate and potentially regenerate URLs in historical messages before converting (non-vision)
+                const historicalMessages = messages.slice(-12);
+                const validatedHistoricalMessages = await Promise.all(historicalMessages.map(async (msg) => {
+                  if (!msg.parts) return msg;
+                  
+                  const validatedParts = await Promise.all(msg.parts.map(async (part) => {
+                    // Check if this is a file part with an image URL that might be expired
+                    if (part.type === 'file' && 'url' in part && part.url && 'fileKey' in part && part.fileKey && typeof part.fileKey === 'string') {
+                      try {
+                        // Check if URL is expired by looking at the expiration time in the URL
+                        const url = new URL(part.url);
+                        const expiresParam = url.searchParams.get('X-Amz-Expires');
+                        const dateParam = url.searchParams.get('X-Amz-Date');
+                        
+                        if (expiresParam && dateParam) {
+                          const expirationDate = new Date(dateParam);
+                          expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                          
+                          // If URL expires within the next 5 minutes, regenerate it
+                          if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                            console.log('[CHAT_ROUTER] Regenerating expired S3 URL in non-vision historical message for fileKey:', part.fileKey);
+                            
+                            // Import S3 utilities
+                            const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                            const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                            const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                            
+                            // Generate fresh signed URL
+                            const freshUrl = await getSignedUrl(
+                              s3Client,
+                              new GetObjectCommand({ Bucket: BUCKET_NAME, Key: part.fileKey }),
+                              { expiresIn: 3600 } // 1 hour
+                            );
+                            
+                            console.log('[CHAT_ROUTER] Generated fresh S3 URL in non-vision historical message for fileKey:', part.fileKey);
+                            return { ...part, url: freshUrl };
+                          }
+                        }
+                        return part;
+                      } catch (error) {
+                        console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL in non-vision historical message:', error);
+                        // If we can't validate/regenerate, exclude this image to prevent OpenAI errors
+                        return null;
+                      }
+                    }
+                    return part;
+                  }));
+                  
+                  // Filter out any null parts (failed URL regenerations)
+                  const validParts = validatedParts.filter(Boolean);
+                  return { ...msg, parts: validParts };
+                }));
+                
+                const limited = validatedHistoricalMessages as any
                 console.log('[CHAT_ROUTER] Standard model - message count:', limited.length)
                 
                 return streamText({
@@ -546,7 +652,60 @@ export const chatRouter = j.router({
             console.error(`[${new Date().toISOString()}] [chat-router] primary model failed, retrying with @ai-sdk/openai. errorName=${err?.name} message=${err?.message}`)
             console.log('[CHAT_ROUTER] Attempting fallback with identical system prompt')
             if (hasImage) {
-              const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
+              // Validate and potentially regenerate URLs in historical messages before converting (fallback vision)
+              const historicalMessages = messages.slice(0, -1);
+              const validatedHistoricalMessages = await Promise.all(historicalMessages.map(async (msg) => {
+                if (!msg.parts) return msg;
+                
+                const validatedParts = await Promise.all(msg.parts.map(async (part) => {
+                  // Check if this is a file part with an image URL that might be expired
+                  if (part.type === 'file' && 'url' in part && part.url && 'fileKey' in part && part.fileKey && typeof part.fileKey === 'string') {
+                    try {
+                      // Check if URL is expired by looking at the expiration time in the URL
+                      const url = new URL(part.url);
+                      const expiresParam = url.searchParams.get('X-Amz-Expires');
+                      const dateParam = url.searchParams.get('X-Amz-Date');
+                      
+                      if (expiresParam && dateParam) {
+                        const expirationDate = new Date(dateParam);
+                        expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                        
+                        // If URL expires within the next 5 minutes, regenerate it
+                        if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                          console.log('[CHAT_ROUTER] Regenerating expired S3 URL in fallback vision historical message for fileKey:', part.fileKey);
+                          
+                          // Import S3 utilities
+                          const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                          const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                          const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                          
+                          // Generate fresh signed URL
+                          const freshUrl = await getSignedUrl(
+                            s3Client,
+                            new GetObjectCommand({ Bucket: BUCKET_NAME, Key: part.fileKey }),
+                            { expiresIn: 3600 } // 1 hour
+                          );
+                          
+                          console.log('[CHAT_ROUTER] Generated fresh S3 URL in fallback vision historical message for fileKey:', part.fileKey);
+                          return { ...part, url: freshUrl };
+                        }
+                      }
+                      return part;
+                    } catch (error) {
+                      console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL in fallback vision historical message:', error);
+                      // If we can't validate/regenerate, exclude this image to prevent OpenAI errors
+                      return null;
+                    }
+                  }
+                  return part;
+                }));
+                
+                // Filter out any null parts (failed URL regenerations)
+                const validParts = validatedParts.filter(Boolean);
+                return { ...msg, parts: validParts };
+              }));
+              
+              const modelMessages = convertToModelMessages(validatedHistoricalMessages as any)
               
               // Validate and potentially regenerate image URLs before sending to OpenAI (fallback)
               const validatedImageParts = await Promise.all(imageFileParts.map(async (p: any) => {
@@ -594,9 +753,9 @@ export const chatRouter = j.router({
               const imageParts = validatedImageParts
                 .filter(Boolean)
                 .map((p: any) => ({
-                  type: 'image' as const,
-                  image: p.url,
-                }))
+                type: 'image' as const,
+                image: p.url,
+              }))
               const limitedModelMessages = modelMessages.slice(-8)
               console.log('[CHAT_ROUTER] Starting vision streamText call with tools')
               result = await streamText({
@@ -617,7 +776,60 @@ export const chatRouter = j.router({
               })
               console.log('[CHAT_ROUTER] Vision streamText call completed')
             } else {
-              const limited = messages.slice(-8) as any
+              // Validate and potentially regenerate URLs in historical messages before converting (fallback non-vision)
+              const historicalMessages = messages.slice(-8);
+              const validatedHistoricalMessages = await Promise.all(historicalMessages.map(async (msg) => {
+                if (!msg.parts) return msg;
+                
+                const validatedParts = await Promise.all(msg.parts.map(async (part) => {
+                  // Check if this is a file part with an image URL that might be expired
+                  if (part.type === 'file' && 'url' in part && part.url && 'fileKey' in part && part.fileKey && typeof part.fileKey === 'string') {
+                    try {
+                      // Check if URL is expired by looking at the expiration time in the URL
+                      const url = new URL(part.url);
+                      const expiresParam = url.searchParams.get('X-Amz-Expires');
+                      const dateParam = url.searchParams.get('X-Amz-Date');
+                      
+                      if (expiresParam && dateParam) {
+                        const expirationDate = new Date(dateParam);
+                        expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                        
+                        // If URL expires within the next 5 minutes, regenerate it
+                        if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                          console.log('[CHAT_ROUTER] Regenerating expired S3 URL in fallback non-vision historical message for fileKey:', part.fileKey);
+                          
+                          // Import S3 utilities
+                          const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                          const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                          const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                          
+                          // Generate fresh signed URL
+                          const freshUrl = await getSignedUrl(
+                            s3Client,
+                            new GetObjectCommand({ Bucket: BUCKET_NAME, Key: part.fileKey }),
+                            { expiresIn: 3600 } // 1 hour
+                          );
+                          
+                          console.log('[CHAT_ROUTER] Generated fresh S3 URL in fallback non-vision historical message for fileKey:', part.fileKey);
+                          return { ...part, url: freshUrl };
+                        }
+                      }
+                      return part;
+                    } catch (error) {
+                      console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL in fallback non-vision historical message:', error);
+                      // If we can't validate/regenerate, exclude this image to prevent OpenAI errors
+                      return null;
+                    }
+                  }
+                  return part;
+                }));
+                
+                // Filter out any null parts (failed URL regenerations)
+                const validParts = validatedParts.filter(Boolean);
+                return { ...msg, parts: validParts };
+              }));
+              
+              const limited = validatedHistoricalMessages as any
               console.log('[CHAT_ROUTER] Starting standard streamText call with tools')
               result = await streamText({
                 model: openai('gpt-4o-mini'),
