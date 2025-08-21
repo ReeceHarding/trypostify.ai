@@ -52,6 +52,15 @@ export const LeftSidebar = () => {
   // Global hotkey feedback
   const { showNavigation } = useHotkeyFeedback()
 
+  // Log component mount
+  useEffect(() => {
+    console.log('[LeftSidebar] Component mounted at', new Date().toISOString())
+    console.log('[LeftSidebar] State:', { state, isCollapsed, isMac, metaKey })
+    return () => {
+      console.log('[LeftSidebar] Component unmounting at', new Date().toISOString())
+    }
+  }, [])
+
   // Keyboard shortcuts for navigation and custom event listener for right sidebar toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -73,6 +82,9 @@ export const LeftSidebar = () => {
       // Navigation shortcuts: Ctrl + 1-5 (cross-platform safe, avoids all browser conflicts)
       if (e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '5') {
         e.preventDefault()
+        e.stopPropagation() // Prevent other listeners from handling this event
+        console.log(`[LeftSidebar] Navigation shortcut detected: Ctrl+${e.key} at ${new Date().toISOString()}`)
+        
         const paths = [
           '/studio',
           '/studio/knowledge',
@@ -106,6 +118,7 @@ export const LeftSidebar = () => {
       // Toggle left sidebar: Cmd/Ctrl + \
       else if (actualMetaKey && e.key === '\\') {
         e.preventDefault()
+        e.stopPropagation() // Prevent other listeners from handling this event
         console.log(`[LeftSidebar] Toggle sidebar shortcut triggered (${metaKey}+\\) at ${new Date().toISOString()}`)
         toggleSidebar()
       }
@@ -117,11 +130,12 @@ export const LeftSidebar = () => {
       toggleSidebar()
     }
 
-    window.addEventListener('keydown', handleKeyDown)
+    // Use capture phase to ensure we get events before other listeners
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
     window.addEventListener('toggleLeftSidebar', handleToggleFromRightSidebar)
     
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keydown', handleKeyDown, { capture: true })
       window.removeEventListener('toggleLeftSidebar', handleToggleFromRightSidebar)
     }
   }, [isMac, router, id, toggleSidebar, showNavigation])
