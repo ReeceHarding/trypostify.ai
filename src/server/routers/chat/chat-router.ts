@@ -166,9 +166,26 @@ export const chatRouter = j.router({
               const expiresParam = url.searchParams.get('X-Amz-Expires');
               const dateParam = url.searchParams.get('X-Amz-Date');
               
+              console.log('[CHAT_HISTORY] Checking S3 URL expiration:', {
+                fileKey: part.fileKey,
+                dateParam,
+                expiresParam,
+                currentTime: new Date().toISOString()
+              });
+              
               if (expiresParam && dateParam) {
-                const expirationDate = new Date(dateParam);
-                expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
+                const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
+                const signedDate = new Date(formattedDate);
+                const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
+                
+                console.log('[CHAT_HISTORY] URL expiration details:', {
+                  formattedDate,
+                  signedDate: signedDate.toISOString(),
+                  expirationDate: expirationDate.toISOString(),
+                  isExpired: expirationDate.getTime() < Date.now(),
+                  fileKey: part.fileKey
+                });
                 
                 // If URL expires within the next 5 minutes, regenerate it
                 if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
@@ -346,9 +363,17 @@ export const chatRouter = j.router({
         },
         onError(error) {
           console.log('[ERROR] CHAT_ROUTER:', JSON.stringify(error, null, 2))
+          
+          // Check if this is an S3 URL download error from OpenAI
+          const errorMessage = error instanceof Error ? error.message : 'Something went wrong.'
+          if (errorMessage.includes('Error while downloading') && errorMessage.includes('s3.us-east-1.amazonaws.com')) {
+            console.log('[CHAT_ROUTER] S3 URL download error detected, providing fallback response')
+            // Return a helpful message instead of throwing
+            return 'I encountered an issue processing the uploaded image. Please try uploading the image again or continue without it.'
+          }
 
           throw new HTTPException(500, {
-            message: error instanceof Error ? error.message : 'Something went wrong.',
+            message: errorMessage,
           })
         },
         execute: async ({ writer }) => {
@@ -477,8 +502,10 @@ export const chatRouter = j.router({
                         const dateParam = url.searchParams.get('X-Amz-Date');
                         
                         if (expiresParam && dateParam) {
-                          const expirationDate = new Date(dateParam);
-                          expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                          // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
+                          const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
+                          const signedDate = new Date(formattedDate);
+                          const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
                           
                           // If URL expires within the next 5 minutes, regenerate it
                           if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
@@ -524,6 +551,14 @@ export const chatRouter = j.router({
                     const url = new URL(p.url);
                     const expiresParam = url.searchParams.get('X-Amz-Expires');
                     const dateParam = url.searchParams.get('X-Amz-Date');
+                    
+                    console.log('[CHAT_ROUTER] Validating image URL:', {
+                      hasFileKey: Boolean((p as any)?.fileKey),
+                      fileKey: (p as any)?.fileKey,
+                      hasExpiresParam: Boolean(expiresParam),
+                      hasDateParam: Boolean(dateParam),
+                      urlHost: url.hostname
+                    });
                     
                     if (expiresParam && dateParam) {
                       // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
@@ -571,6 +606,8 @@ export const chatRouter = j.router({
                           return null;
                         }
                       }
+                    } else {
+                      console.log('[CHAT_ROUTER] URL missing expiration parameters, assuming valid:', p.url);
                     }
                     return p;
                   } catch (error) {
@@ -639,8 +676,10 @@ export const chatRouter = j.router({
                         const dateParam = url.searchParams.get('X-Amz-Date');
                         
                         if (expiresParam && dateParam) {
-                          const expirationDate = new Date(dateParam);
-                          expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                          // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
+                          const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
+                          const signedDate = new Date(formattedDate);
+                          const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
                           
                           // If URL expires within the next 5 minutes, regenerate it
                           if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
@@ -711,8 +750,10 @@ export const chatRouter = j.router({
                       const dateParam = url.searchParams.get('X-Amz-Date');
                       
                       if (expiresParam && dateParam) {
-                        const expirationDate = new Date(dateParam);
-                        expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                        // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
+                        const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
+                        const signedDate = new Date(formattedDate);
+                        const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
                         
                         // If URL expires within the next 5 minutes, regenerate it
                         if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
@@ -760,8 +801,10 @@ export const chatRouter = j.router({
                   const dateParam = url.searchParams.get('X-Amz-Date');
                   
                   if (expiresParam && dateParam) {
-                    const expirationDate = new Date(dateParam);
-                    expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                    // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
+                    const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
+                    const signedDate = new Date(formattedDate);
+                    const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
                     
                     // If URL expires within the next 5 minutes, regenerate it
                     if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
@@ -835,8 +878,10 @@ export const chatRouter = j.router({
                       const dateParam = url.searchParams.get('X-Amz-Date');
                       
                       if (expiresParam && dateParam) {
-                        const expirationDate = new Date(dateParam);
-                        expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                        // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
+                        const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
+                        const signedDate = new Date(formattedDate);
+                        const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
                         
                         // If URL expires within the next 5 minutes, regenerate it
                         if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
