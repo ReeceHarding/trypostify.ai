@@ -157,5 +157,5 @@
     "typescript": "^5",
     "wrangler": "^4.0.0"
   },
-  "packageManager": "bun@1.2.19"
+  "packageManager": "npm@10.0.0"
 }
