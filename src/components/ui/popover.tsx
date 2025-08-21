@@ -58,6 +58,9 @@ function PopoverContent({
               if (element) {
                 console.log('[PopoverContent] Mobile centered modal positioned:', {
                   elementRect: element.getBoundingClientRect(),
+                  elementStyles: window.getComputedStyle(element),
+                  childrenCount: element.children.length,
+                  firstChildRect: element.children[0]?.getBoundingClientRect(),
                   isMobile: true,
                   positioning: 'centered modal',
                   timestamp: new Date().toISOString()
@@ -65,13 +68,20 @@ function PopoverContent({
               }
             }}
             className={cn(
-              // Mobile: Fixed center positioning with full backdrop
-              "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100vw-2rem)] max-w-[28rem] max-h-[calc(100vh-4rem)] bg-popover text-popover-foreground rounded-md border shadow-lg outline-hidden overflow-hidden",
+              // Mobile: Fixed center positioning with full backdrop and proper content display
+              // Override any positioning classes from parent components for mobile
+              "!fixed !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !z-50 !w-[calc(100vw-2rem)] !max-w-[28rem] !max-h-[calc(100vh-4rem)] !bg-popover !text-popover-foreground !rounded-md !border !shadow-lg !outline-hidden !flex !flex-col !p-0",
               "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-              className
+              // Don't apply the className prop on mobile to avoid conflicts
+              isMobile ? "" : className
             )}
             {...props}
-          />
+          >
+            {/* Ensure children render properly in mobile modal */}
+            <div className="w-full h-full flex flex-col min-h-0">
+              {props.children}
+            </div>
+          </PopoverPrimitive.Content>
         </>
       </PopoverPrimitive.Portal>
     )
