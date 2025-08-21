@@ -59,24 +59,31 @@ export const Calendar20 = ({
     return `${hours12}:${mStr?.padStart(2, '0')} ${ampm}`
   }
 
-  // Generate time slots based on user's posting window (default: 9 AM - 6 PM if no settings)
+  // Generate time slots using the same preset slots as the queue system
   const generateTimeSlots = (): string[] => {
-    const startHour = postingWindow?.start ?? 9 // Default 9 AM
-    const endHour = postingWindow?.end ?? 18 // Default 6 PM
+    // Use the same preset slots as the queue system: 10am, 12pm, 2pm
+    const PRESET_SLOTS = [10, 12, 14] // 10am, 12pm (noon), 2pm
     
-    console.log('[DatePicker] Generating time slots from', startHour, 'to', endHour)
-    console.log('[DatePicker] postingWindow object:', postingWindow)
+    console.log('[DatePicker] Using preset queue slots:', PRESET_SLOTS)
+    console.log('[DatePicker] postingWindow object (for reference):', postingWindow)
     
     const slots: string[] = []
-    // Generate 15-minute intervals within the posting window
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`)
-      }
-    }
     
-    console.log('[DatePicker] Generated', slots.length, 'time slots:', slots.slice(0, 5), '...')
-    console.log('[DatePicker] All generated slots:', slots)
+    // Convert preset hours to HH:mm format
+    PRESET_SLOTS.forEach(hour => {
+      slots.push(`${hour.toString().padStart(2, '0')}:00`)
+    })
+    
+    // Add some additional popular times for manual scheduling flexibility
+    const additionalSlots = [8, 9, 11, 13, 15, 16, 17, 18] // 8am, 9am, 11am, 1pm, 3pm, 4pm, 5pm, 6pm
+    additionalSlots.forEach(hour => {
+      slots.push(`${hour.toString().padStart(2, '0')}:00`)
+    })
+    
+    // Sort slots by time
+    slots.sort()
+    
+    console.log('[DatePicker] Generated', slots.length, 'preset time slots:', slots)
     return slots
   }
 
@@ -124,10 +131,10 @@ export const Calendar20 = ({
   console.log('[DatePicker] Time slots array length:', timeSlots.length)
   console.log('[DatePicker] First few time slots:', timeSlots.slice(0, 5))
   
-  // Fallback: if no time slots are generated, create some default ones
+  // Fallback: if no time slots are generated, create some default ones using preset slots
   if (timeSlots.length === 0) {
-    console.log('[DatePicker] No time slots generated, using fallback')
-    const fallbackSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00']
+    console.log('[DatePicker] No time slots generated, using fallback with preset queue slots')
+    const fallbackSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00']
     return (
       <Card className="w-full gap-0 p-0 max-h-[80dvh] overflow-hidden flex flex-col">
         <CardContent className="relative p-0 md:pr-56 flex-1 min-h-0 overflow-y-auto">
