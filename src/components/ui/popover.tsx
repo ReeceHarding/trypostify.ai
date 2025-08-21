@@ -11,11 +11,13 @@ function Popover({
   return <PopoverPrimitive.Root data-slot="popover" {...props} />
 }
 
-function PopoverTrigger({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
-}
+const PopoverTrigger = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger>
+>(({ ...props }, ref) => {
+  return <PopoverPrimitive.Trigger ref={ref} data-slot="popover-trigger" {...props} />
+})
+PopoverTrigger.displayName = PopoverPrimitive.Trigger.displayName
 
 function PopoverContent({
   className,
@@ -47,11 +49,25 @@ function PopoverContent({
           if (el) {
             // Log actual positioning after Radix UI places it
             const rect = el.getBoundingClientRect()
-            const trigger = document.querySelector('[data-state="open"][data-slot="popover-trigger"]')
-            const triggerRect = trigger?.getBoundingClientRect()
+            // Try multiple selectors to find the trigger
+            const triggers = {
+              withState: document.querySelector('[data-state="open"][data-slot="popover-trigger"]'),
+              withoutState: document.querySelector('[data-slot="popover-trigger"]'),
+              radixPopper: el.parentElement?.querySelector('[data-radix-popper-reference-hidden]'),
+              anyOpenButton: document.querySelector('button[data-state="open"]')
+            }
+            const activeTrigger = triggers.withState || triggers.withoutState || triggers.radixPopper || triggers.anyOpenButton
+            const triggerRect = activeTrigger?.getBoundingClientRect()
+            
             console.log('[PopoverContent Debug] Actual positioning:', {
               popover: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
               trigger: triggerRect ? { top: triggerRect.top, left: triggerRect.left, width: triggerRect.width, height: triggerRect.height } : null,
+              triggerSearchResults: {
+                withState: !!triggers.withState,
+                withoutState: !!triggers.withoutState,
+                radixPopper: !!triggers.radixPopper,
+                anyOpenButton: !!triggers.anyOpenButton
+              },
               viewport: { width: window.innerWidth, height: window.innerHeight },
               dataAttributes: {
                 side: el.getAttribute('data-side'),
