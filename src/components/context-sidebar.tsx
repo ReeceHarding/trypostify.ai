@@ -79,11 +79,11 @@ export const LeftSidebar = () => {
         timestamp: new Date().toISOString()
       })
 
-      // Navigation shortcuts: Ctrl + 1-5 (cross-platform safe, avoids all browser conflicts)
-      if (e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '5') {
+      // Navigation shortcuts: Cmd/Ctrl + 1-5 (cross-platform safe, avoids all browser conflicts)
+      if (actualMetaKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '5') {
         e.preventDefault()
         e.stopPropagation() // Prevent other listeners from handling this event
-        console.log(`[LeftSidebar] Navigation shortcut detected: Ctrl+${e.key} at ${new Date().toISOString()}`)
+        console.log(`[LeftSidebar] Navigation shortcut detected: ${metaKey}+${e.key} at ${new Date().toISOString()}`)
         
         const paths = [
           '/studio',
@@ -101,7 +101,7 @@ export const LeftSidebar = () => {
         ]
         const index = parseInt(e.key) - 1
         if (paths[index]) {
-          console.log(`[LeftSidebar] Navigation shortcut triggered: ${pathNames[index]} (Ctrl+${e.key}) at ${new Date().toISOString()}`)
+          console.log(`[LeftSidebar] Navigation shortcut triggered: ${pathNames[index]} (${metaKey}+${e.key}) at ${new Date().toISOString()}`)
           
           // Immediate visual feedback
           showNavigation(pathNames[index])
