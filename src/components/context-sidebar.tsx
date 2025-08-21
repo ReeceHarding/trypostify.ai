@@ -226,7 +226,7 @@ export const LeftSidebar = () => {
                 <TooltipContent side="right">
                   <div className="space-y-1">
                     <p>Studio</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + 1</p>
+                    <p className="text-xs text-neutral-400">{metaKey} + 1</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -279,7 +279,7 @@ export const LeftSidebar = () => {
                   <TooltipContent side="right">
                                       <div className="space-y-1">
                     <p>Knowledge Base</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + 2</p>
+                    <p className="text-xs text-neutral-400">{metaKey} + 2</p>
                   </div>
                   </TooltipContent>
                 </Tooltip>
@@ -318,7 +318,7 @@ export const LeftSidebar = () => {
                   <TooltipContent side="right">
                                       <div className="space-y-1">
                     <p>Schedule</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + 3</p>
+                    <p className="text-xs text-neutral-400">{metaKey} + 3</p>
                   </div>
                   </TooltipContent>
                 </Tooltip>
@@ -357,7 +357,7 @@ export const LeftSidebar = () => {
                   <TooltipContent side="right">
                                       <div className="space-y-1">
                     <p>Posted</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + 4</p>
+                    <p className="text-xs text-neutral-400">{metaKey} + 4</p>
                   </div>
                   </TooltipContent>
                 </Tooltip>
@@ -410,7 +410,7 @@ export const LeftSidebar = () => {
                 <TooltipContent side="right">
                   <div className="space-y-1">
                     <p>Accounts</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + 5</p>
+                    <p className="text-xs text-neutral-400">{metaKey} + 5</p>
                   </div>
                 </TooltipContent>
               </Tooltip>
