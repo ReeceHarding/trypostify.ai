@@ -153,13 +153,58 @@ export const chatRouter = j.router({
         return c.superjson({ messages: [] })
       }
 
-      // const chat = await redis.json.get<{ messages: UIMessage[] }>(
-      //   `chat:${user.email}:${chatId}`,
-      // )
+      // Regenerate fresh signed URLs for any expired image URLs in message history
+      const refreshedMessages = await Promise.all(messages.map(async (message) => {
+        if (!message.parts) return message;
+        
+        const refreshedParts = await Promise.all(message.parts.map(async (part) => {
+          // Check if this is a file part with an image URL that might be expired
+          if (part.type === 'file' && 'url' in part && part.url && 'fileKey' in part && part.fileKey && typeof part.fileKey === 'string') {
+            try {
+              // Check if URL is expired by looking at the expiration time in the URL
+              const url = new URL(part.url);
+              const expiresParam = url.searchParams.get('X-Amz-Expires');
+              const dateParam = url.searchParams.get('X-Amz-Date');
+              
+              if (expiresParam && dateParam) {
+                const expirationDate = new Date(dateParam);
+                expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                
+                // If URL expires within the next 5 minutes, regenerate it
+                if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                  console.log('[CHAT_HISTORY] Regenerating expired S3 URL for fileKey:', part.fileKey);
+                  
+                  // Import S3 utilities
+                  const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                  const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                  const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                  
+                  // Generate fresh signed URL
+                  const freshUrl = await getSignedUrl(
+                    s3Client,
+                    new GetObjectCommand({ Bucket: BUCKET_NAME, Key: part.fileKey }),
+                    { expiresIn: 3600 } // 1 hour
+                  );
+                  
+                  console.log('[CHAT_HISTORY] Generated fresh S3 URL for fileKey:', part.fileKey);
+                  return { ...part, url: freshUrl };
+                }
+              }
+            } catch (error) {
+              console.error('[CHAT_HISTORY] Error checking/regenerating S3 URL:', error);
+              // If we can't regenerate, remove the file part to prevent OpenAI errors
+              return null;
+            }
+          }
+          return part;
+        }));
+        
+        // Filter out any null parts (failed URL regenerations)
+        const validParts = refreshedParts.filter(Boolean);
+        return { ...message, parts: validParts };
+      }));
 
-      // const visibleMessages = chat ? filterVisibleMessages(chat.messages) : []
-
-      return c.superjson({ messages })
+      return c.superjson({ messages: refreshedMessages })
     }),
 
   history: privateProcedure.query(async ({ c, ctx }) => {
@@ -258,16 +303,7 @@ export const chatRouter = j.router({
 
       try {
         console.log('[CHAT] file parts mediaTypes', (fileParts as any[]).map((p: any) => p.mediaType))
-        if (hasImage) {
-          console.log('[CHAT] Image parts for OpenAI:', imageFileParts.map((p: any) => ({
-            mediaType: p.mediaType,
-            url: p.url?.substring(0, 100) + '...', // Log truncated URL for debugging
-            filename: p.filename
-          })))
-        }
-      } catch (error) {
-        console.error('[CHAT] Error logging file parts:', error)
-      }
+      } catch {}
 
       const userMessage: MyUIMessage = {
         ...message,
@@ -413,11 +449,56 @@ export const chatRouter = j.router({
                 // For vision models, convert the last message to include image format
                 console.log('[CHAT_ROUTER] Using vision model path with images')
                 const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
-                // Convert to Vercel AI SDK image format
-                const imageParts = imageFileParts.map((p: any) => ({
-                  type: 'image' as const,
-                  image: p.url,
-                }))
+                
+                // Validate and potentially regenerate image URLs before sending to OpenAI
+                const validatedImageParts = await Promise.all(imageFileParts.map(async (p: any) => {
+                  try {
+                    // Check if URL is expired by looking at the expiration time in the URL
+                    const url = new URL(p.url);
+                    const expiresParam = url.searchParams.get('X-Amz-Expires');
+                    const dateParam = url.searchParams.get('X-Amz-Date');
+                    
+                    if (expiresParam && dateParam) {
+                      const expirationDate = new Date(dateParam);
+                      expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                      
+                      // If URL expires within the next 5 minutes, regenerate it
+                      if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                        console.log('[CHAT_ROUTER] Regenerating expired S3 URL before OpenAI call for fileKey:', (p as any).fileKey);
+                        
+                        if ((p as any).fileKey) {
+                          // Import S3 utilities
+                          const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                          const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                          const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                          
+                          // Generate fresh signed URL
+                          const freshUrl = await getSignedUrl(
+                            s3Client,
+                            new GetObjectCommand({ Bucket: BUCKET_NAME, Key: (p as any).fileKey! }),
+                            { expiresIn: 3600 } // 1 hour
+                          );
+                          
+                          console.log('[CHAT_ROUTER] Generated fresh S3 URL before OpenAI call for fileKey:', (p as any).fileKey);
+                          return { ...p, url: freshUrl };
+                        }
+                      }
+                    }
+                    return p;
+                  } catch (error) {
+                    console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL:', error);
+                    // If we can't validate/regenerate, exclude this image to prevent OpenAI errors
+                    return null;
+                  }
+                }));
+                
+                // Filter out any null entries and convert to Vercel AI SDK image format
+                const imageParts = validatedImageParts
+                  .filter(Boolean)
+                  .map((p: any) => ({
+                    type: 'image' as const,
+                    image: p.url,
+                  }))
 
                 // Limit history to the last few messages to reduce prompt size/latency
                 const limitedModelMessages = modelMessages.slice(-12)
@@ -466,10 +547,56 @@ export const chatRouter = j.router({
             console.log('[CHAT_ROUTER] Attempting fallback with identical system prompt')
             if (hasImage) {
               const modelMessages = convertToModelMessages(messages.slice(0, -1) as any)
-              const imageParts = imageFileParts.map((p: any) => ({
-                type: 'image' as const,
-                image: p.url,
-              }))
+              
+              // Validate and potentially regenerate image URLs before sending to OpenAI (fallback)
+              const validatedImageParts = await Promise.all(imageFileParts.map(async (p: any) => {
+                try {
+                  // Check if URL is expired by looking at the expiration time in the URL
+                  const url = new URL(p.url);
+                  const expiresParam = url.searchParams.get('X-Amz-Expires');
+                  const dateParam = url.searchParams.get('X-Amz-Date');
+                  
+                  if (expiresParam && dateParam) {
+                    const expirationDate = new Date(dateParam);
+                    expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                    
+                    // If URL expires within the next 5 minutes, regenerate it
+                    if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                      console.log('[CHAT_ROUTER] Regenerating expired S3 URL before OpenAI fallback call for fileKey:', (p as any).fileKey);
+                      
+                      if ((p as any).fileKey) {
+                        // Import S3 utilities
+                        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                        const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                        const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                        
+                        // Generate fresh signed URL
+                        const freshUrl = await getSignedUrl(
+                          s3Client,
+                          new GetObjectCommand({ Bucket: BUCKET_NAME, Key: (p as any).fileKey! }),
+                          { expiresIn: 3600 } // 1 hour
+                        );
+                        
+                        console.log('[CHAT_ROUTER] Generated fresh S3 URL before OpenAI fallback call for fileKey:', (p as any).fileKey);
+                        return { ...p, url: freshUrl };
+                      }
+                    }
+                  }
+                  return p;
+                } catch (error) {
+                  console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL in fallback:', error);
+                  // If we can't validate/regenerate, exclude this image to prevent OpenAI errors
+                  return null;
+                }
+              }));
+              
+              // Filter out any null entries and convert to Vercel AI SDK image format
+              const imageParts = validatedImageParts
+                .filter(Boolean)
+                .map((p: any) => ({
+                  type: 'image' as const,
+                  image: p.url,
+                }))
               const limitedModelMessages = modelMessages.slice(-8)
               console.log('[CHAT_ROUTER] Starting vision streamText call with tools')
               result = await streamText({
@@ -504,28 +631,7 @@ export const chatRouter = j.router({
           }
 
           console.log('[CHAT_ROUTER] About to merge result stream with writer')
-          
-          // Add error handling for S3 download failures
-          try {
-            writer.merge(result.toUIMessageStream())
-          } catch (error: any) {
-            console.error('[CHAT_ROUTER] Stream error:', error)
-            
-            // Check if it's an S3 download error
-            if (error?.message?.includes('Error while downloading') && error?.message?.includes('s3.us-east-1.amazonaws.com')) {
-              console.error('[CHAT_ROUTER] S3 download error detected - OpenAI cannot access S3 presigned URL')
-              console.error('[CHAT_ROUTER] This is likely due to CORS or bucket permissions')
-              
-              // Write error message to stream
-              writer.write({
-                type: 'text',
-                text: 'Image processing failed: Unable to access uploaded image. This may be due to S3 configuration issues. Please try uploading the image again or contact support.'
-              })
-            } else {
-              // Re-throw other errors
-              throw error
-            }
-          }
+          writer.merge(result.toUIMessageStream())
         },
       })
 

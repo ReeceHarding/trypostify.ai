@@ -63,7 +63,7 @@ export const parseAttachments = async ({
 }: {
   attachments?: Attachment[]
 }) => {
-  const validAttachments = attachments?.filter((a) => Boolean(a.fileKey) && a.fileKey?.trim().length > 0) ?? []
+  const validAttachments = attachments?.filter((a) => Boolean(a?.fileKey) && (a?.fileKey?.trim()?.length ?? 0) > 0) ?? []
 
   const links = await Promise.all(
     attachments
@@ -101,7 +101,7 @@ export const parseAttachments = async ({
         )
 
         if (type === 'image') {
-          return { mediaType, url: signedUrl, filename: attachment.title, type: 'file' } as FileUIPart
+          return { mediaType, url: signedUrl, filename: attachment.title, type: 'file', fileKey: attachment.fileKey } as FileUIPart & { fileKey: string }
         } else if (type === 'docx') {
           const response = await fetch(signedUrl)
           const buffer = await response.arrayBuffer()
@@ -129,7 +129,7 @@ export const parseAttachments = async ({
             } as TextPart
           }
         } else {
-          return { mediaType, url: signedUrl, type: 'file' } as FileUIPart
+          return { mediaType, url: signedUrl, type: 'file', fileKey: attachment.fileKey } as FileUIPart & { fileKey: string }
         }
       } catch (error) {
         console.error('[PARSE_ATTACHMENTS] Error accessing S3 file:', attachment.fileKey, error)
@@ -196,7 +196,7 @@ export async function publishThreadById({
   let effectiveUserId = userId
   let effectiveAccountId = accountId
 
-  const firstTweet = await db.query.tweets.findFirst({
+  const firstTweet = await (db as any).query.tweets.findFirst({
     where: and(eq(tweets.threadId, threadId), eq(tweets.isPublished, false)),
   })
   if (!firstTweet) {
@@ -205,23 +205,23 @@ export async function publishThreadById({
   }
   if (!effectiveUserId) effectiveUserId = firstTweet.userId
 
-  const threadTweets = await db.query.tweets.findMany({
+  const threadTweets = await (db as any).query.tweets.findMany({
     where: and(eq(tweets.threadId, threadId), eq(tweets.isPublished, false)),
     orderBy: asc(tweets.position),
   })
   if (threadTweets.length === 0) return
 
-  let account = null as any
+  let accountData = null as any
   if (effectiveAccountId) {
-    account = await db.query.account.findFirst({
+    accountData = await (db as any).query.account.findFirst({
       where: and(eq(accountSchema.userId, effectiveUserId!), eq(accountSchema.id, effectiveAccountId)),
     })
   } else {
-    account = await db.query.account.findFirst({
+    accountData = await (db as any).query.account.findFirst({
       where: and(eq(accountSchema.userId, effectiveUserId!), eq(accountSchema.providerId, 'twitter')),
     })
   }
-  if (!account?.accessToken) {
+  if (!accountData?.accessToken) {
     console.log(`[${logPrefix}] Missing X access token for user ${effectiveUserId}`)
     return
   }
@@ -229,8 +229,8 @@ export async function publishThreadById({
   const client = new TwitterApi({
     appKey: consumerKey as string,
     appSecret: consumerSecret as string,
-    accessToken: account.accessToken as string,
-    accessSecret: account.accessSecret as string,
+    accessToken: accountData.accessToken as string,
+    accessSecret: accountData.accessSecret as string,
   })
 
   let previousTweetId: string | null = null
