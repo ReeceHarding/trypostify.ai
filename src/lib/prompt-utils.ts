@@ -7,6 +7,11 @@ export const assistantPrompt = ({
 }: {
   editorContent: string | undefined
 }) => {
+  console.log('[PROMPT_UTILS] ===== ASSISTANT PROMPT CALLED =====')
+  console.log('[PROMPT_UTILS] Function: assistantPrompt')
+  console.log('[PROMPT_UTILS] Editor content length:', editorContent?.length || 0)
+  console.log('[PROMPT_UTILS] Timestamp:', new Date().toISOString())
+  console.log('[PROMPT_UTILS] ===== END ASSISTANT PROMPT CALLED =====')
   return `# Natural Conversation Framework
 
 You are a powerful, agentic AI content assistant designed by Postify - a San Francisco-based company building the future of content creation tools. You operate exclusively inside Postify, a focused studio for creating high-quality posts for Twitter. Your responses should feel natural and genuine, avoiding common AI patterns that make interactions feel robotic or scripted.
@@ -195,7 +200,14 @@ export const editToolSystemPrompt = ({
 }: {
   name: string
   hasXPremium?: boolean
-}) => `You are a powerful, agentic AI content assistant designed by Postify - a San Francisco-based company building the future of content creation tools. You operate exclusively inside Postify, a focused studio for creating high-quality posts for Twitter.
+}) => {
+  console.log('[PROMPT_UTILS] ===== EDIT TOOL SYSTEM PROMPT CALLED =====')
+  console.log('[PROMPT_UTILS] Function: editToolSystemPrompt')
+  console.log('[PROMPT_UTILS] Name:', name)
+  console.log('[PROMPT_UTILS] Has X Premium:', hasXPremium)
+  console.log('[PROMPT_UTILS] Timestamp:', new Date().toISOString())
+  console.log('[PROMPT_UTILS] ===== END EDIT TOOL SYSTEM PROMPT CALLED =====')
+  return `You are a powerful, agentic AI content assistant designed by Postify - a San Francisco-based company building the future of content creation tools. You operate exclusively inside Postify, a focused studio for creating high-quality posts for Twitter.
 
 You are collaborating with me to craft compelling, on-brand tweets. Each time I send a message, the system may automatically include helpful context such as related documents, writing style, preferred tone, or other relevant session metadata. This information may or may not be relevant to the tweet writing task, it is up to you to decide.
 
@@ -275,6 +287,7 @@ Write your tweet at a clear, easily readable 6-th grade reading level. NEVER UND
 - Question to audience + specific context
 - Personal anecdote + tech insight
 </good_tweet_patterns>`
+}
 
 // <conciseness_examples>
 //   <example>
@@ -308,6 +321,7 @@ const rules = `- NEVER output ANYTHING OTHER than JUST the edited tweet
 - Your output should ALWAYS be short, NEVER exceed 160 CHARACTERS or 5 LINES OF TEXT
 - NEVER use ANY hashtags UNLESS I SPECIFICALLY ASK YOU to include them
 - NEVER use ANY emojis UNLESS I SPECIFICALLY ASK YOU to include them
+- ABSOLUTELY FORBIDDEN: NEVER use ANY hyphenated words or phrases under ANY circumstances whatsoever. Examples of BANNED hyphenated words: "high-quality", "well-known", "state-of-the-art", "real-time", "user-friendly", "cutting-edge", "top-notch", "world-class", "long-term", "short-term", "built-in", "ready-made", "self-service", "AI-powered", "data-driven", "cloud-based", "web-based", "mobile-first", "game-changing", "next-level", "best-in-class", "industry-leading", "time-saving", "cost-effective", "end-to-end", "plug-and-play", "all-in-one", "step-by-step", "one-on-one", "face-to-face", "mind-blowing", "eye-catching", "thought-provoking", "well-designed", "custom-built", "tailor-made", "future-proof", "world-record", "ground-breaking", "life-changing", "problem-solving", "goal-oriented", "results-driven" and thousands of others. Instead use single words or rephrase completely: "high-quality" → "excellent"; "user-friendly" → "easy to use"; "cutting-edge" → "advanced"; "real-time" → "instant"; "long-term" → "lasting"; "built-in" → "integrated". This rule is MANDATORY, NON-NEGOTIABLE, and BREAKING IT IS STRICTLY PROHIBITED
 - It's okay for you to mention people (@example), but only if I ask you to
 - Avoid putting a link in your tweet unless I ask you to`
 
@@ -343,6 +357,13 @@ export const createStylePrompt = ({
   account: { name: string; username: string }
   style: Style
 }) => {
+  console.log('[PROMPT_UTILS] ===== CREATE STYLE PROMPT CALLED =====')
+  console.log('[PROMPT_UTILS] Function: createStylePrompt')
+  console.log('[PROMPT_UTILS] Account:', account?.name, '(@' + account?.username + ')')
+  console.log('[PROMPT_UTILS] Style tweets count:', style?.tweets?.length || 0)
+  console.log('[PROMPT_UTILS] Style prompt exists:', !!style?.prompt)
+  console.log('[PROMPT_UTILS] Timestamp:', new Date().toISOString())
+  console.log('[PROMPT_UTILS] ===== END CREATE STYLE PROMPT CALLED =====')
   const prompt = new XmlPrompt()
 
   prompt.tag(
@@ -387,6 +408,14 @@ export const editToolStyleMessage = ({
   account: { name: string; username: string } | null
   examples?: string
 }) => {
+  console.log('[PROMPT_UTILS] ===== EDIT TOOL STYLE MESSAGE CALLED =====')
+  console.log('[PROMPT_UTILS] Function: editToolStyleMessage')
+  console.log('[PROMPT_UTILS] Account:', account?.name, '(@' + account?.username + ')')
+  console.log('[PROMPT_UTILS] Style tweets count:', style?.tweets?.length || 0)
+  console.log('[PROMPT_UTILS] Style prompt exists:', !!style?.prompt)
+  console.log('[PROMPT_UTILS] Has examples:', !!examples)
+  console.log('[PROMPT_UTILS] Timestamp:', new Date().toISOString())
+  console.log('[PROMPT_UTILS] ===== END EDIT TOOL STYLE MESSAGE CALLED =====')
   const { tweets, prompt } = style
 
   const promptPart = `The following style guide may or may not be relevant for your output:
@@ -437,6 +466,7 @@ You are not "continuing" previous work — you are reacting ONLY to the current 
 - Your output should ALWAYS be short, NEVER exceed 160 CHARACTERS or 5 LINES OF TEXT
 - NEVER use ANY hashtags UNLESS I SPECIFICALLY ASK YOU to include them
 - NEVER use ANY emojis UNLESS I SPECIFICALLY ASK YOU to include them
+- ABSOLUTELY FORBIDDEN: NEVER use ANY hyphenated words or phrases under ANY circumstances whatsoever. Examples of BANNED hyphenated words: "high-quality", "well-known", "state-of-the-art", "real-time", "user-friendly", "cutting-edge", "top-notch", "world-class", "long-term", "short-term", "built-in", "ready-made", "self-service", "AI-powered", "data-driven", "cloud-based", "web-based", "mobile-first", "game-changing", "next-level", "best-in-class", "industry-leading", "time-saving", "cost-effective", "end-to-end", "plug-and-play", "all-in-one", "step-by-step", "one-on-one", "face-to-face", "mind-blowing", "eye-catching", "thought-provoking", "well-designed", "custom-built", "tailor-made", "future-proof", "world-record", "ground-breaking", "life-changing", "problem-solving", "goal-oriented", "results-driven" and thousands of others. Instead use single words or rephrase completely: "high-quality" → "excellent"; "user-friendly" → "easy to use"; "cutting-edge" → "advanced"; "real-time" → "instant"; "long-term" → "lasting"; "built-in" → "integrated". This rule is MANDATORY, NON-NEGOTIABLE, and BREAKING IT IS STRICTLY PROHIBITED
 - It's okay for you to mention people (@example), but only if I ask you to
 - Avoid putting a link in your tweet unless I ask you to
 </rules>
