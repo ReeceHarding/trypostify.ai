@@ -57,6 +57,19 @@ export const LeftSidebar = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
+      // Log ALL key presses for debugging navigation shortcuts - NAVIGATION SHORTCUTS LISTENER
+      console.log('[LeftSidebar-NavigationShortcuts] Key pressed:', {
+        key: e.key,
+        metaKey: e.metaKey,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        actualMetaKey,
+        isMac,
+        listenerType: 'NAVIGATION_SHORTCUTS',
+        timestamp: new Date().toISOString()
+      })
+
       // Navigation shortcuts: Ctrl + 1-5 (cross-platform safe, avoids all browser conflicts)
       if (e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '5') {
         e.preventDefault()
@@ -93,6 +106,7 @@ export const LeftSidebar = () => {
       // Toggle left sidebar: Cmd/Ctrl + \
       else if (actualMetaKey && e.key === '\\') {
         e.preventDefault()
+        console.log(`[LeftSidebar] Toggle sidebar shortcut triggered (${metaKey}+\\) at ${new Date().toISOString()}`)
         toggleSidebar()
       }
     }
@@ -110,7 +124,7 @@ export const LeftSidebar = () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('toggleLeftSidebar', handleToggleFromRightSidebar)
     }
-  }, [isMac, router, id, toggleSidebar])
+  }, [isMac, router, id, toggleSidebar, showNavigation])
 
   return (
     <Sidebar collapsible="icon" side="left" className="border-r border-border/40">

@@ -2365,5 +2365,100 @@ export const tweetRouter = j.router({
       }
     }),
 
+  // Clear all queued tweets for the current user
+  clearQueue: privateProcedure
+    .post(async ({ c, ctx }) => {
+      const { user } = ctx
+      
+      console.log('[clearQueue] Starting to clear queue for user:', user.id, 'at', new Date().toISOString())
+
+      // Get account to ensure user has connected account
+      const account = await getAccount({
+        email: user.email,
+      })
+
+      if (!account?.id) {
+        throw new HTTPException(400, {
+          message: 'Please connect your X account',
+        })
+      }
+
+      // Get all scheduled tweets for this user
+      const scheduledTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.accountId, account.id),
+          eq(tweets.isScheduled, true),
+          eq(tweets.isPublished, false) // Only delete unpublished tweets
+        ),
+        columns: {
+          id: true,
+          threadId: true,
+          qstashId: true,
+          content: true,
+        },
+      })
+
+      console.log('[clearQueue] Found', scheduledTweets.length, 'scheduled tweets to delete')
+
+      if (scheduledTweets.length === 0) {
+        return c.json({ 
+          success: true,
+          deletedCount: 0,
+          message: 'No queued posts to clear',
+        })
+      }
+
+      // Cancel any scheduled QStash jobs
+      const messages = qstash.messages
+      let cancelledJobs = 0
+      for (const tweet of scheduledTweets) {
+        if (tweet.qstashId) {
+          try {
+            await messages.delete(tweet.qstashId)
+            cancelledJobs++
+            console.log('[clearQueue] Cancelled QStash job:', tweet.qstashId)
+          } catch (err) {
+            console.error('[clearQueue] Failed to cancel QStash job:', tweet.qstashId, err)
+          }
+        }
+      }
+
+      // Get unique thread IDs to delete entire threads
+      const uniqueThreadIds = [...new Set(scheduledTweets.map(t => t.threadId))]
+      console.log('[clearQueue] Deleting', uniqueThreadIds.length, 'unique threads')
+
+      // Delete all tweets in these threads
+      let deletedTweets = 0
+      for (const threadId of uniqueThreadIds) {
+        const result = await db
+          .delete(tweets)
+          .where(and(
+            eq(tweets.threadId, threadId),
+            eq(tweets.userId, user.id),
+          ))
+        
+        // Note: Drizzle doesn't return affected rows count in all databases
+        // We'll count based on what we found earlier
+        console.log('[clearQueue] Deleted thread:', threadId)
+      }
+
+      deletedTweets = scheduledTweets.length
+
+      console.log('[clearQueue] Successfully cleared queue:', {
+        deletedTweets,
+        cancelledJobs,
+        uniqueThreads: uniqueThreadIds.length,
+        timestamp: new Date().toISOString()
+      })
+
+      return c.json({ 
+        success: true,
+        deletedCount: deletedTweets,
+        cancelledJobs,
+        threadsCleared: uniqueThreadIds.length,
+        message: `Cleared ${deletedTweets} queued posts from ${uniqueThreadIds.length} threads`,
+      })
+    }),
+
 
 })
