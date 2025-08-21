@@ -526,34 +526,59 @@ export const chatRouter = j.router({
                     const dateParam = url.searchParams.get('X-Amz-Date');
                     
                     if (expiresParam && dateParam) {
-                      const expirationDate = new Date(dateParam);
-                      expirationDate.setSeconds(expirationDate.getSeconds() + parseInt(expiresParam));
+                      // Parse AWS ISO 8601 format: 20250819T203653Z -> 2025-08-19T20:36:53Z
+                      const formattedDate = dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z');
+                      const signedDate = new Date(formattedDate);
+                      const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
+                      
+                      console.log('[CHAT_ROUTER] URL expiration check:', {
+                        dateParam,
+                        formattedDate,
+                        signedDate: signedDate.toISOString(),
+                        expirationDate: expirationDate.toISOString(),
+                        currentTime: new Date().toISOString(),
+                        isExpired: expirationDate.getTime() < Date.now(),
+                        fileKey: (p as any).fileKey
+                      });
                       
                       // If URL expires within the next 5 minutes, regenerate it
                       if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
                         console.log('[CHAT_ROUTER] Regenerating expired S3 URL before OpenAI call for fileKey:', (p as any).fileKey);
                         
                         if ((p as any).fileKey) {
-                          // Import S3 utilities
-                          const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
-                          const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-                          const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
-                          
-                          // Generate fresh signed URL
-                          const freshUrl = await getSignedUrl(
-                            s3Client,
-                            new GetObjectCommand({ Bucket: BUCKET_NAME, Key: (p as any).fileKey! }),
-                            { expiresIn: 3600 } // 1 hour
-                          );
-                          
-                          console.log('[CHAT_ROUTER] Generated fresh S3 URL before OpenAI call for fileKey:', (p as any).fileKey);
-                          return { ...p, url: freshUrl };
+                          try {
+                            // Import S3 utilities
+                            const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+                            const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+                            const { s3Client, BUCKET_NAME } = await import('@/lib/s3');
+                            
+                            // Generate fresh signed URL
+                            const freshUrl = await getSignedUrl(
+                              s3Client,
+                              new GetObjectCommand({ Bucket: BUCKET_NAME, Key: (p as any).fileKey! }),
+                              { expiresIn: 3600 } // 1 hour
+                            );
+                            
+                            console.log('[CHAT_ROUTER] Generated fresh S3 URL before OpenAI call for fileKey:', (p as any).fileKey);
+                            return { ...p, url: freshUrl };
+                          } catch (s3Error) {
+                            console.error('[CHAT_ROUTER] Failed to regenerate S3 URL for fileKey:', (p as any).fileKey, s3Error);
+                            // Return null to exclude this image from the request
+                            return null;
+                          }
+                        } else {
+                          console.warn('[CHAT_ROUTER] No fileKey available for expired URL regeneration');
+                          return null;
                         }
                       }
                     }
                     return p;
                   } catch (error) {
-                    console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL:', error);
+                    console.error('[CHAT_ROUTER] Error validating/regenerating S3 URL:', error, {
+                      url: p?.url,
+                      fileKey: (p as any)?.fileKey,
+                      hasFileKey: Boolean((p as any)?.fileKey)
+                    });
                     // If we can't validate/regenerate, exclude this image to prevent OpenAI errors
                     return null;
                   }
@@ -566,6 +591,12 @@ export const chatRouter = j.router({
                   type: 'image' as const,
                   image: p.url,
                 }))
+                
+                console.log('[CHAT_ROUTER] Image processing summary:', {
+                  originalImageCount: imageFileParts.length,
+                  validatedImageCount: validatedImageParts.filter(Boolean).length,
+                  excludedImageCount: validatedImageParts.filter(p => p === null).length
+                });
 
                 // Limit history to the last few messages to reduce prompt size/latency
                 const limitedModelMessages = modelMessages.slice(-12)

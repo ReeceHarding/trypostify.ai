@@ -406,9 +406,11 @@ export const createQueueTool = (
         }).format(scheduledDate)
 
         // Send success message
-        const successMessage = tweetsToQueue.length > 1 
+        const baseMessage = tweetsToQueue.length > 1 
           ? `Thread added to queue! ${tweetsToQueue.length} tweets will be posted on ${friendlyTime}.`
           : `Tweet added to queue! It will be posted on ${friendlyTime}.`
+        
+        const successMessage = `${baseMessage}\n\n💡 **Tip**: Press Cmd/Ctrl + 3 to quickly open the Schedule page and view your queue.`
 
         writer.write({
           type: 'data-tool-output',

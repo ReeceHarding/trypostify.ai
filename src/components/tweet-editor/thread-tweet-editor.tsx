@@ -651,14 +651,17 @@ export default function ThreadTweetEditor({
         }).format(preScheduleTime)
         
         toast.success(
-          <div className="flex items-center gap-2">
-            <p>Thread scheduled for {friendly}!</p>
-            <Link
-              href="/studio/scheduled"
-              className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
-            >
-              View here
-            </Link>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <p>Thread scheduled for {friendly}!</p>
+              <Link
+                href="/studio/scheduled"
+                className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+              >
+                View here
+              </Link>
+            </div>
+            <p className="text-xs text-neutral-400">Press {isMac ? 'Cmd' : 'Ctrl'} + 3 to open Schedule</p>
           </div>
         )
         
@@ -674,14 +677,17 @@ export default function ThreadTweetEditor({
         })
         
         toast.success(
-          <div className="flex items-center gap-2">
-            <p>Thread queued!</p>
-            <Link
-              href="/studio/scheduled"
-              className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
-            >
-              View here
-            </Link>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <p>Thread queued!</p>
+              <Link
+                href="/studio/scheduled"
+                className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+              >
+                View here
+              </Link>
+            </div>
+            <p className="text-xs text-neutral-400">Press {isMac ? 'Cmd' : 'Ctrl'} + 3 to open Schedule</p>
           </div>
         )
       }
