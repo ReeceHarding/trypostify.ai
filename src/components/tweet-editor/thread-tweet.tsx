@@ -1279,7 +1279,16 @@ function ThreadTweetContent({
                               </Tooltip>
 
                               <Tooltip>
-                                <Popover open={open} onOpenChange={setOpen}>
+                                <Popover open={open} onOpenChange={(isOpen) => {
+                                  console.log('[ThreadTweet] Schedule popover state changed:', {
+                                    isOpen,
+                                    timestamp: new Date().toISOString(),
+                                    triggerButtonRect: document.querySelector('[data-slot="popover-trigger"]')?.getBoundingClientRect(),
+                                    viewportHeight: window.innerHeight,
+                                    scrollY: window.scrollY
+                                  })
+                                  setOpen(isOpen)
+                                }}>
                                   <TooltipTrigger asChild>
                                     <PopoverTrigger asChild>
                                       <DuolingoButton
@@ -1287,6 +1296,17 @@ function ThreadTweetContent({
                                         disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
                                         size="icon"
                                         className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
+                                        onClick={(event) => {
+                                          const triggerElement = event.currentTarget
+                                          console.log('[ThreadTweet] Schedule button clicked with FIXED positioning, button details:', {
+                                            triggerRect: triggerElement.getBoundingClientRect(),
+                                            triggerElement: triggerElement,
+                                            dataSlotQuery: document.querySelector('[data-slot="popover-trigger"]')?.getBoundingClientRect(),
+                                            viewportHeight: window.innerHeight,
+                                            scrollY: window.scrollY,
+                                            timestamp: new Date().toISOString()
+                                          })
+                                        }}
                                       >
                                         <ChevronDown className="size-4" />
                                         <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
@@ -1301,6 +1321,15 @@ function ThreadTweetContent({
                                     collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
                                     updatePositionStrategy="always"
                                     className="w-full max-w-[min(100dvw-1rem,28rem)] md:max-w-[min(100dvw-1rem,40rem)] max-h-[min(90dvh,calc(100dvh-4rem))] overflow-hidden p-0"
+                                    onOpenAutoFocus={() => {
+                                      console.log('[ThreadTweet] Schedule popover auto-focused with FIXED positioning, checking final position:', {
+                                        popoverElement: document.querySelector('[data-slot="popover-content"]')?.getBoundingClientRect(),
+                                        triggerElement: document.querySelector('[data-slot="popover-trigger"]')?.getBoundingClientRect(),
+                                        backdrop_removed: 'Custom backdrop div removed to fix positioning',
+                                        positioning_should_work: 'Radix UI can now properly calculate position relative to trigger',
+                                        timestamp: new Date().toISOString()
+                                      })
+                                    }}
                                   >
                                     <Calendar20
                                       initialScheduledTime={preScheduleTime || undefined}
