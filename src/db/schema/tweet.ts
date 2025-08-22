@@ -12,7 +12,15 @@ import { InferSelectModel } from 'drizzle-orm'
 
 type Media = {
   s3Key: string // s3
-  media_id: string // twitter
+  media_id?: string // twitter media ID (optional during processing)
+  media_key?: string // twitter media key (optional)
+  url?: string // public URL for the media
+  type?: 'image' | 'gif' | 'video' // media type
+  platform?: string // source platform (TikTok, Instagram, etc.)
+  originalUrl?: string // original URL from social platform
+  title?: string // video title
+  duration?: number // video duration in seconds
+  size?: number // size in bytes
 }
 
 export const tweets = pgTable('tweets', {
@@ -43,6 +51,10 @@ export const tweets = pgTable('tweets', {
   replyToTweetId: text('reply_to_tweet_id'), // Twitter ID to reply to
   isThreadStart: boolean('is_thread_start').default(false), // True for first tweet in thread
   delayMs: integer('delay_ms').default(0), // Delay before posting this tweet
+  // Video processing columns
+  pendingVideoUrl: text('pending_video_url'), // URL of video being processed
+  videoProcessingStatus: text('video_processing_status'), // 'downloading', 'transcoding', 'uploading', 'complete', 'failed'
+  videoErrorMessage: text('video_error_message'), // Error message if video processing failed
   // Engagement metrics columns
   likes: integer('likes').default(0), // Number of likes
   retweets: integer('retweets').default(0), // Number of retweets

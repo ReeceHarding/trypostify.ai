@@ -27,23 +27,32 @@ function VideoProcessingStatus() {
   const { data: processingVideos, isLoading } = useQuery({
     queryKey: ['video-processing-status'],
     queryFn: async () => {
-      const res = await client.tweet.getScheduledAndPublished.$get()
+      // Get tweets that have video processing status
+      const res = await client.video.getProcessingVideos.$get()
       const result = await res.json()
       
-      console.log('[VideoProcessingStatus] API Response:', result)
+      console.log('[VideoProcessingStatus] Processing videos:', result.tweets?.length || 0)
       
-      // Filter for tweets with videos that are scheduled (auto-queued)
-      const scheduledWithVideos = result.data?.filter((item: any) => {
-        const hasVideo = item.tweets?.some((tweet: any) => 
-          tweet.isScheduled && 
-          tweet.media?.some((media: any) => media.type === 'video' || media.s3Key?.includes('.mp4'))
+      // Also get scheduled tweets to check for completed videos
+      const scheduledRes = await client.tweet.getScheduledAndPublished.$get()
+      const scheduledResult = await scheduledRes.json()
+      
+      // Combine processing and scheduled videos
+      const processingTweets = result.tweets || []
+      const scheduledWithVideos = scheduledResult.data?.filter((item: any) => {
+        return item.tweets?.some((tweet: any) => 
+          tweet.pendingVideoUrl || 
+          tweet.videoProcessingStatus || 
+          (tweet.media?.some((media: any) => media.type === 'video'))
         )
-        console.log('[VideoProcessingStatus] Item:', item.id, 'hasVideo:', hasVideo, 'tweets:', item.tweets?.length)
-        return hasVideo
       }) || []
       
-      console.log('[VideoProcessingStatus] Filtered videos:', scheduledWithVideos.length)
-      return scheduledWithVideos
+      // Merge and deduplicate
+      const allVideos = [...processingTweets, ...scheduledWithVideos.flatMap((item: any) => item.tweets || [])]
+      const uniqueVideos = Array.from(new Map(allVideos.map(v => [v.id, v])).values())
+      
+      console.log('[VideoProcessingStatus] Total videos:', uniqueVideos.length)
+      return uniqueVideos
     },
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
   })
@@ -80,61 +89,92 @@ function VideoProcessingStatus() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {processingVideos.map((item: any) => {
-          const tweet = item.tweets[0] // Get the first tweet
-          const videoMedia = tweet.media?.find((media: any) => 
-            media.type === 'video' || media.s3Key?.includes('.mp4')
-          )
-          
-          const isProcessingComplete = videoMedia?.media_id
+        {processingVideos.map((tweet: any) => {
+          const videoMedia = tweet.media?.find((media: any) => media.type === 'video')
+          const videoStatus = tweet.videoProcessingStatus
+          const pendingUrl = tweet.pendingVideoUrl
+          const errorMessage = tweet.videoErrorMessage
           const scheduledTime = tweet.scheduledFor ? new Date(tweet.scheduledFor) : null
           
+          // Determine status and icon
+          const getStatusDisplay = () => {
+            if (errorMessage || videoStatus === 'failed') {
+              return {
+                icon: <AlertCircle className="w-5 h-5 text-error-500" />,
+                text: errorMessage || 'Video processing failed',
+                badge: 'error' as const,
+                badgeText: 'Failed'
+              }
+            }
+            
+            if (videoStatus === 'complete' || videoMedia?.media_id) {
+              return {
+                icon: <CheckCircle className="w-5 h-5 text-success-600" />,
+                text: `Video ready • ${scheduledTime ? `Queued for ${format(scheduledTime, 'MMM d, h:mm a')}` : 'Ready to post'}`,
+                badge: 'success' as const,
+                badgeText: 'Ready'
+              }
+            }
+            
+            if (videoStatus === 'uploading') {
+              return {
+                icon: <Video className="w-5 h-5 animate-pulse text-primary" />,
+                text: 'Uploading video to Twitter...',
+                badge: 'warning' as const,
+                badgeText: 'Uploading'
+              }
+            }
+            
+            if (videoStatus === 'transcoding') {
+              return {
+                icon: <Loader2 className="w-5 h-5 animate-spin text-primary" />,
+                text: 'Converting video for Twitter...',
+                badge: 'warning' as const,
+                badgeText: 'Converting'
+              }
+            }
+            
+            // Default: downloading or no status
+            return {
+              icon: <Loader2 className="w-5 h-5 animate-spin text-primary" />,
+              text: 'Downloading video from source...',
+              badge: 'warning' as const,
+              badgeText: 'Processing'
+            }
+          }
+          
+          const status = getStatusDisplay()
+          
           return (
-            <div key={item.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
+            <div key={tweet.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  {isProcessingComplete ? (
-                    <CheckCircle className="w-5 h-5 text-success-600" />
-                  ) : (
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  )}
+                  {status.icon}
                 </div>
                 
                 <div>
                   <div className="font-medium text-neutral-900">
-                    {tweet.content.length > 50 
+                    {tweet.content?.length > 50 
                       ? `${tweet.content.substring(0, 50)}...` 
                       : tweet.content || 'Video tweet'}
                   </div>
                   <div className="text-sm text-neutral-600">
-                    {isProcessingComplete ? (
-                      <>
-                        <CheckCircle className="w-3 h-3 inline mr-1 text-success-600" />
-                        Video ready • Queued for{' '}
-                        {scheduledTime ? format(scheduledTime, 'MMM d, h:mm a') : 'soon'}
-                      </>
-                    ) : (
-                      <>
-                        <Loader2 className="w-3 h-3 inline mr-1 animate-spin" />
-                        Video processing... • Will post when ready
-                      </>
-                    )}
+                    {status.text}
                   </div>
+                  {pendingUrl && (
+                    <div className="text-xs text-neutral-500 mt-1">
+                      Source: {pendingUrl.substring(0, 40)}...
+                    </div>
+                  )}
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
-                {isProcessingComplete ? (
-                  <DuolingoBadge variant="success" className="text-xs">
-                    Ready
-                  </DuolingoBadge>
-                ) : (
-                  <DuolingoBadge variant="warning" className="text-xs">
-                    Processing
-                  </DuolingoBadge>
-                )}
+                <DuolingoBadge variant={status.badge} className="text-xs">
+                  {status.badgeText}
+                </DuolingoBadge>
                 
-                {scheduledTime && (
+                {scheduledTime && videoStatus === 'complete' && (
                   <div className="text-xs text-neutral-500 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {format(scheduledTime, 'h:mm a')}

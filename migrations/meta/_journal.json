@@ -71,6 +71,13 @@
       "when": 1755882949911,
       "tag": "0009_nosy_prodigy",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1755886139765,
+      "tag": "0010_smart_virginia_dare",
+      "breakpoints": true
     }
   ]
 }

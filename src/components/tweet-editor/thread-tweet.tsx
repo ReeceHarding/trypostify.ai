@@ -481,27 +481,38 @@ function ThreadTweetContent({
     },
   })
 
+  // New video processing system
   const downloadVideoMutation = useMutation({
     mutationFn: async (input: { url: string; tweetContent?: string }) => {
-      console.log('[ThreadTweet] downloadVideoMutation called with input:', {
+      console.log('[ThreadTweet] Starting video processing:', {
         url: input.url,
-        tweetContent: input.tweetContent,
-        hasTweetContent: !!input.tweetContent,
-        tweetContentLength: input.tweetContent?.length || 0
+        tweetContent: input.tweetContent?.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
       })
       
-      const res = await client.videoDownloader.downloadVideo.$post({
+      const res = await client.video.submitVideoUrl.$post({
         url: input.url,
+        autoPost: false, // We'll handle posting through the normal flow
         tweetContent: input.tweetContent,
       })
 
       if (!res.ok) {
         const error = await res.text()
-        throw new Error(error || 'Failed to download video')
+        throw new Error(error || 'Failed to start video processing')
       }
 
       const data = await res.json()
-      return data
+      console.log('[ThreadTweet] Video processing started:', data)
+      
+      // Return a placeholder result that matches the old API
+      return {
+        success: true,
+        s3Key: '', // Will be filled when processing completes
+        url: '',
+        platform: data.platform,
+        message: 'Video processing started. It will be ready shortly.',
+        tweetId: data.tweetId,
+      }
     },
   })
 
@@ -836,7 +847,7 @@ function ThreadTweetContent({
         )
       }, 500)
 
-      // Download video
+      // Start video processing
       const result = await downloadVideoMutation.mutateAsync({
         url: videoUrl,
         tweetContent: mentionsContent.trim() || undefined
@@ -844,60 +855,16 @@ function ThreadTweetContent({
       
       clearInterval(progressInterval)
       
-      // Upload to Twitter to get media_id
-      const twitterResult = await uploadToTwitterMutation.mutateAsync({
-        s3Key: result.s3Key,
-        mediaType: 'video'
-      })
+      // For the new system, video processing happens asynchronously
+      // Show a success message and remove the placeholder
+      toast.success(`Video from ${result.platform} is processing! It will be attached to your tweet when ready.`)
+      
+      // Remove the placeholder since video is processing in background
+      setMediaFiles(prev => prev.filter(f => f.videoUrl !== videoUrl))
 
-      // Replace placeholder with real media file
-      const realMediaFile: MediaFile = {
-        file: null as any,
-        url: result.url,
-        type: 'video',
-        uploading: false,
-        uploaded: true,
-        s3Key: result.s3Key,
-        media_id: twitterResult.media_id,
-        media_key: twitterResult.media_key
-      }
-
-      setMediaFiles(prev => 
-        prev.map(f => 
-          f.videoUrl === videoUrl ? realMediaFile : f
-        )
-      )
-
-      // Update parent with the new media
+      // Update parent state - video will be attached when processing completes
       if (onUpdate) {
-        const content = mentionsContent
-        const parentMedia = [...mediaFiles]
-          .filter(f => f !== placeholderMediaFile)
-          .concat(realMediaFile)
-          .filter((f) => f.media_id && f.s3Key)
-          .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
         updateParentState()
-      }
-
-      // Check if there's a queued tweet waiting for this video
-      try {
-        console.log('[ThreadTweet] Checking for queued tweets to update with video')
-        const updateRes = await client.tweet.updateQueuedTweetWithVideo.$post({
-          s3Key: result.s3Key,
-          media_id: twitterResult.media_id,
-          media_key: twitterResult.media_key || ''
-        })
-        const updateResult = await updateRes.json()
-        console.log('[ThreadTweet] Updated queued tweet with video:', updateResult)
-        
-        if (updateResult.updatedCount > 0) {
-          toast.success(`Video ready! Updated ${updateResult.updatedCount} queued tweet(s)`)
-        } else {
-          toast.success(`Video from ${result.platform} ready!`)
-        }
-      } catch (error) {
-        console.log('[ThreadTweet] No queued tweet to update or update failed:', error)
-        toast.success(`Video from ${result.platform} ready!`)
       }
       
       setVideoUrl('')

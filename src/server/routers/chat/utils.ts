@@ -219,11 +219,56 @@ export async function publishThreadById({
   }
   if (!effectiveUserId) effectiveUserId = firstTweet.userId
 
-  const threadTweets = await (db as any).query.tweets.findMany({
+  let threadTweets = await (db as any).query.tweets.findMany({
     where: and(eq(tweets.threadId, threadId), eq(tweets.isPublished, false)),
     orderBy: asc(tweets.position),
   })
   if (threadTweets.length === 0) return
+
+  // Check for pending videos and wait for them to complete
+  const hasPendingVideos = threadTweets.some((tweet: any) => 
+    tweet.videoProcessingStatus && 
+    tweet.videoProcessingStatus !== 'complete' && 
+    tweet.videoProcessingStatus !== 'failed'
+  )
+
+  if (hasPendingVideos) {
+    console.log(`[${logPrefix}] Thread has pending videos, waiting for completion`)
+    
+    // Wait for videos to complete (max 5 minutes)
+    const maxWaitTime = 5 * 60 * 1000 // 5 minutes
+    const startTime = Date.now()
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      await new Promise(resolve => setTimeout(resolve, 5000)) // Check every 5 seconds
+      
+      // Re-check video status
+      const updatedTweets = await (db as any).query.tweets.findMany({
+        where: eq(tweets.threadId, threadId),
+      })
+      
+      const stillPending = updatedTweets.some((tweet: any) => 
+        tweet.videoProcessingStatus && 
+        tweet.videoProcessingStatus !== 'complete' && 
+        tweet.videoProcessingStatus !== 'failed'
+      )
+      
+      if (!stillPending) {
+        console.log(`[${logPrefix}] All videos processed, continuing with post`)
+        break
+      }
+      
+      console.log(`[${logPrefix}] Still waiting for videos...`, {
+        elapsed: Math.round((Date.now() - startTime) / 1000) + 's'
+      })
+    }
+    
+    // Re-fetch tweets after waiting to get updated media info
+    threadTweets = await (db as any).query.tweets.findMany({
+      where: and(eq(tweets.threadId, threadId), eq(tweets.isPublished, false)),
+      orderBy: asc(tweets.position),
+    })
+  }
 
   let accountData = null as any
   if (effectiveAccountId) {
