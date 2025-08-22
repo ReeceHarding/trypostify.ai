@@ -88,15 +88,22 @@ export const videoDownloaderRouter = j.router({
         console.log('[VideoDownloader] Started Apify run:', runId)
 
         // Poll for completion (max 60 seconds)
-        const maxAttempts = 30 // 30 attempts * 2 seconds = 60 seconds
+        const maxAttempts = 90 // extended window with backoff (~3-4 minutes max)
         let attempts = 0
         let runStatus: any
+        // Exponential backoff for polling, capped to avoid too long waits
+        let baseDelayMs = 1500
+        const backoff = 1.25
+        const maxDelayMs = 8000
+        let currentDelayMs = baseDelayMs
 
         while (attempts < maxAttempts) {
           attempts++
           
-          // Wait 2 seconds between checks
-          await new Promise(resolve => setTimeout(resolve, 2000))
+          // Wait with exponential backoff between checks
+          await new Promise(resolve => setTimeout(resolve, currentDelayMs))
+          console.log(`[VideoDownloader] Poll wait: ${currentDelayMs}ms (attempt ${attempts}/${maxAttempts})`)
+          currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
           
           // Check run status
           const statusResponse = await fetch(
@@ -122,7 +129,7 @@ export const videoDownloaderRouter = j.router({
 
         if (runStatus?.data?.status !== 'SUCCEEDED') {
           throw new HTTPException(408, {
-            message: 'Video download timed out. Please try a shorter video.',
+            message: 'Video download timed out. The source platform may be slow. Please retry or try a shorter video.',
           })
         }
 

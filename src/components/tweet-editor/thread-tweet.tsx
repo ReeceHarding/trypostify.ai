@@ -780,6 +780,21 @@ function ThreadTweetContent({
         onUpdate(content, parentMedia)
       }
 
+      // CRITICAL: Auto-post video if it was downloaded in background
+      // This handles the case where user clicked "Post" before video finished downloading
+      if (isFirstTweet && onPostThread) {
+        console.log('[ThreadTweet] Auto-posting video tweet after background upload')
+        toast.success('Video ready! Posting now...', { duration: 2000 })
+        
+        // Add some context text for the video
+        setMentionsContent(`Video from ${result.platform}`)
+        
+        // Small delay to let the UI update, then post
+        setTimeout(() => {
+          onPostThread()
+        }, 1000)
+      }
+
       // Final quick animation to 100%
       setDownloadProgress(100)
       await new Promise(resolve => setTimeout(resolve, 200))
