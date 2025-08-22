@@ -19,9 +19,10 @@ export const createQueueTool = (
   chatId?: string
 ) => {
   return tool({
-    description: 'Add a tweet to the queue for automatic scheduling at the next available slot. If content is not provided, uses the most recent tweet from the conversation.',
+    description: 'Add tweet(s) to the queue for automatic scheduling at the next available slot. Can handle single tweets or bulk operations. If content is not provided, uses tweet(s) from the conversation.',
     inputSchema: z.object({
       content: z.string().optional().describe('The tweet content to queue. If not provided, uses the most recent tweet from conversation'),
+      bulkMode: z.boolean().optional().describe('If true, queues ALL recent tweets from conversation instead of just the last one'),
       media: z.array(z.object({
         s3Key: z.string(),
         url: z.string().optional(),
@@ -38,75 +39,126 @@ export const createQueueTool = (
         delayMs: z.number().optional()
       })).optional().describe('Additional tweets for thread')
     }),
-    execute: async ({ content, media = [], isThread = false, additionalTweets = [] }) => {
+    execute: async ({ content, bulkMode = false, media = [], isThread = false, additionalTweets = [] }) => {
       const toolId = nanoid()
       
       try {
         console.log('[QUEUE_TOOL] ===== TOOL CALLED =====')
         console.log('[QUEUE_TOOL] Content provided:', content)
+        console.log('[QUEUE_TOOL] Bulk mode:', bulkMode)
         console.log('[QUEUE_TOOL] Has conversation context:', !!conversationContext)
         console.log('[QUEUE_TOOL] Has media:', !!media?.length)
         console.log('[QUEUE_TOOL] Is thread:', isThread)
         console.log('[QUEUE_TOOL] Additional tweets:', additionalTweets?.length || 0)
         console.log('[QUEUE_TOOL] Timestamp:', new Date().toISOString())
         
-        // If no content provided, try to get from Redis cache first (most reliable)
-        let finalContent = content
-        if (!finalContent && chatId) {
-          try {
-            const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
-            if (cached && cached.trim().length > 0) {
-              finalContent = cached
-              console.log('[QUEUE_TOOL] Loaded tweet from cache for chat:', chatId, 'Content length:', cached.length, 'Content preview:', cached.substring(0, 100) + '...')
-            }
-          } catch (cacheErr) {
-            console.warn('[QUEUE_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
-          }
-        }
+        // Array to hold all tweets to queue
+        let tweetsToQueue: Array<{ content: string, media: any[], delayMs?: number }> = []
         
-        // Fallback to conversation context extraction if cache is empty
-        if (!finalContent && conversationContext) {
-          console.log('[QUEUE_TOOL] No cached content, extracting from conversation context')
+        if (bulkMode && conversationContext) {
+          // Extract ALL recent tweets from conversation
+          console.log('[QUEUE_TOOL] Bulk mode - extracting all recent tweets from conversation')
           
-          // Look for the most recent tweet in the conversation
-          // Try multiple patterns to find tweet content
+          // Find all data-tool-output entries with tweet text
+          const tweetMatches = conversationContext.matchAll(/"type"\s*:\s*"data-tool-output"[^}]*?"data"\s*:\s*\{[^}]*?"text"\s*:\s*"([^"]+)"/g)
           
-          // Pattern 1: Look for tool output with text field (improved regex)
-          let tweetMatch = conversationContext.match(/"text"\s*:\s*"([^"]{20,}?)"/i)
+          for (const match of tweetMatches) {
+            if (match[1] && match[1].length > 10) { // Skip very short texts
+              tweetsToQueue.push({ content: match[1], media: [] })
+              console.log('[QUEUE_TOOL] Found tweet in conversation:', match[1].substring(0, 50) + '...')
+            }
+          }
           
-          // Pattern 2: If not found, look for text in conversation that looks like a tweet
-          if (!tweetMatch || !tweetMatch[1]) {
-            // Find the last assistant message with tweet-like content
+          // Also try to find tweets in a more structured way
+          if (tweetsToQueue.length === 0) {
+            // Look for tweet-like content in the conversation
             const lines = conversationContext.split('\n')
-            for (let i = lines.length - 1; i >= 0; i--) {
-              const line = lines[i]?.trim() || ''
-              // Skip short lines, tool outputs, system messages, and markdown content
-              if (line.length > 20 && 
-                  !line.includes('Tool called:') && 
-                  !line.includes('Assistant:') &&
-                  !line.includes('User:') &&
-                  !line.includes('{') &&
-                  !line.includes('}') &&
-                  !line.includes('![') && // Skip markdown images
-                  !line.includes('](') && // Skip markdown links
-                  !line.includes('**') && // Skip markdown bold
-                  !line.includes('*') && // Skip markdown italic
-                  !line.includes('https://') && // Skip all URLs
-                  !line.includes('<') && // Skip HTML tags
-                  !line.includes('>')) { // Skip HTML tags
-                finalContent = line
-                console.log('[QUEUE_TOOL] Extracted tweet from conversation line:', finalContent)
-                break
+            for (const line of lines) {
+              const trimmedLine = line.trim()
+              // Skip metadata, tool outputs, and very short lines
+              if (trimmedLine.length > 20 && 
+                  !trimmedLine.includes('Tool called:') && 
+                  !trimmedLine.includes('Assistant:') &&
+                  !trimmedLine.includes('User:') &&
+                  !trimmedLine.includes('{') &&
+                  !trimmedLine.includes('}') &&
+                  !trimmedLine.includes('**') &&
+                  !trimmedLine.includes('![') &&
+                  !trimmedLine.includes('](')) {
+                // This looks like tweet content
+                tweetsToQueue.push({ content: trimmedLine, media: [] })
+                console.log('[QUEUE_TOOL] Found potential tweet:', trimmedLine.substring(0, 50) + '...')
               }
             }
-          } else if (tweetMatch && tweetMatch[1]) {
-            finalContent = tweetMatch[1]
-            console.log('[QUEUE_TOOL] Extracted tweet from tool output:', finalContent)
           }
-        }
+          
+          console.log('[QUEUE_TOOL] Total tweets found for bulk queueing:', tweetsToQueue.length)
+          
+          if (tweetsToQueue.length === 0) {
+            throw new Error('No tweets found in the conversation to queue. Please generate some tweets first.')
+          }
+        } else {
+          // Single tweet mode - existing logic
+          let finalContent = content
+          if (!finalContent && chatId) {
+            try {
+              const cached = await redis.get<string>(`chat:last-tweet:${chatId}`)
+              if (cached && cached.trim().length > 0) {
+                finalContent = cached
+                console.log('[QUEUE_TOOL] Loaded tweet from cache for chat:', chatId, 'Content length:', cached.length, 'Content preview:', cached.substring(0, 100) + '...')
+              }
+            } catch (cacheErr) {
+              console.warn('[QUEUE_TOOL] Failed to read cached tweet:', (cacheErr as Error)?.message)
+            }
+          }
         
-        if (!finalContent) {
-          throw new Error('No tweet content provided and could not find a recent tweet in the conversation')
+          // Fallback to conversation context extraction if cache is empty
+          if (!finalContent && conversationContext) {
+            console.log('[QUEUE_TOOL] No cached content, extracting from conversation context')
+            
+            // Look for the most recent tweet in the conversation
+            // Try multiple patterns to find tweet content
+            
+            // Pattern 1: Look for tool output with text field (improved regex)
+            let tweetMatch = conversationContext.match(/"text"\s*:\s*"([^"]{20,}?)"/i)
+            
+            // Pattern 2: If not found, look for text in conversation that looks like a tweet
+            if (!tweetMatch || !tweetMatch[1]) {
+              // Find the last assistant message with tweet-like content
+              const lines = conversationContext.split('\n')
+              for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i]?.trim() || ''
+                // Skip short lines, tool outputs, system messages, and markdown content
+                if (line.length > 20 && 
+                    !line.includes('Tool called:') && 
+                    !line.includes('Assistant:') &&
+                    !line.includes('User:') &&
+                    !line.includes('{') &&
+                    !line.includes('}') &&
+                    !line.includes('![') && // Skip markdown images
+                    !line.includes('](') && // Skip markdown links
+                    !line.includes('**') && // Skip markdown bold
+                    !line.includes('*') && // Skip markdown italic
+                    !line.includes('https://') && // Skip all URLs
+                    !line.includes('<') && // Skip HTML tags
+                    !line.includes('>')) { // Skip HTML tags
+                  finalContent = line
+                  console.log('[QUEUE_TOOL] Extracted tweet from conversation line:', finalContent)
+                  break
+                }
+              }
+            } else if (tweetMatch && tweetMatch[1]) {
+              finalContent = tweetMatch[1]
+              console.log('[QUEUE_TOOL] Extracted tweet from tool output:', finalContent)
+            }
+          }
+          
+          if (!finalContent) {
+            throw new Error('No tweet content provided and could not find a recent tweet in the conversation')
+          }
+          
+          // In single mode, we have just one tweet
+          tweetsToQueue = [{ content: finalContent, media: media || [] }]
         }
         
         // Send initial status
@@ -114,26 +166,10 @@ export const createQueueTool = (
           type: 'data-tool-output',
           id: toolId,
           data: {
-            text: 'Finding next available slot...',
+            text: bulkMode ? `Finding slots for ${tweetsToQueue.length} tweets...` : 'Finding next available slot...',
             status: 'processing',
           },
         })
-
-        // Prepare tweets array
-        const tweetsToQueue = [{
-          content: finalContent,
-          media: media || [],
-          delayMs: 0
-        }]
-
-        // Add additional tweets if it's a thread
-        if (additionalTweets && additionalTweets.length > 0) {
-          tweetsToQueue.push(...additionalTweets.map((tweet, index) => ({
-            content: tweet.content,
-            media: tweet.media || [],
-            delayMs: tweet.delayMs || (index > 0 ? 1000 : 0)
-          })))
-        }
 
         console.log('[QUEUE_TOOL] Queueing', tweetsToQueue.length, 'tweet(s)')
 
@@ -141,15 +177,17 @@ export const createQueueTool = (
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
         const userNow = new Date()
 
-        // Create thread in database directly (instead of HTTP call)
-        const threadId = crypto.randomUUID()
-        console.log('[QUEUE_TOOL] Generated threadId:', threadId)
-        
-        // Insert tweets into database
-        const createdTweets = await Promise.all(
-          tweetsToQueue.map(async (tweet, index) => {
+        // Store created tweet info for later use
+        const queuedTweets: Array<{ threadId: string, content: string }> = []
+
+        // In bulk mode, create separate threads for each tweet
+        // In single mode or thread mode, create one thread with all tweets
+        if (bulkMode) {
+          // Create separate single-tweet threads for each tweet
+          for (const tweet of tweetsToQueue) {
+            const threadId = crypto.randomUUID()
             const tweetId = crypto.randomUUID()
-            console.log('[QUEUE_TOOL] Creating tweet', { tweetId, position: index, contentLength: tweet.content.length })
+            console.log('[QUEUE_TOOL] Creating single-tweet thread', { threadId, tweetId, contentLength: tweet.content.length })
 
             // Transform media to match database schema
             const mediaForDb = (tweet.media || []).map(m => ({
@@ -157,7 +195,7 @@ export const createQueueTool = (
               media_id: '', // Will be filled when uploaded to Twitter
             }))
 
-            const [created] = await db
+            await db
               .insert(tweets)
               .values({
                 id: tweetId,
@@ -166,22 +204,62 @@ export const createQueueTool = (
                 media: mediaForDb,
                 userId: userId,
                 accountId: accountId,
-                position: index,
-                isThreadStart: index === 0,
-                delayMs: tweet.delayMs || 0,
+                position: 0,
+                isThreadStart: true,
+                delayMs: 0,
                 isScheduled: false,
                 isPublished: false,
                 createdAt: new Date(),
                 updatedAt: new Date(),
               })
-              .returning()
 
-            console.log('[QUEUE_TOOL] Tweet created in database:', { tweetId, threadId, position: index })
-            return created
-          }),
-        )
+            queuedTweets.push({ threadId, content: tweet.content })
+            console.log('[QUEUE_TOOL] Single-tweet thread created:', { threadId })
+          }
+        } else {
+          // Single mode or thread mode - create one thread with all tweets
+          const threadId = crypto.randomUUID()
+          console.log('[QUEUE_TOOL] Generated threadId:', threadId)
+          
+          // Insert tweets into database
+          const createdTweets = await Promise.all(
+            tweetsToQueue.map(async (tweet, index) => {
+              const tweetId = crypto.randomUUID()
+              console.log('[QUEUE_TOOL] Creating tweet', { tweetId, position: index, contentLength: tweet.content.length })
 
-        console.log('[QUEUE_TOOL] Thread created with ID:', threadId, 'with', createdTweets.length, 'tweets')
+              // Transform media to match database schema
+              const mediaForDb = (tweet.media || []).map(m => ({
+                s3Key: m.s3Key,
+                media_id: '', // Will be filled when uploaded to Twitter
+              }))
+
+              const [created] = await db
+                .insert(tweets)
+                .values({
+                  id: tweetId,
+                  threadId: threadId,
+                  content: tweet.content,
+                  media: mediaForDb,
+                  userId: userId,
+                  accountId: accountId,
+                  position: index,
+                  isThreadStart: index === 0,
+                  delayMs: tweet.delayMs || 0,
+                  isScheduled: false,
+                  isPublished: false,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                })
+                .returning()
+
+              console.log('[QUEUE_TOOL] Tweet created in database:', { tweetId, threadId, position: index })
+              return created
+            }),
+          )
+
+          console.log('[QUEUE_TOOL] Thread created with ID:', threadId, 'with', createdTweets.length, 'tweets')
+          queuedTweets.push({ threadId, content: tweetsToQueue[0]?.content || '' })
+        }
 
         // Update status
         writer.write({
@@ -315,102 +393,181 @@ export const createQueueTool = (
           return null // no slot found in next N days
         }
 
-        const nextSlot = getNextAvailableSlot({ 
-          userNow, 
-          timezone, 
-          maxDaysAhead: 90,
-          userFrequency 
-        })
-
-        console.log('[QUEUE_TOOL] Next available slot:', nextSlot)
-
-        if (!nextSlot) {
-          throw new Error('Queue for the next 3 months is already full!')
-        }
-
-        const scheduledUnix = nextSlot.getTime()
-
-        // For local development, skip QStash and just update the database
-        let messageId = null
+        // In bulk mode, find multiple slots
+        const slotsNeeded = bulkMode ? queuedTweets.length : 1
+        const availableSlots: Date[] = []
         
-        if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
-          // In development, generate a fake message ID
-          messageId = `local-${Date.now()}-${Math.random().toString(36).substring(7)}`
-          console.log('[QUEUE_TOOL] Local development - skipping QStash, using fake messageId:', messageId)
+        // Modified slot finding for bulk operations
+        if (bulkMode) {
+          // Find multiple available slots
+          let daysChecked = 0
+          const maxDaysAhead = 90
+          
+          while (availableSlots.length < slotsNeeded && daysChecked <= maxDaysAhead) {
+            const checkDay = startOfDay(addDays(userNow, daysChecked))
+            
+            // Get preset slots based on user frequency
+            let presetSlots: number[]
+            if (userFrequency === 1) {
+              presetSlots = [12] // Just noon
+            } else if (userFrequency === 2) {
+              presetSlots = [10, 12] // 10am and noon
+            } else {
+              presetSlots = [10, 12, 14] // 10am, noon, 2pm (default for 3+ posts)
+            }
+            
+            for (const hour of presetSlots) {
+              const localSlotTime = startOfHour(setHours(checkDay, hour))
+              const slotTime = fromZonedTime(localSlotTime, timezone)
+              
+              if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
+                availableSlots.push(slotTime)
+                console.log('[QUEUE_TOOL] Found available slot:', slotTime, 'hour:', hour)
+                
+                if (availableSlots.length >= slotsNeeded) {
+                  break
+                }
+              }
+            }
+            
+            daysChecked++
+          }
+          
+          if (availableSlots.length < slotsNeeded) {
+            throw new Error(`Could only find ${availableSlots.length} available slots out of ${slotsNeeded} needed. Try queueing fewer tweets.`)
+          }
         } else {
-          // In production, use QStash
-          const baseUrl = process.env.WEBHOOK_URL
-          const qstashResponse = await qstash.publishJSON({
-            url: baseUrl + '/api/tweet/postThread',
-            body: { threadId, userId: userId, accountId: dbAccount.id },
-            notBefore: scheduledUnix / 1000, // needs to be in seconds
+          // Single slot mode - use existing logic
+          const nextSlot = getNextAvailableSlot({ 
+            userNow, 
+            timezone, 
+            maxDaysAhead: 90,
+            userFrequency 
           })
-          messageId = qstashResponse.messageId
+
+          console.log('[QUEUE_TOOL] Next available slot:', nextSlot)
+
+          if (!nextSlot) {
+            throw new Error('Queue for the next 3 months is already full!')
+          }
+          
+          availableSlots.push(nextSlot)
         }
 
-        console.log('[QUEUE_TOOL] QStash message created:', messageId)
-
-        try {
-          // Update all tweets in the thread to queued
-          await db
-            .update(tweets)
-            .set({
-              isScheduled: true,
-              isQueued: true,
-              scheduledFor: new Date(scheduledUnix),
-              scheduledUnix: scheduledUnix,
-              qstashId: messageId,
-              updatedAt: new Date(),
-            })
-            .where(and(
-              eq(tweets.threadId, threadId),
-              eq(tweets.userId, userId),
-            ))
-
-          console.log('[QUEUE_TOOL] Thread queued successfully')
-        } catch (err) {
-          console.error('[QUEUE_TOOL] Database error:', err)
+        // Schedule each tweet/thread
+        const scheduledResults: Array<{ threadId: string, time: Date, messageId: string | null }> = []
+        
+        for (let i = 0; i < queuedTweets.length; i++) {
+          const { threadId } = queuedTweets[i]!
+          const scheduledTime = availableSlots[i]!
+          const scheduledUnix = scheduledTime.getTime()
           
-          // If QStash message was created, try to delete it
-          if (messageId && messageId !== `local-${Date.now()}-${Math.random().toString(36).substring(7)}`) {
-            try {
-              const messages = qstash.messages
-              await messages.delete(messageId)
-            } catch (deleteErr) {
-              console.error('[QUEUE_TOOL] Failed to delete QStash message:', deleteErr)
-            }
+          let messageId = null
+          
+          if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
+            // In development, generate a fake message ID
+            messageId = `local-${Date.now()}-${Math.random().toString(36).substring(7)}`
+            console.log('[QUEUE_TOOL] Local development - skipping QStash for thread:', threadId)
+          } else {
+            // In production, use QStash
+            const baseUrl = process.env.WEBHOOK_URL
+            const qstashResponse = await qstash.publishJSON({
+              url: baseUrl + '/api/tweet/postThread',
+              body: { threadId, userId: userId, accountId: dbAccount.id },
+              notBefore: scheduledUnix / 1000, // needs to be in seconds
+            })
+            messageId = qstashResponse.messageId
           }
 
-          throw new Error('Problem with database')
+          console.log('[QUEUE_TOOL] QStash message created for thread:', threadId, 'messageId:', messageId)
+
+          try {
+            // Update all tweets in the thread to queued
+            await db
+              .update(tweets)
+              .set({
+                isScheduled: true,
+                isQueued: true,
+                scheduledFor: new Date(scheduledUnix),
+                scheduledUnix: scheduledUnix,
+                qstashId: messageId,
+                updatedAt: new Date(),
+              })
+              .where(and(
+                eq(tweets.threadId, threadId),
+                eq(tweets.userId, userId),
+              ))
+
+            scheduledResults.push({ threadId, time: scheduledTime, messageId })
+            console.log('[QUEUE_TOOL] Thread queued successfully:', threadId, 'at', scheduledTime)
+          } catch (err) {
+            console.error('[QUEUE_TOOL] Database error for thread:', threadId, err)
+            
+            // If QStash message was created, try to delete it
+            if (messageId && !messageId.startsWith('local-')) {
+              try {
+                const messages = qstash.messages
+                await messages.delete(messageId)
+              } catch (deleteErr) {
+                console.error('[QUEUE_TOOL] Failed to delete QStash message:', deleteErr)
+              }
+            }
+
+            throw new Error(`Problem scheduling tweet ${i + 1} of ${queuedTweets.length}`)
+          }
         }
 
-        const result = {
-          time: nextSlot.toISOString(),
-          dayName: format(nextSlot, 'EEEE'),
-          scheduledUnix: scheduledUnix,
-          threadId: threadId
-        }
-        console.log('[QUEUE_TOOL] Queued successfully:', result)
+        console.log('[QUEUE_TOOL] All tweets queued successfully:', scheduledResults.length)
 
-        // Format the scheduled time for display
-        const scheduledDate = new Date(result.time)
+        // Format success message based on mode
         const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone
-        const friendlyTime = new Intl.DateTimeFormat('en-US', {
-          weekday: 'long',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-          timeZone: userTz,
-        }).format(scheduledDate)
-
-        // Send success message
-        const baseMessage = tweetsToQueue.length > 1 
-          ? `Thread added to queue! ${tweetsToQueue.length} tweets will be posted on ${friendlyTime}.`
-          : `Tweet added to queue! It will be posted on ${friendlyTime}.`
+        let successMessage = ''
         
-        const successMessage = `${baseMessage}\n\n💡 **Tip**: Press Cmd/Ctrl + 3 to quickly open the Schedule page and view your queue.`
+        if (bulkMode) {
+          // Create a summary of when tweets are scheduled
+          const scheduleSummary = scheduledResults.map((result, index) => {
+            const friendlyTime = new Intl.DateTimeFormat('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+              timeZone: userTz,
+            }).format(result.time)
+            
+            // Show first 3 tweets preview
+            if (index < 3) {
+              const preview = queuedTweets[index]?.content.substring(0, 50) + '...'
+              return `• ${friendlyTime}: "${preview}"`
+            }
+            return null
+          }).filter(Boolean)
+          
+          if (scheduledResults.length > 3) {
+            scheduleSummary.push(`• ...and ${scheduledResults.length - 3} more tweets`)
+          }
+          
+          successMessage = `Successfully queued ${scheduledResults.length} tweets!\n\n${scheduleSummary.join('\n')}\n\n💡 **Tip**: Press Cmd/Ctrl + 3 to view your complete queue.`
+        } else {
+          // Single tweet or thread mode
+          const firstResult = scheduledResults[0]!
+          const friendlyTime = new Intl.DateTimeFormat('en-US', {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: userTz,
+          }).format(firstResult.time)
+          
+          const baseMessage = tweetsToQueue.length > 1 
+            ? `Thread added to queue! ${tweetsToQueue.length} tweets will be posted on ${friendlyTime}.`
+            : `Tweet added to queue! It will be posted on ${friendlyTime}.`
+          
+          successMessage = `${baseMessage}\n\n💡 **Tip**: Press Cmd/Ctrl + 3 to quickly open the Schedule page and view your queue.`
+        }
 
         writer.write({
           type: 'data-tool-output',
@@ -418,18 +575,16 @@ export const createQueueTool = (
           data: {
             text: successMessage,
             status: 'complete',
-            scheduledTime: result.time,
-            dayName: result.dayName,
-            threadId: result.threadId
+            bulkMode: bulkMode,
+            scheduledCount: scheduledResults.length
           },
         })
 
         return {
           success: true,
           message: successMessage,
-          threadId: result.threadId,
-          scheduledTime: result.time,
-          dayName: result.dayName
+          scheduledCount: scheduledResults.length,
+          results: scheduledResults
         }
 
       } catch (error) {

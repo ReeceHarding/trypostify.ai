@@ -31,7 +31,7 @@ export const Messages = memo(
         const filtered = messages.filter((message) => {
           const hasVisiblePart = message.parts.some((part) => 
             (part.type === 'text' && Boolean(part.text)) ||
-            part.type === 'data-data-tool-output' ||
+            part.type === 'data-tool-output' ||
             part.type === 'tool-readWebsiteContent'
           )
           console.log('[Messages] Message visible:', message.id, hasVisiblePart, 
@@ -53,7 +53,7 @@ export const Messages = memo(
               messages[messages.length - 1]?.parts.some(
                 (part) => 
                   (part.type === 'text' && Boolean(part.text)) ||
-                  part.type === 'data-data-tool-output' ||
+                  part.type === 'data-tool-output' ||
                   part.type === 'tool-readWebsiteContent'
               ),
             )))
@@ -97,8 +97,6 @@ export const Messages = memo(
                     }
                   >
                     {message.parts.map((part, i) => {
-                      console.log(`[Messages] Part ${i} type:`, part.type, 'has data:', !!part.data)
-                      
                       if (part.type === 'tool-readWebsiteContent') {
                         if (
                           part.state === 'input-available' ||
@@ -126,36 +124,7 @@ export const Messages = memo(
                         return null
                       }
 
-                      if (part.type === 'data-data-tool-output') {
-                        console.log('[Messages] data-data-tool-output part:', part)
-                        console.log('[Messages] part.data:', part.data)
-                        console.log('[Messages] part.data.tweets:', part.data.tweets)
-                        
-                        // Check if this is bulk tweets output
-                        if (part.data.tweets && Array.isArray(part.data.tweets)) {
-                          console.log('[Messages] Rendering bulk tweets, count:', part.data.tweets.length)
-                          
-                          if (part.data.status === 'processing') {
-                            return <TweetMockup key={i} isLoading />
-                          }
-                          
-                          // Render each tweet using TweetMockup
-                          return (
-                            <div key={i} className="space-y-4">
-                              {part.data.tweets.map((tweet: any, idx: number) => (
-                                <TweetMockup 
-                                  key={`${i}-${idx}`} 
-                                  text={tweet.text}
-                                  twitterUrl={part.data.twitterUrl}
-                                >
-                                  <StreamingMessage animate={true} text={tweet.text} />
-                                </TweetMockup>
-                              ))}
-                            </div>
-                          )
-                        }
-                        
-                        // Single tweet output (existing logic)
+                      if (part.type === 'data-tool-output') {
                         if (part.data.status === 'processing') {
                           return <TweetMockup key={i} isLoading />
                         }

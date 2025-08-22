@@ -23,10 +23,6 @@ import { createTweetTool } from './tools/create-tweet-tool'
 import { createPostNowTool } from './tools/post-now-tool'
 import { createQueueTool } from './tools/queue-tool'
 import { createScheduleTool } from './tools/schedule-tool'
-import { createBulkWriteTweetsTool } from './tools/bulk-write-tweets-tool'
-import { createGenerateVariationsTool } from './tools/generate-variations-tool'
-import { createBulkEditTweetsTool } from './tools/bulk-edit-tweets-tool'
-import { createBulkQueueTweetsTool } from './tools/bulk-queue-tweets-tool'
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { openai } from '@ai-sdk/openai'
@@ -122,8 +118,6 @@ export type MyUIMessage = UIMessage<
     'data-tool-output': {
       text: string
       status: 'processing' | 'streaming' | 'complete'
-      tweets?: Array<{ id: string; text: string; index: number }>
-      twitterUrl?: string
     }
     writeTweet: {
       status: 'processing'
@@ -459,34 +453,6 @@ export const chatRouter = j.router({
           const queueTweet = createQueueTool(writer, user.id, accountData.id, conversationContext, id)
           const scheduleTweet = createScheduleTool(writer, user.id, accountData.id, conversationContext, id)
           
-          // Create bulk tools
-          const bulkWriteTweets = createBulkWriteTweetsTool(
-            writer,
-            accountData,
-            style,
-            user.hasXPremium || false,
-            conversationContext,
-            websiteContent,
-            id
-          )
-          const generateVariations = createGenerateVariationsTool(
-            writer,
-            accountData,
-            style,
-            user.hasXPremium || false,
-            conversationContext,
-            id
-          )
-          const bulkEditTweets = createBulkEditTweetsTool(
-            writer,
-            accountData,
-            style,
-            user.hasXPremium || false,
-            conversationContext,
-            id
-          )
-          const bulkQueueTweets = createBulkQueueTweetsTool(writer, user.id, accountData.id, conversationContext, id)
-          
           console.log('[CHAT_ROUTER] All tools created successfully')
 
           // Log attachment composition for debugging
@@ -676,34 +642,14 @@ export const chatRouter = j.router({
                       ],
                     },
                   ],
-                  tools: { 
-                    readWebsiteContent, 
-                    writeTweet, 
-                    postNow, 
-                    queueTweet, 
-                    scheduleTweet, 
-                    bulkWriteTweets, 
-                    generateVariations, 
-                    bulkEditTweets, 
-                    bulkQueueTweets 
-                  },
+                  tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                   stopWhen: stepCountIs(2),
                 })
               } else {
                 // For non-vision models, use standard conversion
                 console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini (official adapter)`)
                 console.log('[CHAT_ROUTER] Standard model - final user message:', content.toString().substring(0, 200))
-                console.log('[CHAT_ROUTER] Available tools:', Object.keys({ 
-                  readWebsiteContent, 
-                  writeTweet, 
-                  postNow, 
-                  queueTweet, 
-                  scheduleTweet, 
-                  bulkWriteTweets, 
-                  generateVariations, 
-                  bulkEditTweets, 
-                  bulkQueueTweets 
-                }))
+                console.log('[CHAT_ROUTER] Available tools:', Object.keys({ readWebsiteContent, writeTweet }))
                 
                 // Validate and potentially regenerate URLs in historical messages before converting (non-vision)
                 const historicalMessages = messages.slice(-12);
@@ -767,17 +713,7 @@ export const chatRouter = j.router({
                   model: openai('gpt-4o-mini'),
                   system: systemPromptContent,
                   messages: convertToModelMessages(limited),
-                  tools: { 
-                    readWebsiteContent, 
-                    writeTweet, 
-                    postNow, 
-                    queueTweet, 
-                    scheduleTweet, 
-                    bulkWriteTweets, 
-                    generateVariations, 
-                    bulkEditTweets, 
-                    bulkQueueTweets 
-                  },
+                  tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                   stopWhen: stepCountIs(2),
                 })
               }
@@ -912,17 +848,7 @@ export const chatRouter = j.router({
                     ],
                   },
                 ],
-                tools: { 
-                  readWebsiteContent, 
-                  writeTweet, 
-                  postNow, 
-                  queueTweet, 
-                  scheduleTweet, 
-                  bulkWriteTweets, 
-                  generateVariations, 
-                  bulkEditTweets, 
-                  bulkQueueTweets 
-                },
+                tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                 stopWhen: stepCountIs(2),
               })
               console.log('[CHAT_ROUTER] Vision streamText call completed')
@@ -988,17 +914,7 @@ export const chatRouter = j.router({
                 model: openai('gpt-4o-mini'),
                 system: assistantPrompt({ editorContent: message.metadata?.editorContent }),
                 messages: convertToModelMessages(limited),
-                tools: { 
-                  readWebsiteContent, 
-                  writeTweet, 
-                  postNow, 
-                  queueTweet, 
-                  scheduleTweet, 
-                  bulkWriteTweets, 
-                  generateVariations, 
-                  bulkEditTweets, 
-                  bulkQueueTweets 
-                },
+                tools: { readWebsiteContent, writeTweet, postNow, queueTweet, scheduleTweet },
                 stopWhen: stepCountIs(2),
               })
               console.log('[CHAT_ROUTER] Standard streamText call completed')
