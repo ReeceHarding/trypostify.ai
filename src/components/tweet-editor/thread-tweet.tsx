@@ -42,6 +42,7 @@ import {
   Upload,
   X,
   Link2,
+  Video,
 } from 'lucide-react'
 
 import { PropsWithChildren } from 'react'
