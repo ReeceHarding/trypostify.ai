@@ -1481,7 +1481,9 @@ function ThreadTweetContent({
                                   loading={isPosting || optimisticActionState === 'post'}
                                 >
                                   <span className="text-sm">
-                                    {isPosting || optimisticActionState === 'post' ? 'Posting...' : 'Post'}
+                                    {isPosting || optimisticActionState === 'post' ? 
+                                      mediaFiles.some(f => f.isDownloading) ? 'Queueing...' : 'Posting...' 
+                                      : 'Post'}
                                   </span>
                                   <span className="sr-only">Post to Twitter</span>
                                 </DuolingoButton>
@@ -1489,9 +1491,11 @@ function ThreadTweetContent({
                               <TooltipContent>
                                 <div className="space-y-1">
                                   <p>
-                                    {skipPostConfirmation
-                                      ? 'The tweet will be posted immediately'
-                                      : 'A confirmation modal will open'}
+                                    {mediaFiles.some(f => f.isDownloading) 
+                                      ? 'Video downloading - will queue instead'
+                                      : skipPostConfirmation
+                                        ? 'The tweet will be posted immediately'
+                                        : 'A confirmation modal will open'}
                                   </p>
                                   <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
                                 </div>

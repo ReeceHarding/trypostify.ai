@@ -399,11 +399,17 @@ export default function ThreadTweetEditor({
         .filter(m => (m as any).isDownloading)
     )
     
+    // If videos are downloading, auto-queue instead of posting
     if (downloadingVideos.length > 0) {
-      toast.success('Posting tweet! Videos will be attached when ready.', {
+      console.log('[ThreadTweetEditor] Videos still downloading - auto-queueing instead of posting')
+      toast.success('Tweet queued! Video will be attached when ready.', {
         duration: 4000,
-        icon: '📹',
+        icon: '🎬',
       })
+      
+      // Call queue function instead of continuing with post
+      handleQueueThread()
+      return
     }
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback

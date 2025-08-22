@@ -43,8 +43,6 @@ export const tweets = pgTable('tweets', {
   replyToTweetId: text('reply_to_tweet_id'), // Twitter ID to reply to
   isThreadStart: boolean('is_thread_start').default(false), // True for first tweet in thread
   delayMs: integer('delay_ms').default(0), // Delay before posting this tweet
-  // Video processing columns
-  pendingVideoUrl: text('pending_video_url'), // URL of video being downloaded in background
   // Engagement metrics columns
   likes: integer('likes').default(0), // Number of likes
   retweets: integer('retweets').default(0), // Number of retweets
