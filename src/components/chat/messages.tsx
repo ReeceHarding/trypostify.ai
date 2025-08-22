@@ -9,6 +9,7 @@ import { StreamingMessage } from './streaming-message'
 import { TweetMockup } from './tweet-mockup'
 import { WebsiteMockup } from './website-mockup'
 import { ScrollButton } from '../ui/scroll-button'
+import { BulkTweetList } from './bulk-tweet-list'
 
 export const Messages = memo(
   ({
@@ -125,6 +126,27 @@ export const Messages = memo(
                       }
 
                       if (part.type === 'data-tool-output') {
+                        // Check if this is bulk tweets output
+                        if (part.data.tweets && Array.isArray(part.data.tweets)) {
+                          return (
+                            <BulkTweetList
+                              key={i}
+                              tweets={part.data.tweets}
+                              isLoading={part.data.status === 'processing'}
+                              title={part.data.text}
+                              onQueueAll={(tweetIds) => {
+                                // This will be handled by the AI through the bulkQueueTweets tool
+                                console.log('[Messages] Queue all requested for tweets:', tweetIds)
+                              }}
+                              onEditAll={(tweetIds) => {
+                                // This will be handled by the AI through the bulkEditTweets tool
+                                console.log('[Messages] Edit all requested for tweets:', tweetIds)
+                              }}
+                            />
+                          )
+                        }
+                        
+                        // Single tweet output (existing logic)
                         if (part.data.status === 'processing') {
                           return <TweetMockup key={i} isLoading />
                         }
