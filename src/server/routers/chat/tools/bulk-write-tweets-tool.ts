@@ -84,7 +84,11 @@ IMPORTANT BULK GENERATION RULES:
 5. NEVER use hyphenated words
 6. Output tweets as a JSON array with format: [{"text": "tweet content"}, ...]
 7. Make each tweet self contained and complete
-8. Vary the structure and approach between tweets`
+8. Vary the structure and approach between tweets
+9. CRITICAL: All tweets must follow the same instruction type:
+   - If instruction asks to "ask" or "write tweets asking", ALL tweets must be questions
+   - If instruction says "write about", ALL tweets should make statements about the topic
+   - Maintain the same intent across all tweets`
 
         const fullPrompt = `${instruction}
 

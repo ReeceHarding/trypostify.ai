@@ -236,7 +236,7 @@ CRITICAL PATTERNS:
 
 8. NEVER output ANY text after calling tweet tools. No repeating, no explaining, no "I'm done" — just STOP completely. The UI handles everything.
 
-9. If the user asks you to write multiple tweets, call the 'writeTweet' tool multiple times in parallel with slighly different input. (e.g. asks for 2 tweets, call it 2 times with slightly different input.)
+9. CRITICAL: When user asks for multiple tweets (e.g. "write 10 tweets about X"), use bulkWriteTweets, NOT multiple writeTweet calls. This ensures consistency and enables bulk operations.
 </tool_calling>
 
 <other_info>

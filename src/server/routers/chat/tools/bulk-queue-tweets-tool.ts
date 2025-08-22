@@ -37,14 +37,28 @@ export const createBulkQueueTweetsTool = (
         let tweetsToQueue = []
         if (chatId) {
           try {
+            // First try bulk tweets cache
             const cached = await redis.get<string>(`chat:bulk-tweets:${chatId}`)
             if (cached) {
               tweetsToQueue = JSON.parse(cached)
-              console.log('[BULK_QUEUE_TWEETS_TOOL] Loaded', tweetsToQueue.length, 'cached tweets')
+              console.log('[BULK_QUEUE_TWEETS_TOOL] Loaded', tweetsToQueue.length, 'cached bulk tweets')
             }
           } catch (err) {
             console.error('[BULK_QUEUE_TWEETS_TOOL] Failed to load cached tweets:', err)
           }
+        }
+
+        // If no bulk tweets, extract from conversation
+        if (!tweetsToQueue.length && conversationContext) {
+          console.log('[BULK_QUEUE_TWEETS_TOOL] No cached bulk tweets, extracting from conversation')
+          // Look for tweet content in conversation data-tool-output
+          const tweetMatches = conversationContext.match(/"text"\s*:\s*"([^"]+)"/g) || []
+          tweetsToQueue = tweetMatches.map((match, index) => ({
+            id: nanoid(),
+            text: match.replace(/"text"\s*:\s*"/, '').replace(/"$/, ''),
+            index,
+          }))
+          console.log('[BULK_QUEUE_TWEETS_TOOL] Extracted', tweetsToQueue.length, 'tweets from conversation')
         }
 
         if (!tweetsToQueue.length) {
