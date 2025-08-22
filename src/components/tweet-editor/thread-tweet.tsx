@@ -1747,7 +1747,7 @@ function ThreadTweetContent({
 
       {/* Schedule Calendar Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle>Schedule Post</DialogTitle>
             <DialogDescription>
