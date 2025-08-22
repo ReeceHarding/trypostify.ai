@@ -9,7 +9,6 @@ import { StreamingMessage } from './streaming-message'
 import { TweetMockup } from './tweet-mockup'
 import { WebsiteMockup } from './website-mockup'
 import { ScrollButton } from '../ui/scroll-button'
-import { BulkTweetList } from './bulk-tweet-list'
 
 export const Messages = memo(
   ({
@@ -32,7 +31,7 @@ export const Messages = memo(
         const filtered = messages.filter((message) => {
           const hasVisiblePart = message.parts.some((part) => 
             (part.type === 'text' && Boolean(part.text)) ||
-            part.type === 'data-tool-output' ||
+            part.type === 'data-data-tool-output' ||
             part.type === 'tool-readWebsiteContent'
           )
           console.log('[Messages] Message visible:', message.id, hasVisiblePart, 
@@ -54,7 +53,8 @@ export const Messages = memo(
               messages[messages.length - 1]?.parts.some(
                 (part) => 
                   (part.type === 'text' && Boolean(part.text)) ||
-                  part.type === 'data-tool-output' ||
+                  part.type === 'data-data-tool-output' ||
+                  part.type === 'data-writeTweet' ||
                   part.type === 'tool-readWebsiteContent'
               ),
             )))
@@ -125,24 +125,26 @@ export const Messages = memo(
                         return null
                       }
 
-                      if (part.type === 'data-tool-output') {
+                      if (part.type === 'data-data-tool-output') {
                         // Check if this is bulk tweets output
                         if (part.data.tweets && Array.isArray(part.data.tweets)) {
+                          if (part.data.status === 'processing') {
+                            return <TweetMockup key={i} isLoading />
+                          }
+                          
+                          // Render each tweet using TweetMockup
                           return (
-                            <BulkTweetList
-                              key={i}
-                              tweets={part.data.tweets}
-                              isLoading={part.data.status === 'processing'}
-                              title={part.data.text}
-                              onQueueAll={(tweetIds) => {
-                                // This will be handled by the AI through the bulkQueueTweets tool
-                                console.log('[Messages] Queue all requested for tweets:', tweetIds)
-                              }}
-                              onEditAll={(tweetIds) => {
-                                // This will be handled by the AI through the bulkEditTweets tool
-                                console.log('[Messages] Edit all requested for tweets:', tweetIds)
-                              }}
-                            />
+                            <div key={i} className="space-y-4">
+                              {part.data.tweets.map((tweet: any, idx: number) => (
+                                <TweetMockup 
+                                  key={`${i}-${idx}`} 
+                                  text={tweet.text}
+                                  twitterUrl={part.data.twitterUrl}
+                                >
+                                  <StreamingMessage animate={true} text={tweet.text} />
+                                </TweetMockup>
+                              ))}
+                            </div>
                           )
                         }
                         

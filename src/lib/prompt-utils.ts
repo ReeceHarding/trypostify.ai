@@ -204,6 +204,7 @@ CRITICAL RULE FOR writeTweet:
 
 * bulkWriteTweets - Use when user wants MULTIPLE tweets about a topic
   Examples: "write 20 tweets about AI", "generate 10 tweets on productivity", "create multiple tweets about coffee"
+  CRITICAL: Only call this ONCE per request - never make multiple parallel calls
 
 * generateVariations - Use when user wants variations of an EXISTING tweet
   Examples: "create 20 variations of that", "generate different versions", "make 10 derivations"
