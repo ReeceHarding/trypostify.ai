@@ -31,9 +31,9 @@ import DuolingoButton from "./duolingo-button";
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "16rem";
-// Reduce mobile sidebar width to better fit 320px screens
-const SIDEBAR_WIDTH_MOBILE = "15rem";
-const SIDEBAR_WIDTH_ICON = "4rem";
+// Optimize mobile sidebar width for small screens (320px+)
+const SIDEBAR_WIDTH_MOBILE = "12rem";
+const SIDEBAR_WIDTH_ICON = "3.5rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 //* new constants for sidebar resizing
@@ -186,8 +186,8 @@ const SidebarProvider = React.forwardRef<
           <div
             style={
               {
-                // * update '--sidebar-width' to use the new width state
-                "--sidebar-width": width,
+                // * update '--sidebar-width' to use mobile width on small screens
+                "--sidebar-width": isMobile ? SIDEBAR_WIDTH_MOBILE : width,
                 "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
                 ...style,
               } as React.CSSProperties

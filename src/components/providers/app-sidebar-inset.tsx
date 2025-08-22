@@ -28,6 +28,8 @@ import {
   Users, 
   Settings 
 } from 'lucide-react'
+import { Icons } from '../icons'
+import Link from 'next/link'
 
 // Mobile Navigation Menu Component
 function MobileNavigationMenu() {
@@ -157,6 +159,17 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
               </Tooltip>
             </TooltipProvider>
           )}
+          
+          {/* Postify Logo - Always show in center */}
+          <div className="flex-1 flex justify-center">
+            <Link 
+              href="/studio" 
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
+              <Icons.logo className="size-6" />
+              <span className="font-semibold text-lg text-neutral-800">Postify</span>
+            </Link>
+          </div>
           
           {/* Spacer for desktop when no mobile menu */}
           {!isMobile && <div />}

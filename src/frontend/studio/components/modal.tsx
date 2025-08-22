@@ -20,7 +20,7 @@ export const Modal = ({
   return (
     <Dialog open={showModal} onOpenChange={preventDefaultClose ? undefined : setShowModal}>
       <DialogContent 
-        className={cn("p-0 border-none max-w-md", className)}
+        className={cn("p-0 border-none max-w-md max-h-[90vh] overflow-y-auto", className)}
         onInteractOutside={(e) => {
           if (preventDefaultClose) {
             e.preventDefault()
