@@ -31,8 +31,8 @@ This document describes a comprehensive video processing system that allows user
 4. **Video Transcoding** → Convert to Twitter-compatible format (H.264/AAC)
 5. **Cloud Storage** → Upload processed video to S3
 6. **Twitter Upload** → Upload video to Twitter API and get media_id
-7. **Database Update** → Store all metadata and media references
-8. **UI Update** → Show completion status and attach to tweet
+7. **Auto-Post** → Immediately post tweet with attached video to Twitter
+8. **UI Update** → Show completion status and success confirmation
 
 **Key Requirements:**
 - **Non-blocking**: Users can continue using the app while videos process
@@ -40,19 +40,19 @@ This document describes a comprehensive video processing system that allows user
 - **Resilient**: Automatic retry logic for failed downloads/uploads
 - **Transparent**: Clear status updates throughout the process
 
-### 3. Auto-Queue Integration
+### 3. Auto-Post Integration
 
 **Smart Posting Logic:**
-- If user clicks "Post" while video is downloading → Automatically queue for 5 minutes later
-- Show clear message: "Tweet queued! Video will be attached when ready."
-- Update button text to "Queueing..." during this process
-- Tooltip shows: "Video downloading - will queue instead"
+- If user clicks "Post" while video is downloading → Show "Processing..." state and wait
+- Show clear message: "Processing video... Tweet will post when ready."
+- Update button text to "Processing..." during this process
+- Tooltip shows: "Video downloading - will post automatically when ready"
 
-**Queue Management:**
-- Queued tweets store video S3 key even without media_id
-- When video processing completes, automatically update queued tweets
-- Video processing status visible on scheduled page
-- Real-time updates every 5 seconds
+**Auto-Post Management:**
+- Tweet creation waits in pending state with video S3 key
+- When video processing completes, automatically attach video and post immediately
+- Video processing status visible during the wait
+- Real-time updates every 5 seconds until posting
 
 ### 4. Video Processing Status Dashboard
 
@@ -63,16 +63,18 @@ This document describes a comprehensive video processing system that allows user
 - Clear visual indicators for each state
 
 **Status States:**
-- **Processing**: Spinner icon + "Video processing... • Will post when ready"
-- **Ready**: Green checkmark + "Video ready • Queued for [time]"
+- **Processing**: Spinner icon + "Video processing... • Will post automatically when ready"
+- **Posting**: Upload icon + "Video ready • Posting to Twitter now..."
+- **Posted**: Green checkmark + "Video posted successfully!"
 - **Failed**: Red X + Error message with retry option
 
 **Information Displayed:**
 - Tweet content preview (first 50 characters)
 - Processing status with visual icons
-- Scheduled posting time
-- Status badges (Processing/Ready/Failed)
+- Current processing stage (downloading, transcoding, uploading, posting)
+- Status badges (Processing/Posting/Posted/Failed)
 - Platform source (TikTok, Instagram, etc.)
+- Estimated time remaining (when available)
 
 ## Technical Architecture
 
