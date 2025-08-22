@@ -1380,10 +1380,10 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between max-[320px]:flex-col max-[320px]:gap-3">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between max-[320px]:flex-col max-[320px]:gap-3 max-[320px]:items-center">
                 <div
                   className={cn(
-                    'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
+                    'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg max-[320px]:justify-center',
                   )}
                 >
                   <TooltipProvider>
@@ -1496,7 +1496,7 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-2 max-[320px]:flex-col max-[320px]:items-stretch max-[320px]:gap-3 max-[320px]:w-full">
+                <div className="flex items-center gap-2 max-[320px]:flex-col max-[320px]:items-center max-[320px]:gap-3 max-[320px]:w-full">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>
