@@ -1093,17 +1093,8 @@ function ThreadTweetContent({
               </TooltipProvider>
 
               {/* Media Files Display */}
-              {(mediaFiles.length > 0 || isDownloadingVideo) && (
+              {mediaFiles.length > 0 && (
                 <div className="mt-3">
-                  {/* Video Download Progress */}
-                  {isDownloadingVideo && (
-                    <div className="mb-3 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-neutral-600">Downloading video</p>
-                        <p className="text-sm font-medium text-neutral-800">{Math.round(downloadProgress)}%</p>
-                      </div>
-                    </div>
-                  )}
                   {mediaFiles.length === 1 && mediaFiles[0] && (
                     <div className="relative group">
                       <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
@@ -1373,7 +1364,7 @@ function ThreadTweetContent({
                               <TooltipTrigger asChild>
                                 <DuolingoButton
                                   variant="secondary"
-                                  className="h-11 max-[320px]:w-full"
+                                  className="h-11 px-6 max-[320px]:w-full"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
@@ -1393,7 +1384,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 max-[320px]:w-full"
+                                  className="h-11 px-6 max-[320px]:w-full"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
@@ -1418,7 +1409,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 max-[320px]:w-full"
+                                  className="h-11 px-6 max-[320px]:w-full"
                                   variant="secondary"
                                   onClick={handlePostClick}
                                   disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
@@ -1450,7 +1441,7 @@ function ThreadTweetContent({
                                   <DuolingoButton
                                     loading={isPosting || optimisticActionState === 'queue'}
                                     disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
-                                    className="h-11 px-3 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full"
+                                    className="h-11 px-4 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
                                         console.log(`[ThreadTweet] Queue button clicked at ${new Date().toISOString()}`)
@@ -1622,6 +1613,7 @@ function ThreadTweetContent({
           <DialogFooter>
             <DuolingoButton
               variant="secondary"
+              className="px-4"
               onClick={() => {
                 setShowVideoUrlInput(false)
                 setVideoUrl('')
@@ -1631,6 +1623,7 @@ function ThreadTweetContent({
               Cancel
             </DuolingoButton>
             <DuolingoButton
+              className="px-4"
               onClick={handleVideoUrlSubmit}
               disabled={!videoUrl.trim() || isDownloadingVideo}
             >
