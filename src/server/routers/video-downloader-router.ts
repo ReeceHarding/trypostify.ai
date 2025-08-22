@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { HTTPException } from 'hono/http-exception'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { nanoid } from 'nanoid'
+import { qstash } from '@/lib/qstash'
+import { getBaseUrl } from '@/constants/base-url'
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -255,6 +257,30 @@ export const videoDownloaderRouter = j.router({
         const publicUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`
 
         console.log(`[VideoDownloader] Video uploaded successfully: ${publicUrl}`)
+
+        // AUTO-POST: Queue background job to post video tweet
+        try {
+          console.log('[VideoDownloader] Queueing background job to post video tweet...')
+          
+          await qstash.publishJSON({
+            url: getBaseUrl() + '/api/video/postVideoTweet',
+            body: {
+              userId: user.id,
+              s3Key,
+              videoUrl: publicUrl,
+              platform: video.platform || platform,
+              title: video.title || 'Downloaded video',
+              description: video.description,
+              author: video.author,
+            },
+            delay: 1, // Post immediately
+          })
+          
+          console.log('[VideoDownloader] Background job queued successfully')
+        } catch (queueError) {
+          console.error('[VideoDownloader] Failed to queue background job:', queueError)
+          // Don't throw - still return success for the download
+        }
 
         // Check if video might have Twitter compatibility issues
         const warningMessage = platform === 'instagram' 
