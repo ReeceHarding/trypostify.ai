@@ -147,12 +147,7 @@ function ThreadTweetContent({
   const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [originalContentBeforeUrl, setOriginalContentBeforeUrl] = useState('')
-  const [videoProcessingStatus, setVideoProcessingStatus] = useState<{
-    isProcessing: boolean
-    message: string
-    progress: number
-    videoInfo?: { platform?: string; title?: string }
-  }>({ isProcessing: false, message: '', progress: 0 })
+
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -1135,7 +1130,7 @@ function ThreadTweetContent({
       <Drawer modal={false} open={open} onOpenChange={setOpen}>
         <div
           className={cn(
-            'relative bg-white p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
+            'relative bg-white p-6 max-[640px]:p-3 max-[640px]:px-2 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
             isDragging && 'border-primary border-dashed',
           )}
           onDragOver={handleDragOver}
@@ -1194,47 +1189,7 @@ function ThreadTweetContent({
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Video Processing Status - Inline UI */}
-              {videoProcessingStatus.isProcessing && (
-                <div className="mt-3 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="size-4 animate-spin text-primary" />
-                      <span className="text-sm font-medium text-neutral-700">
-                        {videoProcessingStatus.message}
-                      </span>
-                    </div>
-                    {videoProcessingStatus.videoInfo?.platform && (
-                      <span className="text-xs text-neutral-500">
-                        {videoProcessingStatus.videoInfo.platform}
-                      </span>
-                    )}
-                  </div>
-                  <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="bg-primary h-full transition-all duration-300 ease-out"
-                      style={{ width: `${videoProcessingStatus.progress}%` }}
-                    />
-                  </div>
-                  {videoProcessingStatus.videoInfo?.title && (
-                    <p className="mt-2 text-xs text-neutral-600 truncate">
-                      {videoProcessingStatus.videoInfo.title}
-                    </p>
-                  )}
-                </div>
-              )}
 
-              {/* Video Processing Success/Error Message */}
-              {!videoProcessingStatus.isProcessing && videoProcessingStatus.message && (
-                <div className={cn(
-                  "mt-3 p-3 rounded-lg border",
-                  videoProcessingStatus.message.includes('ready') || videoProcessingStatus.message.includes('success')
-                    ? "bg-success-50 border-success-200 text-success-700"
-                    : "bg-error-50 border-error-200 text-error-700"
-                )}>
-                  <p className="text-sm">{videoProcessingStatus.message}</p>
-                </div>
-              )}
 
               {/* Media Files Display */}
               {mediaFiles.length > 0 && (
