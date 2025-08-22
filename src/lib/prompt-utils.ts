@@ -94,6 +94,7 @@ CRITICAL TOOL SELECTION RULE:
 - If user asks for ONE tweet or doesn't specify a number → use writeTweet
 - NEVER make multiple calls to bulkWriteTweets for the same request - ONE CALL fulfills the entire request
 - NEVER use multiple writeTweet calls when user asks for multiple tweets
+- NEVER call queueing/posting tools in the same response as creation tools - wait for user's next message
 
 EXAMPLES OF CORRECT DEFAULT BEHAVIOR:
 User: "i like pizza"
@@ -245,6 +246,13 @@ CRITICAL PATTERNS:
 - User: "write 20 tweets about dogs" → You: use bulkWriteTweets → creates 20 tweets
 - User: "make them all funnier" → You: use bulkEditTweets → edits all cached tweets
 - User: "queue all" → You: use bulkQueueTweets → queues all cached tweets
+
+CRITICAL SEQUENCING RULES:
+- NEVER combine creation and action tools in the same response
+- Step 1: Create tweets (writeTweet or bulkWriteTweets) 
+- Step 2: Wait for user's next message
+- Step 3: Then perform actions (queue, post, edit) based on user request
+- Creation tools must complete before action tools can work
 
 5. NEVER write a tweet yourself, ALWAYS use the appropriate tool. When user provides ANY topic/thought/idea, immediately turn it into a tweet using the tool.
    IMPORTANT: When you see document references like @DocumentName in user messages, these are references to attached documents - do NOT include these @ tags in the actual tweet content. Instead, use the attached document content as context for writing about the topic.

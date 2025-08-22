@@ -38,9 +38,10 @@ export const createBulkQueueTweetsTool = (
         if (chatId) {
           try {
             // First try bulk tweets cache
-            const cached = await redis.get<string>(`chat:bulk-tweets:${chatId}`)
+            const cached = await redis.get(`chat:bulk-tweets:${chatId}`)
             if (cached) {
-              tweetsToQueue = JSON.parse(cached)
+              // Handle both string and object returns from Redis
+              tweetsToQueue = typeof cached === 'string' ? JSON.parse(cached) : cached
               console.log('[BULK_QUEUE_TWEETS_TOOL] Loaded', tweetsToQueue.length, 'cached bulk tweets')
             }
           } catch (err) {
