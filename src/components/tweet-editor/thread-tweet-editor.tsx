@@ -421,8 +421,8 @@ export default function ThreadTweetEditor({
 
     try {
       if (hasDownloadingVideo) {
-        // For video posts, don't post immediately - let the video system handle it
-        console.log('[ThreadTweetEditor] Video detected - skipping immediate post, video system will handle posting')
+        // For video posts, don't post anything - video system will handle complete posting
+        console.log('[ThreadTweetEditor] Video detected - skipping post, video system will handle complete posting with user content')
         return
       }
       
