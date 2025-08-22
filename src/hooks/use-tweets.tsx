@@ -146,6 +146,9 @@ export interface MediaFile {
   media_id?: string
   media_key?: string
   s3Key?: string
+  isDownloading?: boolean
+  downloadProgress?: number
+  videoUrl?: string // Original video URL for tracking
 }
 
 export function TweetProvider({ children }: PropsWithChildren) {

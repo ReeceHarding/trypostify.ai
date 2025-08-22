@@ -25,7 +25,7 @@ import { client } from '@/lib/client'
 import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
 import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
 import ReactMentionsInput from './react-mentions-input'
-import { useVideoProcessing } from '@/hooks/use-video-processing'
+
 
 
 import { useMutation } from '@tanstack/react-query'
@@ -150,7 +150,7 @@ function ThreadTweetContent({
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [originalContentBeforeUrl, setOriginalContentBeforeUrl] = useState('')
 
-  const { addProcessingVideo, updateProcessingVideo, removeProcessingVideo } = useVideoProcessing()
+
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -245,39 +245,50 @@ function ThreadTweetContent({
   }
 
   // Render video with proper thumbnail preview
-  const renderVideo = (mediaFile: MediaFile, className: string) => (
-    <div className="relative">
-      <video
-        src={mediaFile.url}
-        className={`${className}`}
-        controls={false}
-        preload="metadata"
-        muted
-        onLoadedMetadata={(e) => {
-          // Set video to first frame to show as thumbnail
-          const video = e.target as HTMLVideoElement
-          video.currentTime = 0.1
-        }}
-      />
-      {/* Play button overlay */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-colors cursor-pointer group"
-           onClick={(e) => {
-             e.preventDefault()
-             const video = e.currentTarget.previousElementSibling as HTMLVideoElement
-             if (video.paused) {
-               video.play()
-               video.setAttribute('controls', 'true')
-               e.currentTarget.style.display = 'none'
-             }
-           }}>
-        <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
-          <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
+  const renderVideo = (mediaFile: MediaFile, className: string) => {
+    // If video is downloading and has no URL yet, show placeholder
+    if (mediaFile.isDownloading && !mediaFile.url) {
+      return (
+        <div className={`${className} bg-neutral-100 flex items-center justify-center`}>
+          <Video className="w-12 h-12 text-neutral-400" />
+        </div>
+      )
+    }
+
+    return (
+      <div className="relative">
+        <video
+          src={mediaFile.url}
+          className={`${className}`}
+          controls={false}
+          preload="metadata"
+          muted
+          onLoadedMetadata={(e) => {
+            // Set video to first frame to show as thumbnail
+            const video = e.target as HTMLVideoElement
+            video.currentTime = 0.1
+          }}
+        />
+        {/* Play button overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-colors cursor-pointer group"
+             onClick={(e) => {
+               e.preventDefault()
+               const video = e.currentTarget.previousElementSibling as HTMLVideoElement
+               if (video.paused) {
+                 video.play()
+                 video.setAttribute('controls', 'true')
+                 e.currentTarget.style.display = 'none'
+               }
+             }}>
+          <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
+            <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   useEffect(() => {
     setSkipPostConfirmation(localStorage.getItem('skipPostConfirmation') === 'true')
@@ -667,8 +678,29 @@ function ThreadTweetContent({
           <X className="w-4 h-4 text-white" />
         </button>
 
-        {/* Status overlays */}
-        {mediaFile.uploading && (
+        {/* Download progress for videos from URL */}
+        {mediaFile.isDownloading && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center p-4">
+            <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
+            <p className="text-white text-sm font-medium">Downloading video...</p>
+            {mediaFile.downloadProgress !== undefined && (
+              <div className="w-full max-w-[200px] mt-2">
+                <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                  <div 
+                    className="bg-white h-full transition-all duration-300"
+                    style={{ width: `${mediaFile.downloadProgress}%` }}
+                  />
+                </div>
+                <p className="text-white text-xs mt-1 text-center">
+                  {Math.round(mediaFile.downloadProgress)}%
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Upload progress */}
+        {mediaFile.uploading && !mediaFile.isDownloading && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <Loader className="w-8 h-8 text-white animate-spin" />
           </div>
@@ -721,104 +753,12 @@ function ThreadTweetContent({
     }
   }
 
-  // Process video in background and update thread when ready
-  const processVideoInBackground = async (threadId: string, videoUrl: string, tweetContent: string) => {
-    try {
-      // Update progress: downloading
-      updateProcessingVideo(threadId, {
-        progress: 10,
-        status: 'downloading',
-        message: 'Downloading video...'
-      })
-      
-      // Download video
-      const downloadResult = await client.videoDownloader.downloadVideo.$post({
-        url: videoUrl,
-        tweetContent: tweetContent
-      })
-      
-      if (!downloadResult.ok) {
-        throw new Error('Failed to download video')
-      }
-      
-      const videoData = await downloadResult.json()
-      
-      // Update progress: processing
-      updateProcessingVideo(threadId, {
-        progress: 50,
-        status: 'processing',
-        message: 'Processing video...',
-        platform: videoData.platform
-      })
-      
-      // Upload to Twitter
-      const twitterResult = await client.tweet.uploadMediaToTwitter.$post({
-        s3Key: videoData.s3Key,
-        mediaType: 'video'
-      })
-      
-      if (!twitterResult.ok) {
-        throw new Error('Failed to upload to Twitter')
-      }
-      
-      const { media_id } = await twitterResult.json()
-      
-      // Update progress: uploading
-      updateProcessingVideo(threadId, {
-        progress: 80,
-        status: 'uploading',
-        message: 'Updating tweet with video...'
-      })
-      
-      // Update the thread with the media
-      const updateResult = await client.tweet.updateThread.$post({
-        threadId: threadId,
-        tweets: [{
-          content: tweetContent,
-          media: [{
-            s3Key: videoData.s3Key,
-            media_id: media_id
-          }],
-          delayMs: 0
-        }]
-      })
-      
-      if (!updateResult.ok) {
-        throw new Error('Failed to update thread with video')
-      }
-      
-      // Complete!
-      updateProcessingVideo(threadId, {
-        progress: 100,
-        status: 'completed',
-        message: `Video from ${videoData.platform} ready!`
-      })
-      
-      // Remove from processing after a delay
-      setTimeout(() => {
-        removeProcessingVideo(threadId)
-      }, 5000)
-      
-    } catch (error) {
-      console.error('[ThreadTweet] Background video processing failed:', error)
-      updateProcessingVideo(threadId, {
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to process video'
-      })
-      
-      // Remove from processing after showing error
-      setTimeout(() => {
-        removeProcessingVideo(threadId)
-      }, 10000)
-    }
-  }
+
 
   const handleVideoUrlSubmit = async () => {
     console.log('[ThreadTweet] handleVideoUrlSubmit called with:', {
       videoUrl: videoUrl.trim(),
       mentionsContent: mentionsContent,
-      mentionsContentLength: mentionsContent.length,
-      mentionsContentTrimmed: mentionsContent.trim(),
       timestamp: new Date().toISOString()
     })
     
@@ -833,90 +773,98 @@ function ThreadTweetContent({
       return
     }
 
-    // Close dialog immediately 
+    // Close dialog immediately and start download
     setShowVideoUrlInput(false)
+    setIsDownloadingVideo(true)
+    setDownloadProgress(0)
+    
+    // Add a placeholder media file that shows loading state
+    const placeholderMediaFile: MediaFile = {
+      file: null as any,
+      url: '',
+      type: 'video',
+      uploading: true,
+      uploaded: false,
+      s3Key: undefined,
+      isDownloading: true,
+      downloadProgress: 0,
+      videoUrl: videoUrl
+    }
+    
+    setMediaFiles(prev => [...prev, placeholderMediaFile])
     
     try {
-      // Create a thread immediately with the video URL as placeholder
-      const tweetContent = mentionsContent.trim() || `Check out this video! ${videoUrl}`
-      const threadId = crypto.randomUUID()
-      
-      console.log('[ThreadTweet] Creating thread with video placeholder:', {
-        threadId,
-        content: tweetContent,
-        videoUrl
-      })
-      
-      // Create thread in the database
-      const createRes = await client.tweet.createThread.$post({
-        tweets: [{
-          content: tweetContent,
-          media: [], // Will be updated when video is ready
-          delayMs: 0
-        }]
-      })
-      
-      if (!createRes.ok) {
-        throw new Error('Failed to create thread')
-      }
-      
-      const { threadId: createdThreadId } = await createRes.json()
-      
-      // Get user's timezone
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-      
-      // Queue the thread immediately
-      const queueRes = await client.tweet.enqueueThread.$post({
-        threadId: createdThreadId,
-        userNow: new Date(),
-        timezone
-      })
-      
-      if (!queueRes.ok) {
-        throw new Error('Failed to queue thread')
-      }
-      
-      // Add to processing videos tracker
-      addProcessingVideo({
-        threadId: createdThreadId,
+      // Simulate progress updates
+      let currentProgress = 0
+      const progressInterval = setInterval(() => {
+        currentProgress = Math.min(currentProgress + Math.random() * 15 + 5, 90)
+        setDownloadProgress(currentProgress)
+        // Update the placeholder media file progress
+        setMediaFiles(prev => 
+          prev.map(f => 
+            f.videoUrl === videoUrl 
+              ? { ...f, downloadProgress: currentProgress } 
+              : f
+          )
+        )
+      }, 500)
+
+      // Download video
+      const result = await downloadVideoMutation.mutateAsync({
         url: videoUrl,
-        progress: 0,
-        status: 'downloading',
-        message: 'Starting video download...',
-        startedAt: new Date()
+        tweetContent: mentionsContent.trim() || undefined
       })
       
-      // Show success toast
-      toast.success(
-        <div className="flex flex-col gap-1">
-          <p>Video queued for processing!</p>
-          <Link
-            href="/studio/scheduled"
-            className="text-sm text-primary underline"
-          >
-            View in scheduled posts
-          </Link>
-        </div>
+      clearInterval(progressInterval)
+      
+      // Upload to Twitter to get media_id
+      const twitterResult = await uploadToTwitterMutation.mutateAsync({
+        s3Key: result.s3Key,
+        mediaType: 'video'
+      })
+
+      // Replace placeholder with real media file
+      const realMediaFile: MediaFile = {
+        file: null as any,
+        url: result.url,
+        type: 'video',
+        uploading: false,
+        uploaded: true,
+        s3Key: result.s3Key,
+        media_id: twitterResult.media_id,
+        media_key: twitterResult.media_key
+      }
+
+      setMediaFiles(prev => 
+        prev.map(f => 
+          f.videoUrl === videoUrl ? realMediaFile : f
+        )
       )
-      
-      // Clear the current tweet content
-      setMentionsContent('')
-      setVideoUrl('')
-      if (editor) {
-        editor.update(() => {
-          $getRoot().clear()
-        })
-      }
+
+      // Update parent with the new media
       if (onUpdate) {
-        onUpdate('', [])
+        const content = mentionsContent
+        const parentMedia = mediaFiles
+          .filter(f => f !== placeholderMediaFile)
+          .concat(realMediaFile)
+          .filter((f) => f.media_id && f.s3Key)
+          .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+        onUpdate(content, parentMedia)
       }
-      
-      // Start background video processing
-      processVideoInBackground(createdThreadId, videoUrl, tweetContent)
+
+      toast.success(`Video from ${result.platform} ready!`)
+      setVideoUrl('')
       
     } catch (error) {
-      console.error('[ThreadTweet] Failed to create video thread:', error)
-      toast.error('Failed to queue video. Please try again.')
+      console.error('[ThreadTweet] Video download error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to download video')
+      
+      // Remove the placeholder on error
+      setMediaFiles(prev => prev.filter(f => f.videoUrl !== videoUrl))
+      
+    } finally {
+      setIsDownloadingVideo(false)
+      setDownloadProgress(0)
     }
   }
 
