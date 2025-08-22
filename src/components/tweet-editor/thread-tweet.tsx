@@ -146,6 +146,7 @@ function ThreadTweetContent({
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false)
   const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [originalContentBeforeUrl, setOriginalContentBeforeUrl] = useState('')
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -180,6 +181,17 @@ function ThreadTweetContent({
       const isVideoUrl = videoPatterns.some(pattern => pattern.test(firstUrl))
       
       if (isVideoUrl && mediaFiles.length < MAX_MEDIA_COUNT) {
+        // Capture content BEFORE the URL was pasted (extract text without URL)
+        const contentWithoutUrl = newContent.replace(firstUrl, '').trim()
+        setOriginalContentBeforeUrl(contentWithoutUrl)
+        
+        console.log('[ThreadTweet] Auto-detected video URL, capturing content:', {
+          detectedUrl: firstUrl,
+          fullContent: newContent,
+          contentWithoutUrl: contentWithoutUrl,
+          willPreserveContent: true
+        })
+        
         // Automatically open the video URL dialog with the detected URL
         setVideoUrl(firstUrl)
         setShowVideoUrlInput(true)
@@ -758,15 +770,17 @@ function ThreadTweetContent({
         })
       }, 2000)
 
-      // Download video from URL with current tweet content
-      const contentToSend = mentionsContent.trim() || undefined
+      // Download video from URL with preserved original content
+      const contentToSend = originalContentBeforeUrl.trim() || mentionsContent.trim() || undefined
       console.log('[ThreadTweet] Sending to video downloader:', {
         url: videoUrl,
         tweetContent: contentToSend,
+        originalContentBeforeUrl: originalContentBeforeUrl,
         mentionsContentRaw: mentionsContent,
         mentionsContentLength: mentionsContent.length,
-        mentionsContentTrimmedLength: mentionsContent.trim().length,
-        willSendContent: !!contentToSend
+        originalContentLength: originalContentBeforeUrl.length,
+        willSendContent: !!contentToSend,
+        usingOriginalContent: !!originalContentBeforeUrl.trim()
       })
       
       const result = await downloadVideoMutation.mutateAsync({
