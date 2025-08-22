@@ -85,7 +85,7 @@ interface ThreadTweetProps {
   onUpdateThread?: () => void
   onCancelEdit?: () => void
   isPosting?: boolean
-  onUpdate?: (content: string, media: Array<{ s3Key: string; media_id: string }>) => void
+  onUpdate?: (content: string, media: Array<{ s3Key: string; media_id: string }>, hasDownloadingVideo?: boolean) => void
   initialContent?: string
   initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
   showFocusTooltip?: boolean
@@ -218,7 +218,7 @@ function ThreadTweetContent({
         s3Key: f.s3Key!,
         media_id: f.media_id!,
       }))
-      onUpdate(newContent, filteredMedia)
+      updateParentState()
     }
   }, [onUpdate, mediaFiles, detectedUrl])
 
@@ -244,6 +244,27 @@ function ThreadTweetContent({
     return url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') || 
            url.includes('.webm') || url.includes('.mkv') || url.includes('.m4v')
   }
+
+  // Helper function to update parent with current state
+  const updateParentState = () => {
+    if (onUpdate) {
+      const content = mentionsContent
+      const readyMedia = mediaFiles.filter(f => f.media_id && f.s3Key && !f.isDownloading)
+      const hasDownloading = mediaFiles.some(f => f.isDownloading)
+      
+      const parentMedia = readyMedia.map(f => ({
+        s3Key: f.s3Key!,
+        media_id: f.media_id!,
+      }))
+      
+      onUpdate(content, parentMedia, hasDownloading)
+    }
+  }
+
+  // Update parent whenever media files or content changes
+  useEffect(() => {
+    updateParentState()
+  }, [mediaFiles, mentionsContent])
 
   // Render video with proper thumbnail preview
   const renderVideo = (mediaFile: MediaFile, className: string) => {
@@ -336,10 +357,7 @@ function ThreadTweetContent({
       })
       // Also notify the parent component about the update
       if (onUpdate) {
-        onUpdate(currentTweet.content, mediaFiles.filter(m => m.s3Key).map(m => ({ 
-          s3Key: m.s3Key!, 
-          media_id: m.media_id || '' 
-        })))
+        updateParentState()
       }
     } else if (hasBeenCleared) {
       console.log('[ThreadTweet] Skipping AI content sync due to hasBeenCleared flag')
@@ -629,7 +647,7 @@ function ThreadTweetContent({
           const parentMedia = nextFiles
             .filter((f) => f.media_id && f.s3Key)
             .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
-          onUpdate(content, parentMedia)
+          updateParentState()
         }
       } catch (error) {
         console.error('[ThreadTweet] Upload error:', error)
@@ -664,7 +682,7 @@ function ThreadTweetContent({
       const parentMedia = nextFiles
         .filter((f) => f.media_id && f.s3Key)
         .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
-      onUpdate(content, parentMedia)
+      updateParentState()
     }
   }
 
@@ -850,7 +868,7 @@ function ThreadTweetContent({
           .concat(realMediaFile)
           .filter((f) => f.media_id && f.s3Key)
           .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
-        onUpdate(content, parentMedia)
+        updateParentState()
       }
 
       toast.success(`Video from ${result.platform} ready!`)
@@ -897,7 +915,7 @@ function ThreadTweetContent({
 
     // Notify parent immediately
     if (onUpdate) {
-      onUpdate('', [])
+      updateParentState()
     }
   }
 
@@ -1085,7 +1103,7 @@ function ThreadTweetContent({
         s3Key: f.s3Key!,
         media_id: f.media_id!,
       }))
-      onUpdate(content, allMedia)
+      updateParentState()
     }
     
     setOpen(false)

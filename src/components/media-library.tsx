@@ -112,8 +112,26 @@ export default function MediaLibrary({
   // Calculate if we can select more items
   const canSelectMore = selected.size < maxSelection
 
-  // Toggle selection
+  // Handle direct selection (one-click)
   const handleToggleSelect = useCallback((item: MediaLibraryItem) => {
+    // Convert item to SelectedMedia format
+    const selectedItem: SelectedMedia = {
+      id: item.id,
+      s3Key: item.s3Key,
+      media_id: item.media_id,
+      url: item.url,
+      type: item.mediaType as 'image' | 'gif' | 'video',
+      filename: item.filename,
+    }
+
+    // For single selection (maxSelection = 1), immediately select and close
+    if (maxSelection === 1) {
+      onSelect([selectedItem])
+      onClose?.()
+      return
+    }
+
+    // For multiple selection, toggle in selection set
     setSelected(prev => {
       const next = new Set(prev)
       if (next.has(item.id)) {
@@ -123,7 +141,7 @@ export default function MediaLibrary({
       }
       return next
     })
-  }, [canSelectMore])
+  }, [canSelectMore, maxSelection, onSelect, onClose])
 
   // Handle selection confirmation
   const handleConfirmSelection = useCallback(() => {

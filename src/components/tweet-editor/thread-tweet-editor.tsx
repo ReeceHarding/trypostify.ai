@@ -24,7 +24,7 @@ interface ThreadTweetData {
     s3Key: string
     media_id: string
   }>
-  isDownloadingVideo?: boolean
+  hasDownloadingVideo?: boolean
 }
 
 interface ThreadTweetEditorProps {
@@ -370,10 +370,15 @@ export default function ThreadTweetEditor({
     setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
   }
 
-  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
+  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>, hasDownloadingVideo?: boolean) => {
     setThreadTweets(prevTweets => 
       prevTweets.map(tweet =>
-        tweet.id === id ? { ...tweet, content, media } : tweet
+        tweet.id === id ? { 
+          ...tweet, 
+          content, 
+          media,
+          hasDownloadingVideo: hasDownloadingVideo || false
+        } : tweet
       )
     )
   }
@@ -393,14 +398,10 @@ export default function ThreadTweetEditor({
     const currentContent = [...threadTweets]
     
     // Check if any videos are still downloading
-    const downloadingVideos = threadTweets.flatMap((tweet, tweetIndex) => 
-      tweet.media
-        .map((media, mediaIndex) => ({ ...media, tweetIndex, mediaIndex }))
-        .filter(m => (m as any).isDownloading)
-    )
+    const hasDownloadingVideos = threadTweets.some(tweet => tweet.hasDownloadingVideo === true)
     
     // If videos are downloading, auto-queue instead of posting
-    if (downloadingVideos.length > 0) {
+    if (hasDownloadingVideos) {
       console.log('[ThreadTweetEditor] Videos still downloading - auto-queueing instead of posting')
       toast.success('Tweet queued! Video will be attached when ready.', {
         duration: 4000,
@@ -842,7 +843,7 @@ export default function ThreadTweetEditor({
               onCancelEdit={editMode ? handleCancelEdit : undefined}
               isPosting={isPosting}
               preScheduleTime={preScheduleTime}
-              onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
+              onUpdate={(content, media, hasDownloadingVideo) => handleTweetUpdate(tweet.id, content, media, hasDownloadingVideo)}
               initialContent={editMode ? (tweet.content ?? '') : ''}
               initialMedia={tweet.media?.map((m: any) => ({
                 // Ensure a valid preview URL is always present. If the API didn't
