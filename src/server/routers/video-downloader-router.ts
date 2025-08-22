@@ -353,23 +353,21 @@ export const videoDownloaderRouter = j.router({
 
             console.log('[VideoDownloader] Debug account tokens:', {
               hasAccessToken: !!dbAccount?.accessToken,
-              hasRefreshToken: !!dbAccount?.refreshToken,
-              hasApiKey: !!dbAccount?.apiKey,
-              hasApiSecret: !!dbAccount?.apiSecret,
+              hasAccessSecret: !!dbAccount?.accessSecret,
               accountFields: Object.keys(dbAccount || {})
             })
 
-            if (!dbAccount?.apiKey || !dbAccount?.apiSecret) {
-              console.error('[VideoDownloader] Account missing Twitter API credentials for background posting')
+            if (!dbAccount?.accessToken || !dbAccount?.accessSecret) {
+              console.error('[VideoDownloader] Account missing Twitter tokens for background posting')
               return
             }
 
-            // Create Twitter client
+            // Create Twitter client with correct field names
             const client = new TwitterApi({
               appKey: process.env.TWITTER_CONSUMER_KEY!,
               appSecret: process.env.TWITTER_CONSUMER_SECRET!,
-              accessToken: dbAccount.apiKey,
-              accessSecret: dbAccount.apiSecret,
+              accessToken: dbAccount.accessToken,
+              accessSecret: dbAccount.accessSecret,
             })
             
             // Upload video to Twitter
