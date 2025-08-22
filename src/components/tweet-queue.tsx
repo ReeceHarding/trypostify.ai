@@ -4,10 +4,11 @@ import { client } from '@/lib/client'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format, isThisWeek, isToday, isTomorrow } from 'date-fns'
-import { Clock, Edit, MoreHorizontal, Send, Trash2, MessageSquare, Paperclip } from 'lucide-react'
+import { Clock, Edit, MoreHorizontal, Send, Trash2, MessageSquare, Paperclip, Loader2 } from 'lucide-react'
 
 import { useConfetti } from '@/hooks/use-confetti'
 import { useTweets } from '@/hooks/use-tweets'
+import { useVideoProcessing } from '@/hooks/use-video-processing'
 import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -45,6 +46,7 @@ export default function TweetQueue() {
   const [daysLoaded, setDaysLoaded] = useState(7) // Start with 7 days
 
   const { shadowEditor, setMediaFiles } = useTweets()
+  const { processingVideos } = useVideoProcessing()
   const router = useRouter()
 
   const userNow = new Date()
@@ -310,12 +312,24 @@ export default function TweetQueue() {
 
                       <div
                         className={cn(
-                          'px-4 py-3 rounded-lg border',
+                          'px-4 py-3 rounded-lg border relative',
                           tweet
                             ? 'bg-white border-neutral-200 shadow-sm'
                             : 'bg-neutral-50 border-dashed border-neutral-300',
                         )}
                       >
+                        {/* Check if this tweet has a processing video */}
+                        {tweet && processingVideos.some(pv => pv.threadId === tweet.threadId) && (
+                          <div className="absolute top-2 right-2">
+                            <div className="flex items-center gap-2 bg-primary-50 text-primary-700 px-2 py-1 rounded-md text-xs">
+                              <Loader2 className="size-3 animate-spin" />
+                              <span>
+                                Video processing... {processingVideos.find(pv => pv.threadId === tweet.threadId)?.progress}%
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
                         {tweet ? (
                           // Always render as thread (single posts are just threads with one item)
                           <div className="space-y-2">

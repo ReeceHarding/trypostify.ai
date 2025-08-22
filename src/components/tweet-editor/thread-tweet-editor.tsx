@@ -14,7 +14,8 @@ import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
 import { useUser } from '@/hooks/use-tweets'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Clock } from 'lucide-react'
+import { Clock, Bell } from 'lucide-react'
+import { useVideoProcessing } from '@/hooks/use-video-processing'
 
 interface ThreadTweetData {
   id: string
@@ -57,6 +58,7 @@ export default function ThreadTweetEditor({
   
   const { getCharacterLimit } = useUser()
   const characterLimit = getCharacterLimit()
+  const { processingVideos, hasProcessingVideos } = useVideoProcessing()
   
   const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
     { id: 'initial-tweet', content: '', media: [] },
@@ -790,6 +792,35 @@ export default function ThreadTweetEditor({
   // Render the tweets
   return (
     <div className={cn('relative z-10 w-full rounded-lg font-sans', className)}>
+      {/* Video Processing Notification Bell */}
+      {hasProcessingVideos && (
+        <div className="mb-4">
+          <Link href="/studio/scheduled">
+            <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 hover:bg-primary-100 transition-colors cursor-pointer">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Bell className="size-5 text-primary-600" />
+                    <div className="absolute -top-1 -right-1 size-2 bg-primary rounded-full animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-primary-800">
+                      {processingVideos.length} video{processingVideos.length > 1 ? 's' : ''} processing
+                    </span>
+                    <p className="text-xs text-primary-600">
+                      Click to view progress in scheduled posts
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs text-primary-600">
+                  {processingVideos[0]?.progress}% complete
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+      
       {preScheduleTime && (
         <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4">
           <div className="flex items-center gap-2 text-primary-800">
