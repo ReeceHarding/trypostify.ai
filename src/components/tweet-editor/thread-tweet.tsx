@@ -780,8 +780,27 @@ function ThreadTweetContent({
         onUpdate(content, parentMedia)
       }
 
-      // Video is now ready and will be included in the post
+      // Video is now ready - post the tweet with video attached
       console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
+      
+      // Simple logic: Post a tweet with this video now
+      try {
+        const postResponse = await client.tweet.postThreadNow.$post({
+          tweets: [{
+            content: `Video from ${result.platform}`,
+            media: [{ media_id: twitterResult.media_id, s3Key: result.s3Key }],
+            delayMs: 0
+          }]
+        })
+        
+        if (postResponse.ok) {
+          toast.success('Video posted to Twitter!', { duration: 3000 })
+          console.log('[ThreadTweet] Video tweet posted successfully')
+        }
+      } catch (postError) {
+        console.error('[ThreadTweet] Failed to post video tweet:', postError)
+        toast.error('Video uploaded but failed to post tweet')
+      }
 
       // Final quick animation to 100%
       setDownloadProgress(100)

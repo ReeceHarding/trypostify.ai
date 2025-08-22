@@ -412,40 +412,11 @@ export default function ThreadTweetEditor({
     }, 100)
 
     if (hasDownloadingVideo) {
-      // Show notification that we're waiting for video
-      toast.success('Waiting for video to finish, then posting...', {
-        duration: 6000,
+      // Show notification about background processing
+      toast.success('Video will upload in background and post when ready', {
+        duration: 4000,
         icon: '📹',
       })
-      
-      // Wait for all videos to finish downloading before posting
-      console.log('[ThreadTweetEditor] Waiting for video downloads to complete...')
-      
-      // Poll until no videos are downloading
-      let attempts = 0
-      const maxAttempts = 180 // 3 minutes max wait
-      
-      while (attempts < maxAttempts) {
-        const stillDownloading = currentContent.some(tweet => 
-          (tweet as any).isDownloadingVideo === true
-        )
-        
-        if (!stillDownloading) {
-          console.log('[ThreadTweetEditor] All videos finished downloading, proceeding with post')
-          break
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        attempts++
-      }
-      
-      if (attempts >= maxAttempts) {
-        toast.error('Video download timed out. Please try again.')
-        // Restore content
-        setThreadTweets(currentContent)
-        setHasBeenCleared(false)
-        return
-      }
     }
 
     try {
