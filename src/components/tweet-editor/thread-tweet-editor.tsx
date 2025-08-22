@@ -386,26 +386,24 @@ export default function ThreadTweetEditor({
       return
     }
 
-    // Check if any tweet has video still downloading
-    const hasDownloadingVideo = threadTweets.some(tweet => 
-      (tweet as any).isDownloadingVideo === true
-    )
-    
     console.log('[ThreadTweetEditor] Starting post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
     // Store current content for potential rollback
     const currentContent = [...threadTweets]
     
-    // Check if video is still downloading - don't clear content yet
-    if (hasDownloadingVideo) {
-      // Show notification about video still processing
-      toast('Please wait for video to finish processing before posting', {
+    // Check if any videos are still downloading
+    const downloadingVideos = threadTweets.flatMap((tweet, tweetIndex) => 
+      tweet.media
+        .map((media, mediaIndex) => ({ ...media, tweetIndex, mediaIndex }))
+        .filter(m => (m as any).isDownloading)
+    )
+    
+    if (downloadingVideos.length > 0) {
+      toast.success('Posting tweet! Videos will be attached when ready.', {
         duration: 4000,
-        icon: '⏳',
+        icon: '📹',
       })
-      console.log('[ThreadTweetEditor] Video still downloading - keeping content intact')
-      return
     }
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback

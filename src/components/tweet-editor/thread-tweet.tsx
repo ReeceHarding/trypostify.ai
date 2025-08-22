@@ -845,7 +845,7 @@ function ThreadTweetContent({
       // Update parent with the new media
       if (onUpdate) {
         const content = mentionsContent
-        const parentMedia = mediaFiles
+        const parentMedia = [...mediaFiles]
           .filter(f => f !== placeholderMediaFile)
           .concat(realMediaFile)
           .filter((f) => f.media_id && f.s3Key)
@@ -1451,7 +1451,7 @@ function ThreadTweetContent({
                                 <DuolingoButton
                                   className="h-11 px-6 max-[320px]:w-full"
                                   onClick={onUpdateThread}
-                                  disabled={isPosting || mediaFiles.some((f) => f.uploading)}
+                                  disabled={isPosting || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
                                 >
                                   <span className="text-sm">
                                     {isPosting ? 'Saving...' : 'Save'}
@@ -1477,7 +1477,7 @@ function ThreadTweetContent({
                                   className="h-11 px-6 max-[320px]:w-full"
                                   variant="secondary"
                                   onClick={handlePostClick}
-                                  disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
+                                  disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
                                   loading={isPosting || optimisticActionState === 'post'}
                                 >
                                   <span className="text-sm">
@@ -1505,7 +1505,7 @@ function ThreadTweetContent({
                                 <TooltipTrigger asChild>
                                   <DuolingoButton
                                     loading={isPosting || optimisticActionState === 'queue'}
-                                    disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
+                                    disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
                                     className="h-11 px-4 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
@@ -1534,7 +1534,7 @@ function ThreadTweetContent({
                                 <TooltipTrigger asChild>
                                   <DuolingoButton
                                     loading={isPosting || optimisticActionState === 'schedule'}
-                                    disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
+                                    disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
                                     size="icon"
                                     className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
                                     onClick={() => setOpen(true)}
