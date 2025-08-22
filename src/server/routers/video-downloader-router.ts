@@ -6,6 +6,14 @@ import { nanoid } from 'nanoid'
 import { qstash } from '@/lib/qstash'
 import { getBaseUrl } from '@/constants/base-url'
 import { getAccount } from './utils/get-account'
+import * as ffmpeg from 'fluent-ffmpeg'
+import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
+import { promises as fs } from 'fs'
+import * as path from 'path'
+import * as os from 'os'
+
+// Configure FFmpeg path
+ffmpeg.setFfmpegPath(ffmpegInstaller.path)
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -180,7 +188,69 @@ export const videoDownloaderRouter = j.router({
           })
         }
 
-        const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+        let videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+        
+        // TRANSCODE: Convert to Twitter-compatible format (H.264 + AAC)
+        console.log('[VideoDownloader] Transcoding video to Twitter-compatible format...')
+        
+        try {
+          // Create temporary files
+          const tempDir = os.tmpdir()
+          const inputPath = path.join(tempDir, `input_${nanoid()}.mp4`)
+          const outputPath = path.join(tempDir, `output_${nanoid()}.mp4`)
+          
+          // Write original video to temp file
+          await fs.writeFile(inputPath, videoBuffer)
+          console.log('[VideoDownloader] Wrote original video to temp file:', inputPath)
+          
+          // Transcode with FFmpeg
+          await new Promise<void>((resolve, reject) => {
+            ffmpeg(inputPath)
+              .videoCodec('libx264') // H.264 codec required by Twitter
+              .audioCodec('aac')     // AAC audio required by Twitter
+              .format('mp4')         // MP4 container
+              .outputOptions([
+                '-preset fast',      // Fast encoding
+                '-crf 23',          // Good quality/size balance
+                '-movflags +faststart', // Web optimization
+                '-pix_fmt yuv420p', // Twitter compatibility
+              ])
+              .on('start', (commandLine) => {
+                console.log('[VideoDownloader] FFmpeg started:', commandLine)
+              })
+              .on('progress', (progress) => {
+                console.log('[VideoDownloader] Transcoding progress:', Math.round(progress.percent || 0) + '%')
+              })
+              .on('end', () => {
+                console.log('[VideoDownloader] Transcoding completed successfully')
+                resolve()
+              })
+              .on('error', (err) => {
+                console.error('[VideoDownloader] FFmpeg error:', err)
+                reject(err)
+              })
+              .save(outputPath)
+          })
+          
+          // Read transcoded video
+          const transcodedBuffer = await fs.readFile(outputPath)
+          videoBuffer = transcodedBuffer
+          
+          console.log('[VideoDownloader] Transcoding complete:', {
+            originalSize: (await fs.stat(inputPath)).size,
+            transcodedSize: transcodedBuffer.length,
+            sizeDifference: `${((transcodedBuffer.length / (await fs.stat(inputPath)).size) * 100).toFixed(1)}%`
+          })
+          
+          // Clean up temp files
+          await fs.unlink(inputPath).catch(() => {})
+          await fs.unlink(outputPath).catch(() => {})
+          
+        } catch (transcodeError) {
+          console.error('[VideoDownloader] Transcoding failed:', transcodeError)
+          console.log('[VideoDownloader] Using original video (may fail on Twitter)')
+          // Continue with original video - let Twitter reject it if needed
+        }
         
         // Validate video size (Twitter limit is 512MB)
         const sizeInMB = videoBuffer.length / (1024 * 1024)
@@ -233,10 +303,9 @@ export const videoDownloaderRouter = j.router({
         // Force MP4 content type for Twitter compatibility
         const contentType = 'video/mp4'
         
-        // SIMPLE FIX: Check if this is an Instagram Reel (often incompatible with Twitter)
+        // Instagram videos are now transcoded to Twitter-compatible format
         if (platform === 'instagram' && video.height > video.width) {
-          console.warn('[VideoDownloader] Instagram Reel detected - Twitter may reject due to codec incompatibility')
-          // Add a warning to the response
+          console.log('[VideoDownloader] Instagram Reel detected - transcoded to H.264/AAC for Twitter compatibility')
         }
 
         // Generate S3 key - always use .mp4 extension for Twitter compatibility
@@ -303,10 +372,8 @@ export const videoDownloaderRouter = j.router({
           }
         }, 1000) // 1 second delay to let the main response complete
 
-        // Check if video might have Twitter compatibility issues
-        const warningMessage = platform === 'instagram' 
-          ? 'Note: Instagram videos may fail to upload to Twitter due to codec incompatibility. Twitter requires H.264/AAC encoding.'
-          : null
+        // Videos are now transcoded for Twitter compatibility
+        const warningMessage = null // No longer needed - videos are transcoded
 
         // Return response matching the Apify documentation fields
         return c.json({
