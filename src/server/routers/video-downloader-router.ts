@@ -31,7 +31,7 @@ const BUCKET_NAME = process.env.NEXT_PUBLIC_S3_BUCKET_NAME!
 // Regex patterns for supported platforms
 const PLATFORM_PATTERNS = {
   instagram: /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/,
-  tiktok: /(?:tiktok\.com\/@[\w.-]+\/video\/(\d+)|vm\.tiktok\.com\/([A-Za-z0-9]+))/,
+  tiktok: /(?:tiktok\.com\/(?:@[\w.-]+\/video\/(\d+)|t\/([A-Za-z0-9]+))|vm\.tiktok\.com\/([A-Za-z0-9]+))/,
   twitter: /(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/,
   youtube: /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]+)/,
 }

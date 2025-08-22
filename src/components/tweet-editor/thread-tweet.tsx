@@ -169,7 +169,7 @@ function ThreadTweetContent({
       // Check if it's a supported video platform URL
       const videoPatterns = [
         /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\//,
-        /(?:tiktok\.com\/@[\w.-]+\/video\/|vm\.tiktok\.com\/)/,
+        /(?:tiktok\.com\/(?:@[\w.-]+\/video\/|t\/)|vm\.tiktok\.com\/)/,
         /(?:twitter\.com|x\.com)\/\w+\/status\//,
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)/,
       ]
