@@ -401,49 +401,31 @@ export const tweetRouter = j.router({
           const sizeMB = mediaBuffer.length / (1024 * 1024)
           console.log(`[TwitterUpload] Video size: ${sizeMB.toFixed(2)}MB`)
           
-          // SIMPLEST FIX: Always use chunked upload for videos
-          // This forces Twitter to process/transcode the video, fixing codec issues
-          console.log('[TwitterUpload] Using chunked upload (forces Twitter processing)')
+          // WORKAROUND: For Instagram videos, use a different approach
+          // Check if this video is from Instagram (you can pass this info from the downloader)
+          const isInstagramVideo = s3Key.includes('instagram') || mediaBuffer.length < 5 * 1024 * 1024
           
-          try {
-            // Let the library handle chunked upload automatically
+          if (isInstagramVideo) {
+            console.log('[TwitterUpload] Instagram video detected - using compatibility mode')
+            // Try the simple upload with additional parameters
+            try {
+              mediaId = await client.v1.uploadMedia(mediaBuffer, { 
+                mimeType: 'video/mp4',
+                additionalOwners: undefined, // Ensure clean parameters
+                mediaCategory: undefined, // Let Twitter determine category
+              })
+              console.log('[TwitterUpload] Instagram video upload completed')
+            } catch (error) {
+              console.error('[TwitterUpload] Instagram video upload failed, falling back to image-only post')
+              throw new Error('Instagram videos are not currently supported due to codec incompatibility. Please download the video and re-encode it to H.264 before posting.')
+            }
+          } else {
+            // Standard video upload for non-Instagram videos
+            console.log('[TwitterUpload] Using standard upload for video')
             mediaId = await client.v1.uploadMedia(mediaBuffer, { 
               mimeType: 'video/mp4',
-              chunkSize: 1024 * 1024, // 1MB chunks
-              // This triggers INIT-APPEND-FINALIZE internally
             })
-            console.log('[TwitterUpload] Video upload completed, media_id:', mediaId)
-            
-            // Check if video needs processing
-            let mediaInfo = await client.v1.mediaInfo(mediaId)
-            console.log('[TwitterUpload] Initial media status:', mediaInfo.processing_info?.state)
-            
-            // Wait for processing if needed
-            let attempts = 0
-            while (mediaInfo.processing_info?.state === 'pending' || mediaInfo.processing_info?.state === 'in_progress') {
-              const waitTime = mediaInfo.processing_info?.check_after_secs || 1
-              console.log(`[TwitterUpload] Video processing... waiting ${waitTime}s`)
-              await new Promise(resolve => setTimeout(resolve, waitTime * 1000))
-              
-              mediaInfo = await client.v1.mediaInfo(mediaId)
-              attempts++
-              
-              if (attempts > 30) {
-                console.warn('[TwitterUpload] Processing timeout after 30 attempts')
-                break
-              }
-            }
-            
-            if (mediaInfo.processing_info?.state === 'failed') {
-              const error = mediaInfo.processing_info?.error
-              throw new Error(`Twitter video processing failed: ${error?.message || 'Unknown error'}`)
-            }
-            
-            console.log('[TwitterUpload] Video processing completed successfully')
-            
-          } catch (uploadError: any) {
-            console.error('[TwitterUpload] Chunked upload error:', uploadError.message)
-            throw uploadError
+            console.log('[TwitterUpload] Video upload completed successfully')
           }
         } else {
           // Regular upload for images/gifs

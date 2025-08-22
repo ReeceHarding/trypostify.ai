@@ -745,7 +745,39 @@ function ThreadTweetContent({
       // Brief pause to show the jump
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      // Create a media file object for the downloaded video
+      // Check if this is an Instagram video that needs special handling
+      if (result.suggestedAction === 'post_as_link') {
+        // For Instagram videos, just add the link to the content instead of uploading
+        setDownloadProgress(100)
+        
+        // Add the Instagram link to the tweet content
+        const currentContent = mentionsContent
+        const newContent = currentContent ? `${currentContent}\n\n${result.originalVideoUrl}` : result.originalVideoUrl
+        handleMentionsContentChange(newContent)
+        
+        toast.success('Instagram video link added to your tweet. Twitter will show a preview.', {
+          id: toastId,
+          duration: 5000,
+          icon: '🔗',
+        })
+        
+        // Show compatibility warning
+        if (result.compatibilityWarning) {
+          setTimeout(() => {
+            toast(result.compatibilityWarning, {
+              duration: 6000,
+              icon: '⚠️',
+            })
+          }, 1000)
+        }
+        
+        setVideoUrl('')
+        setIsDownloadingVideo(false)
+        setDownloadProgress(0)
+        return
+      }
+      
+      // For non-Instagram videos, proceed with normal upload
       const mediaFile: MediaFile = {
         file: null as any, // We don't have the actual File object, but we have the S3 key
         url: result.url,
@@ -1612,11 +1644,12 @@ function ThreadTweetContent({
             <div className="text-xs text-neutral-500 space-y-1">
               <p>Supported platforms:</p>
               <ul className="list-disc list-inside space-y-0.5 ml-2">
-                <li>Instagram (Posts, Reels, IGTV)</li>
-                <li>TikTok</li>
-                <li>Twitter/X</li>
-                <li>YouTube (including Shorts)</li>
+                <li>Instagram (adds as link - Twitter shows preview)</li>
+                <li>TikTok (direct video upload)</li>
+                <li>Twitter/X (direct video upload)</li>
+                <li>YouTube (direct video upload)</li>
               </ul>
+              <p className="mt-2 text-warning-600">Note: Instagram videos can't be uploaded directly due to codec issues.</p>
             </div>
           </div>
           <DialogFooter>

@@ -250,8 +250,8 @@ export const videoDownloaderRouter = j.router({
         console.log(`[VideoDownloader] Video uploaded successfully: ${publicUrl}`)
 
         // Check if video might have Twitter compatibility issues
-        const warningMessage = platform === 'instagram' 
-          ? 'Note: Instagram videos may fail to upload to Twitter due to codec incompatibility. Twitter requires H.264/AAC encoding.'
+        const compatibilityWarning = platform === 'instagram' 
+          ? 'Instagram videos often fail on Twitter due to codec issues. The video has been saved, but may not upload successfully.'
           : null
 
         // Return response matching the Apify documentation fields
@@ -278,7 +278,10 @@ export const videoDownloaderRouter = j.router({
           orientation: video.height > video.width ? 'portrait' : video.width > video.height ? 'landscape' : 'square',
           aspectRatio: video.width && video.height ? (video.width / video.height).toFixed(2) : null,
           // Add compatibility warning
-          compatibilityWarning: warningMessage,
+          compatibilityWarning,
+          // Include original URL for fallback posting
+          originalVideoUrl: url,
+          suggestedAction: platform === 'instagram' ? 'post_as_link' : 'upload_directly',
         })
       } catch (error) {
         console.error('[VideoDownloader] Error:', error)
