@@ -77,6 +77,7 @@ export const videoDownloaderRouter = j.router({
 
       try {
         console.log(`[VideoDownloader] Downloading video from ${platform}: ${url}`)
+        console.log(`[VideoDownloader] Tweet content to post with video:`, tweetContent || 'None provided - will use default')
 
         // Start Apify actor run (async)
         const runResponse = await fetch(
@@ -342,6 +343,7 @@ export const videoDownloaderRouter = j.router({
         const backgroundPlatform = platform
         const backgroundVideo = video
         const backgroundUser = user
+        const backgroundTweetContent = tweetContent
         
         setTimeout(async () => {
           try {
@@ -387,7 +389,12 @@ export const videoDownloaderRouter = j.router({
             
             // Post tweet with video
             console.log('[VideoDownloader] Posting tweet with video...')
-            const tweetText = tweetContent || `Video from ${backgroundPlatform}${backgroundVideo.title ? `: ${backgroundVideo.title}` : ''}`
+            const tweetText = backgroundTweetContent || `Video from ${backgroundPlatform}${backgroundVideo.title ? `: ${backgroundVideo.title}` : ''}`
+            console.log('[VideoDownloader] Final tweet text being posted:', tweetText)
+            console.log('[VideoDownloader] backgroundTweetContent received:', backgroundTweetContent)
+            console.log('[VideoDownloader] backgroundPlatform:', backgroundPlatform)
+            console.log('[VideoDownloader] backgroundVideo.title:', backgroundVideo.title)
+            
             const tweetResult = await client.v2.tweet({
               text: tweetText,
               media: { media_ids: [mediaId] }
