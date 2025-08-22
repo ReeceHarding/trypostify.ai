@@ -14,15 +14,7 @@ import { z } from 'zod'
 import { j, privateProcedure, publicProcedure } from '../jstack'
 import { getAccount } from './utils/get-account'
 import { waitUntil } from '@vercel/functions'
-import * as ffmpeg from 'fluent-ffmpeg'
-import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
-import { promises as fs } from 'fs'
-import * as path from 'path'
-import * as os from 'os'
-import { nanoid } from 'nanoid'
 
-// Configure FFmpeg path
-ffmpeg.setFfmpegPath(ffmpegInstaller.path)
 import {
   addDays,
   addHours,
@@ -379,91 +371,7 @@ export const tweetRouter = j.router({
           break
       }
 
-      let mediaBuffer = Buffer.from(buffer)
-      
-      // TRANSCODE ALL VIDEOS: Ensure Twitter compatibility for any video source
-      if (mediaType === 'video') {
-        console.log(`[TwitterUpload] Transcoding video to Twitter-compatible format:`, {
-          originalSize: mediaBuffer.length,
-          mimeType,
-          s3Key,
-          sizeMB: (mediaBuffer.length / (1024 * 1024)).toFixed(2)
-        })
-        
-        try {
-          // Create temporary files
-          const tempDir = os.tmpdir()
-          const inputPath = path.join(tempDir, `twitter_input_${nanoid()}.mp4`)
-          const outputPath = path.join(tempDir, `twitter_output_${nanoid()}.mp4`)
-          
-          // Write original video to temp file
-          await fs.writeFile(inputPath, mediaBuffer)
-          console.log('[TwitterUpload] Wrote video to temp file for transcoding')
-          
-          // Transcode with FFmpeg for Twitter compatibility
-          await new Promise<void>((resolve, reject) => {
-            ffmpeg(inputPath)
-              .videoCodec('libx264') // H.264 codec required by Twitter
-              .audioCodec('aac')     // AAC audio required by Twitter
-              .format('mp4')         // MP4 container
-              .outputOptions([
-                '-preset fast',      // Fast encoding
-                '-crf 23',          // Good quality/size balance
-                '-movflags +faststart', // Web optimization
-                '-pix_fmt yuv420p', // Twitter compatibility
-                '-profile:v baseline', // Twitter compatibility
-                '-level 3.0',       // Twitter compatibility
-              ])
-              .on('start', (commandLine) => {
-                console.log('[TwitterUpload] FFmpeg transcoding started for Twitter upload')
-              })
-              .on('progress', (progress) => {
-                console.log('[TwitterUpload] Transcoding progress:', Math.round(progress.percent || 0) + '%')
-              })
-              .on('end', () => {
-                console.log('[TwitterUpload] Video transcoding completed successfully')
-                resolve()
-              })
-              .on('error', (err) => {
-                console.error('[TwitterUpload] FFmpeg transcoding error:', err)
-                reject(err)
-              })
-              .save(outputPath)
-          })
-          
-          // Read transcoded video
-          const transcodedBuffer = await fs.readFile(outputPath)
-          const originalSize = mediaBuffer.length
-          mediaBuffer = transcodedBuffer
-          
-          console.log('[TwitterUpload] Transcoding complete:', {
-            originalSize,
-            transcodedSize: transcodedBuffer.length,
-            sizeDifference: `${((transcodedBuffer.length / originalSize) * 100).toFixed(1)}%`,
-            codecStatus: 'H.264/AAC (Twitter compatible)'
-          })
-          
-          // Clean up temp files
-          await fs.unlink(inputPath).catch(() => {})
-          await fs.unlink(outputPath).catch(() => {})
-          
-          // Force video/mp4 mime type after transcoding
-          mimeType = 'video/mp4'
-          
-        } catch (transcodeError) {
-          console.error('[TwitterUpload] Video transcoding failed:', transcodeError)
-          console.log('[TwitterUpload] Using original video (may fail on Twitter)')
-          // Continue with original video - let Twitter decide
-        }
-      }
-      
-      console.log(`[TwitterUpload] Uploading ${mediaType} to Twitter:`, {
-        bufferSize: mediaBuffer.length,
-        mimeType,
-        mediaCategory,
-        s3Key,
-        isTranscoded: mediaType === 'video' ? 'Yes (H.264/AAC)' : 'N/A'
-      })
+      const mediaBuffer = Buffer.from(buffer)
       
       let mediaId: string
       try {
