@@ -738,6 +738,13 @@ function ThreadTweetContent({
       }, 2000)
 
       // Download video from URL with current tweet content
+      console.log('[ThreadTweet] Sending to video downloader:', {
+        url: videoUrl,
+        tweetContent: mentionsContent.trim() || undefined,
+        mentionsContentRaw: mentionsContent,
+        mentionsContentLength: mentionsContent.length
+      })
+      
       const result = await downloadVideoMutation.mutateAsync({
         url: videoUrl,
         tweetContent: mentionsContent.trim() || undefined
