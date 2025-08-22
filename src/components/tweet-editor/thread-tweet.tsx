@@ -61,12 +61,13 @@ import {
   DrawerTitle,
 } from '../ui/drawer'
 import { Loader } from '../ui/loader'
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+
 import ContentLengthIndicator from './content-length-indicator'
 import { Calendar20 } from './date-picker'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeyFeedback } from '../ui/hotkey-feedback'
+import Link from 'next/link'
 
 interface ThreadTweetProps {
   isThread: boolean
@@ -149,6 +150,7 @@ function ThreadTweetContent({
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [originalContentBeforeUrl, setOriginalContentBeforeUrl] = useState('')
 
+  const { addProcessingVideo, updateProcessingVideo, removeProcessingVideo } = useVideoProcessing()
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -719,6 +721,98 @@ function ThreadTweetContent({
     }
   }
 
+  // Process video in background and update thread when ready
+  const processVideoInBackground = async (threadId: string, videoUrl: string, tweetContent: string) => {
+    try {
+      // Update progress: downloading
+      updateProcessingVideo(threadId, {
+        progress: 10,
+        status: 'downloading',
+        message: 'Downloading video...'
+      })
+      
+      // Download video
+      const downloadResult = await client.videoDownloader.downloadVideo.$post({
+        url: videoUrl,
+        tweetContent: tweetContent
+      })
+      
+      if (!downloadResult.ok) {
+        throw new Error('Failed to download video')
+      }
+      
+      const videoData = await downloadResult.json()
+      
+      // Update progress: processing
+      updateProcessingVideo(threadId, {
+        progress: 50,
+        status: 'processing',
+        message: 'Processing video...',
+        platform: videoData.platform
+      })
+      
+      // Upload to Twitter
+      const twitterResult = await client.tweet.uploadMediaToTwitter.$post({
+        s3Key: videoData.s3Key,
+        mediaType: 'video'
+      })
+      
+      if (!twitterResult.ok) {
+        throw new Error('Failed to upload to Twitter')
+      }
+      
+      const { media_id } = await twitterResult.json()
+      
+      // Update progress: uploading
+      updateProcessingVideo(threadId, {
+        progress: 80,
+        status: 'uploading',
+        message: 'Updating tweet with video...'
+      })
+      
+      // Update the thread with the media
+      const updateResult = await client.tweet.updateThread.$post({
+        threadId: threadId,
+        tweets: [{
+          content: tweetContent,
+          media: [{
+            s3Key: videoData.s3Key,
+            media_id: media_id
+          }],
+          delayMs: 0
+        }]
+      })
+      
+      if (!updateResult.ok) {
+        throw new Error('Failed to update thread with video')
+      }
+      
+      // Complete!
+      updateProcessingVideo(threadId, {
+        progress: 100,
+        status: 'completed',
+        message: `Video from ${videoData.platform} ready!`
+      })
+      
+      // Remove from processing after a delay
+      setTimeout(() => {
+        removeProcessingVideo(threadId)
+      }, 5000)
+      
+    } catch (error) {
+      console.error('[ThreadTweet] Background video processing failed:', error)
+      updateProcessingVideo(threadId, {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to process video'
+      })
+      
+      // Remove from processing after showing error
+      setTimeout(() => {
+        removeProcessingVideo(threadId)
+      }, 10000)
+    }
+  }
+
   const handleVideoUrlSubmit = async () => {
     console.log('[ThreadTweet] handleVideoUrlSubmit called with:', {
       videoUrl: videoUrl.trim(),
@@ -739,168 +833,90 @@ function ThreadTweetContent({
       return
     }
 
-    // Close dialog immediately and show progress
+    // Close dialog immediately 
     setShowVideoUrlInput(false)
-    setIsDownloadingVideo(true)
-    setDownloadProgress(0)
     
-    console.log('[ThreadTweet] About to start video download with content:', {
-      mentionsContent: mentionsContent,
-      trimmed: mentionsContent.trim(),
-      willSend: mentionsContent.trim() || undefined
-    })
-    
-    // Notify parent component about download state
-    if (onDownloadingVideoChange) {
-      onDownloadingVideoChange(true)
-    }
-    
-    // Set initial processing status
-    setVideoProcessingStatus({
-      isProcessing: true,
-      message: 'Starting video download...',
-      progress: 0
-    })
-
     try {
-      // Simulate progress updates during download (slower for pleasant surprise)
-      let currentProgress = 0
-      const progressInterval = setInterval(() => {
-        // Much slower progress: 1-4% every 2 seconds, cap at 75%
-        currentProgress = Math.min(currentProgress + Math.random() * 3 + 1, 75)
-        setDownloadProgress(currentProgress)
-        setVideoProcessingStatus(prev => ({
-          ...prev,
-          message: `Downloading video... ${Math.round(currentProgress)}%`,
-          progress: currentProgress
-        }))
-      }, 2000)
-
-      // Download video from URL with preserved original content
-      const contentToSend = originalContentBeforeUrl.trim() || mentionsContent.trim() || undefined
-      console.log('[ThreadTweet] Sending to video downloader:', {
-        url: videoUrl,
-        tweetContent: contentToSend,
-        originalContentBeforeUrl: originalContentBeforeUrl,
-        mentionsContentRaw: mentionsContent,
-        mentionsContentLength: mentionsContent.length,
-        originalContentLength: originalContentBeforeUrl.length,
-        willSendContent: !!contentToSend,
-        usingOriginalContent: !!originalContentBeforeUrl.trim()
+      // Create a thread immediately with the video URL as placeholder
+      const tweetContent = mentionsContent.trim() || `Check out this video! ${videoUrl}`
+      const threadId = crypto.randomUUID()
+      
+      console.log('[ThreadTweet] Creating thread with video placeholder:', {
+        threadId,
+        content: tweetContent,
+        videoUrl
       })
       
-      const result = await downloadVideoMutation.mutateAsync({
-        url: videoUrl,
-        tweetContent: contentToSend
+      // Create thread in the database
+      const createRes = await client.tweet.createThread.$post({
+        tweets: [{
+          content: tweetContent,
+          media: [], // Will be updated when video is ready
+          delayMs: 0
+        }]
       })
       
-      clearInterval(progressInterval)
-      
-      // Quick finish animation - jump to 85%, then 95%, then 100%
-      setDownloadProgress(85)
-      setVideoProcessingStatus(prev => ({
-        ...prev,
-        message: 'Processing video...',
-        progress: 85,
-        videoInfo: {
-          platform: result.platform,
-          title: result.title
-        }
-      }))
-      
-      // Brief pause to show the jump
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      // Create a media file object for the downloaded video
-      const mediaFile: MediaFile = {
-        file: null as any, // We don't have the actual File object, but we have the S3 key
-        url: result.url,
-        type: 'video',
-        uploading: false,
-        uploaded: true,
-        s3Key: result.s3Key,
+      if (!createRes.ok) {
+        throw new Error('Failed to create thread')
       }
-
-      setDownloadProgress(95)
-      setVideoProcessingStatus(prev => ({
-        ...prev,
-        message: 'Uploading to Twitter...',
-        progress: 95
-      }))
       
-      // Upload to Twitter to get media_id
-      const twitterResult = await uploadToTwitterMutation.mutateAsync({
-        s3Key: result.s3Key,
-        mediaType: 'video',
-        fileUrl: result.url,
+      const { threadId: createdThreadId } = await createRes.json()
+      
+      // Get user's timezone
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      
+      // Queue the thread immediately
+      const queueRes = await client.tweet.enqueueThread.$post({
+        threadId: createdThreadId,
+        userNow: new Date(),
+        timezone
       })
-
-      // Update media file with Twitter media_id
-      mediaFile.media_id = twitterResult.media_id
-      mediaFile.media_key = twitterResult.media_key
-
-      // Add to media files
-      setMediaFiles((prev) => [...prev, mediaFile])
-
-      // Update parent with the new media
-      if (onUpdate) {
-        const content = mentionsContent
-        const parentMedia = [...mediaFiles, mediaFile]
-          .filter((f) => f.media_id && f.s3Key)
-          .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
-        onUpdate(content, parentMedia)
+      
+      if (!queueRes.ok) {
+        throw new Error('Failed to queue thread')
       }
-
-      // Video is now ready to be attached to tweet
-      console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
-      console.log('[ThreadTweet] Video ready to be attached to user tweet')
-
-      // Final quick animation to 100%
-      setDownloadProgress(100)
-      setVideoProcessingStatus({
-        isProcessing: false,
-        message: `Video from ${result.platform} ready!`,
-        progress: 100,
-        videoInfo: {
-          platform: result.platform,
-          title: result.title
-        }
+      
+      // Add to processing videos tracker
+      addProcessingVideo({
+        threadId: createdThreadId,
+        url: videoUrl,
+        progress: 0,
+        status: 'downloading',
+        message: 'Starting video download...',
+        startedAt: new Date()
       })
       
-      // Keep success message visible for a bit then clear
-      setTimeout(() => {
-        setVideoProcessingStatus({
-          isProcessing: false,
-          message: '',
-          progress: 0
-        })
-      }, 3000)
+      // Show success toast
+      toast.success(
+        <div className="flex flex-col gap-1">
+          <p>Video queued for processing!</p>
+          <Link
+            href="/studio/scheduled"
+            className="text-sm text-primary underline"
+          >
+            View in scheduled posts
+          </Link>
+        </div>
+      )
       
+      // Clear the current tweet content
+      setMentionsContent('')
       setVideoUrl('')
-    } catch (error) {
-      console.error('[ThreadTweet] Video download error:', error)
-      setVideoProcessingStatus({
-        isProcessing: false,
-        message: error instanceof Error ? error.message : 'Failed to download video',
-        progress: 0
-      })
-      
-      // Keep error message visible for longer then clear
-      setTimeout(() => {
-        setVideoProcessingStatus({
-          isProcessing: false,
-          message: '',
-          progress: 0
+      if (editor) {
+        editor.update(() => {
+          $getRoot().clear()
         })
-      }, 5000)
-    } finally {
-      setIsDownloadingVideo(false)
-      setDownloadProgress(0)
-      
-      // Notify parent component download is complete
-      if (onDownloadingVideoChange) {
-        onDownloadingVideoChange(false)
       }
+      if (onUpdate) {
+        onUpdate('', [])
+      }
+      
+      // Start background video processing
+      processVideoInBackground(createdThreadId, videoUrl, tweetContent)
+      
+    } catch (error) {
+      console.error('[ThreadTweet] Failed to create video thread:', error)
+      toast.error('Failed to queue video. Please try again.')
     }
   }
 
@@ -1566,71 +1582,18 @@ function ThreadTweetContent({
                               </Tooltip>
 
                               <Tooltip>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                  <TooltipTrigger asChild>
-                                    <PopoverTrigger asChild>
-                                      <DuolingoButton
-                                        loading={isPosting || optimisticActionState === 'schedule'}
-                                        disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
-                                        size="icon"
-                                        className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
-
-                                      >
-                                        <ChevronDown className="size-4" />
-                                        <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
-                                      </DuolingoButton>
-                                    </PopoverTrigger>
-                                  </TooltipTrigger>
-                                  <PopoverContent 
-                                    side="bottom"
-                                    align="center"
-                                    sideOffset={8}
-                                    avoidCollisions
-                                    collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                                    updatePositionStrategy="always"
-                                    className="w-full max-w-[min(100dvw-1rem,28rem)] md:max-w-[min(100dvw-1rem,40rem)] max-h-[min(90dvh,calc(100dvh-4rem))] overflow-hidden p-0"
-
+                                <TooltipTrigger asChild>
+                                  <DuolingoButton
+                                    loading={isPosting || optimisticActionState === 'schedule'}
+                                    disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
+                                    size="icon"
+                                    className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
+                                    onClick={() => setOpen(true)}
                                   >
-                                    <Calendar20
-                                      initialScheduledTime={preScheduleTime || undefined}
-                                      onSchedule={(date, time) => {
-                                        // Combine selected calendar date with the chosen HH:mm time
-                                        try {
-                                          const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
-                                          const scheduled = new Date(date)
-                                          scheduled.setHours(hh || 0, mm || 0, 0, 0)
-                                          // Debug log to trace scheduling values end-to-end
-                                          console.log('[ThreadTweet] onSchedule selected', {
-                                            rawDate: date?.toISOString?.(),
-                                            time,
-                                            combinedIso: scheduled.toISOString(),
-                                          })
-                                          if (onScheduleThread) {
-                                            console.log(`[ThreadTweet] Schedule button clicked at ${new Date().toISOString()}`)
-                                            setOptimisticActionState('schedule')
-                                            showAction('schedule')
-                                            onScheduleThread(scheduled)
-                                            setOpen(false)
-                                            // Clear optimistic state after feedback period
-                                            setTimeout(() => setOptimisticActionState(null), 500)
-                                          }
-                                        } catch (e) {
-                                          console.error('[ThreadTweet] onSchedule combine error', e)
-                                          if (onScheduleThread) {
-                                            console.log(`[ThreadTweet] Schedule fallback button clicked at ${new Date().toISOString()}`)
-                                            setOptimisticActionState('schedule')
-                                            showAction('schedule')
-                                            onScheduleThread(date)
-                                            setOpen(false)
-                                            // Clear optimistic state after feedback period
-                                            setTimeout(() => setOptimisticActionState(null), 500)
-                                          }
-                                        }
-                                      }}
-                                      isPending={isPosting || optimisticActionState === 'schedule'}
-                                    />
-                                  </PopoverContent>
-                                </Popover>
+                                    <ChevronDown className="size-4" />
+                                    <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
+                                  </DuolingoButton>
+                                </TooltipTrigger>
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Schedule manually</p>
@@ -1779,6 +1742,58 @@ function ThreadTweetContent({
               </DuolingoButton>
             </div>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Calendar Modal */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle>Schedule Post</DialogTitle>
+            <DialogDescription>
+              Choose when you want this post to be published.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-6 pb-6 max-h-[70vh] overflow-y-auto">
+            <Calendar20
+              initialScheduledTime={preScheduleTime || undefined}
+              onSchedule={(date, time) => {
+                // Combine selected calendar date with the chosen HH:mm time
+                try {
+                  const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
+                  const scheduled = new Date(date)
+                  scheduled.setHours(hh || 0, mm || 0, 0, 0)
+                  // Debug log to trace scheduling values end-to-end
+                  console.log('[ThreadTweet] onSchedule selected', {
+                    rawDate: date?.toISOString?.(),
+                    time,
+                    combinedIso: scheduled.toISOString(),
+                  })
+                  if (onScheduleThread) {
+                    console.log(`[ThreadTweet] Schedule button clicked at ${new Date().toISOString()}`)
+                    setOptimisticActionState('schedule')
+                    showAction('schedule')
+                    onScheduleThread(scheduled)
+                    setOpen(false)
+                    // Clear optimistic state after feedback period
+                    setTimeout(() => setOptimisticActionState(null), 500)
+                  }
+                } catch (e) {
+                  console.error('[ThreadTweet] onSchedule combine error', e)
+                  if (onScheduleThread) {
+                    console.log(`[ThreadTweet] Schedule fallback button clicked at ${new Date().toISOString()}`)
+                    setOptimisticActionState('schedule')
+                    showAction('schedule')
+                    onScheduleThread(date)
+                    setOpen(false)
+                    // Clear optimistic state after feedback period
+                    setTimeout(() => setOptimisticActionState(null), 500)
+                  }
+                }
+              }}
+              isPending={isPosting || optimisticActionState === 'schedule'}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </>
