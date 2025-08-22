@@ -412,11 +412,21 @@ export default function ThreadTweetEditor({
     }, 100)
 
     if (hasDownloadingVideo) {
-      // Show notification about background processing
-      toast.success('Video will upload in background and post when ready', {
-        duration: 4000,
+      // Show notification and DON'T post yet - wait for video
+      toast.success('Waiting for video to complete, then posting together...', {
+        duration: 6000,
         icon: '📹',
       })
+      
+      // Store the content to post later when video is ready
+      localStorage.setItem('pendingPost', JSON.stringify({
+        content: currentContent,
+        timestamp: Date.now(),
+        userId: user?.id,
+      }))
+      
+      console.log('[ThreadTweetEditor] Video downloading - delaying post until video ready')
+      return // Don't post now, wait for video
     }
 
     try {

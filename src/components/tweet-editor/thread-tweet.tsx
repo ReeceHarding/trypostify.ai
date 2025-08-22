@@ -780,9 +780,34 @@ function ThreadTweetContent({
         onUpdate(content, parentMedia)
       }
 
-      // Video is now ready and will be posted by background job
+      // Video is now ready - check if there's a pending post to complete
       console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
-      console.log('[ThreadTweet] Background job will post the video tweet automatically')
+      
+      // Check for pending post from localStorage
+      const pendingPost = localStorage.getItem('pendingPost')
+      if (pendingPost && onPostThread) {
+        try {
+          const { content, timestamp, userId } = JSON.parse(pendingPost)
+          console.log('[ThreadTweet] Found pending post, posting now with video attached')
+          
+          // Clear the pending post
+          localStorage.removeItem('pendingPost')
+          
+          // Update the current tweet with video and post
+          if (onUpdate) {
+            onUpdate(content[0].content, [{ media_id: twitterResult.media_id, s3Key: result.s3Key }])
+          }
+          
+          // Post the complete tweet with video
+          setTimeout(() => {
+            onPostThread()
+            toast.success('Posted with video attached!', { duration: 3000 })
+          }, 500)
+          
+        } catch (parseError) {
+          console.error('[ThreadTweet] Failed to parse pending post:', parseError)
+        }
+      }
 
       // Final quick animation to 100%
       setDownloadProgress(100)
