@@ -122,6 +122,8 @@ export type MyUIMessage = UIMessage<
     'data-tool-output': {
       text: string
       status: 'processing' | 'streaming' | 'complete'
+      tweets?: Array<{ id: string; text: string; index: number }>
+      twitterUrl?: string
     }
     writeTweet: {
       status: 'processing'

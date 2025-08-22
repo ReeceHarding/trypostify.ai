@@ -54,7 +54,6 @@ export const Messages = memo(
                 (part) => 
                   (part.type === 'text' && Boolean(part.text)) ||
                   part.type === 'data-data-tool-output' ||
-                  part.type === 'data-writeTweet' ||
                   part.type === 'tool-readWebsiteContent'
               ),
             )))
