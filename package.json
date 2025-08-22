@@ -19,7 +19,9 @@
     "view-recent-logs": "tail -100 log.txt",
     "rotate-logs": "node scripts/log-rotator.js",
     "rotate-logs-force": "node scripts/log-rotator.js --force",
-    "log-status": "node scripts/log-rotator.js --help && echo '' && echo 'Current log size:' && ls -lh log.txt 2>/dev/null || echo 'No log file found'"
+    "log-status": "node scripts/log-rotator.js --help && echo '' && echo 'Current log size:' && ls -lh log.txt 2>/dev/null || echo 'No log file found'",
+    "view-users": "node scripts/view-users.js",
+    "user-count": "node scripts/view-users.js --count"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
