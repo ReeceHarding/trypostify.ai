@@ -97,6 +97,8 @@ export const Messages = memo(
                     }
                   >
                     {message.parts.map((part, i) => {
+                      console.log(`[Messages] Part ${i} type:`, part.type, 'has data:', !!part.data)
+                      
                       if (part.type === 'tool-readWebsiteContent') {
                         if (
                           part.state === 'input-available' ||
@@ -125,8 +127,14 @@ export const Messages = memo(
                       }
 
                       if (part.type === 'data-data-tool-output') {
+                        console.log('[Messages] data-data-tool-output part:', part)
+                        console.log('[Messages] part.data:', part.data)
+                        console.log('[Messages] part.data.tweets:', part.data.tweets)
+                        
                         // Check if this is bulk tweets output
                         if (part.data.tweets && Array.isArray(part.data.tweets)) {
+                          console.log('[Messages] Rendering bulk tweets, count:', part.data.tweets.length)
+                          
                           if (part.data.status === 'processing') {
                             return <TweetMockup key={i} isLoading />
                           }
