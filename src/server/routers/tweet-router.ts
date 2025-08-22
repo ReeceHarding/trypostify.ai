@@ -2104,12 +2104,9 @@ export const tweetRouter = j.router({
         return null // no slot found in next N days
       }
 
-      const nextSlot = getNextAvailableSlot({ 
-        userNow, 
-        timezone, 
-        maxDaysAhead: 90,
-        userFrequency 
-      })
+      // For auto-queue when video is downloading, schedule for 5 minutes from now
+      // This ensures the video has time to finish processing
+      const nextSlot = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
 
       // console.log('[enqueueThread] Next available slot:', nextSlot)
 
