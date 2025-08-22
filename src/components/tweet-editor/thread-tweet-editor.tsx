@@ -390,11 +390,22 @@ export default function ThreadTweetEditor({
       (tweet as any).isDownloadingVideo === true
     )
     
-    console.log('[ThreadTweetEditor] Starting optimistic post flow at', new Date().toISOString())
+    console.log('[ThreadTweetEditor] Starting post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
     // Store current content for potential rollback
     const currentContent = [...threadTweets]
+    
+    // Check if video is still downloading - don't clear content yet
+    if (hasDownloadingVideo) {
+      // Show notification about video still processing
+      toast('Please wait for video to finish processing before posting', {
+        duration: 4000,
+        icon: '⏳',
+      })
+      console.log('[ThreadTweetEditor] Video still downloading - keeping content intact')
+      return
+    }
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content at', new Date().toISOString())
@@ -411,20 +422,7 @@ export default function ThreadTweetEditor({
       }
     }, 100)
 
-    if (hasDownloadingVideo) {
-      // Show notification about background processing
-      toast.success('Video will upload in background and post when ready', {
-        duration: 4000,
-        icon: '📹',
-      })
-    }
-
     try {
-      if (hasDownloadingVideo) {
-        // For video posts, don't post anything - video system will handle complete posting
-        console.log('[ThreadTweetEditor] Video detected - skipping post, video system will handle complete posting with user content')
-        return
-      }
       
       // Post thread in background (now with complete media)
       console.log('[ThreadTweetEditor] Starting background post operation at', new Date().toISOString())

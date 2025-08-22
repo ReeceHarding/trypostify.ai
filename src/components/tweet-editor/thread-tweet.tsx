@@ -147,6 +147,12 @@ function ThreadTweetContent({
   const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [originalContentBeforeUrl, setOriginalContentBeforeUrl] = useState('')
+  const [videoProcessingStatus, setVideoProcessingStatus] = useState<{
+    isProcessing: boolean
+    message: string
+    progress: number
+    videoInfo?: { platform?: string; title?: string }
+  }>({ isProcessing: false, message: '', progress: 0 })
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -753,9 +759,11 @@ function ThreadTweetContent({
       onDownloadingVideoChange(true)
     }
     
-    // Show initial toast with progress
-    const toastId = toast.loading('Starting video download...', {
-      duration: Infinity,
+    // Set initial processing status
+    setVideoProcessingStatus({
+      isProcessing: true,
+      message: 'Starting video download...',
+      progress: 0
     })
 
     try {
@@ -765,9 +773,11 @@ function ThreadTweetContent({
         // Much slower progress: 1-4% every 2 seconds, cap at 75%
         currentProgress = Math.min(currentProgress + Math.random() * 3 + 1, 75)
         setDownloadProgress(currentProgress)
-        toast.loading(`Downloading video... ${Math.round(currentProgress)}%`, {
-          id: toastId,
-        })
+        setVideoProcessingStatus(prev => ({
+          ...prev,
+          message: `Downloading video... ${Math.round(currentProgress)}%`,
+          progress: currentProgress
+        }))
       }, 2000)
 
       // Download video from URL with preserved original content
@@ -792,7 +802,15 @@ function ThreadTweetContent({
       
       // Quick finish animation - jump to 85%, then 95%, then 100%
       setDownloadProgress(85)
-      toast.loading('Processing video...', { id: toastId })
+      setVideoProcessingStatus(prev => ({
+        ...prev,
+        message: 'Processing video...',
+        progress: 85,
+        videoInfo: {
+          platform: result.platform,
+          title: result.title
+        }
+      }))
       
       // Brief pause to show the jump
       await new Promise(resolve => setTimeout(resolve, 300))
@@ -808,6 +826,11 @@ function ThreadTweetContent({
       }
 
       setDownloadProgress(95)
+      setVideoProcessingStatus(prev => ({
+        ...prev,
+        message: 'Uploading to Twitter...',
+        progress: 95
+      }))
       
       // Upload to Twitter to get media_id
       const twitterResult = await uploadToTwitterMutation.mutateAsync({
@@ -832,25 +855,48 @@ function ThreadTweetContent({
         onUpdate(content, parentMedia)
       }
 
-      // Video is now ready and will be posted by background job
+      // Video is now ready to be attached to tweet
       console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
-      console.log('[ThreadTweet] Background job will post the video tweet automatically')
+      console.log('[ThreadTweet] Video ready to be attached to user tweet')
 
       // Final quick animation to 100%
       setDownloadProgress(100)
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      toast.success(`${result.orientation === 'portrait' ? '📱' : result.orientation === 'landscape' ? '🖥️' : '⬜'} Video from ${result.platform} added successfully!`, {
-        id: toastId,
-        duration: 3000,
+      setVideoProcessingStatus({
+        isProcessing: false,
+        message: `Video from ${result.platform} ready!`,
+        progress: 100,
+        videoInfo: {
+          platform: result.platform,
+          title: result.title
+        }
       })
+      
+      // Keep success message visible for a bit then clear
+      setTimeout(() => {
+        setVideoProcessingStatus({
+          isProcessing: false,
+          message: '',
+          progress: 0
+        })
+      }, 3000)
+      
       setVideoUrl('')
     } catch (error) {
       console.error('[ThreadTweet] Video download error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to download video', {
-        id: toastId,
-        duration: 5000,
+      setVideoProcessingStatus({
+        isProcessing: false,
+        message: error instanceof Error ? error.message : 'Failed to download video',
+        progress: 0
       })
+      
+      // Keep error message visible for longer then clear
+      setTimeout(() => {
+        setVideoProcessingStatus({
+          isProcessing: false,
+          message: '',
+          progress: 0
+        })
+      }, 5000)
     } finally {
       setIsDownloadingVideo(false)
       setDownloadProgress(0)
@@ -1147,6 +1193,48 @@ function ThreadTweetContent({
                   )}
                 </Tooltip>
               </TooltipProvider>
+
+              {/* Video Processing Status - Inline UI */}
+              {videoProcessingStatus.isProcessing && (
+                <div className="mt-3 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin text-primary" />
+                      <span className="text-sm font-medium text-neutral-700">
+                        {videoProcessingStatus.message}
+                      </span>
+                    </div>
+                    {videoProcessingStatus.videoInfo?.platform && (
+                      <span className="text-xs text-neutral-500">
+                        {videoProcessingStatus.videoInfo.platform}
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-primary h-full transition-all duration-300 ease-out"
+                      style={{ width: `${videoProcessingStatus.progress}%` }}
+                    />
+                  </div>
+                  {videoProcessingStatus.videoInfo?.title && (
+                    <p className="mt-2 text-xs text-neutral-600 truncate">
+                      {videoProcessingStatus.videoInfo.title}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Video Processing Success/Error Message */}
+              {!videoProcessingStatus.isProcessing && videoProcessingStatus.message && (
+                <div className={cn(
+                  "mt-3 p-3 rounded-lg border",
+                  videoProcessingStatus.message.includes('ready') || videoProcessingStatus.message.includes('success')
+                    ? "bg-success-50 border-success-200 text-success-700"
+                    : "bg-error-50 border-error-200 text-error-700"
+                )}>
+                  <p className="text-sm">{videoProcessingStatus.message}</p>
+                </div>
+              )}
 
               {/* Media Files Display */}
               {mediaFiles.length > 0 && (
