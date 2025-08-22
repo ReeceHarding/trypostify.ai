@@ -59,6 +59,15 @@ export const videoDownloaderRouter = j.router({
     .post(async ({ c, ctx, input }) => {
       const { user } = ctx
       const { url, tweetContent } = input
+      
+      console.log('[VideoDownloader] Router received input:', {
+        url,
+        tweetContent,
+        hasTweetContent: !!tweetContent,
+        tweetContentLength: tweetContent?.length || 0,
+        tweetContentType: typeof tweetContent,
+        rawInput: input
+      })
 
       // Detect platform
       const platform = detectPlatform(url)

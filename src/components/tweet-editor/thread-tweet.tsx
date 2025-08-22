@@ -429,6 +429,13 @@ function ThreadTweetContent({
 
   const downloadVideoMutation = useMutation({
     mutationFn: async (input: { url: string; tweetContent?: string }) => {
+      console.log('[ThreadTweet] downloadVideoMutation called with input:', {
+        url: input.url,
+        tweetContent: input.tweetContent,
+        hasTweetContent: !!input.tweetContent,
+        tweetContentLength: input.tweetContent?.length || 0
+      })
+      
       const res = await client.videoDownloader.downloadVideo.$post({
         url: input.url,
         tweetContent: input.tweetContent,
@@ -699,6 +706,14 @@ function ThreadTweetContent({
   }
 
   const handleVideoUrlSubmit = async () => {
+    console.log('[ThreadTweet] handleVideoUrlSubmit called with:', {
+      videoUrl: videoUrl.trim(),
+      mentionsContent: mentionsContent,
+      mentionsContentLength: mentionsContent.length,
+      mentionsContentTrimmed: mentionsContent.trim(),
+      timestamp: new Date().toISOString()
+    })
+    
     if (!videoUrl.trim()) {
       toast.error('Please enter a video URL')
       return
@@ -714,6 +729,12 @@ function ThreadTweetContent({
     setShowVideoUrlInput(false)
     setIsDownloadingVideo(true)
     setDownloadProgress(0)
+    
+    console.log('[ThreadTweet] About to start video download with content:', {
+      mentionsContent: mentionsContent,
+      trimmed: mentionsContent.trim(),
+      willSend: mentionsContent.trim() || undefined
+    })
     
     // Notify parent component about download state
     if (onDownloadingVideoChange) {
@@ -738,16 +759,19 @@ function ThreadTweetContent({
       }, 2000)
 
       // Download video from URL with current tweet content
+      const contentToSend = mentionsContent.trim() || undefined
       console.log('[ThreadTweet] Sending to video downloader:', {
         url: videoUrl,
-        tweetContent: mentionsContent.trim() || undefined,
+        tweetContent: contentToSend,
         mentionsContentRaw: mentionsContent,
-        mentionsContentLength: mentionsContent.length
+        mentionsContentLength: mentionsContent.length,
+        mentionsContentTrimmedLength: mentionsContent.trim().length,
+        willSendContent: !!contentToSend
       })
       
       const result = await downloadVideoMutation.mutateAsync({
         url: videoUrl,
-        tweetContent: mentionsContent.trim() || undefined
+        tweetContent: contentToSend
       })
       
       clearInterval(progressInterval)
