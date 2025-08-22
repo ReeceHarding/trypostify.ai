@@ -10,6 +10,10 @@ import * as ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
 import * as os from 'os'
+import { db } from '@/db'
+import { account as accountSchema } from '@/db/schema'
+import { eq } from 'drizzle-orm'
+import { TwitterApi } from 'twitter-api-v2'
 
 // Configure FFmpeg path (use system FFmpeg)
 ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg')
@@ -340,32 +344,40 @@ export const videoDownloaderRouter = j.router({
               return
             }
             
-            // Import the tweet router functions directly
-            const { tweetRouter } = await import('./tweet-router')
+            console.log('[VideoDownloader] Found account for background posting:', account.username)
             
-            // Upload to Twitter first
-            const uploadResult = await tweetRouter.uploadMediaToTwitter._def.handler({
-              c: c as any,
-              ctx: { user },
-              input: { s3Key, mediaType: 'video', fileUrl: publicUrl }
+            // Get account with tokens for Twitter API
+            const dbAccount = await db.query.account.findFirst({
+              where: eq(accountSchema.id, account.id),
+            })
+
+            if (!dbAccount?.accessToken || !dbAccount?.refreshToken) {
+              console.error('[VideoDownloader] Account missing Twitter tokens for background posting')
+              return
+            }
+
+            // Create Twitter client
+            const client = new TwitterApi({
+              appKey: process.env.TWITTER_CONSUMER_KEY!,
+              appSecret: process.env.TWITTER_CONSUMER_SECRET!,
+              accessToken: dbAccount.accessToken,
+              accessSecret: dbAccount.refreshToken,
             })
             
-            if (uploadResult) {
-              // Post tweet with video
-              await tweetRouter.postThreadNow._def.handler({
-                c: c as any,
-                ctx: { user },
-                input: {
-                  tweets: [{
-                    content: `Video from ${platform}${video.title ? `: ${video.title}` : ''}`,
-                    media: [{ media_id: uploadResult.media_id, s3Key }],
-                    delayMs: 0
-                  }]
-                }
-              })
-              
-              console.log('[VideoDownloader] Background video tweet posted successfully!')
-            }
+            // Upload video to Twitter
+            console.log('[VideoDownloader] Uploading transcoded video to Twitter...')
+            const mediaId = await client.v1.uploadMedia(videoBuffer, { mimeType: 'video/mp4' })
+            console.log('[VideoDownloader] Video uploaded to Twitter, media_id:', mediaId)
+            
+            // Post tweet with video
+            console.log('[VideoDownloader] Posting tweet with video...')
+            const tweetResult = await client.v2.tweet({
+              text: `Video from ${platform}${video.title ? `: ${video.title}` : ''}`,
+              media: { media_ids: [mediaId] }
+            })
+            
+            console.log('[VideoDownloader] Background video tweet posted successfully!', tweetResult.data.id)
+            
           } catch (bgError) {
             console.error('[VideoDownloader] Background posting failed:', bgError)
           }
