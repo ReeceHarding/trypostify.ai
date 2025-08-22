@@ -22,7 +22,7 @@ interface ThreadTweetData {
   content: string
   media: Array<{
     s3Key: string
-    media_id: string
+    media_id?: string
   }>
   hasDownloadingVideo?: boolean
 }
@@ -370,7 +370,7 @@ export default function ThreadTweetEditor({
     setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
   }
 
-  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>, hasDownloadingVideo?: boolean) => {
+  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id?: string }>, hasDownloadingVideo?: boolean) => {
     setThreadTweets(prevTweets => 
       prevTweets.map(tweet =>
         tweet.id === id ? { 

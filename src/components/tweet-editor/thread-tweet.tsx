@@ -85,7 +85,7 @@ interface ThreadTweetProps {
   onUpdateThread?: () => void
   onCancelEdit?: () => void
   isPosting?: boolean
-  onUpdate?: (content: string, media: Array<{ s3Key: string; media_id: string }>, hasDownloadingVideo?: boolean) => void
+  onUpdate?: (content: string, media: Array<{ s3Key: string; media_id?: string }>, hasDownloadingVideo?: boolean) => void
   initialContent?: string
   initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
   showFocusTooltip?: boolean
@@ -249,15 +249,23 @@ function ThreadTweetContent({
   const updateParentState = () => {
     if (onUpdate) {
       const content = mentionsContent
+      // Include both ready media (with media_id) and downloading media (with s3Key only)
       const readyMedia = mediaFiles.filter(f => f.media_id && f.s3Key && !f.isDownloading)
+      const downloadingMedia = mediaFiles.filter(f => f.s3Key && f.isDownloading)
       const hasDownloading = mediaFiles.some(f => f.isDownloading)
       
-      const parentMedia = readyMedia.map(f => ({
-        s3Key: f.s3Key!,
-        media_id: f.media_id!,
-      }))
+      const allMedia = [
+        ...readyMedia.map(f => ({
+          s3Key: f.s3Key!,
+          media_id: f.media_id!,
+        })),
+        ...downloadingMedia.map(f => ({
+          s3Key: f.s3Key!,
+          media_id: undefined, // Will be filled in later when video finishes
+        }))
+      ]
       
-      onUpdate(content, parentMedia, hasDownloading)
+      onUpdate(content, allMedia, hasDownloading)
     }
   }
 
@@ -871,7 +879,27 @@ function ThreadTweetContent({
         updateParentState()
       }
 
-      toast.success(`Video from ${result.platform} ready!`)
+      // Check if there's a queued tweet waiting for this video
+      try {
+        console.log('[ThreadTweet] Checking for queued tweets to update with video')
+        const updateRes = await client.tweet.updateQueuedTweetWithVideo.$post({
+          s3Key: result.s3Key,
+          media_id: twitterResult.media_id,
+          media_key: twitterResult.media_key || ''
+        })
+        const updateResult = await updateRes.json()
+        console.log('[ThreadTweet] Updated queued tweet with video:', updateResult)
+        
+        if (updateResult.updatedCount > 0) {
+          toast.success(`Video ready! Updated ${updateResult.updatedCount} queued tweet(s)`)
+        } else {
+          toast.success(`Video from ${result.platform} ready!`)
+        }
+      } catch (error) {
+        console.log('[ThreadTweet] No queued tweet to update or update failed:', error)
+        toast.success(`Video from ${result.platform} ready!`)
+      }
+      
       setVideoUrl('')
       
     } catch (error) {

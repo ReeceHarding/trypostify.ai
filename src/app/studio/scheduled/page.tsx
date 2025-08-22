@@ -30,14 +30,19 @@ function VideoProcessingStatus() {
       const res = await client.tweet.getScheduledAndPublished.$get()
       const result = await res.json()
       
+      console.log('[VideoProcessingStatus] API Response:', result)
+      
       // Filter for tweets with videos that are scheduled (auto-queued)
       const scheduledWithVideos = result.data?.filter((item: any) => {
-        return item.tweets?.some((tweet: any) => 
+        const hasVideo = item.tweets?.some((tweet: any) => 
           tweet.isScheduled && 
           tweet.media?.some((media: any) => media.type === 'video' || media.s3Key?.includes('.mp4'))
         )
+        console.log('[VideoProcessingStatus] Item:', item.id, 'hasVideo:', hasVideo, 'tweets:', item.tweets?.length)
+        return hasVideo
       }) || []
       
+      console.log('[VideoProcessingStatus] Filtered videos:', scheduledWithVideos.length)
       return scheduledWithVideos
     },
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates

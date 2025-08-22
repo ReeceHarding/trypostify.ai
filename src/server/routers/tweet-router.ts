@@ -1466,7 +1466,7 @@ export const tweetRouter = j.router({
             content: z.string().min(1).max(280),
             media: z.array(
               z.object({
-                media_id: z.string(),
+                media_id: z.string().optional(),
                 s3Key: z.string(),
               }),
             ).optional(),
@@ -2177,6 +2177,73 @@ export const tweetRouter = j.router({
         accountId: account.id,
         accountName: account.name,
         message: `Thread queued with ${threadTweets.length} tweets`,
+      })
+    }),
+
+  updateQueuedTweetWithVideo: privateProcedure
+    .input(
+      z.object({
+        s3Key: z.string(),
+        media_id: z.string(),
+        media_key: z.string().optional(),
+      })
+    )
+    .mutation(async ({ c, ctx, input }) => {
+      const { user } = ctx
+      const { s3Key, media_id, media_key } = input
+
+      console.log('[updateQueuedTweetWithVideo] Searching for queued tweets with s3Key:', s3Key)
+
+      // Find queued tweets that might be waiting for this video
+      const queuedTweets = await db.query.tweets.findMany({
+        where: and(
+          eq(tweets.userId, user.id),
+          eq(tweets.isScheduled, true),
+          isNotNull(tweets.scheduledFor)
+        )
+      })
+
+      console.log('[updateQueuedTweetWithVideo] Found queued tweets:', queuedTweets.length)
+
+      // Look for tweets that have media with this s3Key but no media_id yet
+      let updatedCount = 0
+      for (const tweet of queuedTweets) {
+        if (tweet.media && Array.isArray(tweet.media)) {
+          const mediaArray = tweet.media as Array<{ s3Key: string; media_id?: string }>
+          let hasUpdate = false
+          
+          const updatedMedia = mediaArray.map(media => {
+            if (media.s3Key === s3Key && !media.media_id) {
+              console.log('[updateQueuedTweetWithVideo] Updating media for tweet:', tweet.id)
+              hasUpdate = true
+              return {
+                ...media,
+                media_id,
+                media_key
+              }
+            }
+            return media
+          })
+
+          if (hasUpdate) {
+            await db
+              .update(tweets)
+              .set({
+                media: updatedMedia,
+                updatedAt: new Date()
+              })
+              .where(eq(tweets.id, tweet.id))
+            
+            updatedCount++
+            console.log('[updateQueuedTweetWithVideo] Updated tweet:', tweet.id)
+          }
+        }
+      }
+
+      return c.json({
+        success: true,
+        updatedCount,
+        message: `Updated ${updatedCount} queued tweets with video`
       })
     }),
 
