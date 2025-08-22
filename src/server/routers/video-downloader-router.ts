@@ -1,5 +1,4 @@
-import { j } from '@/lib/juxt'
-import { privateProcedure } from '../middleware/auth'
+import { j, privateProcedure } from '../jstack'
 import { z } from 'zod'
 import { HTTPException } from 'hono/http-exception'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
@@ -39,7 +38,7 @@ export const videoDownloaderRouter = j.router({
         url: z.string().url(),
       }),
     )
-    .mutation(async ({ c, ctx, input }) => {
+    .post(async ({ c, ctx, input }) => {
       const { user } = ctx
       const { url } = input
 
@@ -61,13 +60,12 @@ export const videoDownloaderRouter = j.router({
       try {
         console.log(`[VideoDownloader] Downloading video from ${platform}: ${url}`)
 
-        // Call Apify Video Downloader API
-        const apifyResponse = await fetch(
-          'https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync',
+        // Start Apify actor run (async)
+        const runResponse = await fetch(
+          `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/runs?token=${process.env.APIFY_API_TOKEN}`,
           {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -77,29 +75,86 @@ export const videoDownloaderRouter = j.router({
           },
         )
 
-        if (!apifyResponse.ok) {
-          const error = await apifyResponse.text()
-          console.error('[VideoDownloader] Apify API error:', error)
+        if (!runResponse.ok) {
+          const error = await runResponse.text()
+          console.error('[VideoDownloader] Failed to start Apify run:', error)
           throw new HTTPException(500, {
-            message: 'Failed to download video. Please try again.',
+            message: 'Failed to start video download process.',
           })
         }
 
-        const result = await apifyResponse.json()
-        console.log('[VideoDownloader] Apify response:', result)
+        const runData: any = await runResponse.json()
+        const runId = runData.data.id
+        console.log('[VideoDownloader] Started Apify run:', runId)
 
-        // Extract video data from response
-        const videos = result.videos || result.data?.items || []
-        if (!videos.length) {
+        // Poll for completion (max 60 seconds)
+        const maxAttempts = 30 // 30 attempts * 2 seconds = 60 seconds
+        let attempts = 0
+        let runStatus: any
+
+        while (attempts < maxAttempts) {
+          attempts++
+          
+          // Wait 2 seconds between checks
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          
+          // Check run status
+          const statusResponse = await fetch(
+            `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/runs/${runId}?token=${process.env.APIFY_API_TOKEN}`,
+          )
+          
+          if (!statusResponse.ok) {
+            console.error('[VideoDownloader] Failed to check run status')
+            continue
+          }
+          
+          runStatus = await statusResponse.json()
+          console.log(`[VideoDownloader] Run status (attempt ${attempts}):`, runStatus.data.status)
+          
+          if (runStatus.data.status === 'SUCCEEDED') {
+            break
+          } else if (runStatus.data.status === 'FAILED' || runStatus.data.status === 'ABORTED') {
+            throw new HTTPException(500, {
+              message: 'Video download failed. Please try again.',
+            })
+          }
+        }
+
+        if (runStatus?.data?.status !== 'SUCCEEDED') {
+          throw new HTTPException(408, {
+            message: 'Video download timed out. Please try a shorter video.',
+          })
+        }
+
+        // Get the dataset items (results)
+        const datasetId = runStatus.data.defaultDatasetId
+        const itemsResponse = await fetch(
+          `https://api.apify.com/v2/datasets/${datasetId}/items?token=${process.env.APIFY_API_TOKEN}`,
+        )
+
+        if (!itemsResponse.ok) {
+          throw new HTTPException(500, {
+            message: 'Failed to retrieve video data.',
+          })
+        }
+
+        const result: any = await itemsResponse.json()
+        console.log('[VideoDownloader] Dataset items:', result)
+
+        // Extract video data from dataset items
+        // The result is an array of items, not an object with videos property
+        const items = Array.isArray(result) ? result : (result.items || [])
+        if (!items.length) {
           throw new HTTPException(404, {
             message: 'No video found at the provided URL.',
           })
         }
 
-        const video = videos[0]
-        const mediaUrl = video.mediaUrl || video.videoUrl || video.url
+        const video = items[0]
+        const mediaUrl = video.mediaUrl // Direct video file URL (watermark-free)
 
         if (!mediaUrl) {
+          console.error('[VideoDownloader] Video object missing mediaUrl:', video)
           throw new HTTPException(404, {
             message: 'Could not extract video URL from the response.',
           })
@@ -116,7 +171,6 @@ export const videoDownloaderRouter = j.router({
         }
 
         const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
-        const contentType = videoResponse.headers.get('content-type') || 'video/mp4'
         
         // Validate video size (Twitter limit is 512MB)
         const sizeInMB = videoBuffer.length / (1024 * 1024)
@@ -126,9 +180,57 @@ export const videoDownloaderRouter = j.router({
           })
         }
 
-        // Generate S3 key
-        const fileExtension = contentType.includes('mp4') ? 'mp4' : 'mp4' // Default to mp4
-        const s3Key = `tweet-media/${user.id}/${nanoid()}.${fileExtension}`
+        // Check video duration (Twitter limit is 140 seconds)
+        if (video.durationSeconds && video.durationSeconds > 140) {
+          throw new HTTPException(413, {
+            message: `Video is too long (${Math.round(video.durationSeconds)}s). Twitter's limit is 140 seconds.`,
+          })
+        }
+
+        // Check video dimensions and preserve orientation
+        if (video.width && video.height) {
+          const aspectRatio = video.width / video.height
+          const isPortrait = video.height > video.width
+          const isLandscape = video.width > video.height
+          const isSquare = video.width === video.height
+          
+          console.log(`[VideoDownloader] Video info:`, {
+            dimensions: `${video.width}x${video.height}`,
+            aspectRatio: aspectRatio.toFixed(2),
+            orientation: isPortrait ? 'portrait' : isLandscape ? 'landscape' : 'square',
+            duration: `${video.durationSeconds}s`,
+            size: `${sizeInMB.toFixed(2)}MB`
+          })
+          
+          // Twitter aspect ratio requirements: between 1:2.39 and 2.39:1
+          if (aspectRatio < (1/2.39) || aspectRatio > 2.39) {
+            console.warn(`[VideoDownloader] Video aspect ratio ${aspectRatio.toFixed(2)} might not be ideal for Twitter`)
+          }
+          
+          // Check minimum dimensions (32x32)
+          if (video.width < 32 || video.height < 32) {
+            throw new HTTPException(413, {
+              message: `Video dimensions too small (${video.width}x${video.height}). Twitter requires at least 32x32 pixels.`,
+            })
+          }
+
+          // Check maximum dimensions (1920x1200 for landscape, but Twitter accepts up to 1920 width)
+          if (video.width > 1920 || video.height > 1920) {
+            console.warn(`[VideoDownloader] Video dimensions ${video.width}x${video.height} exceed Twitter's recommended limits`)
+          }
+        }
+
+        // Force MP4 content type for Twitter compatibility
+        const contentType = 'video/mp4'
+        
+        // SIMPLE FIX: Check if this is an Instagram Reel (often incompatible with Twitter)
+        if (platform === 'instagram' && video.height > video.width) {
+          console.warn('[VideoDownloader] Instagram Reel detected - Twitter may reject due to codec incompatibility')
+          // Add a warning to the response
+        }
+
+        // Generate S3 key - always use .mp4 extension for Twitter compatibility
+        const s3Key = `tweet-media/${user.id}/${nanoid()}.mp4`
 
         console.log(`[VideoDownloader] Uploading to S3: ${s3Key}`)
 
@@ -147,22 +249,57 @@ export const videoDownloaderRouter = j.router({
 
         console.log(`[VideoDownloader] Video uploaded successfully: ${publicUrl}`)
 
+        // Check if video might have Twitter compatibility issues
+        const warningMessage = platform === 'instagram' 
+          ? 'Note: Instagram videos may fail to upload to Twitter due to codec incompatibility. Twitter requires H.264/AAC encoding.'
+          : null
+
+        // Return response matching the Apify documentation fields
         return c.json({
           success: true,
           s3Key,
           url: publicUrl,
           mediaType: 'video' as const,
-          platform,
-          originalUrl: url,
-          title: video.title || video.description || 'Downloaded video',
+          platform: video.platform || platform,
+          originalUrl: video.sourceUrl || url,
+          title: video.title || 'Downloaded video',
+          description: video.description,
+          author: video.author,
+          authorUrl: video.authorUrl,
           sizeBytes: videoBuffer.length,
-          duration: video.durationSeconds || video.duration,
+          duration: video.durationSeconds,
+          viewCount: video.viewCount,
+          likeCount: video.likeCount,
+          width: video.width,
+          height: video.height,
+          fps: video.fps,
+          thumbnailUrl: video.thumbnailUrl,
+          // Add orientation info for proper display
+          orientation: video.height > video.width ? 'portrait' : video.width > video.height ? 'landscape' : 'square',
+          aspectRatio: video.width && video.height ? (video.width / video.height).toFixed(2) : null,
+          // Add compatibility warning
+          compatibilityWarning: warningMessage,
         })
       } catch (error) {
         console.error('[VideoDownloader] Error:', error)
         if (error instanceof HTTPException) {
           throw error
         }
+        
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            throw new HTTPException(408, {
+              message: 'Video download timed out. Please try again.',
+            })
+          }
+          
+          if (error.message.includes('fetch')) {
+            throw new HTTPException(503, {
+              message: 'Unable to connect to video downloader service. Please try again later.',
+            })
+          }
+        }
+        
         throw new HTTPException(500, {
           message: 'An unexpected error occurred while downloading the video.',
         })

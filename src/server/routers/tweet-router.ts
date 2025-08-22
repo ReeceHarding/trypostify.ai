@@ -366,12 +366,108 @@ export const tweetRouter = j.router({
           break
         case 'video':
           mediaCategory = 'tweet_video'
-          mimeType = response.headers.get('content-type') || 'video/mp4'
+          // Always use video/mp4 for consistency with downloaded videos
+          mimeType = 'video/mp4'
           break
       }
 
       const mediaBuffer = Buffer.from(buffer)
-      const mediaId = await client.v1.uploadMedia(mediaBuffer, { mimeType })
+      
+      // Get video metadata from S3 URL if available
+      let videoMetadata = null
+      if (mediaType === 'video' && s3Key.includes('tweet-media/')) {
+        // This is likely from our video downloader, log more details
+        console.log(`[TwitterUpload] Uploading downloaded video to Twitter:`, {
+          bufferSize: mediaBuffer.length,
+          mimeType,
+          mediaCategory,
+          s3Key,
+          sizeMB: (mediaBuffer.length / (1024 * 1024)).toFixed(2)
+        })
+      } else {
+        console.log(`[TwitterUpload] Uploading ${mediaType} to Twitter:`, {
+          bufferSize: mediaBuffer.length,
+          mimeType,
+          mediaCategory,
+          s3Key
+        })
+      }
+      
+      let mediaId: string
+      try {
+        if (mediaType === 'video') {
+          console.log('[TwitterUpload] Uploading video to Twitter...')
+          
+          const sizeMB = mediaBuffer.length / (1024 * 1024)
+          console.log(`[TwitterUpload] Video size: ${sizeMB.toFixed(2)}MB`)
+          
+          // SIMPLEST SOLUTION: Use basic upload for videos under 5MB, chunked for larger
+          if (sizeMB < 5) {
+            console.log('[TwitterUpload] Using simple upload for small video')
+            mediaId = await client.v1.uploadMedia(mediaBuffer, { 
+              mimeType: 'video/mp4',
+            })
+            console.log('[TwitterUpload] Simple video upload completed successfully')
+          } else {
+            console.log('[TwitterUpload] Using chunked upload for large video')
+            // Only use chunked upload for larger videos
+            mediaId = await client.v1.uploadMedia(mediaBuffer, { 
+              mimeType: 'video/mp4',
+              chunkSize: 1024 * 1024, // 1MB chunks
+            })
+            console.log('[TwitterUpload] Chunked video upload completed successfully')
+          }
+        } else {
+          // Regular upload for images/gifs
+          mediaId = await client.v1.uploadMedia(mediaBuffer, { mimeType })
+        }
+      } catch (uploadError: any) {
+        console.error('[TwitterUpload] Twitter upload failed with complete error details:', {
+          message: uploadError.message,
+          name: uploadError.name,
+          code: uploadError.code,
+          type: uploadError.type,
+          error: uploadError.error,
+          data: uploadError.data,
+          headers: uploadError.headers,
+          rateLimit: uploadError.rateLimit,
+          request: uploadError.request,
+          response: uploadError.response,
+          stack: uploadError.stack
+        })
+        
+        // Try to extract specific Twitter error details
+        let twitterErrorMessage = uploadError.message || 'Unknown error'
+        let twitterErrorCode = uploadError.code || 'UNKNOWN'
+        
+        if (uploadError.data) {
+          console.log('[TwitterUpload] Twitter API error data:', JSON.stringify(uploadError.data, null, 2))
+          
+          // Extract specific error from Twitter API response
+          if (uploadError.data.errors && Array.isArray(uploadError.data.errors)) {
+            const firstError = uploadError.data.errors[0]
+            if (firstError) {
+              twitterErrorMessage = firstError.message || twitterErrorMessage
+              twitterErrorCode = firstError.code || twitterErrorCode
+              console.log('[TwitterUpload] Extracted Twitter error:', {
+                code: twitterErrorCode,
+                message: twitterErrorMessage
+              })
+            }
+          }
+        }
+        
+        // If it's a video format issue, provide more helpful error
+        if (mediaType === 'video' && (uploadError.message?.includes('InvalidMedia') || twitterErrorCode === 324)) {
+          throw new HTTPException(400, {
+            message: `Video format not compatible with Twitter (Error ${twitterErrorCode}): ${twitterErrorMessage}. Instagram videos often use codecs that Twitter doesn't support.`,
+          })
+        }
+        
+        throw new HTTPException(400, {
+          message: `Failed to upload ${mediaType} to Twitter (${twitterErrorCode}): ${twitterErrorMessage}`,
+        })
+      }
 
       const mediaUpload = mediaId
 

@@ -87,6 +87,8 @@ interface ThreadTweetProps {
   initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
   showFocusTooltip?: boolean
   focusShortcut?: string
+  isDownloadingVideo?: boolean
+  onDownloadingVideoChange?: (isDownloading: boolean) => void
   preScheduleTime?: Date | null
   mentionsInputRef?: React.RefObject<any>
 }
@@ -128,6 +130,8 @@ function ThreadTweetContent({
   focusShortcut,
   preScheduleTime = null,
   mentionsInputRef,
+  isDownloadingVideo: externalIsDownloadingVideo,
+  onDownloadingVideoChange,
 }: ThreadTweetProps) {
   // State for react-mentions content
   const [mentionsContent, setMentionsContent] = useState(initialContent || '')
@@ -141,6 +145,7 @@ function ThreadTweetContent({
   const [videoUrl, setVideoUrl] = useState('')
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false)
   const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -157,14 +162,34 @@ function ThreadTweetContent({
     const urls = newContent.match(URL_REGEX)
     const firstUrl = urls?.[0]
     
-    // If we detected a new URL, fetch its OG data
+    // If we detected a new URL
     if (firstUrl && firstUrl !== detectedUrl) {
       setDetectedUrl(firstUrl)
-      fetchOgData(firstUrl)
+      
+      // Check if it's a supported video platform URL
+      const videoPatterns = [
+        /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\//,
+        /(?:tiktok\.com\/@[\w.-]+\/video\/|vm\.tiktok\.com\/)/,
+        /(?:twitter\.com|x\.com)\/\w+\/status\//,
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)/,
+      ]
+      
+      const isVideoUrl = videoPatterns.some(pattern => pattern.test(firstUrl))
+      
+      if (isVideoUrl && mediaFiles.length < MAX_MEDIA_COUNT) {
+        // Automatically open the video URL dialog with the detected URL
+        setVideoUrl(firstUrl)
+        setShowVideoUrlInput(true)
+        // Don't fetch OG preview for video URLs
+      } else {
+        // Otherwise fetch OG preview as before
+        fetchOgData(firstUrl)
+      }
     } else if (!firstUrl && detectedUrl) {
       // Clear preview if URL was removed
       setDetectedUrl(null)
       setOgPreview(null)
+      setVideoUrl('')
     }
     
     // Notify parent component about the update
@@ -669,6 +694,118 @@ function ThreadTweetContent({
     }
   }
 
+  const handleVideoUrlSubmit = async () => {
+    if (!videoUrl.trim()) {
+      toast.error('Please enter a video URL')
+      return
+    }
+
+    // Check if we already have max media
+    if (mediaFiles.length >= MAX_MEDIA_COUNT) {
+      toast.error(`Maximum ${MAX_MEDIA_COUNT} media files allowed`)
+      return
+    }
+
+    // Close dialog immediately and show progress
+    setShowVideoUrlInput(false)
+    setIsDownloadingVideo(true)
+    setDownloadProgress(0)
+    
+    // Notify parent component about download state
+    if (onDownloadingVideoChange) {
+      onDownloadingVideoChange(true)
+    }
+    
+    // Show initial toast with progress
+    const toastId = toast.loading('Starting video download...', {
+      duration: Infinity,
+    })
+
+    try {
+      // Simulate progress updates during download (slower for pleasant surprise)
+      let currentProgress = 0
+      const progressInterval = setInterval(() => {
+        // Much slower progress: 1-4% every 2 seconds, cap at 75%
+        currentProgress = Math.min(currentProgress + Math.random() * 3 + 1, 75)
+        setDownloadProgress(currentProgress)
+        toast.loading(`Downloading video... ${Math.round(currentProgress)}%`, {
+          id: toastId,
+        })
+      }, 2000)
+
+      // Download video from URL
+      const result = await downloadVideoMutation.mutateAsync(videoUrl)
+      
+      clearInterval(progressInterval)
+      
+      // Quick finish animation - jump to 85%, then 95%, then 100%
+      setDownloadProgress(85)
+      toast.loading('Processing video...', { id: toastId })
+      
+      // Brief pause to show the jump
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // Create a media file object for the downloaded video
+      const mediaFile: MediaFile = {
+        file: null as any, // We don't have the actual File object, but we have the S3 key
+        url: result.url,
+        type: 'video',
+        uploading: false,
+        uploaded: true,
+        s3Key: result.s3Key,
+      }
+
+      setDownloadProgress(95)
+      
+      // Upload to Twitter to get media_id
+      const twitterResult = await uploadToTwitterMutation.mutateAsync({
+        s3Key: result.s3Key,
+        mediaType: 'video',
+        fileUrl: result.url,
+      })
+
+      // Update media file with Twitter media_id
+      mediaFile.media_id = twitterResult.media_id
+      mediaFile.media_key = twitterResult.media_key
+
+      // Add to media files
+      setMediaFiles((prev) => [...prev, mediaFile])
+
+      // Update parent with the new media
+      if (onUpdate) {
+        const content = mentionsContent
+        const parentMedia = [...mediaFiles, mediaFile]
+          .filter((f) => f.media_id && f.s3Key)
+          .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+        onUpdate(content, parentMedia)
+      }
+
+      // Final quick animation to 100%
+      setDownloadProgress(100)
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      toast.success(`${result.orientation === 'portrait' ? '📱' : result.orientation === 'landscape' ? '🖥️' : '⬜'} Video from ${result.platform} added successfully!`, {
+        id: toastId,
+        duration: 3000,
+      })
+      setVideoUrl('')
+    } catch (error) {
+      console.error('[ThreadTweet] Video download error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to download video', {
+        id: toastId,
+        duration: 5000,
+      })
+    } finally {
+      setIsDownloadingVideo(false)
+      setDownloadProgress(0)
+      
+      // Notify parent component download is complete
+      if (onDownloadingVideoChange) {
+        onDownloadingVideoChange(false)
+      }
+    }
+  }
+
   const handleClearTweet = () => {
     // Abort all pending uploads
     abortControllersRef.current.forEach((controller) => {
@@ -956,8 +1093,17 @@ function ThreadTweetContent({
               </TooltipProvider>
 
               {/* Media Files Display */}
-              {mediaFiles.length > 0 && (
+              {(mediaFiles.length > 0 || isDownloadingVideo) && (
                 <div className="mt-3">
+                  {/* Video Download Progress */}
+                  {isDownloadingVideo && (
+                    <div className="mb-3 p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-neutral-600">Downloading video</p>
+                        <p className="text-sm font-medium text-neutral-800">{Math.round(downloadProgress)}%</p>
+                      </div>
+                    </div>
+                  )}
                   {mediaFiles.length === 1 && mediaFiles[0] && (
                     <div className="relative group">
                       <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
@@ -1159,6 +1305,29 @@ function ThreadTweetContent({
                         <div className="space-y-1">
                           <p>Choose from library</p>
                           <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + M</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DuolingoButton
+                          variant="secondary"
+                          size="icon"
+                          className="rounded-md"
+                          onClick={() => setShowVideoUrlInput(!showVideoUrlInput)}
+                          disabled={mediaFiles.length >= MAX_MEDIA_COUNT || isDownloadingVideo}
+                        >
+                          <Link2 className="size-4" />
+                          <span className="sr-only">Add video from URL</span>
+                        </DuolingoButton>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1">
+                          <p>Add video from Instagram/TikTok</p>
+                          <p className="text-xs text-neutral-400">Paste a link to download</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -1408,6 +1577,73 @@ function ThreadTweetContent({
               onClose={() => setMediaLibraryOpen(false)}
             />
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Video URL Input Dialog */}
+      <Dialog open={showVideoUrlInput} onOpenChange={setShowVideoUrlInput}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add video from URL</DialogTitle>
+            <DialogDescription>
+              Paste a link from Instagram, TikTok, Twitter/X, or YouTube to download and attach the video.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="video-url" className="text-sm font-medium">
+                Video URL
+              </label>
+              <input
+                id="video-url"
+                type="url"
+                placeholder="https://www.instagram.com/reel/..."
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isDownloadingVideo) {
+                    handleVideoUrlSubmit()
+                  }
+                }}
+                className="w-full px-3 py-2 border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                disabled={isDownloadingVideo}
+              />
+            </div>
+            <div className="text-xs text-neutral-500 space-y-1">
+              <p>Supported platforms:</p>
+              <ul className="list-disc list-inside space-y-0.5 ml-2">
+                <li>Instagram (Posts, Reels, IGTV)</li>
+                <li>TikTok</li>
+                <li>Twitter/X</li>
+                <li>YouTube (including Shorts)</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <DuolingoButton
+              variant="secondary"
+              onClick={() => {
+                setShowVideoUrlInput(false)
+                setVideoUrl('')
+              }}
+              disabled={isDownloadingVideo}
+            >
+              Cancel
+            </DuolingoButton>
+            <DuolingoButton
+              onClick={handleVideoUrlSubmit}
+              disabled={!videoUrl.trim() || isDownloadingVideo}
+            >
+              {isDownloadingVideo ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Downloading...
+                </>
+              ) : (
+                'Download & Add'
+              )}
+            </DuolingoButton>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

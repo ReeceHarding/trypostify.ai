@@ -23,6 +23,7 @@ interface ThreadTweetData {
     s3Key: string
     media_id: string
   }>
+  isDownloadingVideo?: boolean
 }
 
 interface ThreadTweetEditorProps {
@@ -384,6 +385,19 @@ export default function ThreadTweetEditor({
       return
     }
 
+    // Check if any tweet has video still downloading
+    const hasDownloadingVideo = threadTweets.some(tweet => 
+      (tweet as any).isDownloadingVideo === true
+    )
+    
+    if (hasDownloadingVideo) {
+      // Show notification about background upload
+      toast.success('Video will keep uploading in background and post when ready', {
+        duration: 4000,
+        icon: '📹',
+      })
+    }
+
     console.log('[ThreadTweetEditor] Starting optimistic post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
@@ -565,6 +579,19 @@ export default function ThreadTweetEditor({
     if (!validation.valid) {
       toast.error(validation.error!)
       return
+    }
+
+    // Check if any tweet has video still downloading
+    const hasDownloadingVideo = threadTweets.some(tweet => 
+      (tweet as any).isDownloadingVideo === true
+    )
+    
+    if (hasDownloadingVideo) {
+      // Show notification about background upload
+      toast.success('Video will keep uploading in background and queue when ready', {
+        duration: 4000,
+        icon: '📹',
+      })
     }
 
     console.log('[ThreadTweetEditor] Starting optimistic queue flow at', new Date().toISOString())
@@ -822,6 +849,14 @@ export default function ThreadTweetEditor({
               })) || []}
               showFocusTooltip={index === 0}
               focusShortcut={`${metaKey} + Shift + F`}
+              isDownloadingVideo={tweet.isDownloadingVideo}
+              onDownloadingVideoChange={(isDownloading) => {
+                setThreadTweets(prevTweets => 
+                  prevTweets.map(t => 
+                    t.id === tweet.id ? { ...t, isDownloadingVideo: isDownloading } : t
+                  )
+                )
+              }}
             />
           </div>
         ))}
