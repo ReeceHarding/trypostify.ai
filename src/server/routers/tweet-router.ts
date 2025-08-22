@@ -366,8 +366,7 @@ export const tweetRouter = j.router({
           break
         case 'video':
           mediaCategory = 'tweet_video'
-          // Always use video/mp4 for consistency with downloaded videos
-          mimeType = 'video/mp4'
+          mimeType = response.headers.get('content-type') || 'video/mp4'
           break
       }
 
@@ -395,42 +394,8 @@ export const tweetRouter = j.router({
       
       let mediaId: string
       try {
-        if (mediaType === 'video') {
-          console.log('[TwitterUpload] Uploading video to Twitter...')
-          
-          const sizeMB = mediaBuffer.length / (1024 * 1024)
-          console.log(`[TwitterUpload] Video size: ${sizeMB.toFixed(2)}MB`)
-          
-          // WORKAROUND: For Instagram videos, use a different approach
-          // Check if this video is from Instagram (you can pass this info from the downloader)
-          const isInstagramVideo = s3Key.includes('instagram') || mediaBuffer.length < 5 * 1024 * 1024
-          
-          if (isInstagramVideo) {
-            console.log('[TwitterUpload] Instagram video detected - using compatibility mode')
-            // Try the simple upload with additional parameters
-            try {
-              mediaId = await client.v1.uploadMedia(mediaBuffer, { 
-                mimeType: 'video/mp4',
-                additionalOwners: undefined, // Ensure clean parameters
-                mediaCategory: undefined, // Let Twitter determine category
-              })
-              console.log('[TwitterUpload] Instagram video upload completed')
-            } catch (error) {
-              console.error('[TwitterUpload] Instagram video upload failed, falling back to image-only post')
-              throw new Error('Instagram videos are not currently supported due to codec incompatibility. Please download the video and re-encode it to H.264 before posting.')
-            }
-          } else {
-            // Standard video upload for non-Instagram videos
-            console.log('[TwitterUpload] Using standard upload for video')
-            mediaId = await client.v1.uploadMedia(mediaBuffer, { 
-              mimeType: 'video/mp4',
-            })
-            console.log('[TwitterUpload] Video upload completed successfully')
-          }
-        } else {
-          // Regular upload for images/gifs
-          mediaId = await client.v1.uploadMedia(mediaBuffer, { mimeType })
-        }
+        // REVERT TO ORIGINAL SIMPLE APPROACH THAT WAS WORKING
+        mediaId = await client.v1.uploadMedia(mediaBuffer, { mimeType })
       } catch (uploadError: any) {
         console.error('[TwitterUpload] Twitter upload failed with complete error details:', {
           message: uploadError.message,
