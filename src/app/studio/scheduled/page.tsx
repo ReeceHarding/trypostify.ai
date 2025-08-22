@@ -3,10 +3,11 @@
 import TweetQueue from '@/components/tweet-queue'
 import { AccountAvatar } from '@/hooks/account-ctx'
 import { client } from '@/lib/client'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Trash2, Clock, CheckCircle, Loader2, Video, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
+import { format } from 'date-fns'
 import {
   Dialog,
   DialogClose,
@@ -18,6 +19,130 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import DuolingoButton from '@/components/ui/duolingo-button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import DuolingoBadge from '@/components/ui/duolingo-badge'
+
+function VideoProcessingStatus() {
+  // Query for video processing status
+  const { data: processingVideos, isLoading } = useQuery({
+    queryKey: ['video-processing-status'],
+    queryFn: async () => {
+      const res = await client.tweet.getScheduledAndPublished.$get()
+      const result = await res.json()
+      
+      // Filter for tweets with videos that are scheduled (auto-queued)
+      const scheduledWithVideos = result.data?.filter((item: any) => {
+        return item.tweets?.some((tweet: any) => 
+          tweet.isScheduled && 
+          tweet.media?.some((media: any) => media.type === 'video' || media.s3Key?.includes('.mp4'))
+        )
+      }) || []
+      
+      return scheduledWithVideos
+    },
+    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+  })
+
+  if (isLoading) {
+    return (
+      <Card className="border-neutral-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="w-5 h-5 text-primary" />
+            Video Processing Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-neutral-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Checking video status...
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!processingVideos || processingVideos.length === 0) {
+    return null // Don't show the section if no videos are processing/queued
+  }
+
+  return (
+    <Card className="border-neutral-200 bg-neutral-50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Video className="w-5 h-5 text-primary" />
+          Video Processing Status
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {processingVideos.map((item: any) => {
+          const tweet = item.tweets[0] // Get the first tweet
+          const videoMedia = tweet.media?.find((media: any) => 
+            media.type === 'video' || media.s3Key?.includes('.mp4')
+          )
+          
+          const isProcessingComplete = videoMedia?.media_id
+          const scheduledTime = tweet.scheduledFor ? new Date(tweet.scheduledFor) : null
+          
+          return (
+            <div key={item.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  {isProcessingComplete ? (
+                    <CheckCircle className="w-5 h-5 text-success-600" />
+                  ) : (
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  )}
+                </div>
+                
+                <div>
+                  <div className="font-medium text-neutral-900">
+                    {tweet.content.length > 50 
+                      ? `${tweet.content.substring(0, 50)}...` 
+                      : tweet.content || 'Video tweet'}
+                  </div>
+                  <div className="text-sm text-neutral-600">
+                    {isProcessingComplete ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 inline mr-1 text-success-600" />
+                        Video ready • Queued for{' '}
+                        {scheduledTime ? format(scheduledTime, 'MMM d, h:mm a') : 'soon'}
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 className="w-3 h-3 inline mr-1 animate-spin" />
+                        Video processing... • Will post when ready
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {isProcessingComplete ? (
+                  <DuolingoBadge variant="success" className="text-xs">
+                    Ready
+                  </DuolingoBadge>
+                ) : (
+                  <DuolingoBadge variant="warning" className="text-xs">
+                    Processing
+                  </DuolingoBadge>
+                )}
+                
+                {scheduledTime && (
+                  <div className="text-xs text-neutral-500 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {format(scheduledTime, 'h:mm a')}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ScheduledTweetsPage() {
   const queryClient = useQueryClient()
@@ -139,6 +264,9 @@ export default function ScheduledTweetsPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Video Processing Status Section */}
+      <VideoProcessingStatus />
 
       <TweetQueue />
     </div>
