@@ -51,9 +51,7 @@ export default function MediaLibrary({
   onClose,
 }: MediaLibraryProps) {
   const queryClient = useQueryClient()
-  const [selected, setSelected] = useState<Set<string>>(
-    new Set(selectedMedia.map(m => m.id))
-  )
+  // No longer tracking selection since it's one-click
   const [search, setSearch] = useState('')
   const [mediaType, setMediaType] = useState<MediaFilters['mediaType']>()
   const [showStarredOnly, setShowStarredOnly] = useState(false)
@@ -109,8 +107,7 @@ export default function MediaLibrary({
     },
   })
 
-  // Calculate if we can select more items
-  const canSelectMore = selected.size < maxSelection
+  // One-click selection - no need to track selection limits
 
   // Handle direct selection (one-click)
   const handleToggleSelect = useCallback((item: MediaLibraryItem) => {
@@ -124,43 +121,12 @@ export default function MediaLibrary({
       filename: item.filename,
     }
 
-    // For single selection (maxSelection = 1), immediately select and close
-    if (maxSelection === 1) {
-      onSelect([selectedItem])
-      onClose?.()
-      return
-    }
-
-    // For multiple selection, toggle in selection set
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(item.id)) {
-        next.delete(item.id)
-      } else if (canSelectMore) {
-        next.add(item.id)
-      }
-      return next
-    })
-  }, [canSelectMore, maxSelection, onSelect, onClose])
-
-  // Handle selection confirmation
-  const handleConfirmSelection = useCallback(() => {
-    if (!data?.items) return
-
-    const selectedItems = data.items
-      .filter(item => selected.has(item.id))
-      .map(item => ({
-        id: item.id,
-        s3Key: item.s3Key,
-        media_id: item.media_id,
-        url: item.url,
-        type: item.mediaType as 'image' | 'gif' | 'video',
-        filename: item.filename,
-      }))
-
-    onSelect(selectedItems)
+    // Immediately select this item and close
+    onSelect([selectedItem])
     onClose?.()
-  }, [data?.items, selected, onSelect, onClose])
+  }, [onSelect, onClose])
+
+  // No longer needed - using one-click selection
 
   // Media type icon
   const getMediaIcon = (type: string) => {
@@ -242,18 +208,12 @@ export default function MediaLibrary({
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-4">
             {data.items.map((item) => {
-              const isSelected = selected.has(item.id)
               const isStarred = item.isStarred
 
               return (
                 <div
                   key={item.id}
-                  className={cn(
-                    'relative group rounded-lg overflow-hidden border cursor-pointer transition-colors',
-                    isSelected
-                      ? 'border-primary shadow-sm ring-1 ring-primary/20'
-                      : 'border-neutral-200 hover:border-neutral-300'
-                  )}
+                  className="relative group rounded-lg overflow-hidden border cursor-pointer transition-colors border-neutral-200 hover:border-primary hover:shadow-sm"
                   onClick={() => handleToggleSelect(item)}
                 >
                   {/* Media preview */}
@@ -273,11 +233,6 @@ export default function MediaLibrary({
                       />
                     )}
                   </div>
-
-                  {/* Selection indicator */}
-                  {isSelected && (
-                    <div className="absolute inset-0 ring-2 ring-primary/70 pointer-events-none" />
-                  )}
 
                   {/* Media type badge */}
                   {/* Hidden labels to reduce noise in compact mode */}
@@ -344,22 +299,14 @@ export default function MediaLibrary({
       {/* Footer */}
       <div className="border-t p-4 flex items-center justify-between">
         <p className="text-sm text-neutral-600">
-          {selected.size} of {maxSelection} selected
+          Click any item to add it to your post
         </p>
-        <div className="flex gap-2">
-          <DuolingoButton
-            variant="secondary"
-            onClick={onClose}
-          >
-            Cancel
-          </DuolingoButton>
-          <DuolingoButton
-            onClick={handleConfirmSelection}
-            disabled={selected.size === 0}
-          >
-            Add Selected
-          </DuolingoButton>
-        </div>
+        <DuolingoButton
+          variant="secondary"
+          onClick={onClose}
+        >
+          Close
+        </DuolingoButton>
       </div>
 
       {/* Delete confirmation dialog */}
