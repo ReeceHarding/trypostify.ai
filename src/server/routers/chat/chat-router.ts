@@ -693,7 +693,17 @@ export const chatRouter = j.router({
                 // For non-vision models, use standard conversion
                 console.log(`[${new Date().toISOString()}] [chat-router] using fast model for non-vision path: openai/gpt-4o-mini (official adapter)`)
                 console.log('[CHAT_ROUTER] Standard model - final user message:', content.toString().substring(0, 200))
-                console.log('[CHAT_ROUTER] Available tools:', Object.keys({ readWebsiteContent, writeTweet }))
+                console.log('[CHAT_ROUTER] Available tools:', Object.keys({ 
+                  readWebsiteContent, 
+                  writeTweet, 
+                  postNow, 
+                  queueTweet, 
+                  scheduleTweet, 
+                  bulkWriteTweets, 
+                  generateVariations, 
+                  bulkEditTweets, 
+                  bulkQueueTweets 
+                }))
                 
                 // Validate and potentially regenerate URLs in historical messages before converting (non-vision)
                 const historicalMessages = messages.slice(-12);
