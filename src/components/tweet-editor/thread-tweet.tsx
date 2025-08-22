@@ -25,6 +25,7 @@ import { client } from '@/lib/client'
 import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
 import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
 import ReactMentionsInput from './react-mentions-input'
+import { useVideoProcessing } from '@/hooks/use-video-processing'
 
 
 import { useMutation } from '@tanstack/react-query'
@@ -1130,7 +1131,7 @@ function ThreadTweetContent({
       <Drawer modal={false} open={open} onOpenChange={setOpen}>
         <div
           className={cn(
-            'relative bg-white p-6 max-[640px]:p-3 max-[640px]:px-2 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
+            'relative bg-white p-6 max-[640px]:p-3 max-[640px]:px-3 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
             isDragging && 'border-primary border-dashed',
           )}
           onDragOver={handleDragOver}
