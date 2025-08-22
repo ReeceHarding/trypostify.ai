@@ -403,7 +403,7 @@ export default function AccountsPage() {
   })
 
   return (
-    <div className="relative z-10 max-w-2xl w-full mx-auto p-6 space-y-8">
+    <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
       <div className="space-y-2">
         <h1 className="text-2xl font-bold text-neutral-900">Account Management</h1>
         <p className="text-neutral-600">

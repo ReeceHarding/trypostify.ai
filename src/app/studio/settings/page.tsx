@@ -181,7 +181,7 @@ const Page = () => {
   }
 
   return (
-    <div className="relative w-full max-w-md mx-auto mt-12">
+    <div className="relative w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
       <div className="relative w-full flex  flex-col gap-6 bg-white/90 shadow-xl rounded-2xl z-10 py-10 px-6 md:px-12">
         <div className="flex flex-col items-center w-full gap-6 bg-light-gray rounded-lg p-5">
           {/* user card */}

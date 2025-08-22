@@ -181,7 +181,7 @@ const Page = () => {
 
   return (
     <div className="relative z-10 min-h-screen">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
             <div>

@@ -57,7 +57,7 @@ export default function ScheduledTweetsPage() {
   }
 
   return (
-    <div className="space-y-6 relative z-10 max-w-3xl mx-auto w-full">
+    <div className="space-y-6 relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <AccountAvatar className="size-10 mb-1 mx-2" />

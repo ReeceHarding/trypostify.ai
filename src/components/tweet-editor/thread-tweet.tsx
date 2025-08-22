@@ -40,6 +40,7 @@ import {
   Trash2,
   Upload,
   X,
+  Link2,
 } from 'lucide-react'
 
 import { PropsWithChildren } from 'react'
@@ -136,6 +137,10 @@ function ThreadTweetContent({
   const [detectedUrl, setDetectedUrl] = useState<string | null>(null)
   const [ogPreview, setOgPreview] = useState<{ url: string; title?: string; ogImage?: string } | null>(null)
   const [isLoadingOg, setIsLoadingOg] = useState(false)
+  // State for video URL input
+  const [videoUrl, setVideoUrl] = useState('')
+  const [isDownloadingVideo, setIsDownloadingVideo] = useState(false)
+  const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -390,6 +395,22 @@ function ThreadTweetContent({
 
       const data = await res.json()
       console.log('[ThreadTweet] Twitter upload complete:', data)
+      return data
+    },
+  })
+
+  const downloadVideoMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const res = await client.videoDownloader.downloadVideo.$post({
+        url,
+      })
+
+      if (!res.ok) {
+        const error = await res.text()
+        throw new Error(error || 'Failed to download video')
+      }
+
+      const data = await res.json()
       return data
     },
   })
