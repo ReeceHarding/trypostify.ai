@@ -390,14 +390,6 @@ export default function ThreadTweetEditor({
       (tweet as any).isDownloadingVideo === true
     )
     
-    if (hasDownloadingVideo) {
-      // Show notification about background upload
-      toast.success('Video will keep uploading in background and post when ready', {
-        duration: 4000,
-        icon: '📹',
-      })
-    }
-
     console.log('[ThreadTweetEditor] Starting optimistic post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
@@ -419,8 +411,45 @@ export default function ThreadTweetEditor({
       }
     }, 100)
 
+    if (hasDownloadingVideo) {
+      // Show notification that we're waiting for video
+      toast.success('Waiting for video to finish, then posting...', {
+        duration: 6000,
+        icon: '📹',
+      })
+      
+      // Wait for all videos to finish downloading before posting
+      console.log('[ThreadTweetEditor] Waiting for video downloads to complete...')
+      
+      // Poll until no videos are downloading
+      let attempts = 0
+      const maxAttempts = 180 // 3 minutes max wait
+      
+      while (attempts < maxAttempts) {
+        const stillDownloading = currentContent.some(tweet => 
+          (tweet as any).isDownloadingVideo === true
+        )
+        
+        if (!stillDownloading) {
+          console.log('[ThreadTweetEditor] All videos finished downloading, proceeding with post')
+          break
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        attempts++
+      }
+      
+      if (attempts >= maxAttempts) {
+        toast.error('Video download timed out. Please try again.')
+        // Restore content
+        setThreadTweets(currentContent)
+        setHasBeenCleared(false)
+        return
+      }
+    }
+
     try {
-      // Post thread in background
+      // Post thread in background (now with complete media)
       console.log('[ThreadTweetEditor] Starting background post operation at', new Date().toISOString())
       const result = await postThreadMutation.mutateAsync(
         currentContent.map((tweet, index) => ({
