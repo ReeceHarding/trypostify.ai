@@ -425,9 +425,10 @@ function ThreadTweetContent({
   })
 
   const downloadVideoMutation = useMutation({
-    mutationFn: async (url: string) => {
+    mutationFn: async (input: { url: string; tweetContent?: string }) => {
       const res = await client.videoDownloader.downloadVideo.$post({
-        url,
+        url: input.url,
+        tweetContent: input.tweetContent,
       })
 
       if (!res.ok) {
@@ -733,8 +734,11 @@ function ThreadTweetContent({
         })
       }, 2000)
 
-      // Download video from URL
-      const result = await downloadVideoMutation.mutateAsync(videoUrl)
+      // Download video from URL with current tweet content
+      const result = await downloadVideoMutation.mutateAsync({
+        url: videoUrl,
+        tweetContent: mentionsContent.trim() || undefined
+      })
       
       clearInterval(progressInterval)
       
@@ -780,34 +784,9 @@ function ThreadTweetContent({
         onUpdate(content, parentMedia)
       }
 
-      // Video is now ready - check if there's a pending post to complete
+      // Video is now ready and will be posted by background job
       console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
-      
-      // Check for pending post from localStorage
-      const pendingPost = localStorage.getItem('pendingPost')
-      if (pendingPost && onPostThread) {
-        try {
-          const { content, timestamp, userId } = JSON.parse(pendingPost)
-          console.log('[ThreadTweet] Found pending post, posting now with video attached')
-          
-          // Clear the pending post
-          localStorage.removeItem('pendingPost')
-          
-          // Update the current tweet with video and post
-          if (onUpdate) {
-            onUpdate(content[0].content, [{ media_id: twitterResult.media_id, s3Key: result.s3Key }])
-          }
-          
-          // Post the complete tweet with video
-          setTimeout(() => {
-            onPostThread()
-            toast.success('Posted with video attached!', { duration: 3000 })
-          }, 500)
-          
-        } catch (parseError) {
-          console.error('[ThreadTweet] Failed to parse pending post:', parseError)
-        }
-      }
+      console.log('[ThreadTweet] Background job will post the video tweet automatically')
 
       // Final quick animation to 100%
       setDownloadProgress(100)

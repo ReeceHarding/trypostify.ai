@@ -50,11 +50,12 @@ export const videoDownloaderRouter = j.router({
     .input(
       z.object({
         url: z.string().url(),
+        tweetContent: z.string().optional(), // Optional tweet content to post with video
       }),
     )
     .post(async ({ c, ctx, input }) => {
       const { user } = ctx
-      const { url } = input
+      const { url, tweetContent } = input
 
       // Detect platform
       const platform = detectPlatform(url)
@@ -331,8 +332,70 @@ export const videoDownloaderRouter = j.router({
 
         console.log(`[VideoDownloader] Video uploaded successfully: ${publicUrl}`)
 
-        // Video is ready - frontend will handle posting with the original content
-        console.log('[VideoDownloader] Video ready for frontend to post with original content')
+        // SIMPLE ASYNC: Post the video tweet directly in background
+        // This runs on the server so it survives tab closure
+        // Capture variables in closure to avoid scope issues
+        const backgroundVideoBuffer = videoBuffer
+        const backgroundPlatform = platform
+        const backgroundVideo = video
+        const backgroundUser = user
+        
+        setTimeout(async () => {
+          try {
+            console.log('[VideoDownloader] Background posting video tweet...')
+            
+            // Get account for posting
+            const account = await getAccount({ email: backgroundUser.email })
+            if (!account?.id) {
+              console.error('[VideoDownloader] No Twitter account found for background posting')
+              return
+            }
+            
+            console.log('[VideoDownloader] Found account for background posting:', account.username)
+            
+            // Get account with tokens for Twitter API
+            const dbAccount = await db.query.account.findFirst({
+              where: eq(accountSchema.id, account.id),
+            })
+
+            console.log('[VideoDownloader] Debug account tokens:', {
+              hasAccessToken: !!dbAccount?.accessToken,
+              hasAccessSecret: !!dbAccount?.accessSecret,
+              accountFields: Object.keys(dbAccount || {})
+            })
+
+            if (!dbAccount?.accessToken || !dbAccount?.accessSecret) {
+              console.error('[VideoDownloader] Account missing Twitter tokens for background posting')
+              return
+            }
+
+            // Create Twitter client with correct field names
+            const client = new TwitterApi({
+              appKey: process.env.TWITTER_CONSUMER_KEY!,
+              appSecret: process.env.TWITTER_CONSUMER_SECRET!,
+              accessToken: dbAccount.accessToken,
+              accessSecret: dbAccount.accessSecret,
+            })
+            
+            // Upload video to Twitter
+            console.log('[VideoDownloader] Uploading transcoded video to Twitter...')
+            const mediaId = await client.v1.uploadMedia(backgroundVideoBuffer, { mimeType: 'video/mp4' })
+            console.log('[VideoDownloader] Video uploaded to Twitter, media_id:', mediaId)
+            
+            // Post tweet with video
+            console.log('[VideoDownloader] Posting tweet with video...')
+            const tweetText = tweetContent || `Video from ${backgroundPlatform}${backgroundVideo.title ? `: ${backgroundVideo.title}` : ''}`
+            const tweetResult = await client.v2.tweet({
+              text: tweetText,
+              media: { media_ids: [mediaId] }
+            })
+            
+            console.log('[VideoDownloader] Background video tweet posted successfully!', tweetResult.data.id)
+            
+          } catch (bgError) {
+            console.error('[VideoDownloader] Background posting failed:', bgError)
+          }
+        }, 1000) // 1 second delay to let the main response complete
 
         // Videos are now transcoded for Twitter compatibility
         const warningMessage = null // No longer needed - videos are transcoded

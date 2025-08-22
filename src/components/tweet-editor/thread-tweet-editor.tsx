@@ -412,24 +412,20 @@ export default function ThreadTweetEditor({
     }, 100)
 
     if (hasDownloadingVideo) {
-      // Show notification and DON'T post yet - wait for video
-      toast.success('Waiting for video to complete, then posting together...', {
-        duration: 6000,
+      // Show notification about background processing
+      toast.success('Video will upload in background and post when ready', {
+        duration: 4000,
         icon: '📹',
       })
-      
-      // Store the content to post later when video is ready
-      localStorage.setItem('pendingPost', JSON.stringify({
-        content: currentContent,
-        timestamp: Date.now(),
-        userId: user?.id,
-      }))
-      
-      console.log('[ThreadTweetEditor] Video downloading - delaying post until video ready')
-      return // Don't post now, wait for video
     }
 
     try {
+      if (hasDownloadingVideo) {
+        // For video posts, don't post immediately - let the video system handle it
+        console.log('[ThreadTweetEditor] Video detected - skipping immediate post, video system will handle posting')
+        return
+      }
+      
       // Post thread in background (now with complete media)
       console.log('[ThreadTweetEditor] Starting background post operation at', new Date().toISOString())
       const result = await postThreadMutation.mutateAsync(
