@@ -333,12 +333,18 @@ export const videoDownloaderRouter = j.router({
 
         // SIMPLE ASYNC: Post the video tweet directly in background
         // This runs on the server so it survives tab closure
+        // Capture variables in closure to avoid scope issues
+        const backgroundVideoBuffer = videoBuffer
+        const backgroundPlatform = platform
+        const backgroundVideo = video
+        const backgroundUser = user
+        
         setTimeout(async () => {
           try {
             console.log('[VideoDownloader] Background posting video tweet...')
             
             // Get account for posting
-            const account = await getAccount({ email: user.email })
+            const account = await getAccount({ email: backgroundUser.email })
             if (!account?.id) {
               console.error('[VideoDownloader] No Twitter account found for background posting')
               return
@@ -372,13 +378,13 @@ export const videoDownloaderRouter = j.router({
             
             // Upload video to Twitter
             console.log('[VideoDownloader] Uploading transcoded video to Twitter...')
-            const mediaId = await client.v1.uploadMedia(videoBuffer, { mimeType: 'video/mp4' })
+            const mediaId = await client.v1.uploadMedia(backgroundVideoBuffer, { mimeType: 'video/mp4' })
             console.log('[VideoDownloader] Video uploaded to Twitter, media_id:', mediaId)
             
             // Post tweet with video
             console.log('[VideoDownloader] Posting tweet with video...')
             const tweetResult = await client.v2.tweet({
-              text: `Video from ${platform}${video.title ? `: ${video.title}` : ''}`,
+              text: `Video from ${backgroundPlatform}${backgroundVideo.title ? `: ${backgroundVideo.title}` : ''}`,
               media: { media_ids: [mediaId] }
             })
             
