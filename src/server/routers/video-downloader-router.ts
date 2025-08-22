@@ -28,12 +28,15 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.NEXT_PUBLIC_S3_BUCKET_NAME!
 
-// Regex patterns for supported platforms
+// Comprehensive regex patterns for ALL supported video platform formats
 const PLATFORM_PATTERNS = {
-  instagram: /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/,
-  tiktok: /(?:tiktok\.com\/(?:@[\w.-]+\/video\/(\d+)|t\/([A-Za-z0-9]+))|vm\.tiktok\.com\/([A-Za-z0-9]+))/,
-  twitter: /(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/,
-  youtube: /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]+)/,
+  instagram: /(?:(?:www\.)?(?:instagram\.com|instagr\.am)\/(?:p|reel|tv|stories)\/([A-Za-z0-9_-]+)(?:\/.*)?)/,
+  tiktok: /(?:(?:www\.)?(?:tiktok\.com\/(?:@[\w.-]+\/video\/(\d+)|t\/([A-Za-z0-9_-]+)|v\/(\d+))|vm\.tiktok\.com\/([A-Za-z0-9_-]+)|m\.tiktok\.com\/v\/(\d+))(?:\/.*)?)/,
+  twitter: /(?:(?:www\.)?(?:twitter\.com|x\.com)\/(?:\w+\/status\/(\d+)|i\/web\/status\/(\d+))(?:\/.*)?)/,
+  youtube: /(?:(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})(?:\/.*)?(?:\?.*)?)/,
+  facebook: /(?:(?:www\.)?(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=|.*\/videos\/)(\d+)(?:\/.*)?)/,
+  vimeo: /(?:(?:www\.)?vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)(\d+)(?:\/.*)?)/,
+  dailymotion: /(?:(?:www\.)?dailymotion\.com\/video\/([A-Za-z0-9]+)(?:\/.*)?)/,
 }
 
 function detectPlatform(url: string): string | null {
@@ -61,7 +64,7 @@ export const videoDownloaderRouter = j.router({
       const platform = detectPlatform(url)
       if (!platform) {
         throw new HTTPException(400, {
-          message: 'Unsupported URL. Please provide a valid Instagram, TikTok, Twitter/X, or YouTube link.',
+          message: 'Unsupported URL. Please provide a valid video link from: Instagram, TikTok, Twitter/X, YouTube, Facebook, Vimeo, or Dailymotion.',
         })
       }
 

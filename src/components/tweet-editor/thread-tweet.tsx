@@ -166,12 +166,15 @@ function ThreadTweetContent({
     if (firstUrl && firstUrl !== detectedUrl) {
       setDetectedUrl(firstUrl)
       
-      // Check if it's a supported video platform URL
+      // Check if it's a supported video platform URL (comprehensive patterns)
       const videoPatterns = [
-        /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\//,
-        /(?:tiktok\.com\/(?:@[\w.-]+\/video\/|t\/)|vm\.tiktok\.com\/)/,
-        /(?:twitter\.com|x\.com)\/\w+\/status\//,
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)/,
+        /(?:(?:www\.)?(?:instagram\.com|instagr\.am)\/(?:p|reel|tv|stories)\/)/,
+        /(?:(?:www\.)?(?:tiktok\.com\/(?:@[\w.-]+\/video\/|t\/|v\/)|vm\.tiktok\.com\/|m\.tiktok\.com\/v\/))/,
+        /(?:(?:www\.)?(?:twitter\.com|x\.com)\/(?:\w+\/status\/|i\/web\/status\/))/,
+        /(?:(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/))/,
+        /(?:(?:www\.)?(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=|.*\/videos\/))/,
+        /(?:(?:www\.)?vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|))/,
+        /(?:(?:www\.)?dailymotion\.com\/video\/)/,
       ]
       
       const isVideoUrl = videoPatterns.some(pattern => pattern.test(firstUrl))
@@ -1611,10 +1614,13 @@ function ThreadTweetContent({
             <div className="text-xs text-neutral-500 space-y-1">
               <p>Supported platforms:</p>
               <ul className="list-disc list-inside space-y-0.5 ml-2">
-                <li>Instagram (Posts, Reels, IGTV)</li>
-                <li>TikTok</li>
+                <li>Instagram (Posts, Reels, IGTV, Stories)</li>
+                <li>TikTok (All formats including tiktok.com/t/)</li>
                 <li>Twitter/X</li>
-                <li>YouTube (including Shorts)</li>
+                <li>YouTube (Videos, Shorts, youtu.be)</li>
+                <li>Facebook (Videos, fb.watch)</li>
+                <li>Vimeo</li>
+                <li>Dailymotion</li>
               </ul>
             </div>
           </div>
