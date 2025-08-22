@@ -94,6 +94,12 @@ IMPORTANT BULK GENERATION RULES:
 
 Generate exactly ${count} tweets about: ${topic}
 
+CRITICAL INSTRUCTION PARSING:
+- If the instruction contains "asking" or "ask", ALL tweets must be questions
+- If the instruction says "what advice would people give", tweets should ask that question in various ways
+- Each tweet should be a different way to ask the same type of question or explore the same theme
+- Study the instruction carefully and maintain its intent across all tweets
+
 ${websiteContent && websiteContent.length > 0 ? `
 WEBSITE CONTENT FOR CONTEXT:
 ${websiteContent.map(content => `Title: ${content.title}\nURL: ${content.url}\nContent: ${content.content.substring(0, 500)}...`).join('\n\n')}
