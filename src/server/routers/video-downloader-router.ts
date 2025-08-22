@@ -3,15 +3,16 @@ import { z } from 'zod'
 import { HTTPException } from 'hono/http-exception'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { nanoid } from 'nanoid'
-
+import { qstash } from '@/lib/qstash'
+import { getBaseUrl } from '@/constants/base-url'
+import { getAccount } from './utils/get-account'
 import * as ffmpeg from 'fluent-ffmpeg'
-import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
 import * as os from 'os'
 
-// Configure FFmpeg path
-ffmpeg.setFfmpegPath(ffmpegInstaller.path)
+// Configure FFmpeg path (use system FFmpeg)
+ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg')
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -326,7 +327,49 @@ export const videoDownloaderRouter = j.router({
 
         console.log(`[VideoDownloader] Video uploaded successfully: ${publicUrl}`)
 
-        // Video is transcoded and ready - frontend will handle posting
+        // SIMPLE ASYNC: Post the video tweet directly in background
+        // This runs on the server so it survives tab closure
+        setTimeout(async () => {
+          try {
+            console.log('[VideoDownloader] Background posting video tweet...')
+            
+            // Get account for posting
+            const account = await getAccount({ email: user.email })
+            if (!account?.id) {
+              console.error('[VideoDownloader] No Twitter account found for background posting')
+              return
+            }
+            
+            // Import the tweet router functions directly
+            const { tweetRouter } = await import('./tweet-router')
+            
+            // Upload to Twitter first
+            const uploadResult = await tweetRouter.uploadMediaToTwitter._def.handler({
+              c: c as any,
+              ctx: { user },
+              input: { s3Key, mediaType: 'video', fileUrl: publicUrl }
+            })
+            
+            if (uploadResult) {
+              // Post tweet with video
+              await tweetRouter.postThreadNow._def.handler({
+                c: c as any,
+                ctx: { user },
+                input: {
+                  tweets: [{
+                    content: `Video from ${platform}${video.title ? `: ${video.title}` : ''}`,
+                    media: [{ media_id: uploadResult.media_id, s3Key }],
+                    delayMs: 0
+                  }]
+                }
+              })
+              
+              console.log('[VideoDownloader] Background video tweet posted successfully!')
+            }
+          } catch (bgError) {
+            console.error('[VideoDownloader] Background posting failed:', bgError)
+          }
+        }, 1000) // 1 second delay to let the main response complete
 
         // Videos are now transcoded for Twitter compatibility
         const warningMessage = null // No longer needed - videos are transcoded

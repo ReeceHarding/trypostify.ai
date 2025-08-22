@@ -780,7 +780,9 @@ function ThreadTweetContent({
         onUpdate(content, parentMedia)
       }
 
-      // Video is transcoded and uploaded - works normally now
+      // Video is now ready and will be posted by background job
+      console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
+      console.log('[ThreadTweet] Background job will post the video tweet automatically')
 
       // Final quick animation to 100%
       setDownloadProgress(100)
