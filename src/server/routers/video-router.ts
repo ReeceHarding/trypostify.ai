@@ -117,7 +117,7 @@ async function processVideoDirectly({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          urls: [url],
+          video_urls: [url],
           downloadVideo: true,
           downloadAudio: false,
           downloadThumbnail: true,
@@ -615,7 +615,7 @@ export const videoRouter = j.router({
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              urls: [url],
+              video_urls: [url],
               downloadVideo: true,
               downloadAudio: false,
               downloadThumbnail: true,
