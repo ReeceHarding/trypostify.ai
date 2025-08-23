@@ -39,25 +39,38 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.NEXT_PUBLIC_S3_BUCKET_NAME!
 
-// Platform detection patterns
+// Platform detection patterns - comprehensive regex for all supported platforms
 const PLATFORM_PATTERNS = {
-  tiktok: /(?:(?:www\.)?tiktok\.com\/@[\w.-]+\/video\/(\d+)|vm\.tiktok\.com\/([A-Za-z0-9_-]+))/,
-  instagram: /(?:(?:www\.)?instagram\.com\/(?:reel|p)\/([A-Za-z0-9_-]+))/,
-  youtube: /(?:(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11}))/,
-  twitter: /(?:(?:www\.)?(?:twitter\.com|x\.com)\/\w+\/status\/(\d+))/,
-  facebook: /(?:(?:www\.)?facebook\.com\/.*\/videos\/(\d+))/,
-  linkedin: /(?:(?:www\.)?linkedin\.com\/posts\/.*)/,
+  tiktok: /(?:(?:www\.)?(?:tiktok\.com\/(?:@[\w.-]+\/video\/\d+|t\/[A-Za-z0-9_-]+|v\/\d+)|vm\.tiktok\.com\/[A-Za-z0-9_-]+|m\.tiktok\.com\/v\/\d+))/i,
+  instagram: /(?:(?:www\.)?(?:instagram\.com|instagr\.am)\/(?:p|reel|tv|stories)\/[A-Za-z0-9_-]+)/i,
+  youtube: /(?:(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11})/i,
+  twitter: /(?:(?:www\.)?(?:twitter\.com|x\.com)\/(?:\w+\/status\/\d+|i\/web\/status\/\d+))/i,
+  facebook: /(?:(?:www\.)?(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=|.*\/videos\/)\d+)/i,
+  vimeo: /(?:(?:www\.)?vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)\d+)/i,
+  dailymotion: /(?:(?:www\.)?dailymotion\.com\/video\/[A-Za-z0-9]+)/i,
+  linkedin: /(?:(?:www\.)?linkedin\.com\/posts\/.*)/i,
 }
 
 function detectPlatform(url: string): string | null {
   console.log('[VideoRouter] Detecting platform for URL:', url)
+  
+  // Test each pattern and log the results for debugging
   for (const [platform, pattern] of Object.entries(PLATFORM_PATTERNS)) {
-    if (pattern.test(url)) {
+    const matches = pattern.test(url)
+    console.log(`[VideoRouter] Testing ${platform}:`, {
+      pattern: pattern.toString(),
+      matches,
+      url: url.substring(0, 100) + (url.length > 100 ? '...' : '')
+    })
+    
+    if (matches) {
       console.log('[VideoRouter] Detected platform:', platform)
       return platform
     }
   }
+  
   console.log('[VideoRouter] No platform detected for URL:', url)
+  console.log('[VideoRouter] Supported platforms:', Object.keys(PLATFORM_PATTERNS))
   return null
 }
 
@@ -438,7 +451,7 @@ export const videoRouter = j.router({
       const platform = detectPlatform(url)
       if (!platform) {
         throw new HTTPException(400, {
-          message: 'Unsupported URL. Please provide a valid video link from: TikTok, Instagram, YouTube, Twitter/X, Facebook, or LinkedIn.',
+          message: 'Unsupported URL. Please provide a valid video link from: TikTok, Instagram, YouTube, Twitter/X, Facebook, Vimeo, Dailymotion, or LinkedIn.',
         })
       }
 
