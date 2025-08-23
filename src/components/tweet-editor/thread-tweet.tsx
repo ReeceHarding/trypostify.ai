@@ -31,6 +31,7 @@ import ReactMentionsInput from './react-mentions-input'
 import { useMutation } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
+import { nanoid } from 'nanoid'
 import {
   CalendarCog,
   ChevronDown,
@@ -43,6 +44,8 @@ import {
   X,
   Link2,
   Video,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react'
 
 import { PropsWithChildren } from 'react'
@@ -150,6 +153,16 @@ function ThreadTweetContent({
   const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [originalContentBeforeUrl, setOriginalContentBeforeUrl] = useState('')
+  
+  // State for processing videos
+  const [processingVideos, setProcessingVideos] = useState<Array<{
+    id: string
+    url: string
+    platform: string
+    status: 'downloading' | 'transcoding' | 'uploading' | 'complete' | 'failed'
+    progress: number
+    error?: string
+  }>>([])
 
 
   
@@ -855,6 +868,17 @@ function ThreadTweetContent({
       
       clearInterval(progressInterval)
       
+      // Add to processing videos state
+      const processingVideo = {
+        id: nanoid(),
+        url: videoUrl,
+        platform: result.platform,
+        status: 'downloading' as const,
+        progress: 0
+      }
+      
+      setProcessingVideos(prev => [...prev, processingVideo])
+      
       // For the new system, video processing happens asynchronously
       // Show a success message and remove the placeholder
       toast.success(`Video from ${result.platform} is processing! It will be attached to your tweet when ready.`)
@@ -1268,6 +1292,96 @@ function ThreadTweetContent({
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Processing Videos Display */}
+              {processingVideos.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {processingVideos.map((video) => (
+                    <div key={video.id} className="relative">
+                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+                        <div className="flex items-center gap-3">
+                          {/* Platform icon */}
+                          <div className="flex-shrink-0">
+                            <Video className="size-8 text-neutral-600" />
+                          </div>
+                          
+                          {/* Video info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-neutral-900 capitalize">
+                                {video.platform} Video
+                              </span>
+                              {video.status === 'downloading' && (
+                                <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                                  <Loader2 className="size-3 animate-spin" />
+                                  Downloading
+                                </span>
+                              )}
+                              {video.status === 'transcoding' && (
+                                <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                                  <Loader2 className="size-3 animate-spin" />
+                                  Processing
+                                </span>
+                              )}
+                              {video.status === 'uploading' && (
+                                <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                  <Loader2 className="size-3 animate-spin" />
+                                  Uploading
+                                </span>
+                              )}
+                              {video.status === 'complete' && (
+                                <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                  <CheckCircle className="size-3" />
+                                  Complete
+                                </span>
+                              )}
+                              {video.status === 'failed' && (
+                                <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                                  <AlertCircle className="size-3" />
+                                  Failed
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-neutral-500 truncate">
+                              {video.url}
+                            </p>
+                            {video.error && (
+                              <p className="text-xs text-red-600 mt-1">
+                                {video.error}
+                              </p>
+                            )}
+                          </div>
+                          
+                          {/* Remove button */}
+                          <button
+                            onClick={() => {
+                              setProcessingVideos(prev => prev.filter(v => v.id !== video.id))
+                            }}
+                            className="flex-shrink-0 p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+                          >
+                            <X className="size-4" />
+                          </button>
+                        </div>
+                        
+                        {/* Progress bar for active processing */}
+                        {(video.status === 'downloading' || video.status === 'transcoding' || video.status === 'uploading') && (
+                          <div className="mt-3">
+                            <div className="w-full bg-neutral-200 rounded-full h-1.5">
+                              <div 
+                                className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                                style={{ 
+                                  width: `${video.progress}%`,
+                                  minWidth: video.progress > 0 ? '8px' : '0px'
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 

@@ -351,7 +351,29 @@ async function processVideoDirectly({
 
     // Upload to Twitter
     console.log('[processVideoDirectly] Starting Twitter upload')
-    const account = await getAccount(userId)
+    
+    // Get user's email from database first
+    const { user: userSchema } = await import('@/db/schema')
+    const [user] = await db
+      .select({ email: userSchema.email })
+      .from(userSchema)
+      .where(eq(userSchema.id, userId))
+      .limit(1)
+    
+    if (!user) {
+      throw new Error('User not found')
+    }
+    
+    console.log('[processVideoDirectly] Found user email:', user.email)
+    
+    // Get user's Twitter account
+    const account = await getAccount({ email: user.email })
+    
+    if (!account) {
+      throw new Error('No Twitter account found. Please connect your Twitter account in Settings.')
+    }
+    
+    console.log('[processVideoDirectly] Found Twitter account:', account.username)
     
     const twitterClient = new TwitterApi({
       appKey: process.env.TWITTER_API_KEY!,
