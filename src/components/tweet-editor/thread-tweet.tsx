@@ -28,7 +28,7 @@ import ReactMentionsInput from './react-mentions-input'
 
 
 
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
 import { nanoid } from 'nanoid'
@@ -528,6 +528,88 @@ function ThreadTweetContent({
       }
     },
   })
+
+  // Poll for processing videos to update their status
+  const { data: processingVideosData } = useQuery({
+    queryKey: ['processing-videos'],
+    queryFn: async () => {
+      const res = await client.video.getProcessingVideos.$get()
+      if (!res.ok) {
+        throw new Error('Failed to fetch processing videos')
+      }
+      return await res.json()
+    },
+    refetchInterval: 3000, // Poll every 3 seconds
+    enabled: processingVideos.length > 0, // Only poll when we have processing videos
+  })
+
+  // Update processing videos state when data changes
+  useEffect(() => {
+    if (processingVideosData?.tweets) {
+      setProcessingVideos(prev => {
+        return prev.map(video => {
+          // Find matching tweet by URL
+          const matchingTweet = processingVideosData.tweets.find((tweet: any) => 
+            tweet.pendingVideoUrl === video.url
+          )
+          
+          if (matchingTweet) {
+            const newStatus = matchingTweet.videoProcessingStatus || 'downloading'
+            
+            // If video is complete, add it to media files and remove from processing
+            if (newStatus === 'complete' && matchingTweet.media && matchingTweet.media.length > 0) {
+              const videoMedia = matchingTweet.media.find((m: any) => m.type === 'video')
+              if (videoMedia) {
+                // Add to media files
+                setMediaFiles(prevMedia => {
+                  const newMediaFile: MediaFile = {
+                    url: videoMedia.url || `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${videoMedia.s3Key}`,
+                    type: 'video',
+                    uploading: false,
+                    uploaded: true,
+                    media_id: videoMedia.media_id,
+                    media_key: videoMedia.media_key,
+                    s3Key: videoMedia.s3Key,
+                    file: null,
+                  }
+                  
+                  // Check if this media file already exists
+                  const exists = prevMedia.some(m => m.s3Key === videoMedia.s3Key)
+                  if (exists) {
+                    return prevMedia
+                  }
+                  
+                  return [...prevMedia, newMediaFile]
+                })
+                
+                // Update parent state
+                if (onUpdate) {
+                  updateParentState()
+                }
+                
+                // Show success message
+                toast.success(`Video from ${video.platform} is ready!`)
+                
+                // Remove from processing videos
+                return null
+              }
+            }
+            
+            return {
+              ...video,
+              status: newStatus as any,
+              progress: newStatus === 'complete' ? 100 : 
+                       newStatus === 'uploading' ? 80 :
+                       newStatus === 'transcoding' ? 60 : 30,
+              error: matchingTweet.videoErrorMessage || undefined
+            }
+          }
+          
+          return video
+        }).filter(Boolean) as typeof prev
+      })
+    }
+  }, [processingVideosData, onUpdate])
 
   // Fetch OG data for URL
   const fetchOgData = useCallback(async (url: string) => {
