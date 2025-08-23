@@ -41,14 +41,38 @@ const BUCKET_NAME = process.env.NEXT_PUBLIC_S3_BUCKET_NAME!
 
 // Platform detection patterns - comprehensive regex for all supported platforms
 const PLATFORM_PATTERNS = {
-  tiktok: /(?:(?:www\.)?(?:tiktok\.com\/(?:@[\w.-]+\/video\/\d+|t\/[A-Za-z0-9_-]+|v\/\d+)|vm\.tiktok\.com\/[A-Za-z0-9_-]+|m\.tiktok\.com\/v\/\d+))/i,
-  instagram: /(?:(?:www\.)?(?:instagram\.com|instagr\.am)\/(?:p|reel|tv|stories)\/[A-Za-z0-9_-]+)/i,
-  youtube: /(?:(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11})/i,
-  twitter: /(?:(?:www\.)?(?:twitter\.com|x\.com)\/(?:\w+\/status\/\d+|i\/web\/status\/\d+))/i,
-  facebook: /(?:(?:www\.)?(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=|.*\/videos\/)\d+)/i,
+  // TikTok - all known URL formats
+  tiktok: /(?:(?:www\.)?(?:tiktok\.com\/(?:@[\w.-]+\/video\/\d+|t\/[A-Za-z0-9_-]+|v\/\d+|\w+\/video\/\d+)|vm\.tiktok\.com\/[A-Za-z0-9_-]+|m\.tiktok\.com\/v\/\d+))/i,
+  
+  // Instagram - reels, posts, TV, stories
+  instagram: /(?:(?:www\.)?(?:instagram\.com|instagr\.am)\/(?:p|reel|tv|stories)\/[A-Za-z0-9_-]+(?:\/.*)?)/i,
+  
+  // YouTube - all formats including Shorts
+  youtube: /(?:(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11}(?:\S*)?)/i,
+  
+  // Twitter/X - all status formats
+  twitter: /(?:(?:www\.)?(?:twitter\.com|x\.com)\/(?:\w+\/status\/\d+|i\/web\/status\/\d+)(?:\/.*)?)/i,
+  
+  // Facebook - videos and watch
+  facebook: /(?:(?:www\.)?(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=|.*\/videos\/|video\.php\?v=)\d+)/i,
+  
+  // Vimeo - all formats
   vimeo: /(?:(?:www\.)?vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|)\d+)/i,
+  
+  // Dailymotion
   dailymotion: /(?:(?:www\.)?dailymotion\.com\/video\/[A-Za-z0-9]+)/i,
+  
+  // LinkedIn posts with videos
   linkedin: /(?:(?:www\.)?linkedin\.com\/posts\/.*)/i,
+  
+  // Twitch clips and videos
+  twitch: /(?:(?:www\.)?(?:twitch\.tv|clips\.twitch\.tv)\/(?:\w+\/clip\/[A-Za-z0-9_-]+|\w+\/video\/\d+|clip\/[A-Za-z0-9_-]+))/i,
+  
+  // Reddit videos
+  reddit: /(?:(?:www\.)?reddit\.com\/r\/\w+\/comments\/[A-Za-z0-9_]+\/.*)/i,
+  
+  // Snapchat
+  snapchat: /(?:(?:www\.)?snapchat\.com\/(?:add\/\w+|t\/[A-Za-z0-9_-]+))/i,
 }
 
 function detectPlatform(url: string): string | null {
@@ -451,7 +475,7 @@ export const videoRouter = j.router({
       const platform = detectPlatform(url)
       if (!platform) {
         throw new HTTPException(400, {
-          message: 'Unsupported URL. Please provide a valid video link from: TikTok, Instagram, YouTube, Twitter/X, Facebook, Vimeo, Dailymotion, or LinkedIn.',
+          message: 'Unsupported URL. Please provide a valid video link from: TikTok, Instagram, YouTube, Twitter/X, Facebook, Vimeo, Dailymotion, LinkedIn, Twitch, Reddit, or Snapchat.',
         })
       }
 
