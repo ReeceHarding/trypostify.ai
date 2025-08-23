@@ -382,17 +382,58 @@ async function processVideoDirectly({
       accessSecret: account.accessTokenSecret!,
     })
 
-    // Initialize chunked upload
-    const mediaUpload = await twitterClient.v1.uploadMedia(videoBuffer, {
-      mimeType: 'video/mp4',
-      target: 'tweet',
-      waitForProcessing: true,
-      longVideo: false,
+    // Log video details before upload
+    const videoSizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2)
+    const isLongVideo = videoBuffer.length > 15 * 1024 * 1024
+    
+    console.log('[processVideoDirectly] Preparing Twitter upload:', {
+      videoSize: `${videoSizeMB}MB`,
+      isLongVideo,
+      duration: videoData.durationSeconds || videoData.duration,
+      platform: videoData.platform,
+      title: videoData.title?.substring(0, 50) + '...'
     })
 
-    console.log('[processVideoDirectly] Twitter upload complete:', {
-      media_id: mediaUpload,
-    })
+    // Initialize chunked upload with proper media category
+    let mediaId: string
+    try {
+      const mediaUpload = await twitterClient.v1.uploadMedia(videoBuffer, {
+        mimeType: 'video/mp4',
+        target: 'tweet',
+        mediaCategory: 'tweet_video', // This is required for videos!
+        waitForProcessing: true,
+        longVideo: isLongVideo, // Use longVideo for files > 15MB
+      })
+      
+      console.log('[processVideoDirectly] Twitter upload successful:', {
+        media_id: mediaUpload,
+        videoSize: `${videoSizeMB}MB`,
+        processingTime: 'completed'
+      })
+      
+      mediaId = mediaUpload
+      
+    } catch (twitterError: any) {
+      console.error('[processVideoDirectly] Twitter upload failed:', {
+        error: twitterError.message,
+        code: twitterError.code,
+        data: twitterError.data,
+        videoSize: `${videoSizeMB}MB`,
+        isLongVideo,
+        accountUsername: account.username
+      })
+      
+      // Provide specific error messages based on Twitter error codes
+      if (twitterError.code === 403) {
+        throw new Error('Twitter upload failed: Your Twitter app may not have video upload permissions. Please check your Twitter Developer app settings.')
+      } else if (twitterError.code === 413) {
+        throw new Error('Video too large for Twitter. Please use a smaller video.')
+      } else if (twitterError.code === 400) {
+        throw new Error('Invalid video format. Twitter requires MP4 videos with H.264 encoding.')
+      } else {
+        throw new Error(`Twitter upload failed: ${twitterError.message || 'Unknown error'}`)
+      }
+    }
 
     // Update tweet with video information
     if (tweetId) {
@@ -405,7 +446,7 @@ async function processVideoDirectly({
           ...(tweet.media || []),
           {
             s3Key,
-            media_id: mediaUpload,
+            media_id: mediaId,
             url: publicUrl,
             type: 'video' as const,
             platform: videoData.platform || platform,
