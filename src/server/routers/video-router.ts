@@ -72,6 +72,344 @@ interface ProgressUpdate {
   estimatedTimeRemaining?: number // seconds
 }
 
+// Direct video processing function for development mode
+async function processVideoDirectly({
+  url,
+  platform,
+  tweetId,
+  userId,
+  autoPost,
+}: {
+  url: string
+  platform: string
+  tweetId?: string
+  userId: string
+  autoPost: boolean
+}) {
+  console.log('[processVideoDirectly] Starting video processing:', {
+    url,
+    platform,
+    tweetId,
+    userId,
+    autoPost,
+    timestamp: new Date().toISOString()
+  })
+
+  try {
+    // Update status to downloading
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'downloading',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+
+    // Call Apify marketingme/video-downloader actor
+    console.log('[processVideoDirectly] Starting Apify actor run')
+    const runResponse = await fetch(
+      `https://api.apify.com/v2/acts/marketingme~video-downloader/runs?token=${process.env.APIFY_API_TOKEN}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          urls: [url],
+          downloadVideo: true,
+          downloadAudio: false,
+          downloadThumbnail: true,
+        }),
+      },
+    )
+
+    if (!runResponse.ok) {
+      const error = await runResponse.text()
+      console.error('[processVideoDirectly] Failed to start Apify run:', error)
+      throw new Error('Failed to start video download process')
+    }
+
+    const runData: any = await runResponse.json()
+    const runId = runData.data.id
+    console.log('[processVideoDirectly] Started Apify run:', runId)
+
+    // Poll for completion with exponential backoff
+    const maxAttempts = 90
+    let attempts = 0
+    let runStatus: any
+    let currentDelayMs = 1500
+    const backoff = 1.25
+    const maxDelayMs = 8000
+
+    while (attempts < maxAttempts) {
+      attempts++
+      
+      await new Promise(resolve => setTimeout(resolve, currentDelayMs))
+      console.log(`[processVideoDirectly] Polling attempt ${attempts}/${maxAttempts}, delay: ${currentDelayMs}ms`)
+      currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
+      
+      const statusResponse = await fetch(
+        `https://api.apify.com/v2/acts/marketingme~video-downloader/runs/${runId}?token=${process.env.APIFY_API_TOKEN}`,
+      )
+      
+      if (!statusResponse.ok) {
+        console.error('[processVideoDirectly] Failed to check run status')
+        continue
+      }
+      
+      runStatus = await statusResponse.json()
+      console.log(`[processVideoDirectly] Run status: ${runStatus.data.status}`)
+      
+      if (runStatus.data.status === 'SUCCEEDED') {
+        break
+      } else if (runStatus.data.status === 'FAILED' || runStatus.data.status === 'ABORTED') {
+        throw new Error('Video download failed')
+      }
+    }
+
+    if (runStatus?.data?.status !== 'SUCCEEDED') {
+      throw new Error('Video download timed out')
+    }
+
+    // Get the dataset items
+    const datasetId = runStatus.data.defaultDatasetId
+    const itemsResponse = await fetch(
+      `https://api.apify.com/v2/datasets/${datasetId}/items?token=${process.env.APIFY_API_TOKEN}`,
+    )
+
+    if (!itemsResponse.ok) {
+      throw new Error('Failed to retrieve video data')
+    }
+
+    const items: any[] = await itemsResponse.json()
+    console.log('[processVideoDirectly] Retrieved dataset items:', items.length)
+
+    if (!items.length) {
+      throw new Error('No video found at the provided URL')
+    }
+
+    const videoData = items[0]
+    console.log('[processVideoDirectly] Video data:', {
+      platform: videoData.platform,
+      title: videoData.title,
+      duration: videoData.durationSeconds,
+      mediaUrl: videoData.mediaUrl?.substring(0, 100) + '...',
+    })
+
+    // Download video file
+    console.log('[processVideoDirectly] Downloading video from:', videoData.mediaUrl)
+    const videoResponse = await fetch(videoData.mediaUrl)
+    if (!videoResponse.ok) {
+      throw new Error('Failed to download video file')
+    }
+
+    let videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+    console.log('[processVideoDirectly] Downloaded video size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
+
+    // Update status to transcoding
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'transcoding',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+
+    // Transcode video to Twitter-compatible format
+    console.log('[processVideoDirectly] Starting video transcoding')
+    try {
+      const tempDir = os.tmpdir()
+      const inputPath = path.join(tempDir, `input_${nanoid()}.mp4`)
+      const outputPath = path.join(tempDir, `output_${nanoid()}.mp4`)
+      
+      await fs.writeFile(inputPath, videoBuffer)
+      console.log('[processVideoDirectly] Wrote input file:', inputPath)
+      
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(inputPath)
+          .videoCodec('libx264')
+          .audioCodec('aac')
+          .format('mp4')
+          .outputOptions([
+            '-preset fast',
+            '-crf 23',
+            '-movflags +faststart',
+            '-pix_fmt yuv420p',
+          ])
+          .on('start', (cmd) => {
+            console.log('[processVideoDirectly] FFmpeg command:', cmd)
+          })
+          .on('progress', (progress) => {
+            console.log('[processVideoDirectly] Transcoding progress:', Math.round(progress.percent || 0) + '%')
+          })
+          .on('end', () => {
+            console.log('[processVideoDirectly] Transcoding completed')
+            resolve()
+          })
+          .on('error', (err) => {
+            console.error('[processVideoDirectly] FFmpeg error:', err)
+            reject(err)
+          })
+          .save(outputPath)
+      })
+      
+      const transcodedBuffer = await fs.readFile(outputPath)
+      videoBuffer = transcodedBuffer
+      
+      console.log('[processVideoDirectly] Transcoding complete:', {
+        originalSize: (await fs.stat(inputPath)).size,
+        transcodedSize: transcodedBuffer.length,
+        reduction: `${(100 - (transcodedBuffer.length / (await fs.stat(inputPath)).size) * 100).toFixed(1)}%`
+      })
+      
+      // Clean up temp files
+      await fs.unlink(inputPath).catch(() => {})
+      await fs.unlink(outputPath).catch(() => {})
+      
+    } catch (error) {
+      console.error('[processVideoDirectly] Transcoding failed:', error)
+      // Continue with original video
+    }
+
+    // Validate video constraints
+    const sizeInMB = videoBuffer.length / (1024 * 1024)
+    if (sizeInMB > 512) {
+      throw new Error(`Video too large (${sizeInMB.toFixed(2)}MB). Twitter limit is 512MB.`)
+    }
+
+    if (videoData.durationSeconds && videoData.durationSeconds > 140) {
+      throw new Error(`Video too long (${Math.round(videoData.durationSeconds)}s). Twitter limit is 140s.`)
+    }
+
+    // Update status to uploading
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'uploading',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+
+    // Upload to S3
+    const s3Key = `tweet-media/${userId}/${nanoid()}.mp4`
+    console.log('[processVideoDirectly] Uploading to S3:', s3Key)
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: s3Key,
+        Body: videoBuffer,
+        ContentType: 'video/mp4',
+      }),
+    )
+
+    const publicUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`
+    console.log('[processVideoDirectly] S3 upload complete:', publicUrl)
+
+    // Upload to Twitter
+    console.log('[processVideoDirectly] Starting Twitter upload')
+    const account = await getAccount(userId)
+    
+    const twitterClient = new TwitterApi({
+      appKey: process.env.TWITTER_API_KEY!,
+      appSecret: process.env.TWITTER_API_SECRET!,
+      accessToken: account.accessToken!,
+      accessSecret: account.accessTokenSecret!,
+    })
+
+    // Initialize chunked upload
+    const mediaUpload = await twitterClient.v1.uploadMedia(videoBuffer, {
+      mimeType: 'video/mp4',
+      target: 'tweet',
+      waitForProcessing: true,
+      longVideo: false,
+    })
+
+    console.log('[processVideoDirectly] Twitter upload complete:', {
+      media_id: mediaUpload,
+    })
+
+    // Update tweet with video information
+    if (tweetId) {
+      const tweet = await db.query.tweets.findFirst({
+        where: eq(tweets.id, tweetId),
+      })
+
+      if (tweet) {
+        const updatedMedia = [
+          ...(tweet.media || []),
+          {
+            s3Key,
+            media_id: mediaUpload,
+            url: publicUrl,
+            type: 'video' as const,
+            platform: videoData.platform || platform,
+            originalUrl: videoData.sourceUrl || url,
+            title: videoData.title,
+            duration: videoData.durationSeconds,
+            size: videoBuffer.length,
+          },
+        ]
+
+        await db
+          .update(tweets)
+          .set({
+            media: updatedMedia as any,
+            videoProcessingStatus: 'complete',
+            pendingVideoUrl: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(tweets.id, tweetId))
+
+        console.log('[processVideoDirectly] Updated tweet with video:', tweetId)
+      }
+    }
+
+    // Auto-post if enabled
+    if (autoPost && tweetId) {
+      console.log('[processVideoDirectly] Auto-posting tweet with video')
+      const { publishThreadById } = await import('./chat/utils')
+      await publishThreadById({
+        threadId: tweetId,
+        userId,
+        accountId: account.id,
+        logPrefix: 'processVideoDirectly'
+      })
+    }
+
+    return {
+      success: true,
+      s3Key,
+      url: publicUrl,
+      media_id: mediaUpload,
+      platform: videoData.platform || platform,
+    }
+
+  } catch (error) {
+    console.error('[processVideoDirectly] Video processing error:', error)
+    
+    // Update tweet status
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'failed',
+          videoErrorMessage: error instanceof Error ? error.message : 'Unknown error',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+
+    throw error
+  }
+}
+
 export const videoRouter = j.router({
   // Submit video URL for processing
   submitVideoUrl: privateProcedure
@@ -149,24 +487,57 @@ export const videoRouter = j.router({
           console.log('[VideoRouter] Created new tweet for video:', processedTweetId)
         }
 
-        // Start video processing in background using QStash
-        const webhookUrl = process.env.WEBHOOK_URL || getBaseUrl() + '/api/video/processVideo'
-        console.log('[VideoRouter] Enqueueing video processing job:', {
-          webhookUrl,
-          tweetId: processedTweetId,
-          url
-        })
-
-        await qstash.publishJSON({
-          url: webhookUrl,
-          body: {
-            url,
-            platform,
+        // In development, process video synchronously to avoid QStash localhost issues
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[VideoRouter] Development mode: processing video synchronously')
+          
+          // Process video directly in the same request (but in background)
+          setImmediate(async () => {
+            try {
+              console.log('[VideoRouter] Starting background video processing in development')
+              await processVideoDirectly({
+                url,
+                platform,
+                tweetId: processedTweetId,
+                userId: user.id,
+                autoPost,
+              })
+              console.log('[VideoRouter] Video processed successfully in development mode')
+            } catch (error) {
+              console.error('[VideoRouter] Development video processing failed:', error)
+              // Update tweet status on error
+              if (processedTweetId) {
+                await db
+                  .update(tweets)
+                  .set({
+                    videoProcessingStatus: 'failed',
+                    videoErrorMessage: error instanceof Error ? error.message : 'Video processing failed',
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(tweets.id, processedTweetId))
+              }
+            }
+          })
+        } else {
+          // Production: use QStash for async processing
+          const webhookUrl = process.env.WEBHOOK_URL || getBaseUrl() + '/api/video/processVideo'
+          console.log('[VideoRouter] Production mode: enqueueing video processing job:', {
+            webhookUrl,
             tweetId: processedTweetId,
-            userId: user.id,
-            autoPost,
-          },
-        })
+            url
+          })
+
+          await qstash.publishJSON({
+            url: webhookUrl,
+            body: {
+              url,
+              platform,
+              tweetId: processedTweetId,
+              userId: user.id,
+              autoPost,
+            },
+          })
+        }
 
         return c.json({
           success: true,
@@ -579,14 +950,22 @@ export const videoRouter = j.router({
       const processingTweets = await db.query.tweets.findMany({
         where: and(
           eq(tweets.userId, user.id),
-          eq(tweets.videoProcessingStatus, 'downloading'),
+          // Get all tweets that have any video processing status or pending video URL
+          // This includes downloading, transcoding, uploading, complete, and failed
         ),
       })
 
-      console.log('[VideoRouter] Found processing tweets:', processingTweets.length)
+      // Filter for tweets that actually have video processing activity
+      const videosInProgress = processingTweets.filter(tweet => 
+        tweet.videoProcessingStatus || 
+        tweet.pendingVideoUrl ||
+        (tweet.media && tweet.media.some((m: any) => m.type === 'video'))
+      )
+
+      console.log('[VideoRouter] Found video-related tweets:', videosInProgress.length)
 
       return c.json({
-        tweets: processingTweets,
+        tweets: videosInProgress,
       })
     }),
 })
