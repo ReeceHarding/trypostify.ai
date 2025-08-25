@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, foreignKey, unique, boolean, json, integer, bigint, index, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, text, timestamp, foreignKey, unique, boolean, json, integer, bigint, index, numeric, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const knowledgeType = pgEnum("knowledge_type", ['url', 'txt', 'docx', 'pdf', 'image', 'manual'])
@@ -122,6 +122,13 @@ export const tweets = pgTable("tweets", {
 	replies: integer().default(0),
 	impressions: integer().default(0),
 	metricsUpdatedAt: timestamp("metrics_updated_at", { mode: 'string' }),
+	pendingVideoUrl: text("pending_video_url"),
+	videoProcessingStatus: text("video_processing_status"),
+	videoErrorMessage: text("video_error_message"),
+	videoProcessingStartedAt: timestamp("video_processing_started_at", { mode: 'string' }),
+	videoProcessingCompletedAt: timestamp("video_processing_completed_at", { mode: 'string' }),
+	apifyRunId: text("apify_run_id"),
+	videoCacheId: text("video_cache_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.userId],
@@ -169,13 +176,53 @@ export const user = pgTable("user", {
 	image: text(),
 	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
-	plan: text().default('free').notNull(),
+	plan: text().default('pro').notNull(),
 	stripeId: text("stripe_id"),
 	hadTrial: boolean("had_trial").default(false),
 	goals: json().default([]),
 	frequency: integer(),
 	hasXPremium: boolean("has_x_premium").default(false),
+	postingWindowStart: integer("posting_window_start").default(8),
+	postingWindowEnd: integer("posting_window_end").default(18),
 }, (table) => [
 	unique("user_email_unique").on(table.email),
 	unique("user_stripe_id_unique").on(table.stripeId),
+]);
+
+export const twitterUser = pgTable("twitter_user", {
+	id: text().primaryKey().notNull(),
+	username: text().notNull(),
+	name: text().notNull(),
+	profileImageUrl: text("profile_image_url"),
+	verified: boolean().default(false),
+	followersCount: integer("followers_count"),
+	description: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
+	lastSearchedAt: timestamp("last_searched_at", { mode: 'string' }),
+	searchCount: integer("search_count").default(0),
+}, (table) => [
+	index("twitter_user_name_idx").using("btree", sql`lower(name)`),
+	index("twitter_user_search_count_idx").using("btree", table.searchCount.asc().nullsLast().op("int4_ops")),
+	index("twitter_user_username_idx").using("btree", sql`lower(username)`),
+	unique("twitter_user_username_unique").on(table.username),
+]);
+
+export const videoCache = pgTable("video_cache", {
+	id: text().primaryKey().notNull(),
+	originalUrl: text("original_url").notNull(),
+	normalizedUrl: text("normalized_url").notNull(),
+	s3Key: text("s3_key"),
+	mediaId: text("media_id"),
+	processingStatus: text("processing_status").default('pending').notNull(),
+	apifyRunId: text("apify_run_id"),
+	fileSize: integer("file_size"),
+	durationSeconds: numeric("duration_seconds"),
+	platform: text(),
+	errorMessage: text("error_message"),
+	retryCount: integer("retry_count").default(0),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+}, (table) => [
+	unique("video_cache_original_url_unique").on(table.originalUrl),
 ]);

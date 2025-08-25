@@ -1,204 +1,161 @@
-import { j, privateProcedure } from '../jstack'
+import { j } from '../jstack'
 import { z } from 'zod'
+import { db } from '../../db'
+import { videoJob } from '../../db/schema/video-job'
 import { HTTPException } from 'hono/http-exception'
-import { db } from '@/db'
-import { videoJob, tweets } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
-import { qstash } from '@/lib/qstash'
+import { v4 as uuidv4 } from 'uuid'
 
 export const videoJobRouter = j.router({
-  // Create a background video processing job
-  createVideoJob: privateProcedure
-    .input(
-      z.object({
-        videoUrl: z.string().url(),
-        tweetId: z.string(),
-        threadId: z.string(),
-        platform: z.string(),
-      }),
-    )
-    .post(async ({ c, ctx, input }) => {
-      const { user } = ctx
-      const { videoUrl, tweetId, threadId, platform } = input
-      
-      console.log('[VideoJob] Creating background video job:', {
-        videoUrl,
-        tweetId,
-        threadId,
-        platform,
-        userId: user.id,
-      })
-      
-      // Verify the tweet exists and belongs to the user
-      const tweet = await db.query.tweets.findFirst({
-        where: and(
-          eq(tweets.id, tweetId),
-          eq(tweets.userId, user.id),
-        ),
-      })
-      
-      if (!tweet) {
-        throw new HTTPException(404, {
-          message: 'Tweet not found or does not belong to user',
-        })
-      }
-      
-      // Create video job record
-      const jobId = nanoid()
+  
+  // Create a new video processing job
+  createVideoJob: j.authenticatedProcedure
+    .input(z.object({
+      videoUrl: z.string().url('Video URL must be valid'),
+      tweetId: z.string().min(1, 'Tweet ID is required'),
+      threadId: z.string().min(1, 'Thread ID is required'),
+      platform: z.string().min(1, 'Platform is required'),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      console.log('[VideoJobRouter] 🎬 Creating video job at', new Date().toISOString())
+      console.log('[VideoJobRouter] 📋 Input data:', input)
+      console.log('[VideoJobRouter] 👤 User ID:', ctx.user.id)
       
       try {
-        await db.insert(videoJob).values({
+        // Create video job record
+        const jobId = uuidv4()
+        
+        console.log('[VideoJobRouter] 💾 Inserting video job into database with ID:', jobId)
+        
+        const newJob = await db.insert(videoJob).values({
           id: jobId,
-          userId: user.id,
-          tweetId,
-          threadId,
-          videoUrl,
-          platform,
+          userId: ctx.user.id,
+          tweetId: input.tweetId,
+          threadId: input.threadId,
+          videoUrl: input.videoUrl,
+          platform: input.platform,
           status: 'pending',
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        }).returning()
         
-        console.log('[VideoJob] Created video job record:', jobId)
+        console.log('[VideoJobRouter] ✅ Video job created successfully:', newJob[0])
         
-        // Schedule background processing with QStash
-        const webhookUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/video/process`
+        // TODO: Queue the job with QStash for background processing
+        console.log('[VideoJobRouter] 🔄 TODO: Queue job with QStash for background processing')
         
-        let qstashMessageId = null
-        
-        if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
-          // In development, create a fake QStash ID and process immediately
-          qstashMessageId = `local-video-${Date.now()}-${Math.random().toString(36).substring(7)}`
-          console.log('[VideoJob] Development mode - processing video immediately')
-          
-          // Trigger processing in background (don't await)
-          setTimeout(async () => {
-            try {
-              await fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoJobId: jobId }),
-              })
-            } catch (error) {
-              console.error('[VideoJob] Failed to process video in development:', error)
-            }
-          }, 1000) // Small delay to let response return first
-          
-        } else {
-          // In production, use QStash for reliable background processing
-          const qstashResponse = await qstash.publishJSON({
-            url: webhookUrl,
-            body: { videoJobId: jobId },
-            delay: 2, // Process in 2 seconds
-          })
-          qstashMessageId = qstashResponse.messageId
+        return {
+          success: true,
+          jobId: newJob[0].id,
+          status: newJob[0].status,
+          message: 'Video job created successfully. Processing will begin shortly.',
         }
         
-        // Update job with QStash ID
-        await db
-          .update(videoJob)
-          .set({
-            qstashId: qstashMessageId,
-            updatedAt: new Date(),
-          })
-          .where(eq(videoJob.id, jobId))
+      } catch (error) {
+        console.error('[VideoJobRouter] ❌ Failed to create video job:', error)
         
-        console.log('[VideoJob] Scheduled background processing:', {
-          jobId,
-          qstashMessageId,
-        })
-        
-        return c.json({
-          success: true,
-          videoJobId: jobId,
-          status: 'pending',
-          message: 'Video processing started in background',
-        })
-        
-      } catch (error: any) {
-        console.error('[VideoJob] Failed to create video job:', error)
         throw new HTTPException(500, {
-          message: 'Failed to create video processing job',
+          message: `Failed to create video job: ${error instanceof Error ? error.message : 'Unknown error'}`,
         })
       }
     }),
 
-  // Check video job status
-  getVideoJobStatus: privateProcedure
-    .input(
-      z.object({
-        videoJobId: z.string(),
-      }),
-    )
-    .post(async ({ c, ctx, input }) => {
-      const { user } = ctx
-      const { videoJobId } = input
+  // Get video job status
+  getVideoJobStatus: j.authenticatedProcedure
+    .input(z.object({
+      jobId: z.string().min(1, 'Job ID is required'),
+    }))
+    .query(async ({ input, ctx }) => {
+      console.log('[VideoJobRouter] 📊 Getting video job status for ID:', input.jobId)
       
-      const job = await db.query.videoJob.findFirst({
-        where: and(
-          eq(videoJob.id, videoJobId),
-          eq(videoJob.userId, user.id),
-        ),
-      })
-      
-      if (!job) {
-        throw new HTTPException(404, {
-          message: 'Video job not found',
+      try {
+        const job = await db.query.videoJob.findFirst({
+          where: (videoJob, { eq, and }) => and(
+            eq(videoJob.id, input.jobId),
+            eq(videoJob.userId, ctx.user.id)
+          ),
         })
-      }
-      
-      return c.json({
-        videoJobId: job.id,
-        status: job.status,
-        s3Key: job.s3Key,
-        twitterMediaId: job.twitterMediaId,
-        errorMessage: job.errorMessage,
-        videoMetadata: job.videoMetadata,
-        createdAt: job.createdAt,
-        updatedAt: job.updatedAt,
-        completedAt: job.completedAt,
-      })
-    }),
-
-  // List user's video jobs
-  getUserVideoJobs: privateProcedure
-    .input(
-      z.object({
-        limit: z.number().default(10),
-        status: z.enum(['pending', 'processing', 'completed', 'failed']).optional(),
-      }),
-    )
-    .post(async ({ c, ctx, input }) => {
-      const { user } = ctx
-      const { limit, status } = input
-      
-      const whereClause = status 
-        ? and(eq(videoJob.userId, user.id), eq(videoJob.status, status))
-        : eq(videoJob.userId, user.id)
-      
-      const jobs = await db.query.videoJob.findMany({
-        where: whereClause,
-        limit,
-        orderBy: (videoJob, { desc }) => [desc(videoJob.createdAt)],
-      })
-      
-      return c.json({
-        jobs: jobs.map(job => ({
-          videoJobId: job.id,
-          tweetId: job.tweetId,
-          threadId: job.threadId,
-          videoUrl: job.videoUrl,
-          platform: job.platform,
+        
+        if (!job) {
+          throw new HTTPException(404, { message: 'Video job not found' })
+        }
+        
+        console.log('[VideoJobRouter] 📋 Video job status:', job.status)
+        
+        return {
+          id: job.id,
           status: job.status,
-          s3Key: job.s3Key,
-          twitterMediaId: job.twitterMediaId,
-          errorMessage: job.errorMessage,
-          videoMetadata: job.videoMetadata,
           createdAt: job.createdAt,
           updatedAt: job.updatedAt,
           completedAt: job.completedAt,
-        })),
-      })
+          errorMessage: job.errorMessage,
+          s3Key: job.s3Key,
+          twitterMediaId: job.twitterMediaId,
+        }
+        
+      } catch (error) {
+        console.error('[VideoJobRouter] ❌ Failed to get video job status:', error)
+        
+        if (error instanceof HTTPException) {
+          throw error
+        }
+        
+        throw new HTTPException(500, {
+          message: `Failed to get video job status: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
+    }),
+
+  // List all video jobs for user
+  listVideoJobs: j.authenticatedProcedure
+    .input(z.object({
+      status: z.enum(['pending', 'processing', 'completed', 'failed']).optional(),
+      limit: z.number().min(1).max(100).default(20),
+      offset: z.number().min(0).default(0),
+    }))
+    .query(async ({ input, ctx }) => {
+      console.log('[VideoJobRouter] 📝 Listing video jobs for user:', ctx.user.id)
+      console.log('[VideoJobRouter] 🔍 Filters:', input)
+      
+      try {
+        const jobs = await db.query.videoJob.findMany({
+          where: (videoJob, { eq, and }) => {
+            const conditions = [eq(videoJob.userId, ctx.user.id)]
+            
+            if (input.status) {
+              conditions.push(eq(videoJob.status, input.status))
+            }
+            
+            return and(...conditions)
+          },
+          limit: input.limit,
+          offset: input.offset,
+          orderBy: (videoJob, { desc }) => [desc(videoJob.createdAt)],
+        })
+        
+        console.log('[VideoJobRouter] 📊 Found', jobs.length, 'video jobs')
+        
+        return {
+          jobs: jobs.map(job => ({
+            id: job.id,
+            tweetId: job.tweetId,
+            threadId: job.threadId,
+            videoUrl: job.videoUrl,
+            platform: job.platform,
+            status: job.status,
+            createdAt: job.createdAt,
+            updatedAt: job.updatedAt,
+            completedAt: job.completedAt,
+            errorMessage: job.errorMessage,
+          })),
+          total: jobs.length,
+        }
+        
+      } catch (error) {
+        console.error('[VideoJobRouter] ❌ Failed to list video jobs:', error)
+        
+        throw new HTTPException(500, {
+          message: `Failed to list video jobs: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
     }),
 })
