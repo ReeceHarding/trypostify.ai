@@ -195,9 +195,13 @@ function ThreadTweetContent({
     
     // Notify parent component about the update
     if (onUpdate) {
-      const filteredMedia = mediaFiles.filter(f => f.media_id && f.s3Key).map(f => ({
-        s3Key: f.s3Key!,
-        media_id: f.media_id!,
+      const filteredMedia = mediaFiles.filter(f => (f.media_id && f.s3Key) || f.isPending).map(f => ({
+        s3Key: f.s3Key || '',
+        media_id: f.media_id || '',
+        isPending: f.isPending,
+        pendingJobId: f.pendingJobId,
+        videoUrl: f.videoUrl,
+        platform: f.platform,
       }))
       onUpdate(newContent, filteredMedia)
     }
@@ -610,8 +614,15 @@ function ThreadTweetContent({
         if (onUpdate) {
           const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
           const parentMedia = nextFiles
-            .filter((f) => f.media_id && f.s3Key)
-            .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+            .filter((f) => (f.media_id && f.s3Key) || f.isPending) // Include pending media
+            .map((f) => ({ 
+              s3Key: f.s3Key || '', 
+              media_id: f.media_id || '',
+              isPending: f.isPending,
+              pendingJobId: f.pendingJobId,
+              videoUrl: f.videoUrl,
+              platform: f.platform,
+            }))
           onUpdate(content, parentMedia)
         }
       } catch (error) {
@@ -645,8 +656,15 @@ function ThreadTweetContent({
     if (onUpdate) {
       const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
       const parentMedia = nextFiles
-        .filter((f) => f.media_id && f.s3Key)
-        .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+        .filter((f) => (f.media_id && f.s3Key) || f.isPending) // Include pending media
+        .map((f) => ({ 
+          s3Key: f.s3Key || '', 
+          media_id: f.media_id || '',
+          isPending: f.isPending,
+          pendingJobId: f.pendingJobId,
+          videoUrl: f.videoUrl,
+          platform: f.platform,
+        }))
       onUpdate(content, parentMedia)
     }
   }
@@ -1002,9 +1020,13 @@ function ThreadTweetContent({
     // Update parent if exists
     if (onUpdate) {
       const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
-      const allMedia = [...mediaFiles, ...newMediaFiles].filter(f => f.media_id && f.s3Key).map(f => ({
-        s3Key: f.s3Key!,
-        media_id: f.media_id!,
+      const allMedia = [...mediaFiles, ...newMediaFiles].filter(f => (f.media_id && f.s3Key) || f.isPending).map(f => ({
+        s3Key: f.s3Key || '',
+        media_id: f.media_id || '',
+        isPending: f.isPending,
+        pendingJobId: f.pendingJobId,
+        videoUrl: f.videoUrl,
+        platform: f.platform,
       }))
       onUpdate(content, allMedia)
     }
