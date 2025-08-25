@@ -132,6 +132,27 @@ async function processVideoDirectly({
     timestamp: new Date().toISOString()
   })
 
+  // CRITICAL: Validate URL parameter before proceeding
+  if (!url || typeof url !== 'string' || url.trim() === '') {
+    console.error('[processVideoDirectly] CRITICAL ERROR: Invalid URL provided:', {
+      url,
+      urlType: typeof url,
+      urlLength: url?.length || 0,
+      isEmpty: !url,
+      isEmptyString: url === '',
+      isUndefined: url === undefined,
+      isNull: url === null
+    })
+    throw new Error('Invalid or missing video URL')
+  }
+
+  const sanitizedUrl = url.trim()
+  console.log('[processVideoDirectly] URL validation passed:', {
+    originalUrl: url,
+    sanitizedUrl,
+    urlLength: sanitizedUrl.length
+  })
+
   try {
     // Update status to downloading
     if (tweetId) {
@@ -144,6 +165,24 @@ async function processVideoDirectly({
         .where(eq(tweets.id, tweetId))
     }
 
+    // Prepare Apify request payload
+    const apifyPayload = {
+      input: {
+        video_url: sanitizedUrl,
+        downloadVideo: true,
+        downloadAudio: false,
+        downloadThumbnail: true,
+      }
+    }
+
+    console.log('[processVideoDirectly] Preparing Apify request:', {
+      apiEndpoint: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
+      hasApiToken: !!process.env.APIFY_API_TOKEN,
+      apiTokenLength: process.env.APIFY_API_TOKEN?.length || 0,
+      payload: apifyPayload,
+      payloadString: JSON.stringify(apifyPayload)
+    })
+
     // Call Apify marketingme/video-downloader actor
     console.log('[processVideoDirectly] Starting Apify actor run')
     const runResponse = await fetch(
@@ -153,19 +192,33 @@ async function processVideoDirectly({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          video_urls: [url],
-          downloadVideo: true,
-          downloadAudio: false,
-          downloadThumbnail: true,
-        }),
+        body: JSON.stringify(apifyPayload),
       },
     )
 
     if (!runResponse.ok) {
       const error = await runResponse.text()
-      console.error('[processVideoDirectly] Failed to start Apify run:', error)
-      throw new Error('Failed to start video download process')
+      console.error('[processVideoDirectly] Failed to start Apify run:', {
+        status: runResponse.status,
+        statusText: runResponse.statusText,
+        error,
+        url: sanitizedUrl,
+        headers: Object.fromEntries(runResponse.headers.entries())
+      })
+      
+      // Try to parse error as JSON for better error details
+      try {
+        const errorJson = JSON.parse(error)
+        console.error('[processVideoDirectly] Parsed Apify error:', errorJson)
+        
+        if (errorJson.error?.message) {
+          throw new Error(`Apify API Error: ${errorJson.error.message}`)
+        }
+      } catch (parseError) {
+        console.log('[processVideoDirectly] Could not parse error as JSON, using raw text')
+      }
+      
+      throw new Error(`Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`)
     }
 
     const runData: any = await runResponse.json()
@@ -694,6 +747,27 @@ export const videoRouter = j.router({
       })
 
       try {
+        // CRITICAL: Validate URL parameter before proceeding
+        if (!url || typeof url !== 'string' || url.trim() === '') {
+          console.error('[VideoRouter] CRITICAL ERROR: Invalid URL provided:', {
+            url,
+            urlType: typeof url,
+            urlLength: url?.length || 0,
+            isEmpty: !url,
+            isEmptyString: url === '',
+            isUndefined: url === undefined,
+            isNull: url === null
+          })
+          throw new Error('Invalid or missing video URL')
+        }
+
+        const sanitizedUrl = url.trim()
+        console.log('[VideoRouter] URL validation passed:', {
+          originalUrl: url,
+          sanitizedUrl,
+          urlLength: sanitizedUrl.length
+        })
+
         // Update status to downloading
         if (tweetId) {
           await db
@@ -705,6 +779,24 @@ export const videoRouter = j.router({
             .where(eq(tweets.id, tweetId))
         }
 
+        // Prepare Apify request payload
+        const apifyPayload = {
+          input: {
+            video_url: sanitizedUrl,
+            downloadVideo: true,
+            downloadAudio: false,
+            downloadThumbnail: true,
+          }
+        }
+
+        console.log('[VideoRouter] Preparing Apify request:', {
+          apiEndpoint: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
+          hasApiToken: !!process.env.APIFY_API_TOKEN,
+          apiTokenLength: process.env.APIFY_API_TOKEN?.length || 0,
+          payload: apifyPayload,
+          payloadString: JSON.stringify(apifyPayload)
+        })
+
         // Call Apify marketingme/video-downloader actor
         console.log('[VideoRouter] Starting Apify actor run')
         const runResponse = await fetch(
@@ -714,19 +806,33 @@ export const videoRouter = j.router({
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              video_urls: [url],
-              downloadVideo: true,
-              downloadAudio: false,
-              downloadThumbnail: true,
-            }),
+            body: JSON.stringify(apifyPayload),
           },
         )
 
         if (!runResponse.ok) {
           const error = await runResponse.text()
-          console.error('[VideoRouter] Failed to start Apify run:', error)
-          throw new Error('Failed to start video download process')
+          console.error('[VideoRouter] Failed to start Apify run:', {
+            status: runResponse.status,
+            statusText: runResponse.statusText,
+            error,
+            url: sanitizedUrl,
+            headers: Object.fromEntries(runResponse.headers.entries())
+          })
+          
+          // Try to parse error as JSON for better error details
+          try {
+            const errorJson = JSON.parse(error)
+            console.error('[VideoRouter] Parsed Apify error:', errorJson)
+            
+            if (errorJson.error?.message) {
+              throw new Error(`Apify API Error: ${errorJson.error.message}`)
+            }
+          } catch (parseError) {
+            console.log('[VideoRouter] Could not parse error as JSON, using raw text')
+          }
+          
+          throw new Error(`Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`)
         }
 
         const runData: any = await runResponse.json()
