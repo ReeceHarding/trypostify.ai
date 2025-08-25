@@ -26,6 +26,7 @@ export const videoJob = pgTable('video_jobs', {
   
   // Metadata
   videoMetadata: json('video_metadata'), // Duration, dimensions, etc.
+  tweetContent: json('tweet_content'), // Complete tweet data for posting when video is ready
   
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

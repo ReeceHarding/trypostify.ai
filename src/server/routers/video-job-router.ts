@@ -11,9 +11,10 @@ export const videoJobRouter = j.router({
   createVideoJob: j.authenticatedProcedure
     .input(z.object({
       videoUrl: z.string().url('Video URL must be valid'),
-      tweetId: z.string().min(1, 'Tweet ID is required'),
+      tweetId: z.string().optional(), // Optional for queued tweets
       threadId: z.string().min(1, 'Thread ID is required'),
       platform: z.string().min(1, 'Platform is required'),
+      tweetContent: z.any().optional(), // Complete tweet data for posting when video is ready
     }))
     .mutation(async ({ input, ctx }) => {
       console.log('[VideoJobRouter] 🎬 Creating video job at', new Date().toISOString())
@@ -29,11 +30,12 @@ export const videoJobRouter = j.router({
         const newJob = await db.insert(videoJob).values({
           id: jobId,
           userId: ctx.user.id,
-          tweetId: input.tweetId,
+          tweetId: input.tweetId || '',
           threadId: input.threadId,
           videoUrl: input.videoUrl,
           platform: input.platform,
           status: 'pending',
+          tweetContent: input.tweetContent || null,
           createdAt: new Date(),
           updatedAt: new Date(),
         }).returning()
