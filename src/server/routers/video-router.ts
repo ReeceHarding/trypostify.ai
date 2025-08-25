@@ -165,31 +165,28 @@ async function processVideoDirectly({
         .where(eq(tweets.id, tweetId))
     }
 
-    // Prepare Apify request payload
+    // Prepare Apify request payload (corrected format per documentation)
     const apifyPayload = {
-      input: {
-        urls: [sanitizedUrl], // FIXED: Actor expects 'urls' array, not 'video_url' string
-        downloadVideo: true,
-        downloadAudio: false,
-        downloadThumbnail: true,
-      }
+      video_urls: [sanitizedUrl], // Correct format: video_urls array at root level
+      quality: "high" // Options: "medium" or "high"
     }
 
     console.log('[processVideoDirectly] Preparing Apify request:', {
-      apiEndpoint: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
+      apiEndpoint: `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync`,
       hasApiToken: !!process.env.APIFY_API_TOKEN,
       apiTokenLength: process.env.APIFY_API_TOKEN?.length || 0,
       payload: apifyPayload,
       payloadString: JSON.stringify(apifyPayload)
     })
 
-    // Call Apify marketingme/video-downloader actor
+    // Call Apify Video Downloader actor (corrected ID and endpoint)
     console.log('[processVideoDirectly] Starting Apify actor run')
     const runResponse = await fetch(
-      `https://api.apify.com/v2/acts/marketingme~video-downloader/runs?token=${process.env.APIFY_API_TOKEN}`,
+      `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync`,
       {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(apifyPayload),
@@ -221,66 +218,15 @@ async function processVideoDirectly({
       throw new Error(`Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`)
     }
 
-    const runData: any = await runResponse.json()
-    const runId = runData.data.id
-    console.log('[processVideoDirectly] Started Apify run:', runId)
+    // Process synchronous response (no polling needed with run-sync endpoint)
+    const responseData: any = await runResponse.json()
+    console.log('[processVideoDirectly] Received synchronous Apify response')
 
-    // Poll for completion with exponential backoff
-    const maxAttempts = 90
-    let attempts = 0
-    let runStatus: any
-    let currentDelayMs = 1500
-    const backoff = 1.25
-    const maxDelayMs = 8000
-
-    while (attempts < maxAttempts) {
-      attempts++
-      
-      await new Promise(resolve => setTimeout(resolve, currentDelayMs))
-      console.log(`[processVideoDirectly] Polling attempt ${attempts}/${maxAttempts}, delay: ${currentDelayMs}ms`)
-      currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
-      
-      const statusResponse = await fetch(
-        `https://api.apify.com/v2/acts/marketingme~video-downloader/runs/${runId}?token=${process.env.APIFY_API_TOKEN}`,
-      )
-      
-      if (!statusResponse.ok) {
-        console.error('[processVideoDirectly] Failed to check run status')
-        continue
-      }
-      
-      runStatus = await statusResponse.json()
-      console.log(`[processVideoDirectly] Run status: ${runStatus.data.status}`)
-      
-      if (runStatus.data.status === 'SUCCEEDED') {
-        break
-      } else if (runStatus.data.status === 'FAILED' || runStatus.data.status === 'ABORTED') {
-        throw new Error('Video download failed')
-      }
-    }
-
-    if (runStatus?.data?.status !== 'SUCCEEDED') {
-      throw new Error('Video download timed out')
-    }
-
-    // Get the dataset items
-    const datasetId = runStatus.data.defaultDatasetId
-    const itemsResponse = await fetch(
-      `https://api.apify.com/v2/datasets/${datasetId}/items?token=${process.env.APIFY_API_TOKEN}`,
-    )
-
-    if (!itemsResponse.ok) {
-      throw new Error('Failed to retrieve video data')
-    }
-
-    const items: any[] = await itemsResponse.json()
-    console.log('[processVideoDirectly] Retrieved dataset items:', items.length)
-
-    if (!items.length) {
+    if (!responseData.videos || !responseData.videos.length) {
       throw new Error('No video found at the provided URL')
     }
 
-    const videoData = items[0]
+    const videoData = responseData.videos[0] // Get first video from response
     console.log('[processVideoDirectly] Video data:', {
       platform: videoData.platform,
       title: videoData.title,
@@ -779,31 +725,28 @@ export const videoRouter = j.router({
             .where(eq(tweets.id, tweetId))
         }
 
-        // Prepare Apify request payload
+        // Prepare Apify request payload (corrected format per documentation)
         const apifyPayload = {
-          input: {
-            urls: [sanitizedUrl], // FIXED: Actor expects 'urls' array, not 'video_url' string
-            downloadVideo: true,
-            downloadAudio: false,
-            downloadThumbnail: true,
-          }
+          video_urls: [sanitizedUrl], // Correct format: video_urls array at root level
+          quality: "high" // Options: "medium" or "high"
         }
 
         console.log('[VideoRouter] Preparing Apify request:', {
-          apiEndpoint: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
+          apiEndpoint: `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync`,
           hasApiToken: !!process.env.APIFY_API_TOKEN,
           apiTokenLength: process.env.APIFY_API_TOKEN?.length || 0,
           payload: apifyPayload,
           payloadString: JSON.stringify(apifyPayload)
         })
 
-        // Call Apify marketingme/video-downloader actor
+        // Call Apify Video Downloader actor (corrected ID and endpoint)
         console.log('[VideoRouter] Starting Apify actor run')
         const runResponse = await fetch(
-          `https://api.apify.com/v2/acts/marketingme~video-downloader/runs?token=${process.env.APIFY_API_TOKEN}`,
+          `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync`,
           {
             method: 'POST',
             headers: {
+              'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(apifyPayload),
@@ -835,66 +778,15 @@ export const videoRouter = j.router({
           throw new Error(`Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`)
         }
 
-        const runData: any = await runResponse.json()
-        const runId = runData.data.id
-        console.log('[VideoRouter] Started Apify run:', runId)
+        // Process synchronous response (no polling needed with run-sync endpoint)
+        const responseData: any = await runResponse.json()
+        console.log('[VideoRouter] Received synchronous Apify response')
 
-        // Poll for completion with exponential backoff
-        const maxAttempts = 90
-        let attempts = 0
-        let runStatus: any
-        let currentDelayMs = 1500
-        const backoff = 1.25
-        const maxDelayMs = 8000
-
-        while (attempts < maxAttempts) {
-          attempts++
-          
-          await new Promise(resolve => setTimeout(resolve, currentDelayMs))
-          console.log(`[VideoRouter] Polling attempt ${attempts}/${maxAttempts}, delay: ${currentDelayMs}ms`)
-          currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
-          
-          const statusResponse = await fetch(
-            `https://api.apify.com/v2/acts/marketingme~video-downloader/runs/${runId}?token=${process.env.APIFY_API_TOKEN}`,
-          )
-          
-          if (!statusResponse.ok) {
-            console.error('[VideoRouter] Failed to check run status')
-            continue
-          }
-          
-          runStatus = await statusResponse.json()
-          console.log(`[VideoRouter] Run status: ${runStatus.data.status}`)
-          
-          if (runStatus.data.status === 'SUCCEEDED') {
-            break
-          } else if (runStatus.data.status === 'FAILED' || runStatus.data.status === 'ABORTED') {
-            throw new Error('Video download failed')
-          }
-        }
-
-        if (runStatus?.data?.status !== 'SUCCEEDED') {
-          throw new Error('Video download timed out')
-        }
-
-        // Get the dataset items
-        const datasetId = runStatus.data.defaultDatasetId
-        const itemsResponse = await fetch(
-          `https://api.apify.com/v2/datasets/${datasetId}/items?token=${process.env.APIFY_API_TOKEN}`,
-        )
-
-        if (!itemsResponse.ok) {
-          throw new Error('Failed to retrieve video data')
-        }
-
-        const items: any[] = await itemsResponse.json()
-        console.log('[VideoRouter] Retrieved dataset items:', items.length)
-
-        if (!items.length) {
+        if (!responseData.videos || !responseData.videos.length) {
           throw new Error('No video found at the provided URL')
         }
 
-        const videoData = items[0]
+        const videoData = responseData.videos[0] // Get first video from response
         console.log('[VideoRouter] Video data:', {
           platform: videoData.platform,
           title: videoData.title,
