@@ -739,7 +739,7 @@ function ThreadTweetContent({
     // Create a PENDING media file object immediately
     const pendingMediaFile: MediaFile = {
       file: null,
-      url: `/api/placeholder/pending-video.mp4`, // Placeholder URL
+      url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzMzNzNkYyIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UGVuZGluZzwvdGV4dD48L3N2Zz4=', // Base64 SVG placeholder
       type: 'video',
       uploading: false,
       uploaded: false,
@@ -1082,11 +1082,11 @@ function ThreadTweetContent({
                   {mediaFiles.length === 1 && mediaFiles[0] && (
                     <div className="relative group">
                       <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
-                        {isVideoFile(mediaFiles[0]) ? (
+                        {isVideoFile(mediaFiles[0]) || mediaFiles[0].isPending ? (
                           renderVideo(mediaFiles[0], "w-full max-h-[510px] object-cover")
                         ) : (
                           <img
-                            src={mediaFiles[0].url}
+                            src={mediaFiles[0].url || '/placeholder.jpg'}
                             alt="Upload preview"
                             className="w-full max-h-[510px] object-cover"
                           />
@@ -1101,11 +1101,11 @@ function ThreadTweetContent({
                       {mediaFiles.map((mediaFile, index) => (
                         <div key={mediaFile.url} className="relative group">
                           <div className="relative overflow-hidden h-[254px]">
-                            {isVideoFile(mediaFile) ? (
+                            {isVideoFile(mediaFile) || mediaFile.isPending ? (
                               renderVideo(mediaFile, "w-full h-full object-cover")
                             ) : (
                               <img
-                                src={mediaFile.url}
+                                src={mediaFile.url || '/placeholder.jpg'}
                                 alt="Upload preview"
                                 className="w-full h-full object-cover"
                               />
@@ -1159,11 +1159,11 @@ function ThreadTweetContent({
                       {mediaFiles.map((mediaFile, index) => (
                         <div key={mediaFile.url} className="relative group">
                           <div className="relative overflow-hidden h-full">
-                            {isVideoFile(mediaFile) ? (
+                            {isVideoFile(mediaFile) || mediaFile.isPending ? (
                               renderVideo(mediaFile, "w-full h-full object-cover")
                             ) : (
                               <img
-                                src={mediaFile.url}
+                                src={mediaFile.url || '/placeholder.jpg'}
                                 alt="Upload preview"
                                 className="w-full h-full object-cover"
                               />
