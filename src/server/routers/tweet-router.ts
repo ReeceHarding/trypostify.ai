@@ -14,14 +14,6 @@ import { z } from 'zod'
 import { j, privateProcedure, publicProcedure } from '../jstack'
 import { getAccount } from './utils/get-account'
 import { waitUntil } from '@vercel/functions'
-import * as ffmpeg from 'fluent-ffmpeg'
-import { promises as fs } from 'fs'
-import * as path from 'path'
-import * as os from 'os'
-import { nanoid } from 'nanoid'
-
-// Configure FFmpeg path (use system FFmpeg)
-ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg')
 import {
   addDays,
   addHours,
@@ -378,91 +370,27 @@ export const tweetRouter = j.router({
           break
       }
 
-      let mediaBuffer = Buffer.from(buffer)
+      const mediaBuffer = Buffer.from(buffer)
       
-      // TRANSCODE ALL VIDEOS: Ensure Twitter compatibility for any video source
-      if (mediaType === 'video') {
-        console.log(`[TwitterUpload] Transcoding video to Twitter-compatible format:`, {
-          originalSize: mediaBuffer.length,
+      // Get video metadata from S3 URL if available
+      let videoMetadata = null
+      if (mediaType === 'video' && s3Key.includes('tweet-media/')) {
+        // This is likely from our video downloader, log more details
+        console.log(`[TwitterUpload] Uploading downloaded video to Twitter:`, {
+          bufferSize: mediaBuffer.length,
           mimeType,
+          mediaCategory,
           s3Key,
           sizeMB: (mediaBuffer.length / (1024 * 1024)).toFixed(2)
         })
-        
-        try {
-          // Create temporary files
-          const tempDir = os.tmpdir()
-          const inputPath = path.join(tempDir, `twitter_input_${nanoid()}.mp4`)
-          const outputPath = path.join(tempDir, `twitter_output_${nanoid()}.mp4`)
-          
-          // Write original video to temp file
-          await fs.writeFile(inputPath, mediaBuffer)
-          console.log('[TwitterUpload] Wrote video to temp file for transcoding')
-          
-          // Transcode with FFmpeg for Twitter compatibility
-          await new Promise<void>((resolve, reject) => {
-            ffmpeg(inputPath)
-              .videoCodec('libx264') // H.264 codec required by Twitter
-              .audioCodec('aac')     // AAC audio required by Twitter
-              .format('mp4')         // MP4 container
-              .outputOptions([
-                '-preset fast',      // Fast encoding
-                '-crf 23',          // Good quality/size balance
-                '-movflags +faststart', // Web optimization
-                '-pix_fmt yuv420p', // Twitter compatibility
-                '-profile:v baseline', // Twitter compatibility
-                '-level 3.0',       // Twitter compatibility
-              ])
-              .on('start', (commandLine) => {
-                console.log('[TwitterUpload] FFmpeg transcoding started for Twitter upload')
-              })
-              .on('progress', (progress) => {
-                console.log('[TwitterUpload] Transcoding progress:', Math.round(progress.percent || 0) + '%')
-              })
-              .on('end', () => {
-                console.log('[TwitterUpload] Video transcoding completed successfully')
-                resolve()
-              })
-              .on('error', (err) => {
-                console.error('[TwitterUpload] FFmpeg transcoding error:', err)
-                reject(err)
-              })
-              .save(outputPath)
-          })
-          
-          // Read transcoded video
-          const transcodedBuffer = await fs.readFile(outputPath)
-          const originalSize = mediaBuffer.length
-          mediaBuffer = transcodedBuffer
-          
-          console.log('[TwitterUpload] Transcoding complete:', {
-            originalSize,
-            transcodedSize: transcodedBuffer.length,
-            sizeDifference: `${((transcodedBuffer.length / originalSize) * 100).toFixed(1)}%`,
-            codecStatus: 'H.264/AAC (Twitter compatible)'
-          })
-          
-          // Clean up temp files
-          await fs.unlink(inputPath).catch(() => {})
-          await fs.unlink(outputPath).catch(() => {})
-          
-          // Force video/mp4 mime type after transcoding
-          mimeType = 'video/mp4'
-          
-        } catch (transcodeError) {
-          console.error('[TwitterUpload] Video transcoding failed:', transcodeError)
-          console.log('[TwitterUpload] Using original video (may fail on Twitter)')
-          // Continue with original video - let Twitter decide
-        }
+      } else {
+        console.log(`[TwitterUpload] Uploading ${mediaType} to Twitter:`, {
+          bufferSize: mediaBuffer.length,
+          mimeType,
+          mediaCategory,
+          s3Key
+        })
       }
-      
-      console.log(`[TwitterUpload] Uploading ${mediaType} to Twitter:`, {
-        bufferSize: mediaBuffer.length,
-        mimeType,
-        mediaCategory,
-        s3Key,
-        isTranscoded: mediaType === 'video' ? 'Yes (H.264/AAC)' : 'N/A'
-      })
       
       let mediaId: string
       try {
@@ -1466,7 +1394,7 @@ export const tweetRouter = j.router({
             content: z.string().min(1).max(280),
             media: z.array(
               z.object({
-                media_id: z.string().optional(),
+                media_id: z.string(),
                 s3Key: z.string(),
               }),
             ).optional(),
@@ -2104,9 +2032,12 @@ export const tweetRouter = j.router({
         return null // no slot found in next N days
       }
 
-      // For auto-queue when video is downloading, schedule for 5 minutes from now
-      // This ensures the video has time to finish processing
-      const nextSlot = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes from now
+      const nextSlot = getNextAvailableSlot({ 
+        userNow, 
+        timezone, 
+        maxDaysAhead: 90,
+        userFrequency 
+      })
 
       // console.log('[enqueueThread] Next available slot:', nextSlot)
 
@@ -2177,73 +2108,6 @@ export const tweetRouter = j.router({
         accountId: account.id,
         accountName: account.name,
         message: `Thread queued with ${threadTweets.length} tweets`,
-      })
-    }),
-
-  updateQueuedTweetWithVideo: privateProcedure
-    .input(
-      z.object({
-        s3Key: z.string(),
-        media_id: z.string(),
-        media_key: z.string().optional(),
-      })
-    )
-    .mutation(async ({ c, ctx, input }) => {
-      const { user } = ctx
-      const { s3Key, media_id, media_key } = input
-
-      console.log('[updateQueuedTweetWithVideo] Searching for queued tweets with s3Key:', s3Key)
-
-      // Find queued tweets that might be waiting for this video
-      const queuedTweets = await db.query.tweets.findMany({
-        where: and(
-          eq(tweets.userId, user.id),
-          eq(tweets.isScheduled, true),
-          isNotNull(tweets.scheduledFor)
-        )
-      })
-
-      console.log('[updateQueuedTweetWithVideo] Found queued tweets:', queuedTweets.length)
-
-      // Look for tweets that have media with this s3Key but no media_id yet
-      let updatedCount = 0
-      for (const tweet of queuedTweets) {
-        if (tweet.media && Array.isArray(tweet.media)) {
-          const mediaArray = tweet.media as Array<{ s3Key: string; media_id?: string }>
-          let hasUpdate = false
-          
-          const updatedMedia = mediaArray.map(media => {
-            if (media.s3Key === s3Key && !media.media_id) {
-              console.log('[updateQueuedTweetWithVideo] Updating media for tweet:', tweet.id)
-              hasUpdate = true
-              return {
-                ...media,
-                media_id,
-                media_key
-              }
-            }
-            return media
-          })
-
-          if (hasUpdate) {
-            await db
-              .update(tweets)
-              .set({
-                media: updatedMedia,
-                updatedAt: new Date()
-              })
-              .where(eq(tweets.id, tweet.id))
-            
-            updatedCount++
-            console.log('[updateQueuedTweetWithVideo] Updated tweet:', tweet.id)
-          }
-        }
-      }
-
-      return c.json({
-        success: true,
-        updatedCount,
-        message: `Updated ${updatedCount} queued tweets with video`
       })
     }),
 

@@ -81,61 +81,153 @@ This document describes a comprehensive video processing system that allows user
 ### 1. Video Download Service (Apify Integration)
 
 **Apify Actor Configuration:**
-- **Actor ID**: `marketingme/video-downloader`
-- **Purpose**: Downloads videos from social media platforms
-- **Supported Platforms**: TikTok, Instagram, YouTube, Twitter, Facebook, LinkedIn
+- **Actor ID**: `ceeA8aQjRcp3E6cNx`
+- **Actor Name**: Video Downloader (Without Logo)
+- **API Endpoint**: `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync`
+- **Purpose**: Downloads videos from social media platforms (watermark-free)
+- **Supported Platforms**: TikTok, Instagram, YouTube, Twitter/X, Facebook, LinkedIn, and 997+ additional platforms
 
 **API Integration:**
 ```javascript
-// Apify API Call Structure
-const apifyClient = new ApifyApi({
-  token: process.env.APIFY_API_TOKEN
-});
-
-const input = {
-  urls: [videoUrl],
-  downloadVideo: true,
-  downloadAudio: false,
-  downloadThumbnail: true
+// Apify API Call Structure - Direct HTTP Request
+const downloadVideo = async (videoUrl, quality = 'high') => {
+  const response = await fetch('https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      video_urls: [videoUrl],
+      quality: quality // "medium" or "high" (up to 4K)
+    })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Apify API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.videos[0]; // Return first video from batch
 };
-
-const run = await apifyClient.actor('marketingme/video-downloader').call(input);
 ```
 
 **Response Data Structure:**
 ```javascript
+// API returns a wrapper object with videos array
 {
-  sourceUrl: "https://www.tiktok.com/@user/video/123",
-  processor: "https://apify.com/marketingme/video-downloader",
-  processedAt: "2025-08-22T17:22:40.557362+00:00",
-  contentId: "ABC123",
-  platform: "TikTok",
-  title: "Video Title",
-  description: "Video description...",
-  durationSeconds: 67.245,
-  publishedAt: "2025-07-02T13:00:51",
-  author: "Username",
-  authorId: "user_id",
-  viewCount: 1000000,
-  likeCount: 50000,
-  commentCount: 1000,
-  width: 1080,
-  height: 1920,
-  mediaUrl: "https://api.apify.com/v2/key-value-stores/[id]/records/video.mp4",
-  thumbnailUrl: "https://api.apify.com/v2/key-value-stores/[id]/records/thumb.png",
-  totalSize: 5.2 // Size in MB
+  "videos": [
+    {
+      sourceUrl: "https://www.tiktok.com/@user/video/123",
+      processor: "https://apify.com/marketingme/video-downloader",
+      processedAt: "2025-08-22T17:22:40.557362+00:00",
+      contentId: "ABC123",
+      platform: "TikTok",
+      title: "Video Title",
+      description: "Video description...",
+      durationSeconds: 67.245,
+      publishedAt: "2025-07-02T13:00:51",
+      author: "Username",
+      authorId: "user_id",
+      authorUrl: "https://www.tiktok.com/@user",
+      viewCount: 1000000,
+      likeCount: 50000,
+      sharesCount: 1250,
+      commentCount: 1000,
+      width: 1080,
+      height: 1920,
+      fps: 30,
+      mediaUrl: "https://apify.com/storage/video_ABC123.mp4", // Direct MP4 link (watermark-free)
+      thumbnailUrl: "https://apify.com/storage/thumb_ABC123.png",
+      totalSize: 5.2, // Size in MB
+      categories: ["Entertainment", "Dance"],
+      tags: ["fyp", "trending", "viral"],
+      comments: [
+        {
+          author: "CommenterName",
+          text: "Amazing video!",
+          likeCount: 42,
+          publishedAt: "2025-07-02T14:15:30.000Z"
+        }
+      ]
+    }
+  ]
 }
+
+// For single video processing, access the first video:
+const videoData = response.videos[0];
 ```
 
-**Polling Logic:**
-- Start Apify run and get run ID
-- Poll every 1.5-3 seconds with exponential backoff
-- Maximum 90 polling attempts (about 5 minutes timeout)
-- Handle rate limiting and API errors gracefully
+**Batch Processing Capabilities:**
+- **Single Request**: Process 1 video URL
+- **Batch Request**: Process up to 5 video URLs simultaneously
+- **Performance**: Batch processing is more efficient for multiple videos
+- **Rate Limits**: Recommended 30 requests per second
 
-### 2. Video Transcoding Requirements
+**Batch Processing Example:**
+```javascript
+// Process multiple videos in a single request
+const downloadMultipleVideos = async (videoUrls, quality = 'high') => {
+  if (videoUrls.length > 5) {
+    throw new Error('Maximum 5 URLs per batch request');
+  }
+  
+  const response = await fetch('https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/run-sync', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      video_urls: videoUrls, // Array of up to 5 URLs
+      quality: quality
+    })
+  });
+  
+  const data = await response.json();
+  return data.videos; // Returns array of processed videos
+};
 
-**Twitter Video Specifications:**
+// Usage example
+const videoUrls = [
+  'https://www.tiktok.com/@creator1/video/12345',
+  'https://www.instagram.com/p/ABCDEF/',
+  'https://www.youtube.com/watch?v=xyz123'
+];
+const videos = await downloadMultipleVideos(videoUrls, 'high');
+```
+
+**Processing Logic:**
+- **Synchronous Processing**: Uses `/run-sync` endpoint for immediate results
+- **No Polling Required**: Results returned directly in response
+- **Error Handling**: Failed downloads return error objects per URL
+- **Automatic Retry**: Built-in retry logic for transient failures
+
+### 2. Video Quality Options & Transcoding Requirements
+
+**Apify Quality Settings:**
+- **"high"**: Up to 4K/2160p resolution (recommended for best quality)
+- **"medium"**: Standard HD resolution (faster processing, smaller files)
+
+**Quality Selection Strategy:**
+```javascript
+// Choose quality based on use case
+const quality = {
+  socialMedia: 'high',    // Best quality for professional content
+  bulk: 'medium',         // Faster processing for large batches
+  mobile: 'medium',       // Smaller files for mobile users
+  preview: 'medium'       // Quick previews and testing
+};
+
+// Dynamic quality selection based on platform
+const getOptimalQuality = (platform, fileSize) => {
+  if (platform === 'TikTok' && fileSize > 100) return 'medium'; // TikTok prefers smaller files
+  if (platform === 'YouTube') return 'high'; // YouTube supports high quality
+  return 'high'; // Default to high quality
+};
+```
+
+**Twitter Video Specifications (Post-Processing):**
 - **Container**: MP4
 - **Video Codec**: H.264 (Baseline, Main, or High profile)
 - **Audio Codec**: AAC (LC profile)
@@ -169,11 +261,12 @@ ffmpeg -i input.mp4 \
 - `-pix_fmt yuv420p`: Pixel format for compatibility
 
 **Quality & Size Optimization:**
-- Detect original video properties (resolution, bitrate, duration)
-- Skip transcoding if already Twitter-compatible
-- Adjust CRF based on original quality (18-28 range)
-- Preserve aspect ratio and orientation
-- Log transcoding progress for user feedback
+- **Apify Pre-Processing**: Videos are already optimized and watermark-free
+- **Skip Transcoding**: Most Apify videos are already Twitter-compatible (MP4/H.264)
+- **Quality Check**: Verify video meets Twitter specs before optional re-encoding
+- **Smart Transcoding**: Only re-encode if file size > 512MB or format incompatible
+- **Preserve Metadata**: Maintain aspect ratio, orientation, and quality from Apify
+- **Progress Logging**: Track transcoding progress for user feedback
 
 ### 3. Cloud Storage Integration (AWS S3)
 
@@ -185,21 +278,33 @@ ffmpeg -i input.mp4 \
 
 **Upload Process:**
 ```javascript
-// S3 Upload Implementation
-const uploadToS3 = async (videoBuffer, userId) => {
-  const s3Key = `tweet-media/${userId}/${generateRandomId()}.mp4`;
+// S3 Upload Implementation - Enhanced for Apify Integration
+const uploadToS3 = async (apifyVideoData, userId) => {
+  // Download video from Apify storage
+  const videoResponse = await fetch(apifyVideoData.mediaUrl);
+  const videoBuffer = await videoResponse.buffer();
+  
+  const s3Key = `tweet-media/${userId}/${apifyVideoData.contentId || generateRandomId()}.mp4`;
   
   await s3Client.upload({
     Bucket: process.env.S3_BUCKET,
     Key: s3Key,
     Body: videoBuffer,
     ContentType: 'video/mp4',
-    ACL: 'public-read'
+    ACL: 'public-read',
+    Metadata: {
+      'original-platform': apifyVideoData.platform,
+      'original-title': apifyVideoData.title,
+      'content-id': apifyVideoData.contentId,
+      'duration': apifyVideoData.durationSeconds.toString(),
+      'author': apifyVideoData.author
+    }
   }).promise();
   
   return {
     s3Key,
-    url: `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${s3Key}`
+    url: `https://${process.env.S3_BUCKET}.s3.amazonaws.com/${s3Key}`,
+    originalData: apifyVideoData // Preserve Apify metadata
   };
 };
 ```
@@ -256,7 +361,7 @@ ALTER TABLE tweets ADD COLUMN pending_video_url TEXT;
 ALTER TABLE tweets ADD COLUMN video_processing_status VARCHAR(20); -- 'downloading', 'transcoding', 'uploading', 'complete', 'failed'
 ALTER TABLE tweets ADD COLUMN video_error_message TEXT;
 
--- Media field structure (JSON)
+-- Media field structure (JSON) - Updated for new API response
 {
   "s3Key": "tweet-media/user123/video.mp4",
   "media_id": "1234567890", -- Twitter media ID (optional during processing)
@@ -266,8 +371,24 @@ ALTER TABLE tweets ADD COLUMN video_error_message TEXT;
   "platform": "TikTok", -- Source platform
   "originalUrl": "https://tiktok.com/@user/video/123",
   "title": "Video Title",
-  "duration": 67.245,
-  "size": 5242880 -- Size in bytes
+  "description": "Video description from platform",
+  "author": "Username",
+  "authorId": "unique_author_id",
+  "authorUrl": "https://platform.com/@username",
+  "durationSeconds": 67.245,
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "totalSize": 5.24, -- Size in MB (from API)
+  "viewCount": 1000000,
+  "likeCount": 50000,
+  "sharesCount": 1250,
+  "commentCount": 1000,
+  "categories": ["Entertainment", "Dance"],
+  "tags": ["fyp", "trending", "viral"],
+  "thumbnailUrl": "https://apify.com/storage/thumb_ABC123.png",
+  "processedAt": "2025-08-22T17:22:40.557362+00:00",
+  "contentId": "ABC123"
 }
 ```
 
@@ -324,14 +445,18 @@ ALTER TABLE tweets ADD COLUMN video_error_message TEXT;
 ### 2. Performance Optimization
 
 **Caching Strategy:**
-- Cache Apify results for duplicate URLs (24 hour TTL)
-- Store video metadata to avoid re-processing
-- Implement CDN for frequently accessed videos
+- **Cache Apify Results**: Store successful downloads for duplicate URLs (24 hour TTL)
+- **Batch Processing**: Use batch requests for multiple videos to reduce API calls
+- **Metadata Storage**: Store video metadata to avoid re-processing
+- **CDN Integration**: Implement CloudFront for frequently accessed videos
+- **Quality-Based Caching**: Cache different quality versions separately
 
 **Resource Management:**
-- Limit concurrent video processing (max 5 per user)
-- Clean up temporary files after processing
-- Monitor S3 storage usage and costs
+- **Concurrent Processing**: Limit to 5 video downloads per user simultaneously
+- **Rate Limiting**: Respect Apify's 30 requests/second recommendation
+- **Batch Optimization**: Group multiple URLs into single requests when possible
+- **Storage Monitoring**: Track S3 usage and implement cost alerts
+- **Cleanup**: Remove temporary files and failed downloads automatically
 
 ### 3. Security Considerations
 
@@ -395,8 +520,9 @@ ALTER TABLE tweets ADD COLUMN video_error_message TEXT;
 
 ### 1. Environment Variables
 ```bash
-# Apify Configuration
+# Apify Configuration - Updated for new API
 APIFY_API_TOKEN=your_apify_token
+APIFY_ACTOR_ID=ceeA8aQjRcp3E6cNx
 
 # AWS S3 Configuration  
 AWS_ACCESS_KEY_ID=your_access_key
@@ -410,22 +536,49 @@ TWITTER_API_SECRET=your_api_secret
 TWITTER_ACCESS_TOKEN=your_access_token
 TWITTER_ACCESS_TOKEN_SECRET=your_token_secret
 
-# Processing Configuration
+# Processing Configuration - Updated for new API
 MAX_CONCURRENT_VIDEOS=5
+MAX_BATCH_SIZE=5 # Maximum URLs per Apify request
 VIDEO_PROCESSING_TIMEOUT=300000 # 5 minutes in ms
+APIFY_RATE_LIMIT=30 # Requests per second
 TEMP_FILE_CLEANUP_INTERVAL=3600000 # 1 hour in ms
+DEFAULT_VIDEO_QUALITY=high # "medium" or "high"
 ```
 
 ### 2. Infrastructure Requirements
-- **CPU**: High for video transcoding (recommend 4+ cores)
-- **Memory**: 2GB+ for FFmpeg operations
-- **Storage**: Temporary space for video processing (10GB+ recommended)
-- **Network**: High bandwidth for video downloads/uploads
+- **CPU**: Moderate requirements (2+ cores) - Apify handles video processing
+- **Memory**: 1GB+ for handling video downloads and uploads
+- **Storage**: Temporary space for video transfer (5GB+ recommended)
+- **Network**: High bandwidth for video downloads from Apify and uploads to S3/Twitter
+- **API Limits**: Monitor Apify usage and Twitter API rate limits
 
 ### 3. Scaling Considerations
-- Implement job queue system (Redis/Bull) for high volume
-- Consider separate microservice for video processing
-- Use CDN for serving processed videos
-- Implement horizontal scaling for processing workers
+- **Job Queue System**: Implement Redis/Bull for high-volume video processing
+- **Batch Processing**: Leverage Apify's batch capabilities to reduce API calls
+- **CDN Integration**: Use CloudFront for serving processed videos globally
+- **Rate Limit Management**: Implement smart batching to stay within Apify limits
+- **Horizontal Scaling**: Scale video download/upload workers based on demand
+- **Microservice Architecture**: Consider separate service for video operations
 
-This specification provides a complete blueprint for implementing a robust video processing system that handles the entire pipeline from URL input to social media-ready content.
+This specification provides a complete blueprint for implementing a robust video processing system using the updated Apify Video Downloader API. The system handles the entire pipeline from URL input to social media-ready content with watermark-free, high-quality video downloads from 1000+ platforms.
+
+## Key Improvements with Updated API
+
+### Enhanced Capabilities
+- **Watermark-Free Videos**: All downloaded videos are clean without platform watermarks
+- **Batch Processing**: Process up to 5 videos simultaneously for better performance
+- **Quality Options**: Choose between medium and high quality based on use case
+- **Rich Metadata**: Access detailed video information including views, likes, comments, and tags
+- **Better Platform Support**: Support for 997+ platforms beyond the core social networks
+
+### Simplified Architecture
+- **No Polling Required**: Synchronous API eliminates complex polling logic
+- **Pre-Optimized Videos**: Most videos are already Twitter-compatible, reducing transcoding needs
+- **Direct MP4 Links**: Apify provides direct download links for seamless integration
+- **Automatic Retry**: Built-in retry logic reduces error handling complexity
+
+### Cost Optimization
+- **Efficient Batching**: Reduce API calls by processing multiple videos per request
+- **Smart Quality Selection**: Choose optimal quality based on platform and use case
+- **Reduced Transcoding**: Skip unnecessary video processing when files are already compatible
+- **Better Caching**: More detailed metadata enables better caching strategies

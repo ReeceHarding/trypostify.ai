@@ -27,11 +27,9 @@ import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plug
 import ReactMentionsInput from './react-mentions-input'
 
 
-
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
-import { nanoid } from 'nanoid'
 import {
   CalendarCog,
   ChevronDown,
@@ -43,9 +41,6 @@ import {
   Upload,
   X,
   Link2,
-  Video,
-  CheckCircle,
-  AlertCircle,
 } from 'lucide-react'
 
 import { PropsWithChildren } from 'react'
@@ -65,13 +60,12 @@ import {
   DrawerTitle,
 } from '../ui/drawer'
 import { Loader } from '../ui/loader'
-
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
 import ContentLengthIndicator from './content-length-indicator'
 import { Calendar20 } from './date-picker'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeyFeedback } from '../ui/hotkey-feedback'
-import Link from 'next/link'
 
 interface ThreadTweetProps {
   isThread: boolean
@@ -88,7 +82,7 @@ interface ThreadTweetProps {
   onUpdateThread?: () => void
   onCancelEdit?: () => void
   isPosting?: boolean
-  onUpdate?: (content: string, media: Array<{ s3Key: string; media_id?: string }>, hasDownloadingVideo?: boolean) => void
+  onUpdate?: (content: string, media: Array<{ s3Key: string; media_id: string }>) => void
   initialContent?: string
   initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
   showFocusTooltip?: boolean
@@ -152,19 +146,6 @@ function ThreadTweetContent({
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false)
   const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
-  const [originalContentBeforeUrl, setOriginalContentBeforeUrl] = useState('')
-  
-  // State for processing videos
-  const [processingVideos, setProcessingVideos] = useState<Array<{
-    id: string
-    url: string
-    platform: string
-    status: 'downloading' | 'transcoding' | 'uploading' | 'complete' | 'failed'
-    progress: number
-    error?: string
-  }>>([])
-
-
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -185,31 +166,17 @@ function ThreadTweetContent({
     if (firstUrl && firstUrl !== detectedUrl) {
       setDetectedUrl(firstUrl)
       
-      // Check if it's a supported video platform URL (comprehensive patterns)
+      // Check if it's a supported video platform URL
       const videoPatterns = [
-        /(?:(?:www\.)?(?:instagram\.com|instagr\.am)\/(?:p|reel|tv|stories)\/)/,
-        /(?:(?:www\.)?(?:tiktok\.com\/(?:@[\w.-]+\/video\/|t\/|v\/)|vm\.tiktok\.com\/|m\.tiktok\.com\/v\/))/,
-        /(?:(?:www\.)?(?:twitter\.com|x\.com)\/(?:\w+\/status\/|i\/web\/status\/))/,
-        /(?:(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/))/,
-        /(?:(?:www\.)?(?:facebook\.com|fb\.watch)\/(?:watch\/?\?v=|.*\/videos\/))/,
-        /(?:(?:www\.)?vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/(?:[^\/]*)\/videos\/|album\/(?:\d+)\/video\/|video\/|))/,
-        /(?:(?:www\.)?dailymotion\.com\/video\/)/,
+        /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\//,
+        /(?:tiktok\.com\/@[\w.-]+\/video\/|vm\.tiktok\.com\/)/,
+        /(?:twitter\.com|x\.com)\/\w+\/status\//,
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)/,
       ]
       
       const isVideoUrl = videoPatterns.some(pattern => pattern.test(firstUrl))
       
       if (isVideoUrl && mediaFiles.length < MAX_MEDIA_COUNT) {
-        // Capture content BEFORE the URL was pasted (extract text without URL)
-        const contentWithoutUrl = newContent.replace(firstUrl, '').trim()
-        setOriginalContentBeforeUrl(contentWithoutUrl)
-        
-        console.log('[ThreadTweet] Auto-detected video URL, capturing content:', {
-          detectedUrl: firstUrl,
-          fullContent: newContent,
-          contentWithoutUrl: contentWithoutUrl,
-          willPreserveContent: true
-        })
-        
         // Automatically open the video URL dialog with the detected URL
         setVideoUrl(firstUrl)
         setShowVideoUrlInput(true)
@@ -231,7 +198,7 @@ function ThreadTweetContent({
         s3Key: f.s3Key!,
         media_id: f.media_id!,
       }))
-      updateParentState()
+      onUpdate(newContent, filteredMedia)
     }
   }, [onUpdate, mediaFiles, detectedUrl])
 
@@ -258,80 +225,40 @@ function ThreadTweetContent({
            url.includes('.webm') || url.includes('.mkv') || url.includes('.m4v')
   }
 
-  // Helper function to update parent with current state
-  const updateParentState = () => {
-    if (onUpdate) {
-      const content = mentionsContent
-      // Include both ready media (with media_id) and downloading media (with s3Key only)
-      const readyMedia = mediaFiles.filter(f => f.media_id && f.s3Key && !f.isDownloading)
-      const downloadingMedia = mediaFiles.filter(f => f.s3Key && f.isDownloading)
-      const hasDownloading = mediaFiles.some(f => f.isDownloading)
-      
-      const allMedia = [
-        ...readyMedia.map(f => ({
-          s3Key: f.s3Key!,
-          media_id: f.media_id!,
-        })),
-        ...downloadingMedia.map(f => ({
-          s3Key: f.s3Key!,
-          media_id: undefined, // Will be filled in later when video finishes
-        }))
-      ]
-      
-      onUpdate(content, allMedia, hasDownloading)
-    }
-  }
-
-  // Update parent whenever media files or content changes
-  useEffect(() => {
-    updateParentState()
-  }, [mediaFiles, mentionsContent])
-
   // Render video with proper thumbnail preview
-  const renderVideo = (mediaFile: MediaFile, className: string) => {
-    // If video is downloading and has no URL yet, show placeholder
-    if (mediaFile.isDownloading && !mediaFile.url) {
-      return (
-        <div className={`${className} bg-neutral-100 flex items-center justify-center`}>
-          <Video className="w-12 h-12 text-neutral-400" />
-        </div>
-      )
-    }
-
-    return (
-      <div className="relative">
-        <video
-          src={mediaFile.url}
-          className={`${className}`}
-          controls={false}
-          preload="metadata"
-          muted
-          onLoadedMetadata={(e) => {
-            // Set video to first frame to show as thumbnail
-            const video = e.target as HTMLVideoElement
-            video.currentTime = 0.1
-          }}
-        />
-        {/* Play button overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-colors cursor-pointer group"
-             onClick={(e) => {
-               e.preventDefault()
-               const video = e.currentTarget.previousElementSibling as HTMLVideoElement
-               if (video.paused) {
-                 video.play()
-                 video.setAttribute('controls', 'true')
-                 e.currentTarget.style.display = 'none'
-               }
-             }}>
-          <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
-            <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-          </div>
+  const renderVideo = (mediaFile: MediaFile, className: string) => (
+    <div className="relative">
+      <video
+        src={mediaFile.url}
+        className={`${className}`}
+        controls={false}
+        preload="metadata"
+        muted
+        onLoadedMetadata={(e) => {
+          // Set video to first frame to show as thumbnail
+          const video = e.target as HTMLVideoElement
+          video.currentTime = 0.1
+        }}
+      />
+      {/* Play button overlay */}
+      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-colors cursor-pointer group"
+           onClick={(e) => {
+             e.preventDefault()
+             const video = e.currentTarget.previousElementSibling as HTMLVideoElement
+             if (video.paused) {
+               video.play()
+               video.setAttribute('controls', 'true')
+               e.currentTarget.style.display = 'none'
+             }
+           }}>
+        <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
+          <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 
   useEffect(() => {
     setSkipPostConfirmation(localStorage.getItem('skipPostConfirmation') === 'true')
@@ -378,7 +305,10 @@ function ThreadTweetContent({
       })
       // Also notify the parent component about the update
       if (onUpdate) {
-        updateParentState()
+        onUpdate(currentTweet.content, mediaFiles.filter(m => m.s3Key).map(m => ({ 
+          s3Key: m.s3Key!, 
+          media_id: m.media_id || '' 
+        })))
       }
     } else if (hasBeenCleared) {
       console.log('[ThreadTweet] Skipping AI content sync due to hasBeenCleared flag')
@@ -494,122 +424,21 @@ function ThreadTweetContent({
     },
   })
 
-  // New video processing system
   const downloadVideoMutation = useMutation({
-    mutationFn: async (input: { url: string; tweetContent?: string }) => {
-      console.log('[ThreadTweet] Starting video processing:', {
-        url: input.url,
-        tweetContent: input.tweetContent?.substring(0, 50) + '...',
-        timestamp: new Date().toISOString()
-      })
-      
-      const res = await client.video.submitVideoUrl.$post({
-        url: input.url,
-        autoPost: false, // We'll handle posting through the normal flow
-        tweetContent: input.tweetContent,
+    mutationFn: async (url: string) => {
+      const res = await client.videoDownloader.downloadVideo.$post({
+        url,
       })
 
       if (!res.ok) {
         const error = await res.text()
-        throw new Error(error || 'Failed to start video processing')
+        throw new Error(error || 'Failed to download video')
       }
 
       const data = await res.json()
-      console.log('[ThreadTweet] Video processing started:', data)
-      
-      // Return a placeholder result that matches the old API
-      return {
-        success: true,
-        s3Key: '', // Will be filled when processing completes
-        url: '',
-        platform: data.platform,
-        message: 'Video processing started. It will be ready shortly.',
-        tweetId: data.tweetId,
-      }
+      return data
     },
   })
-
-  // Poll for processing videos to update their status
-  const { data: processingVideosData } = useQuery({
-    queryKey: ['processing-videos'],
-    queryFn: async () => {
-      const res = await client.video.getProcessingVideos.$get()
-      if (!res.ok) {
-        throw new Error('Failed to fetch processing videos')
-      }
-      return await res.json()
-    },
-    refetchInterval: 3000, // Poll every 3 seconds
-    enabled: processingVideos.length > 0, // Only poll when we have processing videos
-  })
-
-  // Update processing videos state when data changes
-  useEffect(() => {
-    if (processingVideosData?.tweets) {
-      setProcessingVideos(prev => {
-        return prev.map(video => {
-          // Find matching tweet by URL
-          const matchingTweet = processingVideosData.tweets.find((tweet: any) => 
-            tweet.pendingVideoUrl === video.url
-          )
-          
-          if (matchingTweet) {
-            const newStatus = matchingTweet.videoProcessingStatus || 'downloading'
-            
-            // If video is complete, add it to media files and remove from processing
-            if (newStatus === 'complete' && matchingTweet.media && matchingTweet.media.length > 0) {
-              const videoMedia = matchingTweet.media.find((m: any) => m.type === 'video')
-              if (videoMedia) {
-                // Add to media files
-                setMediaFiles(prevMedia => {
-                  const newMediaFile: MediaFile = {
-                    url: videoMedia.url || `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${videoMedia.s3Key}`,
-                    type: 'video',
-                    uploading: false,
-                    uploaded: true,
-                    media_id: videoMedia.media_id,
-                    media_key: videoMedia.media_key,
-                    s3Key: videoMedia.s3Key,
-                    file: null,
-                  }
-                  
-                  // Check if this media file already exists
-                  const exists = prevMedia.some(m => m.s3Key === videoMedia.s3Key)
-                  if (exists) {
-                    return prevMedia
-                  }
-                  
-                  return [...prevMedia, newMediaFile]
-                })
-                
-                // Update parent state
-                if (onUpdate) {
-                  updateParentState()
-                }
-                
-                // Show success message
-                toast.success(`Video from ${video.platform} is ready!`)
-                
-                // Remove from processing videos
-                return null
-              }
-            }
-            
-            return {
-              ...video,
-              status: newStatus as any,
-              progress: newStatus === 'complete' ? 100 : 
-                       newStatus === 'uploading' ? 80 :
-                       newStatus === 'transcoding' ? 60 : 30,
-              error: matchingTweet.videoErrorMessage || undefined
-            }
-          }
-          
-          return video
-        }).filter(Boolean) as typeof prev
-      })
-    }
-  }, [processingVideosData, onUpdate])
 
   // Fetch OG data for URL
   const fetchOgData = useCallback(async (url: string) => {
@@ -761,7 +590,7 @@ function ThreadTweetContent({
           const parentMedia = nextFiles
             .filter((f) => f.media_id && f.s3Key)
             .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
-          updateParentState()
+          onUpdate(content, parentMedia)
         }
       } catch (error) {
         console.error('[ThreadTweet] Upload error:', error)
@@ -796,7 +625,7 @@ function ThreadTweetContent({
       const parentMedia = nextFiles
         .filter((f) => f.media_id && f.s3Key)
         .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
-      updateParentState()
+      onUpdate(content, parentMedia)
     }
   }
 
@@ -811,29 +640,8 @@ function ThreadTweetContent({
           <X className="w-4 h-4 text-white" />
         </button>
 
-        {/* Download progress for videos from URL */}
-        {mediaFile.isDownloading && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center p-4">
-            <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
-            <p className="text-white text-sm font-medium">Downloading video...</p>
-            {mediaFile.downloadProgress !== undefined && (
-              <div className="w-full max-w-[200px] mt-2">
-                <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-white h-full transition-all duration-300"
-                    style={{ width: `${mediaFile.downloadProgress}%` }}
-                  />
-                </div>
-                <p className="text-white text-xs mt-1 text-center">
-                  {Math.round(mediaFile.downloadProgress)}%
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Upload progress */}
-        {mediaFile.uploading && !mediaFile.isDownloading && (
+        {/* Status overlays */}
+        {mediaFile.uploading && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <Loader className="w-8 h-8 text-white animate-spin" />
           </div>
@@ -886,15 +694,7 @@ function ThreadTweetContent({
     }
   }
 
-
-
   const handleVideoUrlSubmit = async () => {
-    console.log('[ThreadTweet] handleVideoUrlSubmit called with:', {
-      videoUrl: videoUrl.trim(),
-      mentionsContent: mentionsContent,
-      timestamp: new Date().toISOString()
-    })
-    
     if (!videoUrl.trim()) {
       toast.error('Please enter a video URL')
       return
@@ -906,85 +706,125 @@ function ThreadTweetContent({
       return
     }
 
-    // Close dialog immediately and start download
+    // Close dialog immediately and show progress
     setShowVideoUrlInput(false)
     setIsDownloadingVideo(true)
     setDownloadProgress(0)
     
-    // Add a placeholder media file that shows loading state
-    const placeholderMediaFile: MediaFile = {
-      file: null as any,
-      url: '',
-      type: 'video',
-      uploading: true,
-      uploaded: false,
-      s3Key: undefined,
-      isDownloading: true,
-      downloadProgress: 0,
-      videoUrl: videoUrl
+    // Notify parent component about download state
+    if (onDownloadingVideoChange) {
+      onDownloadingVideoChange(true)
     }
     
-    setMediaFiles(prev => [...prev, placeholderMediaFile])
-    
+    // Show initial toast with progress
+    const toastId = toast.loading('Starting video download...', {
+      duration: Infinity,
+    })
+
     try {
-      // Simulate progress updates
+      // Simulate progress updates during download (slower for pleasant surprise)
       let currentProgress = 0
       const progressInterval = setInterval(() => {
-        currentProgress = Math.min(currentProgress + Math.random() * 15 + 5, 90)
+        // Much slower progress: 1-4% every 2 seconds, cap at 75%
+        currentProgress = Math.min(currentProgress + Math.random() * 3 + 1, 75)
         setDownloadProgress(currentProgress)
-        // Update the placeholder media file progress
-        setMediaFiles(prev => 
-          prev.map(f => 
-            f.videoUrl === videoUrl 
-              ? { ...f, downloadProgress: currentProgress } 
-              : f
-          )
-        )
-      }, 500)
+        toast.loading(`Downloading video... ${Math.round(currentProgress)}%`, {
+          id: toastId,
+        })
+      }, 2000)
 
-      // Start video processing
-      const result = await downloadVideoMutation.mutateAsync({
-        url: videoUrl,
-        tweetContent: mentionsContent.trim() || undefined
-      })
+      // Download video from URL
+      const result = await downloadVideoMutation.mutateAsync(videoUrl)
       
       clearInterval(progressInterval)
       
-      // Add to processing videos state
-      const processingVideo = {
-        id: nanoid(),
-        url: videoUrl,
-        platform: result.platform,
-        status: 'downloading' as const,
-        progress: 0
+      // Quick finish animation - jump to 85%, then 95%, then 100%
+      setDownloadProgress(85)
+      toast.loading('Processing video...', { id: toastId })
+      
+      // Brief pause to show the jump
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // Create a media file object for the downloaded video
+      const mediaFile: MediaFile = {
+        file: null as any, // We don't have the actual File object, but we have the S3 key
+        url: result.url,
+        type: 'video',
+        uploading: false,
+        uploaded: true,
+        s3Key: result.s3Key,
       }
-      
-      setProcessingVideos(prev => [...prev, processingVideo])
-      
-      // For the new system, video processing happens asynchronously
-      // Show a success message and remove the placeholder
-      toast.success(`Video from ${result.platform} is processing! It will be attached to your tweet when ready.`)
-      
-      // Remove the placeholder since video is processing in background
-      setMediaFiles(prev => prev.filter(f => f.videoUrl !== videoUrl))
 
-      // Update parent state - video will be attached when processing completes
+      setDownloadProgress(95)
+      
+      // Upload to Twitter to get media_id
+      const twitterResult = await uploadToTwitterMutation.mutateAsync({
+        s3Key: result.s3Key,
+        mediaType: 'video',
+        fileUrl: result.url,
+      })
+
+      // Update media file with Twitter media_id
+      mediaFile.media_id = twitterResult.media_id
+      mediaFile.media_key = twitterResult.media_key
+
+      // Add to media files
+      setMediaFiles((prev) => [...prev, mediaFile])
+
+      // Update parent with the new media
       if (onUpdate) {
-        updateParentState()
+        const content = mentionsContent
+        const parentMedia = [...mediaFiles, mediaFile]
+          .filter((f) => f.media_id && f.s3Key)
+          .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+        onUpdate(content, parentMedia)
       }
+
+      // Video is now ready - post the tweet with video attached
+      console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
       
+      // Simple logic: Post a tweet with this video now
+      try {
+        const postResponse = await client.tweet.postThreadNow.$post({
+          tweets: [{
+            content: `Video from ${result.platform}`,
+            media: [{ media_id: twitterResult.media_id, s3Key: result.s3Key }],
+            delayMs: 0
+          }]
+        })
+        
+        if (postResponse.ok) {
+          toast.success('Video posted to Twitter!', { duration: 3000 })
+          console.log('[ThreadTweet] Video tweet posted successfully')
+        }
+      } catch (postError) {
+        console.error('[ThreadTweet] Failed to post video tweet:', postError)
+        toast.error('Video uploaded but failed to post tweet')
+      }
+
+      // Final quick animation to 100%
+      setDownloadProgress(100)
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      toast.success(`${result.orientation === 'portrait' ? '📱' : result.orientation === 'landscape' ? '🖥️' : '⬜'} Video from ${result.platform} added successfully!`, {
+        id: toastId,
+        duration: 3000,
+      })
       setVideoUrl('')
-      
     } catch (error) {
       console.error('[ThreadTweet] Video download error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to download video')
-      
-      // Remove the placeholder on error
-      setMediaFiles(prev => prev.filter(f => f.videoUrl !== videoUrl))
-      
+      toast.error(error instanceof Error ? error.message : 'Failed to download video', {
+        id: toastId,
+        duration: 5000,
+      })
     } finally {
       setIsDownloadingVideo(false)
       setDownloadProgress(0)
+      
+      // Notify parent component download is complete
+      if (onDownloadingVideoChange) {
+        onDownloadingVideoChange(false)
+      }
     }
   }
 
@@ -1016,7 +856,7 @@ function ThreadTweetContent({
 
     // Notify parent immediately
     if (onUpdate) {
-      updateParentState()
+      onUpdate('', [])
     }
   }
 
@@ -1204,7 +1044,7 @@ function ThreadTweetContent({
         s3Key: f.s3Key!,
         media_id: f.media_id!,
       }))
-      updateParentState()
+      onUpdate(content, allMedia)
     }
     
     setOpen(false)
@@ -1215,15 +1055,15 @@ function ThreadTweetContent({
       <Drawer modal={false} open={open} onOpenChange={setOpen}>
         <div
           className={cn(
-            'relative bg-white p-6 max-[640px]:p-3 max-[640px]:px-3 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
+            'relative bg-white p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
             isDragging && 'border-primary border-dashed',
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex gap-3 max-[640px]:gap-0 relative z-10">
-            <AccountAvatar className="size-12 max-[640px]:hidden" />
+          <div className="flex gap-3 relative z-10">
+            <AccountAvatar className="size-12" />
 
             <div className="flex-1">
               <div className="flex items-center gap-1">
@@ -1273,8 +1113,6 @@ function ThreadTweetContent({
                   )}
                 </Tooltip>
               </TooltipProvider>
-
-
 
               {/* Media Files Display */}
               {mediaFiles.length > 0 && (
@@ -1377,96 +1215,6 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              {/* Processing Videos Display */}
-              {processingVideos.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {processingVideos.map((video) => (
-                    <div key={video.id} className="relative">
-                      <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                        <div className="flex items-center gap-3">
-                          {/* Platform icon */}
-                          <div className="flex-shrink-0">
-                            <Video className="size-8 text-neutral-600" />
-                          </div>
-                          
-                          {/* Video info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium text-neutral-900 capitalize">
-                                {video.platform} Video
-                              </span>
-                              {video.status === 'downloading' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                                  <Loader2 className="size-3 animate-spin" />
-                                  Downloading
-                                </span>
-                              )}
-                              {video.status === 'transcoding' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                                  <Loader2 className="size-3 animate-spin" />
-                                  Processing
-                                </span>
-                              )}
-                              {video.status === 'uploading' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                                  <Loader2 className="size-3 animate-spin" />
-                                  Uploading
-                                </span>
-                              )}
-                              {video.status === 'complete' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                                  <CheckCircle className="size-3" />
-                                  Complete
-                                </span>
-                              )}
-                              {video.status === 'failed' && (
-                                <span className="inline-flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                                  <AlertCircle className="size-3" />
-                                  Failed
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-neutral-500 truncate">
-                              {video.url}
-                            </p>
-                            {video.error && (
-                              <p className="text-xs text-red-600 mt-1">
-                                {video.error}
-                              </p>
-                            )}
-                          </div>
-                          
-                          {/* Remove button */}
-                          <button
-                            onClick={() => {
-                              setProcessingVideos(prev => prev.filter(v => v.id !== video.id))
-                            }}
-                            className="flex-shrink-0 p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
-                          >
-                            <X className="size-4" />
-                          </button>
-                        </div>
-                        
-                        {/* Progress bar for active processing */}
-                        {(video.status === 'downloading' || video.status === 'transcoding' || video.status === 'uploading') && (
-                          <div className="mt-3">
-                            <div className="w-full bg-neutral-200 rounded-full h-1.5">
-                              <div 
-                                className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                                style={{ 
-                                  width: `${video.progress}%`,
-                                  minWidth: video.progress > 0 ? '8px' : '0px'
-                                }}
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {/* OG Preview Section */}
               {ogPreview && ogPreview.ogImage && (
                 <div className="mt-3">
@@ -1510,10 +1258,10 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between max-[320px]:flex-col max-[320px]:gap-3 max-[320px]:items-center">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between max-[320px]:flex-col max-[320px]:gap-3">
                 <div
                   className={cn(
-                    'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg max-[320px]:justify-center',
+                    'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
                   )}
                 >
                   <TooltipProvider>
@@ -1626,7 +1374,7 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-2 max-[320px]:flex-col max-[320px]:items-center max-[320px]:gap-3 max-[320px]:w-full">
+                <div className="flex items-center gap-2 max-[320px]:flex-col max-[320px]:items-stretch max-[320px]:gap-3 max-[320px]:w-full">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>
@@ -1660,7 +1408,7 @@ function ThreadTweetContent({
                                 <DuolingoButton
                                   className="h-11 px-6 max-[320px]:w-full"
                                   onClick={onUpdateThread}
-                                  disabled={isPosting || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
+                                  disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
                                   <span className="text-sm">
                                     {isPosting ? 'Saving...' : 'Save'}
@@ -1686,13 +1434,11 @@ function ThreadTweetContent({
                                   className="h-11 px-6 max-[320px]:w-full"
                                   variant="secondary"
                                   onClick={handlePostClick}
-                                  disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
+                                  disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
                                   loading={isPosting || optimisticActionState === 'post'}
                                 >
                                   <span className="text-sm">
-                                    {isPosting || optimisticActionState === 'post' ? 
-                                      mediaFiles.some(f => f.isDownloading) ? 'Queueing...' : 'Posting...' 
-                                      : 'Post'}
+                                    {isPosting || optimisticActionState === 'post' ? 'Posting...' : 'Post'}
                                   </span>
                                   <span className="sr-only">Post to Twitter</span>
                                 </DuolingoButton>
@@ -1700,11 +1446,9 @@ function ThreadTweetContent({
                               <TooltipContent>
                                 <div className="space-y-1">
                                   <p>
-                                    {mediaFiles.some(f => f.isDownloading) 
-                                      ? 'Video downloading - will queue instead'
-                                      : skipPostConfirmation
-                                        ? 'The tweet will be posted immediately'
-                                        : 'A confirmation modal will open'}
+                                    {skipPostConfirmation
+                                      ? 'The tweet will be posted immediately'
+                                      : 'A confirmation modal will open'}
                                   </p>
                                   <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
                                 </div>
@@ -1718,7 +1462,7 @@ function ThreadTweetContent({
                                 <TooltipTrigger asChild>
                                   <DuolingoButton
                                     loading={isPosting || optimisticActionState === 'queue'}
-                                    disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
+                                    disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
                                     className="h-11 px-4 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
@@ -1744,18 +1488,71 @@ function ThreadTweetContent({
                               </Tooltip>
 
                               <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <DuolingoButton
-                                    loading={isPosting || optimisticActionState === 'schedule'}
-                                    disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading && !f.isDownloading)}
-                                    size="icon"
-                                    className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
-                                    onClick={() => setOpen(true)}
+                                <Popover open={open} onOpenChange={setOpen}>
+                                  <TooltipTrigger asChild>
+                                    <PopoverTrigger asChild>
+                                      <DuolingoButton
+                                        loading={isPosting || optimisticActionState === 'schedule'}
+                                        disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
+                                        size="icon"
+                                        className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
+
+                                      >
+                                        <ChevronDown className="size-4" />
+                                        <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
+                                      </DuolingoButton>
+                                    </PopoverTrigger>
+                                  </TooltipTrigger>
+                                  <PopoverContent 
+                                    side="bottom"
+                                    align="center"
+                                    sideOffset={8}
+                                    avoidCollisions
+                                    collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
+                                    updatePositionStrategy="always"
+                                    className="w-full max-w-[min(100dvw-1rem,28rem)] md:max-w-[min(100dvw-1rem,40rem)] max-h-[min(90dvh,calc(100dvh-4rem))] overflow-hidden p-0"
+
                                   >
-                                    <ChevronDown className="size-4" />
-                                    <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
-                                  </DuolingoButton>
-                                </TooltipTrigger>
+                                    <Calendar20
+                                      initialScheduledTime={preScheduleTime || undefined}
+                                      onSchedule={(date, time) => {
+                                        // Combine selected calendar date with the chosen HH:mm time
+                                        try {
+                                          const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
+                                          const scheduled = new Date(date)
+                                          scheduled.setHours(hh || 0, mm || 0, 0, 0)
+                                          // Debug log to trace scheduling values end-to-end
+                                          console.log('[ThreadTweet] onSchedule selected', {
+                                            rawDate: date?.toISOString?.(),
+                                            time,
+                                            combinedIso: scheduled.toISOString(),
+                                          })
+                                          if (onScheduleThread) {
+                                            console.log(`[ThreadTweet] Schedule button clicked at ${new Date().toISOString()}`)
+                                            setOptimisticActionState('schedule')
+                                            showAction('schedule')
+                                            onScheduleThread(scheduled)
+                                            setOpen(false)
+                                            // Clear optimistic state after feedback period
+                                            setTimeout(() => setOptimisticActionState(null), 500)
+                                          }
+                                        } catch (e) {
+                                          console.error('[ThreadTweet] onSchedule combine error', e)
+                                          if (onScheduleThread) {
+                                            console.log(`[ThreadTweet] Schedule fallback button clicked at ${new Date().toISOString()}`)
+                                            setOptimisticActionState('schedule')
+                                            showAction('schedule')
+                                            onScheduleThread(date)
+                                            setOpen(false)
+                                            // Clear optimistic state after feedback period
+                                            setTimeout(() => setOptimisticActionState(null), 500)
+                                          }
+                                        }
+                                      }}
+                                      isPending={isPosting || optimisticActionState === 'schedule'}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Schedule manually</p>
@@ -1828,13 +1625,10 @@ function ThreadTweetContent({
             <div className="text-xs text-neutral-500 space-y-1">
               <p>Supported platforms:</p>
               <ul className="list-disc list-inside space-y-0.5 ml-2">
-                <li>Instagram (Posts, Reels, IGTV, Stories)</li>
-                <li>TikTok (All formats including tiktok.com/t/)</li>
+                <li>Instagram (Posts, Reels, IGTV)</li>
+                <li>TikTok</li>
                 <li>Twitter/X</li>
-                <li>YouTube (Videos, Shorts, youtu.be)</li>
-                <li>Facebook (Videos, fb.watch)</li>
-                <li>Vimeo</li>
-                <li>Dailymotion</li>
+                <li>YouTube (including Shorts)</li>
               </ul>
             </div>
           </div>
@@ -1904,58 +1698,6 @@ function ThreadTweetContent({
               </DuolingoButton>
             </div>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Schedule Calendar Modal */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle>Schedule Post</DialogTitle>
-            <DialogDescription>
-              Choose when you want this post to be published.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-6 pb-6 max-h-[70vh] overflow-y-auto">
-            <Calendar20
-              initialScheduledTime={preScheduleTime || undefined}
-              onSchedule={(date, time) => {
-                // Combine selected calendar date with the chosen HH:mm time
-                try {
-                  const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
-                  const scheduled = new Date(date)
-                  scheduled.setHours(hh || 0, mm || 0, 0, 0)
-                  // Debug log to trace scheduling values end-to-end
-                  console.log('[ThreadTweet] onSchedule selected', {
-                    rawDate: date?.toISOString?.(),
-                    time,
-                    combinedIso: scheduled.toISOString(),
-                  })
-                  if (onScheduleThread) {
-                    console.log(`[ThreadTweet] Schedule button clicked at ${new Date().toISOString()}`)
-                    setOptimisticActionState('schedule')
-                    showAction('schedule')
-                    onScheduleThread(scheduled)
-                    setOpen(false)
-                    // Clear optimistic state after feedback period
-                    setTimeout(() => setOptimisticActionState(null), 500)
-                  }
-                } catch (e) {
-                  console.error('[ThreadTweet] onSchedule combine error', e)
-                  if (onScheduleThread) {
-                    console.log(`[ThreadTweet] Schedule fallback button clicked at ${new Date().toISOString()}`)
-                    setOptimisticActionState('schedule')
-                    showAction('schedule')
-                    onScheduleThread(date)
-                    setOpen(false)
-                    // Clear optimistic state after feedback period
-                    setTimeout(() => setOptimisticActionState(null), 500)
-                  }
-                }
-              }}
-              isPending={isPosting || optimisticActionState === 'schedule'}
-            />
-          </div>
         </DialogContent>
       </Dialog>
     </>

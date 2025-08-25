@@ -14,17 +14,16 @@ import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
 import { useUser } from '@/hooks/use-tweets'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Clock, Bell } from 'lucide-react'
-
+import { Clock } from 'lucide-react'
 
 interface ThreadTweetData {
   id: string
   content: string
   media: Array<{
     s3Key: string
-    media_id?: string
+    media_id: string
   }>
-  hasDownloadingVideo?: boolean
+  isDownloadingVideo?: boolean
 }
 
 interface ThreadTweetEditorProps {
@@ -370,15 +369,10 @@ export default function ThreadTweetEditor({
     setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
   }
 
-  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id?: string }>, hasDownloadingVideo?: boolean) => {
+  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
     setThreadTweets(prevTweets => 
       prevTweets.map(tweet =>
-        tweet.id === id ? { 
-          ...tweet, 
-          content, 
-          media,
-          hasDownloadingVideo: hasDownloadingVideo || false
-        } : tweet
+        tweet.id === id ? { ...tweet, content, media } : tweet
       )
     )
   }
@@ -391,27 +385,16 @@ export default function ThreadTweetEditor({
       return
     }
 
-    console.log('[ThreadTweetEditor] Starting post flow at', new Date().toISOString())
+    // Check if any tweet has video still downloading
+    const hasDownloadingVideo = threadTweets.some(tweet => 
+      (tweet as any).isDownloadingVideo === true
+    )
+    
+    console.log('[ThreadTweetEditor] Starting optimistic post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
     // Store current content for potential rollback
     const currentContent = [...threadTweets]
-    
-    // Check if any videos are still downloading
-    const hasDownloadingVideos = threadTweets.some(tweet => tweet.hasDownloadingVideo === true)
-    
-    // If videos are downloading, auto-queue instead of posting
-    if (hasDownloadingVideos) {
-      console.log('[ThreadTweetEditor] Videos still downloading - auto-queueing instead of posting')
-      toast.success('Tweet queued! Video will be attached when ready.', {
-        duration: 4000,
-        icon: '🎬',
-      })
-      
-      // Call queue function instead of continuing with post
-      handleQueueThread()
-      return
-    }
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content at', new Date().toISOString())
@@ -428,8 +411,15 @@ export default function ThreadTweetEditor({
       }
     }, 100)
 
+    if (hasDownloadingVideo) {
+      // Show notification about background processing
+      toast.success('Video will upload in background and post when ready', {
+        duration: 4000,
+        icon: '📹',
+      })
+    }
+
     try {
-      
       // Post thread in background (now with complete media)
       console.log('[ThreadTweetEditor] Starting background post operation at', new Date().toISOString())
       const result = await postThreadMutation.mutateAsync(
@@ -796,7 +786,6 @@ export default function ThreadTweetEditor({
   // Render the tweets
   return (
     <div className={cn('relative z-10 w-full rounded-lg font-sans', className)}>
-
       {preScheduleTime && (
         <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4">
           <div className="flex items-center gap-2 text-primary-800">
@@ -843,7 +832,7 @@ export default function ThreadTweetEditor({
               onCancelEdit={editMode ? handleCancelEdit : undefined}
               isPosting={isPosting}
               preScheduleTime={preScheduleTime}
-              onUpdate={(content, media, hasDownloadingVideo) => handleTweetUpdate(tweet.id, content, media, hasDownloadingVideo)}
+              onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
               initialContent={editMode ? (tweet.content ?? '') : ''}
               initialMedia={tweet.media?.map((m: any) => ({
                 // Ensure a valid preview URL is always present. If the API didn't
