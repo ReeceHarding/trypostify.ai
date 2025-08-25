@@ -22,6 +22,9 @@ interface ThreadTweetData {
   media: Array<{
     s3Key: string
     media_id: string
+    isDownloading?: boolean
+    videoUrl?: string
+    platform?: string
   }>
   isDownloadingVideo?: boolean
 }
@@ -411,30 +414,62 @@ export default function ThreadTweetEditor({
       }
     }, 100)
 
-    if (hasDownloadingVideo) {
-      // Show notification about background processing
-      toast.success('Video will upload in background and post when ready', {
-        duration: 4000,
-        icon: '📹',
-      })
-    }
-
     try {
-      // Post thread in background (now with complete media)
+      // BACKGROUND VIDEO PROCESSING: Post tweets without waiting for videos
       console.log('[ThreadTweetEditor] Starting background post operation at', new Date().toISOString())
-      const result = await postThreadMutation.mutateAsync(
-        currentContent.map((tweet, index) => ({
-          content: tweet.content,
-          media: tweet.media,
-          delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
-        }))
-      )
+      
+      // Prepare tweets for posting (without video URLs that are still downloading)
+      const tweetsForPosting = currentContent.map((tweet, index) => ({
+        content: tweet.content,
+        media: tweet.media.filter(m => !m.isDownloading), // Only include completed media
+        delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
+      }))
+      
+      // Post thread first (without downloading videos)
+      const result = await postThreadMutation.mutateAsync(tweetsForPosting)
       
       console.log('[ThreadTweetEditor] Background post operation completed successfully at', new Date().toISOString())
       posthog.capture('thread_posted', {
         tweet_count: currentContent.length,
         thread_id: result.threadId,
       })
+
+      // CREATE BACKGROUND VIDEO JOBS: For any videos that were downloading
+      if (hasDownloadingVideo) {
+        console.log('[ThreadTweetEditor] Creating background video jobs for downloading videos...')
+        
+        // Find videos that are still downloading and create background jobs
+        for (let tweetIndex = 0; tweetIndex < currentContent.length; tweetIndex++) {
+          const tweet = currentContent[tweetIndex]
+          const downloadingVideos = tweet.media.filter(m => m.isDownloading && m.videoUrl)
+          
+          for (const video of downloadingVideos) {
+            try {
+              console.log('[ThreadTweetEditor] Creating video job for:', video.videoUrl)
+              
+              // Create background video processing job
+              await client.videoJob.createVideoJob.$post({
+                videoUrl: video.videoUrl!,
+                tweetId: result.tweets[tweetIndex]?.id!, // Get the actual posted tweet ID
+                threadId: result.threadId,
+                platform: video.platform || 'unknown',
+              })
+              
+              console.log('[ThreadTweetEditor] Video job created successfully for tweet:', result.tweets[tweetIndex]?.id)
+              
+            } catch (videoJobError) {
+              console.error('[ThreadTweetEditor] Failed to create video job:', videoJobError)
+              // Don't fail the entire operation for video job errors
+            }
+          }
+        }
+        
+        // Show success message about background processing
+        toast.success('Video will upload in background and attach to your post!', {
+          duration: 5000,
+          icon: '📹',
+        })
+      }
     } catch (error) {
       console.error('[ThreadTweetEditor] Background post operation failed, rolling back UI at', new Date().toISOString(), error)
       // ROLLBACK: Restore content if operation failed

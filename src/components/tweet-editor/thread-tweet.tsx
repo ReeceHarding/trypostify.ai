@@ -745,7 +745,7 @@ function ThreadTweetContent({
       // Brief pause to show the jump
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      // Create a media file object for the downloaded video
+            // Create a media file object for the video (marked as downloading for background processing)
       const mediaFile: MediaFile = {
         file: null as any, // We don't have the actual File object, but we have the S3 key
         url: result.url,
@@ -753,54 +753,37 @@ function ThreadTweetContent({
         uploading: false,
         uploaded: true,
         s3Key: result.s3Key,
+        // Mark as downloading so it will be processed in background when user posts
+        isDownloading: true,
+        videoUrl: videoUrl.trim(),
+        platform: result.platform,
       }
 
-      setDownloadProgress(95)
-      
-      // Upload to Twitter to get media_id
-      const twitterResult = await uploadToTwitterMutation.mutateAsync({
-        s3Key: result.s3Key,
-        mediaType: 'video',
-        fileUrl: result.url,
-      })
-
-      // Update media file with Twitter media_id
-      mediaFile.media_id = twitterResult.media_id
-      mediaFile.media_key = twitterResult.media_key
-
-      // Add to media files
+      // Add to media files (without media_id since it will be processed in background)
       setMediaFiles((prev) => [...prev, mediaFile])
 
-      // Update parent with the new media
+      // Update parent with the new media (marked as downloading)
       if (onUpdate) {
         const content = mentionsContent
         const parentMedia = [...mediaFiles, mediaFile]
-          .filter((f) => f.media_id && f.s3Key)
-          .map((f) => ({ s3Key: f.s3Key!, media_id: f.media_id! }))
+          .filter((f) => f.s3Key)
+          .map((f) => ({ 
+            s3Key: f.s3Key!, 
+            media_id: f.media_id || '', // Empty for downloading videos
+            isDownloading: f.isDownloading,
+            videoUrl: f.videoUrl,
+            platform: f.platform,
+          }))
         onUpdate(content, parentMedia)
       }
 
-      // Video is now ready - post the tweet with video attached
-      console.log('[ThreadTweet] Video uploaded to Twitter successfully, media_id:', twitterResult.media_id)
+      console.log('[ThreadTweet] Video downloaded to S3, ready for background processing when user posts')
       
-      // Simple logic: Post a tweet with this video now
-      try {
-        const postResponse = await client.tweet.postThreadNow.$post({
-          tweets: [{
-            content: `Video from ${result.platform}`,
-            media: [{ media_id: twitterResult.media_id, s3Key: result.s3Key }],
-            delayMs: 0
-          }]
-        })
-        
-        if (postResponse.ok) {
-          toast.success('Video posted to Twitter!', { duration: 3000 })
-          console.log('[ThreadTweet] Video tweet posted successfully')
-        }
-      } catch (postError) {
-        console.error('[ThreadTweet] Failed to post video tweet:', postError)
-        toast.error('Video uploaded but failed to post tweet')
-      }
+      // Show success message
+      toast.success('Video ready! It will upload to Twitter when you post.', { 
+        duration: 4000,
+        icon: '📹',
+      })
 
       // Final quick animation to 100%
       setDownloadProgress(100)

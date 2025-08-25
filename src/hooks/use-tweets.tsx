@@ -149,6 +149,7 @@ export interface MediaFile {
   isDownloading?: boolean
   downloadProgress?: number
   videoUrl?: string // Original video URL for tracking
+  platform?: string // Platform the video was downloaded from (instagram, tiktok, etc.)
 }
 
 export function TweetProvider({ children }: PropsWithChildren) {
