@@ -97,7 +97,7 @@ const MultiSidebarProvider = React.forwardRef<
         }
         document.cookie = `${SIDEBAR_COOKIE_NAME}:left=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
       },
-      [setLeftOpenProp, leftOpen]
+      [setLeftOpenProp]
     )
 
     // Right Sidebar State
@@ -113,7 +113,7 @@ const MultiSidebarProvider = React.forwardRef<
         }
         document.cookie = `${SIDEBAR_COOKIE_NAME}:right=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
       },
-      [setRightOpenProp, rightOpen]
+      [setRightOpenProp]
     )
 
     // Mobile state for each sidebar
@@ -124,12 +124,12 @@ const MultiSidebarProvider = React.forwardRef<
       return isMobile
         ? setLeftOpenMobile((open) => !open)
         : setLeftOpen((open) => !open)
-    }, [isMobile, setLeftOpen, setLeftOpenMobile])
+    }, [isMobile])
     const toggleRightSidebar = React.useCallback(() => {
       return isMobile
         ? setRightOpenMobile((open) => !open)
         : setRightOpen((open) => !open)
-    }, [isMobile, setRightOpen, setRightOpenMobile])
+    }, [isMobile])
     // Sidebar contexts
     const leftSidebarContext: SidebarContextType = React.useMemo(
       () => ({

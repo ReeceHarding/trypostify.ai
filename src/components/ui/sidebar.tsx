@@ -113,7 +113,7 @@ const SidebarProvider = React.forwardRef<
         // This sets the cookie to keep the sidebar state.
         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
       },
-      [setOpenProp, open]
+      [setOpenProp]
     );
 
     // Helper to toggle the sidebar.
@@ -123,7 +123,7 @@ const SidebarProvider = React.forwardRef<
         : setOpen((open) => !open);
     }, [
       isMobile,
-      setOpen,
+      //* remove setOpen from dependencies to prevent infinite loops since setOpen depends on state that changes
       //* remove setOpenMobile from dependencies because setOpenMobile are state setters created by useState
       // setOpenMobile
     ]);
