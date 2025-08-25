@@ -192,16 +192,15 @@ async function processVideoDirectly({
       console.log('[processVideoDirectly] ⚠️ No tweetId provided, skipping status update')
     }
 
-    // Prepare Apify request payload (trying original nested format with Bearer auth)
+    // Prepare Apify request payload - trying multiple common formats
     console.log('[processVideoDirectly] 🔧 Preparing Apify request payload...')
+    
+    // ATTEMPT: Try simple URL field at root level (common pattern)
     const apifyPayload = {
-      input: {
-        video_url: sanitizedUrl,
-        downloadVideo: true,
-        downloadAudio: false,
-        downloadThumbnail: true,
-      }
+      url: sanitizedUrl
     }
+    
+    console.log('[processVideoDirectly] 🧪 TESTING: Using simple url field at root level')
 
     console.log('[processVideoDirectly] 📦 Apify request details:', {
       apiEndpoint: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
