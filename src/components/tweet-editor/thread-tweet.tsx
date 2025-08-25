@@ -339,10 +339,23 @@ function ThreadTweetContent({
       })
       // Also notify the parent component about the update
       if (onUpdate) {
-        onUpdate(currentTweet.content, mediaFiles.filter(m => m.s3Key).map(m => ({ 
-          s3Key: m.s3Key!, 
-          media_id: m.media_id || '' 
-        })))
+        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Syncing content change with parent')
+        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Current mediaFiles:', mediaFiles.map(f => ({ url: f.url, isPending: f.isPending, s3Key: f.s3Key })))
+        
+        const parentMedia = mediaFiles
+          .filter((f) => (f.media_id && f.s3Key) || f.isPending) // Include pending and completed media
+          .map((f) => ({ 
+            s3Key: f.s3Key || '',
+            media_id: f.media_id || '',
+            isPending: f.isPending,
+            pendingJobId: f.pendingJobId,
+            videoUrl: f.videoUrl,
+            platform: f.platform,
+          }))
+        
+        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Filtered parent media:', parentMedia)
+        onUpdate(currentTweet.content, parentMedia)
+        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Parent sync completed')
       }
     } else if (hasBeenCleared) {
       console.log('[ThreadTweet] Skipping AI content sync due to hasBeenCleared flag')

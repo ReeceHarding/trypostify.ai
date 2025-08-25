@@ -56,10 +56,14 @@ export const videoJobRouter = j.router({
         
       } catch (error) {
         console.error('[VideoJobRouter] ❌ Failed to create video job:', error)
+        console.error('[VideoJobRouter] ❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
         
-        throw new HTTPException(500, {
-          message: `Failed to create video job: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        })
+        // Try returning an error response instead of throwing
+        return {
+          success: false,
+          error: `Failed to create video job: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          message: 'An unexpected error occurred. Check server logs for details.',
+        }
       }
     }),
 

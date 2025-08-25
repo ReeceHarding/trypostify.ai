@@ -509,6 +509,13 @@ export default function ThreadTweetEditor({
               }
             })
             
+            console.log('[ThreadTweetEditor] 📋 Video job response:', videoJobResponse)
+            
+            if (videoJobResponse.success === false) {
+              console.error('[ThreadTweetEditor] ❌ Video job creation failed:', videoJobResponse.error)
+              throw new Error(videoJobResponse.error || 'Failed to create video job')
+            }
+            
             videoJobs.push(videoJobResponse)
             console.log('[ThreadTweetEditor] ✅ Video job created for pending media:', videoJobResponse)
           }
