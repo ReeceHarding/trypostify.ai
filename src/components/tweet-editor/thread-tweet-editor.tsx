@@ -390,7 +390,7 @@ export default function ThreadTweetEditor({
 
     // Check if any tweet has video still downloading
     const hasDownloadingVideo = threadTweets.some(tweet => 
-      (tweet as any).isDownloadingVideo === true
+      tweet.media.some(m => m.isDownloading === true)
     )
     
     console.log('[ThreadTweetEditor] Starting optimistic post flow at', new Date().toISOString())
@@ -618,7 +618,7 @@ export default function ThreadTweetEditor({
 
     // Check if any tweet has video still downloading
     const hasDownloadingVideo = threadTweets.some(tweet => 
-      (tweet as any).isDownloadingVideo === true
+      tweet.media.some(m => m.isDownloading === true)
     )
     
     if (hasDownloadingVideo) {
