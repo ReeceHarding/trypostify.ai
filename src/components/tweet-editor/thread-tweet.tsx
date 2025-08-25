@@ -758,6 +758,14 @@ function ThreadTweetContent({
         videoUrl: videoUrl.trim(),
         platform: result.platform,
       }
+      
+      console.log('[ThreadTweet] 🎬 CREATED VIDEO MEDIA FILE for background processing:', {
+        s3Key: mediaFile.s3Key,
+        isDownloading: mediaFile.isDownloading,
+        videoUrl: mediaFile.videoUrl,
+        platform: mediaFile.platform,
+        url: mediaFile.url
+      })
 
       // Add to media files (without media_id since it will be processed in background)
       setMediaFiles((prev) => [...prev, mediaFile])
@@ -774,6 +782,10 @@ function ThreadTweetContent({
             videoUrl: f.videoUrl,
             platform: f.platform,
           }))
+        
+        console.log('[ThreadTweet] 📤 UPDATING PARENT with media array:', parentMedia)
+        console.log('[ThreadTweet] 📤 PARENT UPDATE - Content:', content.substring(0, 50) + '...')
+        
         onUpdate(content, parentMedia)
       }
 

@@ -389,10 +389,28 @@ export default function ThreadTweetEditor({
     }
 
     // Check if any tweet has video still downloading
+    console.log('[ThreadTweetEditor] DEBUGGING: Checking for downloading videos...')
+    console.log('[ThreadTweetEditor] DEBUGGING: threadTweets count:', threadTweets.length)
+    threadTweets.forEach((tweet, index) => {
+      console.log(`[ThreadTweetEditor] DEBUGGING: Tweet ${index}:`, {
+        id: tweet.id,
+        content: tweet.content.substring(0, 50) + '...',
+        mediaCount: tweet.media.length,
+        media: tweet.media.map(m => ({
+          s3Key: m.s3Key,
+          isDownloading: m.isDownloading,
+          videoUrl: m.videoUrl,
+          platform: m.platform,
+          type: m.media_id ? 'completed' : 'pending'
+        }))
+      })
+    })
+    
     const hasDownloadingVideo = threadTweets.some(tweet => 
       tweet.media.some(m => m.isDownloading === true)
     )
     
+    console.log('[ThreadTweetEditor] DEBUGGING: hasDownloadingVideo result:', hasDownloadingVideo)
     console.log('[ThreadTweetEditor] Starting optimistic post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
 
@@ -436,29 +454,49 @@ export default function ThreadTweetEditor({
 
       // CREATE BACKGROUND VIDEO JOBS: For any videos that were downloading
       if (hasDownloadingVideo) {
-        console.log('[ThreadTweetEditor] Creating background video jobs for downloading videos...')
+        console.log('[ThreadTweetEditor] ✅ DETECTED DOWNLOADING VIDEOS - Creating background video jobs...')
+        console.log('[ThreadTweetEditor] DEBUGGING: currentContent length:', currentContent.length)
+        console.log('[ThreadTweetEditor] DEBUGGING: result.tweets length:', result.tweets?.length || 'UNDEFINED')
+        console.log('[ThreadTweetEditor] DEBUGGING: result object:', result)
         
         // Find videos that are still downloading and create background jobs
         for (let tweetIndex = 0; tweetIndex < currentContent.length; tweetIndex++) {
           const tweet = currentContent[tweetIndex]
           const downloadingVideos = tweet.media.filter(m => m.isDownloading && m.videoUrl)
           
+          console.log(`[ThreadTweetEditor] DEBUGGING: Tweet ${tweetIndex} has ${downloadingVideos.length} downloading videos:`, downloadingVideos)
+          
           for (const video of downloadingVideos) {
             try {
-              console.log('[ThreadTweetEditor] Creating video job for:', video.videoUrl)
+              console.log('[ThreadTweetEditor] 🎬 Creating video job for:', video.videoUrl)
+              console.log('[ThreadTweetEditor] DEBUGGING: Video details:', {
+                videoUrl: video.videoUrl,
+                platform: video.platform,
+                s3Key: video.s3Key,
+                isDownloading: video.isDownloading
+              })
+              console.log('[ThreadTweetEditor] DEBUGGING: Target tweet ID:', result.tweets[tweetIndex]?.id)
+              console.log('[ThreadTweetEditor] DEBUGGING: Thread ID:', result.threadId)
               
               // Create background video processing job
-              await client.videoJob.createVideoJob.$post({
+              const videoJobResponse = await client.videoJob.createVideoJob.$post({
                 videoUrl: video.videoUrl!,
                 tweetId: result.tweets[tweetIndex]?.id!, // Get the actual posted tweet ID
                 threadId: result.threadId,
                 platform: video.platform || 'unknown',
               })
               
-              console.log('[ThreadTweetEditor] Video job created successfully for tweet:', result.tweets[tweetIndex]?.id)
+              console.log('[ThreadTweetEditor] ✅ Video job API response:', videoJobResponse)
+              console.log('[ThreadTweetEditor] ✅ Video job created successfully for tweet:', result.tweets[tweetIndex]?.id)
               
             } catch (videoJobError) {
-              console.error('[ThreadTweetEditor] Failed to create video job:', videoJobError)
+              console.error('[ThreadTweetEditor] ❌ Failed to create video job:', videoJobError)
+              console.error('[ThreadTweetEditor] ❌ Video job error details:', {
+                error: videoJobError,
+                videoUrl: video.videoUrl,
+                tweetId: result.tweets[tweetIndex]?.id,
+                threadId: result.threadId
+              })
               // Don't fail the entire operation for video job errors
             }
           }
