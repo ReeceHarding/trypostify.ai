@@ -166,10 +166,18 @@ export const videoDownloaderRouter = j.router({
         }
 
         const video = items[0]
-        const mediaUrl = video.mediaUrl // Direct video file URL (watermark-free)
+        // Apify uses different field names for video URL
+        const mediaUrl = video.mediaUrl || video.video_url
+        
+        console.log('[VideoDownloader] Video object structure:', {
+          hasMediaUrl: !!video.mediaUrl,
+          hasVideoUrl: !!video.video_url,
+          finalMediaUrl: mediaUrl,
+          availableFields: Object.keys(video)
+        })
 
         if (!mediaUrl) {
-          console.error('[VideoDownloader] Video object missing mediaUrl:', video)
+          console.error('[VideoDownloader] Video object missing both mediaUrl and video_url:', video)
           throw new HTTPException(404, {
             message: 'Could not extract video URL from the response.',
           })
@@ -196,9 +204,10 @@ export const videoDownloaderRouter = j.router({
         }
 
         // Check video duration (Twitter limit is 140 seconds)
-        if (video.durationSeconds && video.durationSeconds > 140) {
+        const duration = video.durationSeconds || video.duration
+        if (duration && duration > 140) {
           throw new HTTPException(413, {
-            message: `Video is too long (${Math.round(video.durationSeconds)}s). Twitter's limit is 140 seconds.`,
+            message: `Video is too long (${Math.round(duration)}s). Twitter's limit is 140 seconds.`,
           })
         }
 
@@ -213,7 +222,7 @@ export const videoDownloaderRouter = j.router({
             dimensions: `${video.width}x${video.height}`,
             aspectRatio: aspectRatio.toFixed(2),
             orientation: isPortrait ? 'portrait' : isLandscape ? 'landscape' : 'square',
-            duration: `${video.durationSeconds}s`,
+            duration: `${duration}s`,
             size: `${sizeInMB.toFixed(2)}MB`
           })
           
