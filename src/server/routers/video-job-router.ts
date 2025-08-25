@@ -1,4 +1,4 @@
-import { j } from '../jstack'
+import { j, privateProcedure } from '../jstack'
 import { z } from 'zod'
 import { db } from '../../db'
 import { videoJob } from '../../db/schema/video-job'
@@ -8,14 +8,16 @@ import { v4 as uuidv4 } from 'uuid'
 export const videoJobRouter = j.router({
   
   // Create a new video processing job
-  createVideoJob: j.authenticatedProcedure
-    .input(z.object({
-      videoUrl: z.string().url('Video URL must be valid'),
-      tweetId: z.string().optional(), // Optional for queued tweets
-      threadId: z.string().min(1, 'Thread ID is required'),
-      platform: z.string().min(1, 'Platform is required'),
-      tweetContent: z.any().optional(), // Complete tweet data for posting when video is ready
-    }))
+  createVideoJob: privateProcedure
+    .input(
+      z.object({
+        videoUrl: z.string().url('Video URL must be valid'),
+        tweetId: z.string().optional(), // Optional for queued tweets
+        threadId: z.string().min(1, 'Thread ID is required'),
+        platform: z.string().min(1, 'Platform is required'),
+        tweetContent: z.any().optional(), // Complete tweet data for posting when video is ready
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       console.log('[VideoJobRouter] 🎬 Creating video job at', new Date().toISOString())
       console.log('[VideoJobRouter] 📋 Input data:', input)
@@ -62,7 +64,7 @@ export const videoJobRouter = j.router({
     }),
 
   // Get video job status
-  getVideoJobStatus: j.authenticatedProcedure
+  getVideoJobStatus: privateProcedure
     .input(z.object({
       jobId: z.string().min(1, 'Job ID is required'),
     }))
@@ -108,7 +110,7 @@ export const videoJobRouter = j.router({
     }),
 
   // List all video jobs for user
-  listVideoJobs: j.authenticatedProcedure
+  listVideoJobs: privateProcedure
     .input(z.object({
       status: z.enum(['pending', 'processing', 'completed', 'failed']).optional(),
       limit: z.number().min(1).max(100).default(20),
