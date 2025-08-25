@@ -14,20 +14,28 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.NEXT_PUBLIC_S3_BUCKET_NAME!
 
-// Regex patterns for supported platforms
+// Regex patterns for supported platforms (with proper query parameter handling)
 const PLATFORM_PATTERNS = {
-  instagram: /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/,
-  tiktok: /(?:tiktok\.com\/@[\w.-]+\/video\/(\d+)|vm\.tiktok\.com\/([A-Za-z0-9]+))/,
-  twitter: /(?:twitter\.com|x\.com)\/\w+\/status\/(\d+)/,
-  youtube: /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]+)/,
+  instagram: /(?:(?:www\.)?(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\/[A-Za-z0-9_-]+(?:\/.*)?(?:\?.*)?)/i,
+  tiktok: /(?:(?:www\.)?(?:tiktok\.com\/(?:@[\w.-]+\/video\/\d+|t\/[A-Za-z0-9_-]+)|vm\.tiktok\.com\/[A-Za-z0-9_-]+)(?:\/.*)?(?:\?.*)?)/i,
+  twitter: /(?:(?:www\.)?(?:twitter\.com|x\.com)\/\w+\/status\/\d+(?:\/.*)?(?:\?.*)?)/i,
+  youtube: /(?:(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)[A-Za-z0-9_-]{11}(?:\S*)?)/i,
 }
 
 function detectPlatform(url: string): string | null {
+  console.log(`[VideoDownloader] Detecting platform for URL: ${url}`)
+  
   for (const [platform, pattern] of Object.entries(PLATFORM_PATTERNS)) {
-    if (pattern.test(url)) {
+    const matches = pattern.test(url)
+    console.log(`[VideoDownloader] Testing ${platform}: ${matches ? 'MATCH' : 'NO MATCH'}`)
+    
+    if (matches) {
+      console.log(`[VideoDownloader] Detected platform: ${platform}`)
       return platform
     }
   }
+  
+  console.log(`[VideoDownloader] No platform detected for URL: ${url}`)
   return null
 }
 
