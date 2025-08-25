@@ -218,6 +218,9 @@ function ThreadTweetContent({
 
   // Helper function to detect video files from URL even if type is wrong
   const isVideoFile = (mediaFile: MediaFile): boolean => {
+    // PENDING VIDEOS: Always treat as video
+    if (mediaFile.isPending) return true
+    
     if (mediaFile.type === 'video') return true
     
     // Check file extension as fallback
@@ -226,40 +229,58 @@ function ThreadTweetContent({
            url.includes('.webm') || url.includes('.mkv') || url.includes('.m4v')
   }
 
-  // Render video with proper thumbnail preview
-  const renderVideo = (mediaFile: MediaFile, className: string) => (
-    <div className="relative">
-      <video
-        src={mediaFile.url}
-        className={`${className}`}
-        controls={false}
-        preload="metadata"
-        muted
-        onLoadedMetadata={(e) => {
-          // Set video to first frame to show as thumbnail
-          const video = e.target as HTMLVideoElement
-          video.currentTime = 0.1
-        }}
-      />
-      {/* Play button overlay */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-colors cursor-pointer group"
-           onClick={(e) => {
-             e.preventDefault()
-             const video = e.currentTarget.previousElementSibling as HTMLVideoElement
-             if (video.paused) {
-               video.play()
-               video.setAttribute('controls', 'true')
-               e.currentTarget.style.display = 'none'
-             }
-           }}>
-        <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
-          <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
+  // Render video with proper thumbnail preview (or pending indicator)
+  const renderVideo = (mediaFile: MediaFile, className: string) => {
+    // PENDING VIDEO: Show placeholder with clear visual feedback
+    if (mediaFile.isPending) {
+      console.log('[ThreadTweet] 📎 Rendering PENDING video indicator for:', mediaFile.videoUrl)
+      return (
+        <div className={`${className} bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center border-2 border-dashed border-blue-300`}>
+          <div className="text-center p-4">
+            <div className="text-2xl mb-2">📎</div>
+            <div className="text-blue-700 font-medium text-sm">Video Pending</div>
+            <div className="text-blue-600 text-xs mt-1">Will download when posted</div>
+          </div>
+        </div>
+      )
+    }
+
+    // REAL VIDEO: Show video preview
+    console.log('[ThreadTweet] 🎥 Rendering REAL video preview for:', mediaFile.url)
+    return (
+      <div className="relative">
+        <video
+          src={mediaFile.url}
+          className={`${className}`}
+          controls={false}
+          preload="metadata"
+          muted
+          onLoadedMetadata={(e) => {
+            // Set video to first frame to show as thumbnail
+            const video = e.target as HTMLVideoElement
+            video.currentTime = 0.1
+          }}
+        />
+        {/* Play button overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 hover:bg-opacity-40 transition-colors cursor-pointer group"
+             onClick={(e) => {
+               e.preventDefault()
+               const video = e.currentTarget.previousElementSibling as HTMLVideoElement
+               if (video.paused) {
+                 video.play()
+                 video.setAttribute('controls', 'true')
+                 e.currentTarget.style.display = 'none'
+               }
+             }}>
+          <div className="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-colors">
+            <svg className="w-8 h-8 text-neutral-800" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   useEffect(() => {
     setSkipPostConfirmation(localStorage.getItem('skipPostConfirmation') === 'true')
