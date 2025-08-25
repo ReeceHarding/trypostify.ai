@@ -123,49 +123,77 @@ async function processVideoDirectly({
   userId: string
   autoPost: boolean
 }) {
-  console.log('[processVideoDirectly] Starting video processing:', {
-    url,
-    platform,
-    tweetId,
-    userId,
-    autoPost,
-    timestamp: new Date().toISOString()
+  console.log('🎬🎬🎬 [processVideoDirectly] ========== DIRECT VIDEO PROCESSING STARTED ==========')
+  console.log('[processVideoDirectly] 📋 Full input parameters:', {
+    url: url,
+    urlRaw: JSON.stringify(url),
+    platform: platform,
+    tweetId: tweetId || 'NO_TWEET_ID',
+    userId: userId,
+    autoPost: autoPost,
+    timestamp: new Date().toISOString(),
+    memoryUsage: process.memoryUsage(),
+    nodeVersion: process.version
   })
 
   // CRITICAL: Validate URL parameter before proceeding
+  console.log('[processVideoDirectly] 🔍 Starting URL validation...')
   if (!url || typeof url !== 'string' || url.trim() === '') {
-    console.error('[processVideoDirectly] CRITICAL ERROR: Invalid URL provided:', {
-      url,
+    console.error('[processVideoDirectly] ❌ CRITICAL ERROR: Invalid URL provided:', {
+      url: url,
+      urlRaw: JSON.stringify(url),
       urlType: typeof url,
       urlLength: url?.length || 0,
       isEmpty: !url,
       isEmptyString: url === '',
       isUndefined: url === undefined,
-      isNull: url === null
+      isNull: url === null,
+      validationTimestamp: new Date().toISOString()
     })
     throw new Error('Invalid or missing video URL')
   }
 
   const sanitizedUrl = url.trim()
-  console.log('[processVideoDirectly] URL validation passed:', {
+  console.log('[processVideoDirectly] ✅ URL validation passed:', {
     originalUrl: url,
-    sanitizedUrl,
-    urlLength: sanitizedUrl.length
+    originalUrlLength: url.length,
+    sanitizedUrl: sanitizedUrl,
+    sanitizedUrlLength: sanitizedUrl.length,
+    trimmedCharacters: url.length - sanitizedUrl.length,
+    validationSuccess: true,
+    timestamp: new Date().toISOString()
   })
 
   try {
+    console.log('[processVideoDirectly] 🏗️ Starting try block - main processing logic')
+    
     // Update status to downloading
     if (tweetId) {
-      await db
+      console.log('[processVideoDirectly] 📝 Updating tweet status to downloading:', {
+        tweetId: tweetId,
+        newStatus: 'downloading',
+        timestamp: new Date().toISOString()
+      })
+      
+      const dbUpdateResult = await db
         .update(tweets)
         .set({
           videoProcessingStatus: 'downloading',
           updatedAt: new Date(),
         })
         .where(eq(tweets.id, tweetId))
+        
+      console.log('[processVideoDirectly] ✅ Tweet status updated successfully:', {
+        tweetId: tweetId,
+        updateResult: 'SUCCESS',
+        timestamp: new Date().toISOString()
+      })
+    } else {
+      console.log('[processVideoDirectly] ⚠️ No tweetId provided, skipping status update')
     }
 
     // Prepare Apify request payload (trying original nested format with Bearer auth)
+    console.log('[processVideoDirectly] 🔧 Preparing Apify request payload...')
     const apifyPayload = {
       input: {
         video_url: sanitizedUrl,
@@ -175,16 +203,30 @@ async function processVideoDirectly({
       }
     }
 
-    console.log('[processVideoDirectly] Preparing Apify request:', {
+    console.log('[processVideoDirectly] 📦 Apify request details:', {
       apiEndpoint: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
       hasApiToken: !!process.env.APIFY_API_TOKEN,
       apiTokenLength: process.env.APIFY_API_TOKEN?.length || 0,
+      apiTokenStart: process.env.APIFY_API_TOKEN?.substring(0, 8) + '...',
       payload: apifyPayload,
-      payloadString: JSON.stringify(apifyPayload)
+      payloadString: JSON.stringify(apifyPayload),
+      payloadSize: JSON.stringify(apifyPayload).length,
+      timestamp: new Date().toISOString()
     })
 
     // Call Apify marketingme/video-downloader actor with Bearer auth
-    console.log('[processVideoDirectly] Starting Apify actor run')
+    console.log('[processVideoDirectly] 🚀 Making HTTP request to Apify API...')
+    console.log('[processVideoDirectly] 📡 Request configuration:', {
+      method: 'POST',
+      url: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
+      headers: {
+        'Authorization': `Bearer ${process.env.APIFY_API_TOKEN?.substring(0, 8)}...`,
+        'Content-Type': 'application/json',
+      },
+      bodyPreview: JSON.stringify(apifyPayload).substring(0, 200) + '...',
+      startTime: new Date().toISOString()
+    })
+    
     const runResponse = await fetch(
       `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
       {
@@ -196,37 +238,87 @@ async function processVideoDirectly({
         body: JSON.stringify(apifyPayload),
       },
     )
+    
+    console.log('[processVideoDirectly] 📨 Apify HTTP response received:', {
+      status: runResponse.status,
+      statusText: runResponse.statusText,
+      ok: runResponse.ok,
+      headers: Object.fromEntries(runResponse.headers.entries()),
+      url: runResponse.url,
+      responseTime: new Date().toISOString()
+    })
 
     if (!runResponse.ok) {
+      console.error('[processVideoDirectly] ❌ APIFY REQUEST FAILED - Response not OK')
+      
       const error = await runResponse.text()
-      console.error('[processVideoDirectly] Failed to start Apify run:', {
-        status: runResponse.status,
-        statusText: runResponse.statusText,
-        error,
-        url: sanitizedUrl,
-        headers: Object.fromEntries(runResponse.headers.entries())
+      console.error('[processVideoDirectly] 💥 Complete failure details:', {
+        httpStatus: runResponse.status,
+        httpStatusText: runResponse.statusText,
+        responseOk: runResponse.ok,
+        errorBody: error,
+        errorBodyLength: error?.length || 0,
+        requestUrl: sanitizedUrl,
+        requestPayload: apifyPayload,
+        responseHeaders: Object.fromEntries(runResponse.headers.entries()),
+        failureTimestamp: new Date().toISOString(),
+        apifyTokenProvided: !!process.env.APIFY_API_TOKEN,
+        apifyTokenLength: process.env.APIFY_API_TOKEN?.length || 0
       })
       
       // Try to parse error as JSON for better error details
+      console.log('[processVideoDirectly] 🔍 Attempting to parse error response as JSON...')
       try {
         const errorJson = JSON.parse(error)
-        console.error('[processVideoDirectly] Parsed Apify error:', errorJson)
+        console.error('[processVideoDirectly] 📋 Parsed Apify error structure:', {
+          errorJson: errorJson,
+          errorType: errorJson?.error?.type || 'UNKNOWN',
+          errorMessage: errorJson?.error?.message || 'NO_MESSAGE',
+          fullErrorObject: JSON.stringify(errorJson, null, 2)
+        })
         
         if (errorJson.error?.message) {
-          throw new Error(`Apify API Error: ${errorJson.error.message}`)
+          const detailedError = `Apify API Error: ${errorJson.error.message}`
+          console.error('[processVideoDirectly] ⚡ Throwing detailed error:', detailedError)
+          throw new Error(detailedError)
         }
       } catch (parseError) {
-        console.log('[processVideoDirectly] Could not parse error as JSON, using raw text')
+        console.log('[processVideoDirectly] ⚠️ Could not parse error as JSON:', {
+          parseError: parseError instanceof Error ? parseError.message : 'Unknown parse error',
+          rawErrorText: error,
+          parseAttemptFailed: true
+        })
       }
       
-      throw new Error(`Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`)
+      const finalError = `Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`
+      console.error('[processVideoDirectly] 🛑 Throwing final error:', finalError)
+      throw new Error(finalError)
     }
 
+    console.log('[processVideoDirectly] ✅ SUCCESS! Apify request succeeded - parsing response...')
     const runData: any = await runResponse.json()
-    const runId = runData.data.id
-    console.log('[processVideoDirectly] Started Apify run:', runId)
+    const runId = runData?.data?.id
+    
+    console.log('[processVideoDirectly] 🎯 Apify run initiated successfully:', {
+      runId: runId,
+      runData: runData,
+      dataKeys: Object.keys(runData || {}),
+      hasData: !!runData?.data,
+      timestamp: new Date().toISOString()
+    })
+
+    if (!runId) {
+      console.error('[processVideoDirectly] ❌ ERROR: No run ID received from Apify:', {
+        runData: runData,
+        responseType: typeof runData,
+        hasData: !!runData?.data,
+        dataContent: runData?.data
+      })
+      throw new Error('Failed to get run ID from Apify response')
+    }
 
     // Poll for completion with exponential backoff
+    console.log('[processVideoDirectly] 🔄 Starting polling loop for run completion...')
     const maxAttempts = 90
     let attempts = 0
     let runStatus: any
@@ -234,11 +326,21 @@ async function processVideoDirectly({
     const backoff = 1.25
     const maxDelayMs = 8000
 
+    console.log('[processVideoDirectly] 📊 Polling configuration:', {
+      maxAttempts: maxAttempts,
+      initialDelayMs: currentDelayMs,
+      backoffMultiplier: backoff,
+      maxDelayMs: maxDelayMs,
+      runId: runId
+    })
+
     while (attempts < maxAttempts) {
       attempts++
       
+      console.log(`[processVideoDirectly] ⏱️ Waiting ${currentDelayMs}ms before polling attempt ${attempts}/${maxAttempts}`)
       await new Promise(resolve => setTimeout(resolve, currentDelayMs))
-      console.log(`[processVideoDirectly] Polling attempt ${attempts}/${maxAttempts}, delay: ${currentDelayMs}ms`)
+      
+      console.log(`[processVideoDirectly] 📡 Polling attempt ${attempts}/${maxAttempts} starting...`)
       currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
       
       const statusResponse = await fetch(
@@ -250,18 +352,46 @@ async function processVideoDirectly({
         }
       )
       
+      console.log(`[processVideoDirectly] 📨 Status response received:`, {
+        attempt: attempts,
+        statusCode: statusResponse.status,
+        statusOk: statusResponse.ok,
+        statusText: statusResponse.statusText
+      })
+      
       if (!statusResponse.ok) {
-        console.error('[processVideoDirectly] Failed to check run status')
+        console.error(`[processVideoDirectly] ⚠️ Failed to check run status on attempt ${attempts}:`, {
+          status: statusResponse.status,
+          statusText: statusResponse.statusText,
+          willContinue: true
+        })
         continue
       }
       
       runStatus = await statusResponse.json()
-      console.log(`[processVideoDirectly] Run status: ${runStatus.data.status}`)
+      const currentStatus = runStatus?.data?.status
       
-      if (runStatus.data.status === 'SUCCEEDED') {
+      console.log(`[processVideoDirectly] 📋 Run status check result:`, {
+        attempt: attempts,
+        maxAttempts: maxAttempts,
+        currentStatus: currentStatus,
+        runStatus: runStatus,
+        nextDelayMs: currentDelayMs,
+        timestamp: new Date().toISOString()
+      })
+      
+      if (currentStatus === 'SUCCEEDED') {
+        console.log('[processVideoDirectly] 🎉 SUCCESS! Run completed successfully')
         break
-      } else if (runStatus.data.status === 'FAILED' || runStatus.data.status === 'ABORTED') {
-        throw new Error('Video download failed')
+      } else if (currentStatus === 'FAILED' || currentStatus === 'ABORTED') {
+        console.error('[processVideoDirectly] ❌ Run failed or was aborted:', {
+          status: currentStatus,
+          runStatus: runStatus,
+          attempt: attempts
+        })
+        throw new Error(`Video download failed with status: ${currentStatus}`)
+      } else {
+        console.log(`[processVideoDirectly] ⏳ Run still in progress (${currentStatus}), continuing to poll...`)
       }
     }
 
@@ -589,36 +719,84 @@ export const videoRouter = j.router({
       const { user } = ctx
       const { url, tweetId, autoPost, tweetContent } = input
       
-      console.log('[VideoRouter] submitVideoUrl called:', {
-        url,
-        tweetId,
-        autoPost,
-        tweetContent: tweetContent?.substring(0, 50) + '...',
+      console.log('🔥🔥🔥 [VideoRouter] ========== VIDEO URL SUBMISSION STARTED ==========')
+      console.log('[VideoRouter] submitVideoUrl called with full details:', {
+        url: url,
+        urlLength: url?.length,
+        urlType: typeof url,
+        tweetId: tweetId || 'NONE',
+        autoPost: autoPost,
+        tweetContent: tweetContent || 'NONE',
+        tweetContentLength: tweetContent?.length || 0,
         userId: user.id,
-        timestamp: new Date().toISOString()
+        userEmail: user.email || 'NO_EMAIL',
+        timestamp: new Date().toISOString(),
+        requestHeaders: Object.fromEntries(c.req.raw.headers.entries()),
+        environment: process.env.NODE_ENV
+      })
+      
+      console.log('[VideoRouter] Environment check:', {
+        hasApifyToken: !!process.env.APIFY_API_TOKEN,
+        apifyTokenStart: process.env.APIFY_API_TOKEN?.substring(0, 8) + '...',
+        hasS3Bucket: !!process.env.NEXT_PUBLIC_S3_BUCKET_NAME,
+        s3Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME,
+        hasAwsCredentials: !!process.env.AWS_GENERAL_ACCESS_KEY,
+        nodeEnv: process.env.NODE_ENV
       })
 
       // Detect platform
+      console.log('[VideoRouter] 🎯 Starting platform detection for URL:', url)
       const platform = detectPlatform(url)
+      console.log('[VideoRouter] 📍 Platform detection result:', {
+        detectedPlatform: platform || 'NONE_DETECTED',
+        url: url,
+        supportedPlatforms: Object.keys(PLATFORM_PATTERNS)
+      })
+      
       if (!platform) {
+        console.error('[VideoRouter] ❌ PLATFORM DETECTION FAILED:', {
+          url: url,
+          supportedPlatforms: Object.keys(PLATFORM_PATTERNS),
+          failureReason: 'URL did not match any supported platform patterns'
+        })
         throw new HTTPException(400, {
           message: 'Unsupported URL. Please provide a valid video link from: TikTok, Instagram, YouTube, Twitter/X, Facebook, Vimeo, Dailymotion, LinkedIn, Twitch, Reddit, or Snapchat.',
         })
       }
 
       // Check if Apify API token is configured
+      console.log('[VideoRouter] 🔐 Checking Apify API token configuration...')
       if (!process.env.APIFY_API_TOKEN) {
-        console.error('[VideoRouter] APIFY_API_TOKEN not configured')
+        console.error('[VideoRouter] ❌ CRITICAL ERROR: APIFY_API_TOKEN not configured:', {
+          hasToken: false,
+          tokenValue: 'UNDEFINED',
+          envKeys: Object.keys(process.env).filter(k => k.includes('APIFY')),
+          timestamp: new Date().toISOString()
+        })
         throw new HTTPException(500, {
           message: 'Video downloader is not configured. Please add APIFY_API_TOKEN to your environment variables.',
         })
       }
+      
+      console.log('[VideoRouter] ✅ Apify token validated:', {
+        hasToken: true,
+        tokenLength: process.env.APIFY_API_TOKEN.length,
+        tokenStart: process.env.APIFY_API_TOKEN.substring(0, 8) + '...',
+        tokenEnd: '...' + process.env.APIFY_API_TOKEN.substring(-4)
+      })
 
       try {
+        console.log('[VideoRouter] 🚀 Starting video processing workflow...')
+        
         // If we have a tweetId, update it with pending video status
         if (tweetId) {
-          console.log('[VideoRouter] Updating tweet with pending video status:', tweetId)
-          await db
+          console.log('[VideoRouter] 📝 Updating existing tweet with pending video status:', {
+            tweetId: tweetId,
+            url: url,
+            action: 'UPDATE_EXISTING_TWEET'
+          })
+          
+          const updateResult = await db
             .update(tweets)
             .set({
               pendingVideoUrl: url,
@@ -626,39 +804,82 @@ export const videoRouter = j.router({
               updatedAt: new Date(),
             })
             .where(eq(tweets.id, tweetId))
+            
+          console.log('[VideoRouter] ✅ Tweet update completed:', {
+            tweetId: tweetId,
+            updateResult: 'SUCCESS',
+            timestamp: new Date().toISOString()
+          })
         }
 
         // Create a new tweet if auto-post is enabled and no tweetId provided
         let processedTweetId = tweetId
         if (autoPost && !tweetId) {
-          console.log('[VideoRouter] Creating new tweet for auto-post')
+          console.log('[VideoRouter] 🆕 Creating new tweet for auto-post:', {
+            autoPost: autoPost,
+            tweetId: tweetId,
+            userId: user.id,
+            platform: platform
+          })
+          
+          console.log('[VideoRouter] 🔍 Getting user account for new tweet...')
           const account = await getAccount(user.id)
+          console.log('[VideoRouter] 📊 Account retrieved:', {
+            accountId: account?.id || 'NONE',
+            hasAccount: !!account,
+            userId: user.id
+          })
+          
+          const newTweetData = {
+            content: tweetContent || `Check out this video from ${platform}!`,
+            userId: user.id,
+            accountId: account?.id,
+            pendingVideoUrl: url,
+            videoProcessingStatus: 'downloading',
+            isScheduled: false, // Will be scheduled when video is ready
+            media: [],
+          }
+          
+          console.log('[VideoRouter] 💾 Inserting new tweet with data:', newTweetData)
           
           const [newTweet] = await db
             .insert(tweets)
-            .values({
-              content: tweetContent || `Check out this video from ${platform}!`,
-              userId: user.id,
-              accountId: account.id,
-              pendingVideoUrl: url,
-              videoProcessingStatus: 'downloading',
-              isScheduled: false, // Will be scheduled when video is ready
-              media: [],
-            })
+            .values(newTweetData)
             .returning()
           
-          processedTweetId = newTweet.id
-          console.log('[VideoRouter] Created new tweet for video:', processedTweetId)
+          processedTweetId = newTweet?.id
+          console.log('[VideoRouter] ✅ New tweet created successfully:', {
+            newTweetId: processedTweetId,
+            content: newTweetData.content,
+            timestamp: new Date().toISOString()
+          })
         }
 
         // In development, process video synchronously to avoid QStash localhost issues
         if (process.env.NODE_ENV === 'development') {
-          console.log('[VideoRouter] Development mode: processing video synchronously')
+          console.log('[VideoRouter] 🧪 DEVELOPMENT MODE DETECTED - Processing video synchronously')
+          console.log('[VideoRouter] 🔄 Development processing parameters:', {
+            url: url,
+            platform: platform,
+            tweetId: processedTweetId || 'NONE',
+            userId: user.id,
+            autoPost: autoPost,
+            timestamp: new Date().toISOString()
+          })
           
           // Process video directly in the same request (but in background)
           setImmediate(async () => {
             try {
-              console.log('[VideoRouter] Starting background video processing in development')
+              console.log('[VideoRouter] 🏁 Starting background video processing in development...')
+              console.log('[VideoRouter] 📤 Calling processVideoDirectly with parameters:', {
+                url,
+                platform,
+                tweetId: processedTweetId,
+                userId: user.id,
+                autoPost,
+                currentTime: new Date().toISOString()
+              })
+              
               await processVideoDirectly({
                 url,
                 platform,
@@ -666,11 +887,31 @@ export const videoRouter = j.router({
                 userId: user.id,
                 autoPost,
               })
-              console.log('[VideoRouter] Video processed successfully in development mode')
+              
+              console.log('[VideoRouter] ✅ Video processed successfully in development mode:', {
+                url: url,
+                platform: platform,
+                tweetId: processedTweetId,
+                completedAt: new Date().toISOString()
+              })
             } catch (error) {
-              console.error('[VideoRouter] Development video processing failed:', error)
+              console.error('[VideoRouter] ❌ Development video processing failed:', {
+                error: error,
+                errorMessage: error instanceof Error ? error.message : 'Unknown error',
+                errorStack: error instanceof Error ? error.stack : 'No stack',
+                url: url,
+                platform: platform,
+                tweetId: processedTweetId,
+                failedAt: new Date().toISOString()
+              })
+              
               // Update tweet status on error
               if (processedTweetId) {
+                console.log('[VideoRouter] 🔄 Updating tweet status to failed:', {
+                  tweetId: processedTweetId,
+                  errorMessage: error instanceof Error ? error.message : 'Video processing failed'
+                })
+                
                 await db
                   .update(tweets)
                   .set({
@@ -679,6 +920,8 @@ export const videoRouter = j.router({
                     updatedAt: new Date(),
                   })
                   .where(eq(tweets.id, processedTweetId))
+                  
+                console.log('[VideoRouter] ✅ Tweet status updated to failed')
               }
             }
           })
