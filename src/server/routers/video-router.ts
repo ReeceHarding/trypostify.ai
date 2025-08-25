@@ -192,39 +192,12 @@ async function processVideoDirectly({
       console.log('[processVideoDirectly] ⚠️ No tweetId provided, skipping status update')
     }
 
-    // Prepare Apify request payload - trying multiple common formats
-    console.log('[processVideoDirectly] 🔧 Preparing Apify request payload...')
-    
-    // ATTEMPT: Try simple URL field at root level (common pattern)
+    // Prepare Apify request payload using correct startUrls schema
     const apifyPayload = {
-      url: sanitizedUrl
+      startUrls: [{ url: sanitizedUrl }]
     }
-    
-    console.log('[processVideoDirectly] 🧪 TESTING: Using simple url field at root level')
 
-    console.log('[processVideoDirectly] 📦 Apify request details:', {
-      apiEndpoint: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
-      hasApiToken: !!process.env.APIFY_API_TOKEN,
-      apiTokenLength: process.env.APIFY_API_TOKEN?.length || 0,
-      apiTokenStart: process.env.APIFY_API_TOKEN?.substring(0, 8) + '...',
-      payload: apifyPayload,
-      payloadString: JSON.stringify(apifyPayload),
-      payloadSize: JSON.stringify(apifyPayload).length,
-      timestamp: new Date().toISOString()
-    })
-
-    // Call Apify marketingme/video-downloader actor with Bearer auth
-    console.log('[processVideoDirectly] 🚀 Making HTTP request to Apify API...')
-    console.log('[processVideoDirectly] 📡 Request configuration:', {
-      method: 'POST',
-      url: `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
-      headers: {
-        'Authorization': `Bearer ${process.env.APIFY_API_TOKEN?.substring(0, 8)}...`,
-        'Content-Type': 'application/json',
-      },
-      bodyPreview: JSON.stringify(apifyPayload).substring(0, 200) + '...',
-      startTime: new Date().toISOString()
-    })
+    console.log('[processVideoDirectly] Calling Apify with payload:', apifyPayload)
     
     const runResponse = await fetch(
       `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
@@ -238,159 +211,51 @@ async function processVideoDirectly({
       },
     )
     
-    console.log('[processVideoDirectly] 📨 Apify HTTP response received:', {
-      status: runResponse.status,
-      statusText: runResponse.statusText,
-      ok: runResponse.ok,
-      headers: Object.fromEntries(runResponse.headers.entries()),
-      url: runResponse.url,
-      responseTime: new Date().toISOString()
-    })
+    console.log(`[processVideoDirectly] Apify response: ${runResponse.status}`)
 
     if (!runResponse.ok) {
-      console.error('[processVideoDirectly] ❌ APIFY REQUEST FAILED - Response not OK')
-      
       const error = await runResponse.text()
-      console.error('[processVideoDirectly] 💥 Complete failure details:', {
-        httpStatus: runResponse.status,
-        httpStatusText: runResponse.statusText,
-        responseOk: runResponse.ok,
-        errorBody: error,
-        errorBodyLength: error?.length || 0,
-        requestUrl: sanitizedUrl,
-        requestPayload: apifyPayload,
-        responseHeaders: Object.fromEntries(runResponse.headers.entries()),
-        failureTimestamp: new Date().toISOString(),
-        apifyTokenProvided: !!process.env.APIFY_API_TOKEN,
-        apifyTokenLength: process.env.APIFY_API_TOKEN?.length || 0
-      })
-      
-      // Try to parse error as JSON for better error details
-      console.log('[processVideoDirectly] 🔍 Attempting to parse error response as JSON...')
-      try {
-        const errorJson = JSON.parse(error)
-        console.error('[processVideoDirectly] 📋 Parsed Apify error structure:', {
-          errorJson: errorJson,
-          errorType: errorJson?.error?.type || 'UNKNOWN',
-          errorMessage: errorJson?.error?.message || 'NO_MESSAGE',
-          fullErrorObject: JSON.stringify(errorJson, null, 2)
-        })
-        
-        if (errorJson.error?.message) {
-          const detailedError = `Apify API Error: ${errorJson.error.message}`
-          console.error('[processVideoDirectly] ⚡ Throwing detailed error:', detailedError)
-          throw new Error(detailedError)
-        }
-      } catch (parseError) {
-        console.log('[processVideoDirectly] ⚠️ Could not parse error as JSON:', {
-          parseError: parseError instanceof Error ? parseError.message : 'Unknown parse error',
-          rawErrorText: error,
-          parseAttemptFailed: true
-        })
-      }
-      
-      const finalError = `Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`
-      console.error('[processVideoDirectly] 🛑 Throwing final error:', finalError)
-      throw new Error(finalError)
+      console.error('[processVideoDirectly] Error:', error)
+      throw new Error(`Apify failed: ${runResponse.status} - ${error}`)
     }
 
-    console.log('[processVideoDirectly] ✅ SUCCESS! Apify request succeeded - parsing response...')
     const runData: any = await runResponse.json()
     const runId = runData?.data?.id
     
-    console.log('[processVideoDirectly] 🎯 Apify run initiated successfully:', {
-      runId: runId,
-      runData: runData,
-      dataKeys: Object.keys(runData || {}),
-      hasData: !!runData?.data,
-      timestamp: new Date().toISOString()
-    })
-
     if (!runId) {
-      console.error('[processVideoDirectly] ❌ ERROR: No run ID received from Apify:', {
-        runData: runData,
-        responseType: typeof runData,
-        hasData: !!runData?.data,
-        dataContent: runData?.data
-      })
-      throw new Error('Failed to get run ID from Apify response')
+      throw new Error('No run ID received from Apify')
     }
+    
+    console.log(`[processVideoDirectly] Started run: ${runId}`)
 
-    // Poll for completion with exponential backoff
-    console.log('[processVideoDirectly] 🔄 Starting polling loop for run completion...')
+    // Poll for completion
     const maxAttempts = 90
     let attempts = 0
     let runStatus: any
     let currentDelayMs = 1500
-    const backoff = 1.25
-    const maxDelayMs = 8000
-
-    console.log('[processVideoDirectly] 📊 Polling configuration:', {
-      maxAttempts: maxAttempts,
-      initialDelayMs: currentDelayMs,
-      backoffMultiplier: backoff,
-      maxDelayMs: maxDelayMs,
-      runId: runId
-    })
 
     while (attempts < maxAttempts) {
       attempts++
-      
-      console.log(`[processVideoDirectly] ⏱️ Waiting ${currentDelayMs}ms before polling attempt ${attempts}/${maxAttempts}`)
       await new Promise(resolve => setTimeout(resolve, currentDelayMs))
-      
-      console.log(`[processVideoDirectly] 📡 Polling attempt ${attempts}/${maxAttempts} starting...`)
-      currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
+      currentDelayMs = Math.min(Math.round(currentDelayMs * 1.25), 8000)
       
       const statusResponse = await fetch(
         `https://api.apify.com/v2/acts/marketingme~video-downloader/runs/${runId}`,
         {
-          headers: {
-            'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
-          },
+          headers: { 'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}` },
         }
       )
       
-      console.log(`[processVideoDirectly] 📨 Status response received:`, {
-        attempt: attempts,
-        statusCode: statusResponse.status,
-        statusOk: statusResponse.ok,
-        statusText: statusResponse.statusText
-      })
-      
-      if (!statusResponse.ok) {
-        console.error(`[processVideoDirectly] ⚠️ Failed to check run status on attempt ${attempts}:`, {
-          status: statusResponse.status,
-          statusText: statusResponse.statusText,
-          willContinue: true
-        })
-        continue
-      }
+      if (!statusResponse.ok) continue
       
       runStatus = await statusResponse.json()
       const currentStatus = runStatus?.data?.status
       
-      console.log(`[processVideoDirectly] 📋 Run status check result:`, {
-        attempt: attempts,
-        maxAttempts: maxAttempts,
-        currentStatus: currentStatus,
-        runStatus: runStatus,
-        nextDelayMs: currentDelayMs,
-        timestamp: new Date().toISOString()
-      })
+      console.log(`[processVideoDirectly] Poll ${attempts}: ${currentStatus}`)
       
-      if (currentStatus === 'SUCCEEDED') {
-        console.log('[processVideoDirectly] 🎉 SUCCESS! Run completed successfully')
-        break
-      } else if (currentStatus === 'FAILED' || currentStatus === 'ABORTED') {
-        console.error('[processVideoDirectly] ❌ Run failed or was aborted:', {
-          status: currentStatus,
-          runStatus: runStatus,
-          attempt: attempts
-        })
-        throw new Error(`Video download failed with status: ${currentStatus}`)
-      } else {
-        console.log(`[processVideoDirectly] ⏳ Run still in progress (${currentStatus}), continuing to poll...`)
+      if (currentStatus === 'SUCCEEDED') break
+      if (currentStatus === 'FAILED' || currentStatus === 'ABORTED') {
+        throw new Error(`Video download failed: ${currentStatus}`)
       }
     }
 
