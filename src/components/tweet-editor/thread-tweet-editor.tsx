@@ -391,11 +391,32 @@ export default function ThreadTweetEditor({
   }
 
   const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
-    setThreadTweets(prevTweets => 
-      prevTweets.map(tweet =>
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Called for tweet ID:', id)
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Content:', content.substring(0, 50) + '...')
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Media array received:', media)
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Media details:', media.map(m => ({
+      s3Key: m.s3Key,
+      media_id: m.media_id,
+      isPending: (m as any).isPending,
+      pendingJobId: (m as any).pendingJobId,
+      videoUrl: (m as any).videoUrl,
+      platform: (m as any).platform,
+      allKeys: Object.keys(m)
+    })))
+    
+    setThreadTweets(prevTweets => {
+      const newTweets = prevTweets.map(tweet =>
         tweet.id === id ? { ...tweet, content, media } : tweet
       )
-    )
+      console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Updated threadTweets for ID', id + ':', newTweets.find(t => t.id === id))
+      console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - All tweets now:', newTweets.map(t => ({
+        id: t.id,
+        content: t.content.substring(0, 30) + '...',
+        mediaCount: t.media.length,
+        pendingMediaCount: t.media.filter((m: any) => m.isPending).length
+      })))
+      return newTweets
+    })
   }
 
   const handlePostThread = async () => {
@@ -407,14 +428,16 @@ export default function ThreadTweetEditor({
     }
 
     // Check if any tweet has PENDING media
-    console.log('[ThreadTweetEditor] DEBUGGING: Checking for pending media...')
-    console.log('[ThreadTweetEditor] DEBUGGING: threadTweets count:', threadTweets.length)
+    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - Starting pending media detection at:', new Date().toISOString())
+    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - threadTweets count:', threadTweets.length)
+    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - Raw threadTweets data:', JSON.stringify(threadTweets, null, 2))
     
     threadTweets.forEach((tweet, index) => {
-      console.log(`[ThreadTweetEditor] DEBUGGING: Tweet ${index}:`, {
+      console.log(`[ThreadTweetEditor] 🔍 POST_THREAD - Analyzing Tweet ${index}:`, {
         id: tweet.id,
         content: tweet.content.substring(0, 50) + '...',
         mediaCount: tweet.media.length,
+        rawMedia: tweet.media,
         media: tweet.media.map(m => ({
           s3Key: m.s3Key,
           isPending: m.isPending,
@@ -424,13 +447,33 @@ export default function ThreadTweetEditor({
           type: m.isPending ? 'PENDING' : (m.media_id ? 'completed' : 'uploaded')
         }))
       })
+      
+      // Check each media item specifically for pending status
+      tweet.media.forEach((mediaItem, mediaIndex) => {
+        console.log(`[ThreadTweetEditor] 🔍 POST_THREAD - Tweet ${index} Media ${mediaIndex}:`, {
+          isPending: mediaItem.isPending,
+          hasPendingProperty: 'isPending' in mediaItem,
+          pendingValue: mediaItem.isPending,
+          pendingType: typeof mediaItem.isPending,
+          s3Key: mediaItem.s3Key,
+          videoUrl: mediaItem.videoUrl,
+          allProperties: Object.keys(mediaItem)
+        })
+      })
     })
     
     const hasPendingMedia = threadTweets.some(tweet => 
       tweet.media.some(m => m.isPending === true)
     )
     
-    console.log('[ThreadTweetEditor] DEBUGGING: hasPendingMedia result:', hasPendingMedia)
+    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - hasPendingMedia calculation:', {
+      result: hasPendingMedia,
+      calculationDetails: threadTweets.map(tweet => ({
+        tweetId: tweet.id,
+        mediaWithPending: tweet.media.filter(m => m.isPending === true),
+        pendingCount: tweet.media.filter(m => m.isPending === true).length
+      }))
+    })
     
     // Store current content for potential rollback
     const currentContent = [...threadTweets]

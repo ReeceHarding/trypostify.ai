@@ -177,12 +177,20 @@ function ThreadTweetContent({
       
       const isVideoUrl = videoPatterns.some(pattern => pattern.test(firstUrl))
       
+      console.log('[ThreadTweet] 🔍 URL DETECTION - Detected URL:', firstUrl)
+      console.log('[ThreadTweet] 🔍 URL DETECTION - Is video URL:', isVideoUrl)
+      console.log('[ThreadTweet] 🔍 URL DETECTION - Current media files count:', mediaFiles.length)
+      console.log('[ThreadTweet] 🔍 URL DETECTION - Max media count:', MAX_MEDIA_COUNT)
+      
       if (isVideoUrl && mediaFiles.length < MAX_MEDIA_COUNT) {
+        console.log('[ThreadTweet] 🎬 AUTO-DETECTION - Opening video URL dialog for:', firstUrl)
         // Automatically open the video URL dialog with the detected URL
         setVideoUrl(firstUrl)
         setShowVideoUrlInput(true)
+        console.log('[ThreadTweet] 🎬 AUTO-DETECTION - Video URL set and dialog opened')
         // Don't fetch OG preview for video URLs
       } else {
+        console.log('[ThreadTweet] 🌐 AUTO-DETECTION - Not a video URL or media limit reached, fetching OG preview')
         // Otherwise fetch OG preview as before
         fetchOgData(firstUrl)
       }
@@ -735,21 +743,30 @@ function ThreadTweetContent({
   }
 
   const handleVideoUrlSubmit = async () => {
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Function called at:', new Date().toISOString())
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Video URL:', videoUrl.trim())
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Current media files:', mediaFiles.length)
+    
     if (!videoUrl.trim()) {
+      console.log('[ThreadTweet] ❌ HANDLE_VIDEO_URL_SUBMIT - No video URL provided')
       toast.error('Please enter a video URL')
       return
     }
 
     // Check if we already have max media
     if (mediaFiles.length >= MAX_MEDIA_COUNT) {
+      console.log('[ThreadTweet] ❌ HANDLE_VIDEO_URL_SUBMIT - Media limit reached:', mediaFiles.length, '>=', MAX_MEDIA_COUNT)
       toast.error(`Maximum ${MAX_MEDIA_COUNT} media files allowed`)
       return
     }
 
+    console.log('[ThreadTweet] ✅ HANDLE_VIDEO_URL_SUBMIT - Validation passed, proceeding with pending media creation')
+
     // Close dialog immediately
     setShowVideoUrlInput(false)
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Dialog closed')
     
-    console.log('[ThreadTweet] 🎬 Creating PENDING media object for:', videoUrl.trim())
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Creating PENDING media object for:', videoUrl.trim())
     
     // Generate a unique job ID for tracking
     const pendingJobId = crypto.randomUUID()
@@ -776,11 +793,19 @@ function ThreadTweetContent({
       isPending: pendingMediaFile.isPending
     })
 
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Adding pending media to UI state')
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Current mediaFiles before adding:', mediaFiles.map(f => ({ url: f.url, isPending: f.isPending, s3Key: f.s3Key })))
+    
     // Add pending media to the UI immediately
-    setMediaFiles((prev) => [...prev, pendingMediaFile])
+    setMediaFiles((prev) => {
+      const newArray = [...prev, pendingMediaFile]
+      console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - New mediaFiles array:', newArray.map(f => ({ url: f.url, isPending: f.isPending, s3Key: f.s3Key })))
+      return newArray
+    })
 
     // Update parent with the pending media
     if (onUpdate) {
+      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Updating parent component')
       const content = mentionsContent
       const parentMedia = [...mediaFiles, pendingMediaFile]
         .filter((f) => f.isPending || f.s3Key) // Include pending and completed media
@@ -793,19 +818,26 @@ function ThreadTweetContent({
           platform: f.platform,
         }))
       
-      console.log('[ThreadTweet] 📤 UPDATING PARENT with media array (including pending):', parentMedia)
+      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Parent media array:', parentMedia)
+      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Content being sent to parent:', content.substring(0, 50) + '...')
       
       onUpdate(content, parentMedia)
+      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Parent update completed')
+    } else {
+      console.log('[ThreadTweet] ⚠️ HANDLE_VIDEO_URL_SUBMIT - No onUpdate callback available')
     }
 
     // Show success message - video is "attached" as pending
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Showing success toast')
     toast.success('Video attached! Will download and post when you click Post.', { 
       duration: 4000,
       icon: '📎',
     })
     
     // Clear video URL
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Clearing video URL input')
     setVideoUrl('')
+    console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Function completed successfully')
   }
 
   const handleClearTweet = () => {
@@ -1630,7 +1662,13 @@ function ThreadTweetContent({
             </DuolingoButton>
             <DuolingoButton
               className="px-4"
-              onClick={handleVideoUrlSubmit}
+              onClick={() => {
+                console.log('[ThreadTweet] 🎬 VIDEO_SUBMIT_BUTTON - Button clicked at:', new Date().toISOString())
+                console.log('[ThreadTweet] 🎬 VIDEO_SUBMIT_BUTTON - Current videoUrl:', videoUrl)
+                console.log('[ThreadTweet] 🎬 VIDEO_SUBMIT_BUTTON - isDownloadingVideo:', isDownloadingVideo)
+                console.log('[ThreadTweet] 🎬 VIDEO_SUBMIT_BUTTON - About to call handleVideoUrlSubmit')
+                handleVideoUrlSubmit()
+              }}
               disabled={!videoUrl.trim() || isDownloadingVideo}
             >
               {isDownloadingVideo ? (
