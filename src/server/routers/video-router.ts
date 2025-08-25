@@ -109,6 +109,436 @@ interface ProgressUpdate {
   estimatedTimeRemaining?: number // seconds
 }
 
+// Shared async Apify processing flow used by both dev (background poller) and prod (webhook)
+async function processVideoAsyncFlow({
+  url,
+  platform,
+  tweetId,
+  userId,
+  autoPost,
+}: {
+  url: string
+  platform: string
+  tweetId?: string
+  userId: string
+  autoPost: boolean
+}) {
+  console.log('🎬🎬🎬 [processVideoAsyncFlow] ========== ASYNC VIDEO PROCESSING START =========')
+  console.log('[processVideoAsyncFlow] 📋 Full input parameters:', {
+    url: url,
+    urlRaw: JSON.stringify(url),
+    platform: platform,
+    tweetId: tweetId || 'NO_TWEET_ID',
+    userId: userId,
+    autoPost: autoPost,
+    timestamp: new Date().toISOString(),
+    memoryUsage: process.memoryUsage(),
+    nodeVersion: process.version
+  })
+
+  console.log('[processVideoAsyncFlow] 🔍 Starting URL validation...')
+  if (!url || typeof url !== 'string' || url.trim() === '') {
+    console.error('[processVideoAsyncFlow] ❌ CRITICAL ERROR: Invalid URL provided:', {
+      url: url,
+      urlRaw: JSON.stringify(url),
+      urlType: typeof url,
+      urlLength: url?.length || 0,
+      isEmpty: !url,
+      isEmptyString: url === '',
+      isUndefined: url === undefined,
+      isNull: url === null,
+      validationTimestamp: new Date().toISOString()
+    })
+    throw new Error('Invalid or missing video URL')
+  }
+
+  const sanitizedUrl = url.trim()
+  console.log('[processVideoAsyncFlow] ✅ URL validation passed:', {
+    originalUrl: url,
+    originalUrlLength: url.length,
+    sanitizedUrl: sanitizedUrl,
+    sanitizedUrlLength: sanitizedUrl.length,
+    trimmedCharacters: url.length - sanitizedUrl.length,
+    validationSuccess: true,
+    timestamp: new Date().toISOString()
+  })
+
+  try {
+    console.log('[processVideoAsyncFlow] 🏗️ Starting async processing logic with marketingme actor')
+
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'downloading',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+
+    const apifyPayload = {
+      input: {
+        video_url: sanitizedUrl,
+        downloadVideo: true,
+        downloadAudio: false,
+        downloadThumbnail: true,
+      }
+    }
+
+    const runResponse = await fetch(
+      `https://api.apify.com/v2/acts/marketingme~video-downloader/runs`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apifyPayload),
+      },
+    )
+
+    if (!runResponse.ok) {
+      const error = await runResponse.text()
+      console.error('[processVideoAsyncFlow] Failed to start Apify run:', {
+        status: runResponse.status,
+        statusText: runResponse.statusText,
+        error,
+        url: sanitizedUrl,
+      })
+      throw new Error(`Failed to start video download process. Status: ${runResponse.status}. Error: ${error}`)
+    }
+
+    const runData: any = await runResponse.json()
+    const runId = runData.data.id
+    console.log('[processVideoAsyncFlow] Started Apify run:', runId)
+
+    const maxAttempts = 90
+    let attempts = 0
+    let runStatus: any
+    let currentDelayMs = 1500
+    const backoff = 1.25
+    const maxDelayMs = 8000
+
+    while (attempts < maxAttempts) {
+      attempts++
+      await new Promise(resolve => setTimeout(resolve, currentDelayMs))
+      console.log(`[processVideoAsyncFlow] Polling attempt ${attempts}/${maxAttempts}, delay: ${currentDelayMs}ms`)
+      currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
+
+      const statusResponse = await fetch(
+        `https://api.apify.com/v2/acts/marketingme~video-downloader/runs/${runId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
+          },
+        }
+      )
+
+      if (!statusResponse.ok) {
+        console.error('[processVideoAsyncFlow] Failed to check run status')
+        continue
+      }
+
+      runStatus = await statusResponse.json()
+      console.log(`[processVideoAsyncFlow] Run status: ${runStatus.data.status}`)
+
+      if (runStatus.data.status === 'SUCCEEDED') {
+        break
+      } else if (runStatus.data.status === 'FAILED' || runStatus.data.status === 'ABORTED') {
+        throw new Error('Video download failed')
+      }
+    }
+
+    if (runStatus?.data?.status !== 'SUCCEEDED') {
+      throw new Error('Video download timed out')
+    }
+
+    const datasetId = runStatus.data.defaultDatasetId
+    const itemsResponse = await fetch(
+      `https://api.apify.com/v2/datasets/${datasetId}/items`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
+        },
+      }
+    )
+
+    if (!itemsResponse.ok) {
+      throw new Error('Failed to retrieve video data')
+    }
+
+    const items: any[] = await itemsResponse.json()
+    console.log('[processVideoAsyncFlow] Retrieved dataset items:', items.length)
+
+    if (!items.length) {
+      throw new Error('No video found at the provided URL')
+    }
+
+    const videoData = items[0]
+    console.log('[processVideoAsyncFlow] Video data:', {
+      platform: videoData.platform,
+      title: videoData.title,
+      duration: videoData.durationSeconds,
+      mediaUrl: videoData.mediaUrl?.substring(0, 100) + '...',
+      thumbnailUrl: videoData.thumbnailUrl?.substring(0, 100) + '...',
+    })
+
+    console.log('[processVideoAsyncFlow] Downloading video from:', videoData.mediaUrl)
+    const videoResponse = await fetch(videoData.mediaUrl)
+    if (!videoResponse.ok) {
+      throw new Error('Failed to download video file')
+    }
+
+    let videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+    console.log('[processVideoAsyncFlow] Downloaded video size:', (videoBuffer.length / 1024 / 1024).toFixed(2), 'MB')
+
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'transcoding',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+
+    console.log('[processVideoAsyncFlow] Starting video transcoding')
+    try {
+      const tempDir = os.tmpdir()
+      const inputPath = path.join(tempDir, `input_${nanoid()}.mp4`)
+      const outputPath = path.join(tempDir, `output_${nanoid()}.mp4`)
+
+      await fs.writeFile(inputPath, videoBuffer)
+      console.log('[processVideoAsyncFlow] Wrote input file:', inputPath)
+
+      await new Promise<void>((resolve, reject) => {
+        ffmpeg(inputPath)
+          .videoCodec('libx264')
+          .audioCodec('aac')
+          .format('mp4')
+          .outputOptions([
+            '-preset fast',
+            '-crf 23',
+            '-movflags +faststart',
+            '-pix_fmt yuv420p',
+          ])
+          .on('start', (cmd) => {
+            console.log('[processVideoAsyncFlow] FFmpeg command:', cmd)
+          })
+          .on('progress', (progress) => {
+            console.log('[processVideoAsyncFlow] Transcoding progress:', Math.round(progress.percent || 0) + '%')
+          })
+          .on('end', () => {
+            console.log('[processVideoAsyncFlow] Transcoding completed')
+            resolve()
+          })
+          .on('error', (err) => {
+            console.error('[processVideoAsyncFlow] FFmpeg error:', err)
+            reject(err)
+          })
+          .save(outputPath)
+      })
+
+      const transcodedBuffer = await fs.readFile(outputPath)
+      videoBuffer = transcodedBuffer
+
+      console.log('[processVideoAsyncFlow] Transcoding complete:', {
+        originalSize: (await fs.stat(inputPath)).size,
+        transcodedSize: transcodedBuffer.length,
+        reduction: `${(100 - (transcodedBuffer.length / (await fs.stat(inputPath)).size) * 100).toFixed(1)}%`
+      })
+
+      await fs.unlink(inputPath).catch(() => {})
+      await fs.unlink(outputPath).catch(() => {})
+
+    } catch (error) {
+      console.error('[processVideoAsyncFlow] Transcoding failed:', error)
+    }
+
+    const sizeInMB = videoBuffer.length / (1024 * 1024)
+    if (sizeInMB > 512) {
+      throw new Error(`Video too large (${sizeInMB.toFixed(2)}MB). Twitter limit is 512MB.`)
+    }
+
+    if (videoData.durationSeconds && videoData.durationSeconds > 140) {
+      throw new Error(`Video too long (${Math.round(videoData.durationSeconds)}s). Twitter limit is 140s.`)
+    }
+
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'uploading',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+
+    const s3Key = `tweet-media/${userId}/${nanoid()}.mp4`
+    console.log('[processVideoAsyncFlow] Uploading to S3:', s3Key)
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: s3Key,
+        Body: videoBuffer,
+        ContentType: 'video/mp4',
+      }),
+    )
+
+    const publicUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`
+    console.log('[processVideoAsyncFlow] S3 upload complete:', publicUrl)
+
+    console.log('[processVideoAsyncFlow] Starting Twitter upload')
+
+    const { user: userSchema } = await import('@/db/schema')
+    const [user] = await db
+      .select({ email: userSchema.email })
+      .from(userSchema)
+      .where(eq(userSchema.id, userId))
+      .limit(1)
+
+    if (!user) {
+      throw new Error('User not found')
+    }
+
+    console.log('[processVideoAsyncFlow] Found user email:', user.email)
+
+    const account = await getAccount({ email: user.email })
+
+    if (!account) {
+      throw new Error('No Twitter account found. Please connect your Twitter account in Settings.')
+    }
+
+    console.log('[processVideoAsyncFlow] Found Twitter account:', account.username)
+
+    const twitterClient = new TwitterApi({
+      appKey: process.env.TWITTER_API_KEY!,
+      appSecret: process.env.TWITTER_API_SECRET!,
+      accessToken: account.accessToken!,
+      accessSecret: account.accessTokenSecret!,
+    })
+
+    const videoSizeMB = (videoBuffer.length / (1024 * 1024)).toFixed(2)
+    const isLongVideo = videoBuffer.length > 15 * 1024 * 1024
+
+    console.log('[processVideoAsyncFlow] Preparing Twitter upload:', {
+      videoSize: `${videoSizeMB}MB`,
+      isLongVideo,
+      duration: videoData.durationSeconds || videoData.duration,
+      platform: videoData.platform,
+      title: videoData.title?.substring(0, 50) + '...'
+    })
+
+    let mediaId: string
+    try {
+      const mediaUpload = await twitterClient.v1.uploadMedia(videoBuffer, {
+        mimeType: 'video/mp4',
+        target: 'tweet',
+        mediaCategory: 'tweet_video',
+        waitForProcessing: true,
+        longVideo: isLongVideo,
+      })
+
+      console.log('[processVideoAsyncFlow] Twitter upload successful:', {
+        media_id: mediaUpload,
+        videoSize: `${videoSizeMB}MB`,
+        processingTime: 'completed'
+      })
+
+      mediaId = mediaUpload
+
+    } catch (twitterError: any) {
+      console.error('[processVideoAsyncFlow] Twitter upload failed:', {
+        error: twitterError.message,
+        code: twitterError.code,
+        data: twitterError.data,
+        videoSize: `${videoSizeMB}MB`,
+        isLongVideo,
+        accountUsername: account.username
+      })
+
+      if (twitterError.code === 403) {
+        throw new Error('Twitter upload failed: Your Twitter app may not have video upload permissions. Please check your Twitter Developer app settings.')
+      } else if (twitterError.code === 413) {
+        throw new Error('Video too large for Twitter. Please use a smaller video.')
+      } else if (twitterError.code === 400) {
+        throw new Error('Invalid video format. Twitter requires MP4 videos with H.264 encoding.')
+      } else {
+        throw new Error(`Twitter upload failed: ${twitterError.message || 'Unknown error'}`)
+      }
+    }
+
+    if (tweetId) {
+      const tweet = await db.query.tweets.findFirst({
+        where: eq(tweets.id, tweetId),
+      })
+
+      if (tweet) {
+        const updatedMedia = [
+          ...(tweet.media || []),
+          {
+            s3Key,
+            media_id: mediaId,
+            url: publicUrl,
+            type: 'video' as const,
+            platform: videoData.platform || platform,
+            originalUrl: videoData.sourceUrl || url,
+            title: videoData.title,
+            duration: videoData.durationSeconds,
+            size: videoBuffer.length,
+          },
+        ]
+
+        await db
+          .update(tweets)
+          .set({
+            media: updatedMedia as any,
+            videoProcessingStatus: 'complete',
+            pendingVideoUrl: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(tweets.id, tweetId))
+
+        console.log('[processVideoAsyncFlow] Updated tweet with video:', tweetId)
+      }
+    }
+
+    if (autoPost && tweetId) {
+      console.log('[processVideoAsyncFlow] Auto-posting tweet with video')
+      const { publishThreadById } = await import('./chat/utils')
+      await publishThreadById({
+        threadId: tweetId,
+        userId,
+        accountId: account.id,
+        logPrefix: 'processVideoAsyncFlow'
+      })
+    }
+
+    return {
+      success: true,
+      s3Key,
+      url: publicUrl,
+      media_id: mediaId,
+      platform: videoData.platform || platform,
+    }
+
+  } catch (error) {
+    console.error('[processVideoAsyncFlow] Video processing error:', error)
+    if (tweetId) {
+      await db
+        .update(tweets)
+        .set({
+          videoProcessingStatus: 'failed',
+          videoErrorMessage: error instanceof Error ? error.message : 'Unknown error',
+          updatedAt: new Date(),
+        })
+        .where(eq(tweets.id, tweetId))
+    }
+    throw error
+  }
+}
+
 // Direct video processing function for development mode
 async function processVideoDirectly({
   url,
@@ -123,6 +553,7 @@ async function processVideoDirectly({
   userId: string
   autoPost: boolean
 }) {
+  return processVideoAsyncFlow({ url, platform, tweetId, userId, autoPost })
   console.log('🎬🎬🎬 [processVideoDirectly] ========== DIRECT VIDEO PROCESSING STARTED ==========')
   console.log('[processVideoDirectly] 📋 Full input parameters:', {
     url: url,
