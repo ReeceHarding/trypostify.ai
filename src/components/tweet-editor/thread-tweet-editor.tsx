@@ -25,8 +25,10 @@ interface ThreadTweetData {
     isDownloading?: boolean
     videoUrl?: string
     platform?: string
+    // NEW: Pending media support
+    isPending?: boolean
+    pendingJobId?: string
   }>
-  isDownloadingVideo?: boolean
 }
 
 interface ThreadTweetEditorProps {
@@ -57,6 +59,9 @@ export default function ThreadTweetEditor({
   editMode = false,
   editTweetId,
 }: ThreadTweetEditorProps) {
+  
+  // Track which tweets have pending video downloads
+  const [tweetsWithPendingVideos, setTweetsWithPendingVideos] = useState<Set<string>>(new Set())
   
   const { getCharacterLimit } = useUser()
   const characterLimit = getCharacterLimit()
@@ -372,6 +377,19 @@ export default function ThreadTweetEditor({
     setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
   }
 
+  const handleVideoDownloadStateChange = (tweetId: string, isDownloading: boolean) => {
+    console.log('[ThreadTweetEditor] Video download state change:', { tweetId, isDownloading })
+    setTweetsWithPendingVideos(prev => {
+      const newSet = new Set(prev)
+      if (isDownloading) {
+        newSet.add(tweetId)
+      } else {
+        newSet.delete(tweetId)
+      }
+      return newSet
+    })
+  }
+
   const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
     setThreadTweets(prevTweets => 
       prevTweets.map(tweet =>
@@ -388,9 +406,10 @@ export default function ThreadTweetEditor({
       return
     }
 
-    // Check if any tweet has video still downloading
-    console.log('[ThreadTweetEditor] DEBUGGING: Checking for downloading videos...')
+    // Check if any tweet has PENDING media
+    console.log('[ThreadTweetEditor] DEBUGGING: Checking for pending media...')
     console.log('[ThreadTweetEditor] DEBUGGING: threadTweets count:', threadTweets.length)
+    
     threadTweets.forEach((tweet, index) => {
       console.log(`[ThreadTweetEditor] DEBUGGING: Tweet ${index}:`, {
         id: tweet.id,
@@ -398,37 +417,38 @@ export default function ThreadTweetEditor({
         mediaCount: tweet.media.length,
         media: tweet.media.map(m => ({
           s3Key: m.s3Key,
-          isDownloading: m.isDownloading,
+          isPending: m.isPending,
+          pendingJobId: m.pendingJobId,
           videoUrl: m.videoUrl,
           platform: m.platform,
-          type: m.media_id ? 'completed' : 'pending'
+          type: m.isPending ? 'PENDING' : (m.media_id ? 'completed' : 'uploaded')
         }))
       })
     })
     
-    const hasDownloadingVideo = threadTweets.some(tweet => 
-      tweet.media.some(m => m.isDownloading === true)
+    const hasPendingMedia = threadTweets.some(tweet => 
+      tweet.media.some(m => m.isPending === true)
     )
     
-    console.log('[ThreadTweetEditor] DEBUGGING: hasDownloadingVideo result:', hasDownloadingVideo)
+    console.log('[ThreadTweetEditor] DEBUGGING: hasPendingMedia result:', hasPendingMedia)
     
     // Store current content for potential rollback
     const currentContent = [...threadTweets]
 
-    // IF VIDEOS ARE DOWNLOADING: Queue the tweet instead of posting immediately
-    if (hasDownloadingVideo) {
-      console.log('[ThreadTweetEditor] 🎬 Videos still downloading - QUEUING tweet for later posting')
+    // IF PENDING MEDIA EXISTS: Queue the tweet for background processing
+    if (hasPendingMedia) {
+      console.log('[ThreadTweetEditor] 📎 PENDING media detected - QUEUING tweet for background processing')
       
       try {
-        // Create video processing jobs that will post the tweet when ready
+        // Create video processing jobs for each pending media
         const videoJobs = []
         
         for (let tweetIndex = 0; tweetIndex < currentContent.length; tweetIndex++) {
           const tweet = currentContent[tweetIndex]
-          const downloadingVideos = tweet.media.filter(m => m.isDownloading && m.videoUrl)
+          const pendingVideos = tweet.media.filter(m => m.isPending && m.videoUrl)
           
-          for (const video of downloadingVideos) {
-            console.log('[ThreadTweetEditor] 🔄 Creating video processing job for:', video.videoUrl)
+          for (const video of pendingVideos) {
+            console.log('[ThreadTweetEditor] 🔄 Creating video processing job for pending video:', video.videoUrl)
             
             // Create video job that will handle the complete posting flow
             const videoJobResponse = await client.videoJob.createVideoJob.$post({
@@ -439,14 +459,15 @@ export default function ThreadTweetEditor({
               tweetContent: {
                 tweets: currentContent.map((t, idx) => ({
                   content: t.content,
-                  media: t.media,
+                  media: t.media.filter(m => !m.isPending), // Only include non-pending media in the stored content
                   delayMs: idx > 0 ? 1000 : 0,
-                }))
+                })),
+                pendingVideoJobId: video.pendingJobId, // Track which pending video this job is for
               }
             })
             
             videoJobs.push(videoJobResponse)
-            console.log('[ThreadTweetEditor] ✅ Video job created:', videoJobResponse)
+            console.log('[ThreadTweetEditor] ✅ Video job created for pending media:', videoJobResponse)
           }
         }
         
@@ -471,7 +492,7 @@ export default function ThreadTweetEditor({
           icon: '⏳',
         })
         
-        posthog.capture('thread_queued_for_video', {
+        posthog.capture('thread_queued_for_pending_video', {
           tweet_count: currentContent.length,
           video_jobs: videoJobs.length,
         })
@@ -487,8 +508,8 @@ export default function ThreadTweetEditor({
       }
     }
 
-    // NO DOWNLOADING VIDEOS: Post immediately as before
-    console.log('[ThreadTweetEditor] No downloading videos - posting immediately')
+    // NO PENDING MEDIA: Post immediately with completed media only
+    console.log('[ThreadTweetEditor] No pending media - posting immediately')
     console.log('[ThreadTweetEditor] Starting immediate post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
     
@@ -511,10 +532,10 @@ export default function ThreadTweetEditor({
       // IMMEDIATE POSTING: Post tweets without downloading videos
       console.log('[ThreadTweetEditor] Starting immediate post operation at', new Date().toISOString())
       
-      // Prepare tweets for posting (all media should be ready)
+      // Prepare tweets for posting (exclude any pending media)
       const tweetsForPosting = currentContent.map((tweet, index) => ({
         content: tweet.content,
-        media: tweet.media, // All media should be ready
+        media: tweet.media.filter(m => !m.isPending), // Only include completed media
         delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
       }))
       
@@ -930,6 +951,7 @@ export default function ThreadTweetEditor({
               isPosting={isPosting}
               preScheduleTime={preScheduleTime}
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
+              onDownloadingVideoChange={(isDownloading) => handleVideoDownloadStateChange(tweet.id, isDownloading)}
               initialContent={editMode ? (tweet.content ?? '') : ''}
               initialMedia={tweet.media?.map((m: any) => ({
                 // Ensure a valid preview URL is always present. If the API didn't

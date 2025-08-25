@@ -146,6 +146,7 @@ function ThreadTweetContent({
   const [isDownloadingVideo, setIsDownloadingVideo] = useState(false)
   const [showVideoUrlInput, setShowVideoUrlInput] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [hasPendingVideoDownload, setHasPendingVideoDownload] = useState(false)
   
   console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
 
@@ -706,121 +707,66 @@ function ThreadTweetContent({
       return
     }
 
-    // Close dialog immediately and show progress
+    // Close dialog immediately
     setShowVideoUrlInput(false)
-    setIsDownloadingVideo(true)
-    setDownloadProgress(0)
     
-    // Notify parent component about download state
-    if (onDownloadingVideoChange) {
-      onDownloadingVideoChange(true)
+    console.log('[ThreadTweet] 🎬 Creating PENDING media object for:', videoUrl.trim())
+    
+    // Generate a unique job ID for tracking
+    const pendingJobId = crypto.randomUUID()
+    
+    // Create a PENDING media file object immediately
+    const pendingMediaFile: MediaFile = {
+      file: null,
+      url: `/api/placeholder/pending-video.mp4`, // Placeholder URL
+      type: 'video',
+      uploading: false,
+      uploaded: false,
+      s3Key: '', // Will be filled when video is processed
+      media_id: '', // Will be filled when uploaded to Twitter
+      // PENDING STATE
+      isPending: true,
+      pendingJobId: pendingJobId,
+      videoUrl: videoUrl.trim(),
+      platform: 'unknown', // Will be detected during processing
     }
     
-    // Show initial toast with progress
-    const toastId = toast.loading('Starting video download...', {
-      duration: Infinity,
+    console.log('[ThreadTweet] ✅ PENDING media object created:', {
+      pendingJobId: pendingMediaFile.pendingJobId,
+      videoUrl: pendingMediaFile.videoUrl,
+      isPending: pendingMediaFile.isPending
     })
 
-    try {
-      // Simulate progress updates during download (slower for pleasant surprise)
-      let currentProgress = 0
-      const progressInterval = setInterval(() => {
-        // Much slower progress: 1-4% every 2 seconds, cap at 75%
-        currentProgress = Math.min(currentProgress + Math.random() * 3 + 1, 75)
-        setDownloadProgress(currentProgress)
-        toast.loading(`Downloading video... ${Math.round(currentProgress)}%`, {
-          id: toastId,
-        })
-      }, 2000)
+    // Add pending media to the UI immediately
+    setMediaFiles((prev) => [...prev, pendingMediaFile])
 
-      // Download video from URL
-      const result = await downloadVideoMutation.mutateAsync(videoUrl)
+    // Update parent with the pending media
+    if (onUpdate) {
+      const content = mentionsContent
+      const parentMedia = [...mediaFiles, pendingMediaFile]
+        .filter((f) => f.isPending || f.s3Key) // Include pending and completed media
+        .map((f) => ({ 
+          s3Key: f.s3Key || '',
+          media_id: f.media_id || '',
+          isPending: f.isPending,
+          pendingJobId: f.pendingJobId,
+          videoUrl: f.videoUrl,
+          platform: f.platform,
+        }))
       
-      clearInterval(progressInterval)
+      console.log('[ThreadTweet] 📤 UPDATING PARENT with media array (including pending):', parentMedia)
       
-      // Quick finish animation - jump to 85%, then 95%, then 100%
-      setDownloadProgress(85)
-      toast.loading('Processing video...', { id: toastId })
-      
-      // Brief pause to show the jump
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-            // Create a media file object for the video (marked as downloading for background processing)
-      const mediaFile: MediaFile = {
-        file: null as any, // We don't have the actual File object, but we have the S3 key
-        url: result.url,
-        type: 'video',
-        uploading: false,
-        uploaded: true,
-        s3Key: result.s3Key,
-        // Mark as downloading so it will be processed in background when user posts
-        isDownloading: true,
-        videoUrl: videoUrl.trim(),
-        platform: result.platform,
-      }
-      
-      console.log('[ThreadTweet] 🎬 CREATED VIDEO MEDIA FILE for background processing:', {
-        s3Key: mediaFile.s3Key,
-        isDownloading: mediaFile.isDownloading,
-        videoUrl: mediaFile.videoUrl,
-        platform: mediaFile.platform,
-        url: mediaFile.url
-      })
-
-      // Add to media files (without media_id since it will be processed in background)
-      setMediaFiles((prev) => [...prev, mediaFile])
-
-      // Update parent with the new media (marked as downloading)
-      if (onUpdate) {
-        const content = mentionsContent
-        const parentMedia = [...mediaFiles, mediaFile]
-          .filter((f) => f.s3Key)
-          .map((f) => ({ 
-            s3Key: f.s3Key!, 
-            media_id: f.media_id || '', // Empty for downloading videos
-            isDownloading: f.isDownloading,
-            videoUrl: f.videoUrl,
-            platform: f.platform,
-          }))
-        
-        console.log('[ThreadTweet] 📤 UPDATING PARENT with media array:', parentMedia)
-        console.log('[ThreadTweet] 📤 PARENT UPDATE - Content:', content.substring(0, 50) + '...')
-        
-        onUpdate(content, parentMedia)
-      }
-
-      console.log('[ThreadTweet] Video downloaded to S3, ready for background processing when user posts')
-      
-      // Show success message
-      toast.success('Video ready! It will upload to Twitter when you post.', { 
-        duration: 4000,
-        icon: '📹',
-      })
-
-      // Final quick animation to 100%
-      setDownloadProgress(100)
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      toast.success(`${result.orientation === 'portrait' ? '📱' : result.orientation === 'landscape' ? '🖥️' : '⬜'} Video from ${result.platform} added successfully!`, {
-        id: toastId,
-        duration: 3000,
-      })
-      setVideoUrl('')
-    } catch (error) {
-      console.error('[ThreadTweet] Video download error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to download video', {
-        id: toastId,
-        duration: 5000,
-      })
-    } finally {
-      setIsDownloadingVideo(false)
-      setDownloadProgress(0)
-      
-      // Notify parent component download is complete
-      if (onDownloadingVideoChange) {
-        onDownloadingVideoChange(false)
-      }
+      onUpdate(content, parentMedia)
     }
+
+    // Show success message - video is "attached" as pending
+    toast.success('Video attached! Will download and post when you click Post.', { 
+      duration: 4000,
+      icon: '📎',
+    })
+    
+    // Clear video URL
+    setVideoUrl('')
   }
 
   const handleClearTweet = () => {

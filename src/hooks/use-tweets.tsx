@@ -150,6 +150,9 @@ export interface MediaFile {
   downloadProgress?: number
   videoUrl?: string // Original video URL for tracking
   platform?: string // Platform the video was downloaded from (instagram, tiktok, etc.)
+  // NEW: Pending media support
+  isPending?: boolean // True for videos that haven't been downloaded yet
+  pendingJobId?: string // ID to track the background job
 }
 
 export function TweetProvider({ children }: PropsWithChildren) {
