@@ -168,7 +168,7 @@ async function processVideoDirectly({
     // Prepare Apify request payload
     const apifyPayload = {
       input: {
-        video_url: sanitizedUrl,
+        urls: [sanitizedUrl], // FIXED: Actor expects 'urls' array, not 'video_url' string
         downloadVideo: true,
         downloadAudio: false,
         downloadThumbnail: true,
@@ -782,7 +782,7 @@ export const videoRouter = j.router({
         // Prepare Apify request payload
         const apifyPayload = {
           input: {
-            video_url: sanitizedUrl,
+            urls: [sanitizedUrl], // FIXED: Actor expects 'urls' array, not 'video_url' string
             downloadVideo: true,
             downloadAudio: false,
             downloadThumbnail: true,
