@@ -45,8 +45,28 @@ export const videoJobRouter = j.router({
         
         console.log('[VideoJobRouter] ✅ Video job created successfully:', newJob[0])
         
-        // TODO: Queue the job with QStash for background processing
-        console.log('[VideoJobRouter] 🔄 TODO: Queue job with QStash for background processing')
+        // Process video job in background
+        console.log('[VideoJobRouter] 🔄 Starting background video job processing')
+        setImmediate(async () => {
+          try {
+            console.log('[VideoJobRouter] 📤 Processing video job:', jobId)
+            
+            // Call the webhook processor directly
+            const webhookResponse = await fetch(process.env.WEBHOOK_URL || 'http://localhost:3000' + '/api/video/process', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ videoJobId: jobId }),
+            })
+            
+            if (!webhookResponse.ok) {
+              console.error('[VideoJobRouter] ❌ Video processing failed:', await webhookResponse.text())
+            } else {
+              console.log('[VideoJobRouter] ✅ Video processing completed successfully')
+            }
+          } catch (error) {
+            console.error('[VideoJobRouter] ❌ Video processing error:', error)
+          }
+        })
         
         return c.json({
           success: true,
