@@ -166,29 +166,71 @@ export async function POST(req: NextRequest) {
       // Upload to Twitter
       console.log('[VideoProcessor] Uploading video to Twitter...')
       
-      // For video jobs, we skip the tweet attachment since tweet doesn't exist yet
-      // The ThreadTweetEditor will handle Twitter upload when the tweet is created
-      console.log('[VideoProcessor] Skipping tweet attachment - tweet will be created later')
+      // We need to upload the video to Twitter now to get the media_id for posting
+      let twitterMediaId = null
       
-      // No Twitter upload needed - will be handled by ThreadTweetEditor when tweet is created
-      
-      // Update job as completed with S3 key
-      await db
-        .update(videoJob)
-        .set({
-          status: 'completed',
-          s3Key,
-          videoMetadata: {
-            duration: video.duration || video.durationSeconds,
-            width: video.width,
-            height: video.height,
-            platform: video.platform || job.platform,
-            title: video.title,
-          },
-          completedAt: new Date(),
-          updatedAt: new Date(),
+      try {
+        // Get user account for Twitter upload
+        const { account: accountSchema } = await import('../../../../db/schema')
+        const { eq, and } = await import('drizzle-orm')
+        
+        // Find the user's Twitter account
+        const account = await db.query.account.findFirst({
+          where: and(
+            eq(accountSchema.userId, job.userId), 
+            eq(accountSchema.providerId, 'twitter')
+          ),
         })
-        .where(eq(videoJob.id, videoJobId))
+        
+        if (account?.accessToken && account?.accessSecret) {
+          const { TwitterApi } = await import('twitter-api-v2')
+          
+          const client = new TwitterApi({
+            appKey: process.env.TWITTER_CONSUMER_KEY as string,
+            appSecret: process.env.TWITTER_CONSUMER_SECRET as string,
+            accessToken: account.accessToken as string,
+            accessSecret: account.accessSecret as string,
+          })
+          
+          // Download video from S3 and upload to Twitter
+          const videoUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`
+          const videoResponse = await fetch(videoUrl)
+          
+          if (videoResponse.ok) {
+            const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
+            console.log('[VideoProcessor] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
+            
+            twitterMediaId = await client.v1.uploadMedia(videoBuffer, { mimeType: 'video/mp4' })
+            console.log('[VideoProcessor] Video uploaded to Twitter with media_id:', twitterMediaId)
+          } else {
+            console.error('[VideoProcessor] Failed to download video from S3 for Twitter upload')
+          }
+        } else {
+          console.error('[VideoProcessor] No Twitter account found or missing tokens for user:', job.userId)
+        }
+      } catch (uploadError) {
+        console.error('[VideoProcessor] Failed to upload video to Twitter:', uploadError)
+        // Continue without Twitter upload - tweet will post without video
+      }
+      
+                // Update job as completed with S3 key and Twitter media ID
+          await db
+            .update(videoJob)
+            .set({
+              status: 'completed',
+              s3Key,
+              twitterMediaId,
+              videoMetadata: {
+                duration: video.duration || video.durationSeconds,
+                width: video.width,
+                height: video.height,
+                platform: video.platform || job.platform,
+                title: video.title,
+              },
+              completedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(videoJob.id, videoJobId))
       
       console.log('[VideoProcessor] Video job completed successfully:', videoJobId)
       
@@ -230,10 +272,12 @@ export async function POST(req: NextRequest) {
             content: tweet.content,
             media: [
               ...tweet.media || [], // Existing media
-              {
+              ...(twitterMediaId ? [{
                 s3Key,
-                media_id: '', // Will be uploaded to Twitter during posting
-              }
+                media_id: twitterMediaId,
+                url: `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`,
+                type: 'video' as const,
+              }] : []), // Only add video if Twitter upload succeeded
             ],
             threadId,
             position: index,
