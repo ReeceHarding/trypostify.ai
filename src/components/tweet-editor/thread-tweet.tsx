@@ -82,9 +82,29 @@ interface ThreadTweetProps {
   onUpdateThread?: () => void
   onCancelEdit?: () => void
   isPosting?: boolean
-  onUpdate?: (content: string, media: Array<{ s3Key: string; media_id: string }>) => void
+  onUpdate?: (
+    content: string,
+    media: Array<{
+      s3Key: string
+      media_id: string
+      isPending?: boolean
+      pendingJobId?: string
+      videoUrl?: string
+      platform?: string
+      type?: 'image' | 'gif' | 'video'
+    }>
+  ) => void
   initialContent?: string
-  initialMedia?: Array<{ url: string; s3Key: string; media_id: string; type: 'image' | 'gif' | 'video' }>
+  initialMedia?: Array<{
+    url: string
+    s3Key: string
+    media_id: string
+    type: 'image' | 'gif' | 'video'
+    isPending?: boolean
+    pendingJobId?: string
+    videoUrl?: string
+    platform?: string
+  }>
   showFocusTooltip?: boolean
   focusShortcut?: string
   isDownloadingVideo?: boolean
@@ -156,6 +176,7 @@ function ThreadTweetContent({
   // Handler for react-mentions content changes
   const handleMentionsContentChange = useCallback((newContent: string) => {
     console.log('📝 Mentions content changed:', newContent)
+    console.log('📝 [MENTIONS_CHANGE] Current mediaFiles at start:', mediaFiles.length, mediaFiles.map(f => ({ isPending: f.isPending, s3Key: f.s3Key, pendingJobId: f.pendingJobId })))
     setMentionsContent(newContent)
     setCharCount(newContent.length)
     
@@ -203,6 +224,7 @@ function ThreadTweetContent({
     
     // Notify parent component about the update
     if (onUpdate) {
+      console.log('📝 [MENTIONS_CHANGE] Current mediaFiles before filtering:', mediaFiles.length, mediaFiles.map(f => ({ isPending: f.isPending, s3Key: f.s3Key, pendingJobId: f.pendingJobId })))
       const filteredMedia = mediaFiles.filter(f => (f.media_id && f.s3Key) || f.isPending).map(f => ({
         s3Key: f.s3Key || '',
         media_id: f.media_id || '',
@@ -211,6 +233,7 @@ function ThreadTweetContent({
         videoUrl: f.videoUrl,
         platform: f.platform,
       }))
+      console.log('📝 [MENTIONS_CHANGE] Filtered media being sent to parent:', filteredMedia.length, filteredMedia.map(f => ({ isPending: f.isPending, s3Key: f.s3Key, pendingJobId: f.pendingJobId })))
       onUpdate(newContent, filteredMedia)
     }
   }, [onUpdate, mediaFiles, detectedUrl])
@@ -381,6 +404,11 @@ function ThreadTweetContent({
         uploaded: true,
         uploading: false,
         file: null,
+        // Preserve pending video metadata
+        isPending: media.isPending,
+        pendingJobId: media.pendingJobId,
+        videoUrl: media.videoUrl,
+        platform: media.platform,
       })))
     }
   }, [initialMedia])

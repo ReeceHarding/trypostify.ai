@@ -47,23 +47,23 @@ export const videoJobRouter = j.router({
         // TODO: Queue the job with QStash for background processing
         console.log('[VideoJobRouter] 🔄 TODO: Queue job with QStash for background processing')
         
-        return {
+        return c.json({
           success: true,
           jobId: newJob[0].id,
           status: newJob[0].status,
           message: 'Video job created successfully. Processing will begin shortly.',
-        }
+        })
         
       } catch (error) {
         console.error('[VideoJobRouter] ❌ Failed to create video job:', error)
         console.error('[VideoJobRouter] ❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
         
         // Try returning an error response instead of throwing
-        return {
+        return c.json({
           success: false,
           error: `Failed to create video job: ${error instanceof Error ? error.message : 'Unknown error'}`,
           message: 'An unexpected error occurred. Check server logs for details.',
-        }
+        }, 500)
       }
     }),
 

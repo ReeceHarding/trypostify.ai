@@ -390,7 +390,19 @@ export default function ThreadTweetEditor({
     })
   }
 
-  const handleTweetUpdate = (id: string, content: string, media: Array<{ s3Key: string; media_id: string }>) => {
+  const handleTweetUpdate = (
+    id: string,
+    content: string,
+    media: Array<{
+      s3Key: string
+      media_id: string
+      isPending?: boolean
+      pendingJobId?: string
+      videoUrl?: string
+      platform?: string
+      type?: string
+    }>
+  ) => {
     console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Called for tweet ID:', id)
     console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Content:', content.substring(0, 50) + '...')
     console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Media array received:', media)
@@ -488,6 +500,7 @@ export default function ThreadTweetEditor({
         
         for (let tweetIndex = 0; tweetIndex < currentContent.length; tweetIndex++) {
           const tweet = currentContent[tweetIndex]
+          if (!tweet) continue
           const pendingVideos = tweet.media.filter(m => m.isPending && m.videoUrl)
           
           for (const video of pendingVideos) {
@@ -509,15 +522,18 @@ export default function ThreadTweetEditor({
               }
             })
             
-            console.log('[ThreadTweetEditor] 📋 Video job response:', videoJobResponse)
+            console.log('[ThreadTweetEditor] 📋 Video job response status:', videoJobResponse.status)
             
-            if (videoJobResponse.success === false) {
-              console.error('[ThreadTweetEditor] ❌ Video job creation failed:', videoJobResponse.error)
-              throw new Error(videoJobResponse.error || 'Failed to create video job')
+            if (!videoJobResponse.ok) {
+              const errorData = await videoJobResponse.json()
+              console.error('[ThreadTweetEditor] ❌ Video job creation failed:', errorData)
+              throw new Error(errorData.error || errorData.message || 'Failed to create video job')
             }
             
-            videoJobs.push(videoJobResponse)
-            console.log('[ThreadTweetEditor] ✅ Video job created for pending media:', videoJobResponse)
+            const jobData = await videoJobResponse.json()
+            
+            videoJobs.push(jobData)
+            console.log('[ThreadTweetEditor] ✅ Video job created for pending media:', jobData)
           }
         }
         
@@ -1001,7 +1017,6 @@ export default function ThreadTweetEditor({
               isPosting={isPosting}
               preScheduleTime={preScheduleTime}
               onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
-              onDownloadingVideoChange={(isDownloading) => handleVideoDownloadStateChange(tweet.id, isDownloading)}
               initialContent={editMode ? (tweet.content ?? '') : ''}
               initialMedia={tweet.media?.map((m: any) => ({
                 // Ensure a valid preview URL is always present. If the API didn't
@@ -1014,18 +1029,15 @@ export default function ThreadTweetEditor({
                     : ''),
                 s3Key: m.s3Key,
                 media_id: m.media_id,
+                // Preserve pending video metadata so posting logic can detect it
+                isPending: m.isPending,
+                pendingJobId: m.pendingJobId,
+                videoUrl: m.videoUrl,
+                platform: m.platform,
                 type: m.type || 'image'
               })) || []}
               showFocusTooltip={index === 0}
               focusShortcut={`${metaKey} + Shift + F`}
-              isDownloadingVideo={tweet.isDownloadingVideo}
-              onDownloadingVideoChange={(isDownloading) => {
-                setThreadTweets(prevTweets => 
-                  prevTweets.map(t => 
-                    t.id === tweet.id ? { ...t, isDownloadingVideo: isDownloading } : t
-                  )
-                )
-              }}
             />
           </div>
         ))}
