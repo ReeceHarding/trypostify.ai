@@ -166,32 +166,11 @@ export async function POST(req: NextRequest) {
       // Upload to Twitter
       console.log('[VideoProcessor] Uploading video to Twitter...')
       
-      // Get the tweet to attach to
-      const tweet = await db.query.tweets.findFirst({
-        where: eq(tweets.id, job.tweetId),
-      })
+      // For video jobs, we skip the tweet attachment since tweet doesn't exist yet
+      // The ThreadTweetEditor will handle Twitter upload when the tweet is created
+      console.log('[VideoProcessor] Skipping tweet attachment - tweet will be created later')
       
-      if (!tweet) {
-        throw new Error('Target tweet not found')
-      }
-      
-      // Call the existing Twitter upload endpoint internally
-      const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/tweet/uploadMediaToTwitter`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Note: This is internal server-to-server, we'd need to handle auth differently
-          // For now, we'll implement Twitter upload directly here
-        },
-        body: JSON.stringify({
-          s3Key,
-          mediaType: 'video',
-          fileUrl: publicUrl,
-        }),
-      })
-      
-      // Actually, let's implement Twitter upload directly here for simplicity
-      // We'll need to get the user's Twitter tokens and upload directly
+      // No Twitter upload needed - will be handled by ThreadTweetEditor when tweet is created
       
       // Update job as completed with S3 key
       await db
