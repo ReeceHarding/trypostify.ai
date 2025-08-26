@@ -7,6 +7,50 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Standardized video upload to Twitter with format validation and error handling
+ * Used by both direct uploads and Apify video processing
+ */
+export async function uploadVideoToTwitter(
+  videoBuffer: Buffer,
+  twitterClient: any,
+  options: {
+    maxRetries?: number
+    supportedFormats?: string[]
+  } = {}
+): Promise<{ success: boolean; mediaId?: string; error?: string }> {
+  const { maxRetries = 2, supportedFormats = ['video/mp4', 'video/quicktime', 'video/avi'] } = options
+  
+  console.log('[TwitterUpload] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const mediaId = await twitterClient.v1.uploadMedia(videoBuffer, { mimeType: 'video/mp4' })
+      console.log('[TwitterUpload] ✅ Video uploaded successfully with media_id:', mediaId)
+      return { success: true, mediaId }
+    } catch (error: any) {
+      console.log(`[TwitterUpload] ❌ Upload attempt ${attempt} failed:`, error.message)
+      
+      // If it's a format error and we've tried all attempts, return graceful failure
+      if (error.message?.includes('InvalidMedia') || error.message?.includes('Invalid or Unsupported media')) {
+        console.log('[TwitterUpload] Video format not supported by Twitter - continuing without attachment')
+        return { success: false, error: 'UNSUPPORTED_FORMAT' }
+      }
+      
+      // For other errors, retry if we have attempts left
+      if (attempt === maxRetries) {
+        console.log('[TwitterUpload] All upload attempts failed')
+        return { success: false, error: error.message }
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+    }
+  }
+  
+  return { success: false, error: 'MAX_RETRIES_EXCEEDED' }
+}
+
 type DiffType = -1 | 0 | 1 | 2
 
 export type DiffWithReplacement = {

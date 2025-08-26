@@ -9,6 +9,7 @@ import { Receiver } from '@upstash/qstash'
 import { Ratelimit } from '@upstash/ratelimit'
 import { and, desc, eq, asc, inArray, lte } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
+
 import { SendTweetV2Params, TwitterApi, UserV2 } from 'twitter-api-v2'
 import { z } from 'zod'
 import { j, privateProcedure, publicProcedure } from '../jstack'
@@ -393,10 +394,26 @@ export const tweetRouter = j.router({
       }
       
       let mediaId: string
-      try {
-        // REVERT TO ORIGINAL SIMPLE APPROACH THAT WAS WORKING
-        mediaId = await client.v1.uploadMedia(mediaBuffer, { mimeType })
-      } catch (uploadError: any) {
+      
+      // Use standardized Twitter upload function for videos
+      if (mediaType === 'video') {
+        const { uploadVideoToTwitter } = await import('../../lib/utils')
+        const uploadResult = await uploadVideoToTwitter(mediaBuffer, client)
+        
+        if (!uploadResult.success) {
+          throw new HTTPException(400, {
+            message: uploadResult.error === 'UNSUPPORTED_FORMAT' 
+              ? 'Video format not supported by Twitter. Please use MP4, MOV, or AVI format.'
+              : `Failed to upload video to Twitter: ${uploadResult.error}`
+          })
+        }
+        
+        mediaId = uploadResult.mediaId!
+      } else {
+        // For images and GIFs, use original approach
+        try {
+          mediaId = await client.v1.uploadMedia(mediaBuffer, { mimeType })
+        } catch (uploadError: any) {
         console.error('[TwitterUpload] Twitter upload failed with complete error details:', {
           message: uploadError.message,
           name: uploadError.name,
@@ -442,6 +459,7 @@ export const tweetRouter = j.router({
         throw new HTTPException(400, {
           message: `Failed to upload ${mediaType} to Twitter (${twitterErrorCode}): ${twitterErrorMessage}`,
         })
+        }
       }
 
       const mediaUpload = mediaId
