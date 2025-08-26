@@ -192,6 +192,82 @@ export async function POST(req: NextRequest) {
       
       console.log('[VideoProcessor] Video job completed successfully:', videoJobId)
       
+      // NOW CREATE AND POST THE TWEET WITH THE PROCESSED VIDEO
+      if (job.tweetContent) {
+        console.log('[VideoProcessor] Creating and posting tweet with processed video...')
+        
+        try {
+          // Import the tweet posting function directly
+          const { publishThreadById } = await import('../../../../server/routers/tweet-router')
+          
+          // Get user account for posting
+          const { db } = await import('../../../../db')
+          const { account: accountSchema } = await import('../../../../db/schema')
+          const { tweets } = await import('../../../../db/schema')
+          const { eq, and } = await import('drizzle-orm')
+          
+          // Find the user's Twitter account
+          const account = await db.query.account.findFirst({
+            where: and(
+              eq(accountSchema.userId, job.userId), 
+              eq(accountSchema.providerId, 'twitter')
+            ),
+          })
+          
+          if (!account?.id) {
+            console.error('[VideoProcessor] No Twitter account found for user:', job.userId)
+            throw new Error('No Twitter account connected')
+          }
+          
+          // Create a thread ID for the new tweets
+          const threadId = crypto.randomUUID()
+          
+          // Prepare tweet content with the processed video
+          const tweetsToCreate = job.tweetContent.tweets.map((tweet: any, index: number) => ({
+            id: crypto.randomUUID(),
+            accountId: account.id,
+            userId: job.userId,
+            content: tweet.content,
+            media: [
+              ...tweet.media || [], // Existing media
+              {
+                s3Key,
+                media_id: '', // Will be uploaded to Twitter during posting
+              }
+            ],
+            threadId,
+            position: index,
+            isThreadStart: index === 0,
+            delayMs: tweet.delayMs || (index > 0 ? 1000 : 0),
+            isScheduled: false,
+            isPublished: false,
+          }))
+          
+          console.log('[VideoProcessor] Creating tweets in database:', {
+            tweetCount: tweetsToCreate.length,
+            threadId,
+            accountId: account.id,
+          })
+          
+          // Insert tweets into database
+          await db.insert(tweets).values(tweetsToCreate)
+          
+          // Now publish the thread
+          const postResult = await publishThreadById({
+            threadId,
+            userId: job.userId,
+            accountId: account.id,
+            logPrefix: 'VideoProcessor',
+          })
+          
+          console.log('[VideoProcessor] ✅ Tweet posted successfully with video:', postResult)
+          
+        } catch (postError) {
+          console.error('[VideoProcessor] ❌ Failed to post tweet after video processing:', postError)
+          // Don't fail the video job, just log the error
+        }
+      }
+      
       return NextResponse.json({ 
         success: true, 
         videoJobId,
