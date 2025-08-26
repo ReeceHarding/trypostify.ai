@@ -395,17 +395,30 @@ export const tweetRouter = j.router({
       
       let mediaId: string
       
-      // Use standardized Twitter upload function for videos
+      // Use transcoding-enabled Twitter upload function for videos
       if (mediaType === 'video') {
-        const { uploadVideoToTwitter } = await import('../../lib/utils')
-        const uploadResult = await uploadVideoToTwitter(mediaBuffer, client)
+        const { uploadVideoToTwitterWithTranscoding } = await import('../../lib/video-transcode')
+        const uploadResult = await uploadVideoToTwitterWithTranscoding(mediaBuffer, client, {
+          enableTranscoding: true,
+          maxRetries: 2
+        })
         
         if (!uploadResult.success) {
-          throw new HTTPException(400, {
-            message: uploadResult.error === 'UNSUPPORTED_FORMAT' 
-              ? 'Video format not supported by Twitter. Please use MP4, MOV, or AVI format.'
-              : `Failed to upload video to Twitter: ${uploadResult.error}`
-          })
+          let errorMessage = 'Failed to upload video to Twitter'
+          
+          if (uploadResult.error === 'UNSUPPORTED_FORMAT') {
+            errorMessage = 'Video format not supported by Twitter even after transcoding. The video codec may be incompatible.'
+          } else if (uploadResult.error === 'TRANSCODING_FAILED') {
+            errorMessage = 'Video transcoding failed. Please try a different video format.'
+          } else {
+            errorMessage = `Failed to upload video to Twitter: ${uploadResult.error}`
+          }
+          
+          throw new HTTPException(400, { message: errorMessage })
+        }
+        
+        if (uploadResult.transcoded) {
+          console.log('[TwitterUpload] 🎬 Video was successfully transcoded for Twitter compatibility')
         }
         
         mediaId = uploadResult.mediaId!

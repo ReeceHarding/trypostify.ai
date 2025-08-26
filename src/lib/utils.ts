@@ -19,7 +19,7 @@ export async function uploadVideoToTwitter(
     supportedFormats?: string[]
   } = {}
 ): Promise<{ success: boolean; mediaId?: string; error?: string }> {
-  const { maxRetries = 2, supportedFormats = ['video/mp4', 'video/quicktime', 'video/avi'] } = options
+  const { maxRetries = 2 } = options
   
   console.log('[TwitterUpload] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
   
@@ -31,9 +31,9 @@ export async function uploadVideoToTwitter(
     } catch (error: any) {
       console.log(`[TwitterUpload] ❌ Upload attempt ${attempt} failed:`, error.message)
       
-      // If it's a format error and we've tried all attempts, return graceful failure
+      // If it's a format error, return specific error for transcoding handling
       if (error.message?.includes('InvalidMedia') || error.message?.includes('Invalid or Unsupported media')) {
-        console.log('[TwitterUpload] Video format not supported by Twitter - continuing without attachment')
+        console.log('[TwitterUpload] Video format not supported by Twitter')
         return { success: false, error: 'UNSUPPORTED_FORMAT' }
       }
       

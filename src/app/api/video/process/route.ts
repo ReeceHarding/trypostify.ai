@@ -200,16 +200,24 @@ export async function POST(req: NextRequest) {
             const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
             console.log('[VideoProcessor] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
             
-            // Use standardized Twitter upload function
-            const { uploadVideoToTwitter } = await import('../../../../lib/utils')
-            const uploadResult = await uploadVideoToTwitter(videoBuffer, client)
+            // Use transcoding-enabled Twitter upload function
+            const { uploadVideoToTwitterWithTranscoding } = await import('../../../../lib/video-transcode')
+            const uploadResult = await uploadVideoToTwitterWithTranscoding(videoBuffer, client, {
+              enableTranscoding: true,
+              maxRetries: 2
+            })
             
             if (uploadResult.success) {
               twitterMediaId = uploadResult.mediaId
+              if (uploadResult.transcoded) {
+                console.log('[VideoProcessor] 🎬 Video was successfully transcoded for Twitter compatibility')
+              }
             } else {
               console.log('[VideoProcessor] Twitter upload failed:', uploadResult.error)
               if (uploadResult.error === 'UNSUPPORTED_FORMAT') {
-                console.log('[VideoProcessor] Consider adding video format conversion in the future')
+                console.log('[VideoProcessor] Video format still incompatible even after transcoding attempt')
+              } else if (uploadResult.error === 'TRANSCODING_FAILED') {
+                console.log('[VideoProcessor] FFmpeg transcoding failed - video format conversion unsuccessful')
               }
               twitterMediaId = null
             }
