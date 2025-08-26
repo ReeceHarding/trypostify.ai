@@ -1,7 +1,8 @@
 import { j, privateProcedure } from '../jstack'
 import { z } from 'zod'
 import { db } from '../../db'
-import { videoJob } from '../../db/schema/video-job'
+import { videoJob } from '../../db/schema'
+import { eq, and, desc } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -18,7 +19,7 @@ export const videoJobRouter = j.router({
         tweetContent: z.any().optional(), // Complete tweet data for posting when video is ready
       })
     )
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ c, input, ctx }) => {
       console.log('[VideoJobRouter] 🎬 Creating video job at', new Date().toISOString())
       console.log('[VideoJobRouter] 📋 Input data:', input)
       console.log('[VideoJobRouter] 👤 User ID:', ctx.user.id)
@@ -49,8 +50,8 @@ export const videoJobRouter = j.router({
         
         return c.json({
           success: true,
-          jobId: newJob[0].id,
-          status: newJob[0].status,
+          jobId: newJob[0]?.id,
+          status: newJob[0]?.status,
           message: 'Video job created successfully. Processing will begin shortly.',
         })
         
@@ -59,11 +60,9 @@ export const videoJobRouter = j.router({
         console.error('[VideoJobRouter] ❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
         
         // Try returning an error response instead of throwing
-        return c.json({
-          success: false,
-          error: `Failed to create video job: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          message: 'An unexpected error occurred. Check server logs for details.',
-        }, 500)
+        throw new HTTPException(500, {
+          message: `Failed to create video job: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
       }
     }),
 
@@ -72,16 +71,16 @@ export const videoJobRouter = j.router({
     .input(z.object({
       jobId: z.string().min(1, 'Job ID is required'),
     }))
-    .query(async ({ input, ctx }) => {
+    .query(async ({ c, input, ctx }) => {
       console.log('[VideoJobRouter] 📊 Getting video job status for ID:', input.jobId)
       
       try {
-        const job = await db.query.videoJob.findFirst({
-          where: (videoJob, { eq, and }) => and(
+        const job = await db.select().from(videoJob).where(
+          and(
             eq(videoJob.id, input.jobId),
             eq(videoJob.userId, ctx.user.id)
-          ),
-        })
+          )
+        ).then(rows => rows[0])
         
         if (!job) {
           throw new HTTPException(404, { message: 'Video job not found' })
@@ -89,7 +88,7 @@ export const videoJobRouter = j.router({
         
         console.log('[VideoJobRouter] 📋 Video job status:', job.status)
         
-        return {
+        return c.json({
           id: job.id,
           status: job.status,
           createdAt: job.createdAt,
@@ -98,7 +97,7 @@ export const videoJobRouter = j.router({
           errorMessage: job.errorMessage,
           s3Key: job.s3Key,
           twitterMediaId: job.twitterMediaId,
-        }
+        })
         
       } catch (error) {
         console.error('[VideoJobRouter] ❌ Failed to get video job status:', error)
@@ -120,29 +119,27 @@ export const videoJobRouter = j.router({
       limit: z.number().min(1).max(100).default(20),
       offset: z.number().min(0).default(0),
     }))
-    .query(async ({ input, ctx }) => {
+    .query(async ({ c, input, ctx }) => {
       console.log('[VideoJobRouter] 📝 Listing video jobs for user:', ctx.user.id)
       console.log('[VideoJobRouter] 🔍 Filters:', input)
       
       try {
-        const jobs = await db.query.videoJob.findMany({
-          where: (videoJob, { eq, and }) => {
-            const conditions = [eq(videoJob.userId, ctx.user.id)]
-            
-            if (input.status) {
-              conditions.push(eq(videoJob.status, input.status))
-            }
-            
-            return and(...conditions)
-          },
-          limit: input.limit,
-          offset: input.offset,
-          orderBy: (videoJob, { desc }) => [desc(videoJob.createdAt)],
-        })
+        const conditions = [eq(videoJob.userId, ctx.user.id)]
+        
+        if (input.status) {
+          conditions.push(eq(videoJob.status, input.status))
+        }
+
+        const jobs = await db.select()
+          .from(videoJob)
+          .where(and(...conditions))
+          .orderBy(desc(videoJob.createdAt))
+          .limit(input.limit)
+          .offset(input.offset)
         
         console.log('[VideoJobRouter] 📊 Found', jobs.length, 'video jobs')
         
-        return {
+        return c.json({
           jobs: jobs.map(job => ({
             id: job.id,
             tweetId: job.tweetId,
@@ -156,7 +153,7 @@ export const videoJobRouter = j.router({
             errorMessage: job.errorMessage,
           })),
           total: jobs.length,
-        }
+        })
         
       } catch (error) {
         console.error('[VideoJobRouter] ❌ Failed to list video jobs:', error)
