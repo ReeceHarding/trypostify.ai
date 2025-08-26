@@ -200,8 +200,23 @@ export async function POST(req: NextRequest) {
             const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
             console.log('[VideoProcessor] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
             
-            twitterMediaId = await client.v1.uploadMedia(videoBuffer, { mimeType: 'video/mp4' })
-            console.log('[VideoProcessor] Video uploaded to Twitter with media_id:', twitterMediaId)
+            try {
+              twitterMediaId = await client.v1.uploadMedia(videoBuffer, { mimeType: 'video/mp4' })
+              console.log('[VideoProcessor] Video uploaded to Twitter with media_id:', twitterMediaId)
+            } catch (uploadError: any) {
+              console.error('[VideoProcessor] Twitter upload failed:', uploadError.message)
+              
+              // If it's an InvalidMedia error, the video format is incompatible with Twitter
+              if (uploadError.message?.includes('InvalidMedia') || uploadError.message?.includes('Unsupported media')) {
+                console.log('[VideoProcessor] Video format incompatible with Twitter - video will be stored but not attached to tweet')
+                console.log('[VideoProcessor] Consider adding video format conversion in the future')
+                // Set twitterMediaId to null so video won't be attached
+                twitterMediaId = null
+              } else {
+                // For other errors, re-throw
+                throw uploadError
+              }
+            }
           } else {
             console.error('[VideoProcessor] Failed to download video from S3 for Twitter upload')
           }
