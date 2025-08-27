@@ -5,13 +5,12 @@ import * as React from 'react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { DayFlag, DayPicker, SelectionState, UI } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import DuolingoButton from '../ui/duolingo-button'
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
-import { useIsMobile } from '@/hooks/use-mobile'
+
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   onSchedule?: (date: Date, time: string) => void
@@ -37,12 +36,10 @@ export const Calendar20 = ({
   const today = new Date()
   const currentHour = today.getHours()
   const currentMinute = today.getMinutes()
-  const isMobile = useIsMobile()
   
   console.log('[DatePicker] Current time:', today.toISOString())
   console.log('[DatePicker] Current local time:', today.toLocaleString())
   console.log('[DatePicker] Current hour:', currentHour, 'Current minute:', currentMinute)
-  console.log('[DatePicker] Mobile detection:', isMobile)
 
   // Fetch user's posting window settings
   const { data: postingWindow } = useQuery({
@@ -216,9 +213,9 @@ export const Calendar20 = ({
     return dateOnly < todayOnly
   }
 
-  // Common content component for both Dialog and Drawer
+  // Content component for centered popup
   const CalendarContent = () => (
-    <div className="flex flex-col min-h-0">
+    <div className="flex flex-col">
       {/* Calendar Section */}
       <div className="p-6 pb-4">
         <Calendar
@@ -229,31 +226,31 @@ export const Calendar20 = ({
           disabled={isPastDate}
           showOutsideDays={false}
           startMonth={today}
-          className="w-fit mx-auto p-0 [--cell-size:--spacing(10)] max-[480px]:[--cell-size:--spacing(8)]"
+          className="w-fit mx-auto p-0 [--cell-size:--spacing(9)]"
           formatters={{
             formatWeekdayName: (date) => {
               return date.toLocaleString('en-US', { weekday: 'short' })
             },
           }}
           classNames={{
-            day: 'size-10 rounded-lg max-[480px]:size-8 max-[480px]:text-xs',
+            day: 'size-9 rounded-lg text-sm',
             selected: 'rounded-md',
             [UI.Months]: 'relative',
             [UI.Month]: 'space-y-4 ml-0',
             [UI.MonthCaption]: 'flex w-full justify-center items-center h-7',
-            [UI.CaptionLabel]: 'text-sm font-medium max-[480px]:text-xs',
+            [UI.CaptionLabel]: 'text-sm font-medium',
             [UI.PreviousMonthButton]: cn(
               buttonVariants({ variant: 'outline' }),
-              'absolute left-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100 max-[480px]:size-6',
+              'absolute left-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100',
             ),
             [UI.NextMonthButton]: cn(
               buttonVariants({ variant: 'outline' }),
-              'absolute right-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100 max-[480px]:size-6',
+              'absolute right-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100',
             ),
             [UI.MonthGrid]: 'w-full border-collapse space-y-1',
             [UI.Weekdays]: 'flex',
             [UI.Weekday]:
-              'text-muted-foreground rounded-md w-10 font-normal text-[0.8rem] max-[480px]:w-8 max-[480px]:text-[0.7rem]',
+              'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
             [UI.Week]: 'flex w-full mt-2',
             [DayFlag.outside]:
               'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
@@ -265,37 +262,35 @@ export const Calendar20 = ({
       </div>
       
       {/* Time Slots Section */}
-      <div className="flex-1 p-6 pt-2 border-t">
+      <div className="p-6 pt-2 border-t">
         <h3 className="mb-4 text-sm font-medium text-neutral-700">Select Time</h3>
-        <div className="max-h-[40vh] overflow-y-auto scroll-pb-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {timeSlots.map((time) => {
-              console.log('[DatePicker] Processing time slot:', time)
-              const isDisabled = isTimeSlotDisabled(time)
-              console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
-              return (
-                <Button
-                  key={time}
-                  variant={selectedTime === time ? 'default' : 'outline'}
-                  disabled={isDisabled}
-                  onClick={() => setSelectedTime(time)}
-                  className={cn(
-                    'h-10 text-sm shadow-none touch-manipulation',
-                    selectedTime === time && 'text-success-600',
-                    isDisabled && 'opacity-50'
-                  )}
-                >
-                  {formatHHmmTo12h(time)}
-                </Button>
-              )
-            })}
-          </div>
+        <div className="grid grid-cols-3 gap-2">
+          {timeSlots.map((time) => {
+            console.log('[DatePicker] Processing time slot:', time)
+            const isDisabled = isTimeSlotDisabled(time)
+            console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
+            return (
+              <Button
+                key={time}
+                variant={selectedTime === time ? 'default' : 'outline'}
+                disabled={isDisabled}
+                onClick={() => setSelectedTime(time)}
+                className={cn(
+                  'h-9 text-sm shadow-none touch-manipulation',
+                  selectedTime === time && 'text-success-600',
+                  isDisabled && 'opacity-50'
+                )}
+              >
+                {formatHHmmTo12h(time)}
+              </Button>
+            )
+          })}
         </div>
       </div>
       
       {/* Footer Section */}
-      <div className="flex flex-col gap-4 border-t p-6 sm:flex-row sm:items-center">
-        <div className="text-sm flex-1">
+      <div className="flex flex-col gap-4 border-t p-6">
+        <div className="text-sm text-center">
           {date && selectedTime ? (
             <>
               {editMode ? 'Rescheduled for' : 'Scheduled for'}{' '}
@@ -316,7 +311,7 @@ export const Calendar20 = ({
           loading={isPending}
           size="sm"
           disabled={!date || !selectedTime}
-          className="w-full sm:w-auto"
+          className="w-full"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -334,31 +329,18 @@ export const Calendar20 = ({
     </div>
   )
 
-  // Render mobile drawer or desktop dialog based on screen size
-  if (isMobile) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader className="text-center">
-            <DrawerTitle>
-              {editMode ? 'Reschedule Post' : 'Schedule Post'}
-            </DrawerTitle>
-          </DrawerHeader>
-          <CalendarContent />
-        </DrawerContent>
-      </Drawer>
-    )
-  }
-
+  // Always use centered dialog popup for both mobile and desktop
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] p-0 overflow-hidden">
+      <DialogContent className="max-w-md w-[90vw] max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-center">
             {editMode ? 'Reschedule Post' : 'Schedule Post'}
           </DialogTitle>
         </DialogHeader>
-        <CalendarContent />
+        <div className="overflow-y-auto">
+          <CalendarContent />
+        </div>
       </DialogContent>
     </Dialog>
   )
