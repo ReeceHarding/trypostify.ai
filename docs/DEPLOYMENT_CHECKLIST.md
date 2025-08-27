@@ -48,6 +48,9 @@
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 
+### Video Processing
+- `COCONUT_API_KEY` - For video transcoding service (coconut.io)
+
 ### Optional Services
 - `GOOGLE_CLIENT_ID` - For Google OAuth
 - `GOOGLE_CLIENT_SECRET` - For Google OAuth

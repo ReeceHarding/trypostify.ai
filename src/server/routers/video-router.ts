@@ -6,7 +6,6 @@ import { nanoid } from 'nanoid'
 import { qstash } from '@/lib/qstash'
 import { getBaseUrl } from '@/constants/base-url'
 import { getAccount } from './utils/get-account'
-import * as ffmpeg from 'fluent-ffmpeg'
 import { promises as fs } from 'fs'
 import * as path from 'path'
 import * as os from 'os'
@@ -25,25 +24,7 @@ console.log('[VideoRouter] Module loading with environment:', {
   timestamp: new Date().toISOString()
 })
 
-// Configure FFmpeg path for serverless compatibility
-try {
-  // Use ffmpeg-static for Vercel compatibility
-  const ffmpegPath = require('ffmpeg-static')
-  if (ffmpegPath) {
-    ffmpeg.setFfmpegPath(ffmpegPath)
-    console.log('[FFmpeg] Using ffmpeg-static binary for serverless compatibility')
-  } else {
-    // Fallback to environment variable or system PATH
-    if (process.env.FFMPEG_PATH) {
-      ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH)
-      console.log('[FFmpeg] Using custom FFmpeg path:', process.env.FFMPEG_PATH)
-    } else {
-      console.log('[FFmpeg] Using auto-detected FFmpeg from system PATH')
-    }
-  }
-} catch (error) {
-  console.warn('[FFmpeg] FFmpeg configuration warning:', error)
-}
+// Video transcoding now handled by Coconut.io API - no local FFmpeg needed
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
