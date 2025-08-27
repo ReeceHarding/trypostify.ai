@@ -23,6 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
 
 function VideoProcessingStatus() {
+  const queryClient = useQueryClient()
+  
   // Query for video processing status
   const { data: processingVideos, isLoading, error } = useQuery({
     queryKey: ['video-processing-status'],
@@ -44,6 +46,22 @@ function VideoProcessingStatus() {
     },
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
     retry: false, // Don't retry on error
+  })
+
+  // Cleanup mutation
+  const cleanupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await client.videoJob.cleanupStuckJobs.$post()
+      return res.json()
+    },
+    onSuccess: (data) => {
+      toast.success(`Cleaned up ${data.cleanedUp} stuck video jobs`)
+      queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+    },
+    onError: (error) => {
+      console.error('Failed to cleanup stuck jobs:', error)
+      toast.error('Failed to cleanup stuck jobs')
+    },
   })
 
   // Don't show the component if there are no processing videos or if there's an error
@@ -75,13 +93,24 @@ function VideoProcessingStatus() {
   }
 
   return (
-    <Card className="border-neutral-200 bg-neutral-50">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Video className="w-5 h-5 text-primary" />
-          Video Processing Status
-        </CardTitle>
-      </CardHeader>
+          <Card className="border-neutral-200 bg-neutral-50">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Video className="w-5 h-5 text-primary" />
+              Video Processing Status
+            </div>
+            <DuolingoButton
+              variant="secondary"
+              size="sm"
+              onClick={() => cleanupMutation.mutate()}
+              disabled={cleanupMutation.isPending}
+              className="text-xs"
+            >
+              {cleanupMutation.isPending ? 'Cleaning...' : 'Clean Up'}
+            </DuolingoButton>
+          </CardTitle>
+        </CardHeader>
       <CardContent className="space-y-3">
         {processingVideos.map((tweet: any) => {
           const videoMedia = tweet.media?.find((media: any) => media.type === 'video')

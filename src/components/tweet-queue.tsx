@@ -277,36 +277,19 @@ export default function TweetQueue() {
                   {renderDay(Number(day))}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div
-                  className="grid gap-3 grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto]"
-                >
-                  {tweets.map(({ unix, tweet, isQueued }) => (
-                    <Fragment key={`${day}-${unix}-${tweet?.id || 'no-id'}`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2 mt-2">
-                          <div className="flex items-center gap-2 w-[100px]">
-                            <Clock className="size-4 text-neutral-500" />
-                            <span className="font-medium text-sm text-neutral-700">
-                              {format(unix, "hh:mmaaaaa'm'")}
-                            </span>
-                          </div>
-                          <div className="hidden sm:flex w-[65px] items-start justify-center gap-2">
-                            {isQueued ? (
-                              <DuolingoBadge
-                                variant={tweet ? 'achievement' : 'gray'}
-                                className="text-xs"
-                              >
-                                {tweet ? 'Queued' : 'Empty'}
-                              </DuolingoBadge>
-                            ) : tweet ? (
-                              <DuolingoBadge variant="amber" className="text-xs">
-                                Manual
-                              </DuolingoBadge>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
+              <CardContent className="space-y-4">
+                {tweets.map(({ unix, tweet, isQueued }) => (
+                  <div key={`${day}-${unix}-${tweet?.id || 'no-id'}`} className="flex items-center gap-4">
+                    {/* Left side - Time */}
+                    <div className="flex items-center gap-2 w-[100px] flex-shrink-0">
+                      <Clock className="size-4 text-neutral-500" />
+                      <span className="font-medium text-sm text-neutral-700">
+                        {format(unix, "hh:mmaaaaa'm'")}
+                      </span>
+                    </div>
+
+                    {/* Right side - Content */}
+                    <div className="flex-1">
 
                       <div
                         className={cn(
@@ -383,10 +366,28 @@ export default function TweetQueue() {
                           </DuolingoButton>
                         )}
                       </div>
+                    </div>
 
-                      <div className="flex items-center">
-                        {tweet && (
-                          <Dialog
+                    {/* Status badge - only show on desktop */}
+                    <div className="hidden sm:flex items-center justify-center w-[80px] flex-shrink-0">
+                      {isQueued ? (
+                        <DuolingoBadge
+                          variant={tweet ? 'achievement' : 'gray'}
+                          className="text-xs"
+                        >
+                          {tweet ? 'Queued' : 'Empty'}
+                        </DuolingoBadge>
+                      ) : tweet ? (
+                        <DuolingoBadge variant="amber" className="text-xs">
+                          Manual
+                        </DuolingoBadge>
+                      ) : null}
+                    </div>
+
+                    {/* Actions - only show for tweets */}
+                    <div className="flex items-center w-[40px] flex-shrink-0">
+                      {tweet && (
+                        <Dialog
                             open={pendingPostId === tweet.id}
                             onOpenChange={(open) => {
                               setPendingPostId(open ? tweet.id : null)
@@ -547,10 +548,9 @@ export default function TweetQueue() {
                             </DialogContent>
                           </Dialog>
                         )}
-                      </div>
-                    </Fragment>
-                  ))}
-                </div>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )

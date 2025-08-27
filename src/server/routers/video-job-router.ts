@@ -204,4 +204,61 @@ export const videoJobRouter = j.router({
         })
       }
     }),
+
+  // Clean up stuck video jobs
+  cleanupStuckJobs: privateProcedure
+    .mutation(async ({ c, ctx }) => {
+      console.log('[VideoJobRouter] 🧹 Cleaning up stuck video jobs for user:', ctx.user.id)
+      
+      try {
+        // Find jobs that are stuck in processing for more than 1 hour
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+        
+        const stuckJobs = await db.select()
+          .from(videoJob)
+          .where(and(
+            eq(videoJob.userId, ctx.user.id),
+            eq(videoJob.status, 'processing')
+          ))
+        
+        // Filter jobs older than 1 hour
+        const jobsToCleanup = stuckJobs.filter(job => 
+          job.updatedAt && job.updatedAt < oneHourAgo
+        )
+        
+        console.log('[VideoJobRouter] 📊 Found', jobsToCleanup.length, 'stuck jobs to cleanup')
+        
+        if (jobsToCleanup.length === 0) {
+          return c.json({
+            message: 'No stuck jobs found',
+            cleanedUp: 0,
+          })
+        }
+        
+        // Update all stuck jobs to failed status
+        for (const job of jobsToCleanup) {
+          await db.update(videoJob)
+            .set({
+              status: 'failed',
+              errorMessage: 'Job timed out - cleaned up automatically',
+              updatedAt: new Date(),
+            })
+            .where(eq(videoJob.id, job.id))
+        }
+        
+        console.log('[VideoJobRouter] ✅ Cleaned up', jobsToCleanup.length, 'stuck video jobs')
+        
+        return c.json({
+          message: `Successfully cleaned up ${jobsToCleanup.length} stuck video jobs`,
+          cleanedUp: jobsToCleanup.length,
+        })
+        
+      } catch (error) {
+        console.error('[VideoJobRouter] ❌ Failed to cleanup stuck jobs:', error)
+        
+        throw new HTTPException(500, {
+          message: `Failed to cleanup stuck jobs: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
+    }),
 })
