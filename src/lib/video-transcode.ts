@@ -7,58 +7,64 @@
  * Transcodes video to H.264 format compatible with Twitter
  */
 export async function transcodeVideoToH264(videoBuffer: Buffer): Promise<Buffer> {
-  const ffmpeg = (await import('fluent-ffmpeg')).default
-  const { Readable, PassThrough } = await import('stream')
-  
-  console.log('[VideoTranscode] Starting video transcoding to H.264...')
-  console.log('[VideoTranscode] Original video size:', videoBuffer.length, 'bytes')
-  
-  return new Promise((resolve, reject) => {
-    const inputStream = new Readable()
-    inputStream.push(videoBuffer)
-    inputStream.push(null)
+  // Check if FFmpeg is available
+  try {
+    const ffmpeg = (await import('fluent-ffmpeg')).default
+    const { Readable, PassThrough } = require('stream')
     
-    const outputStream = new PassThrough()
-    const chunks: Buffer[] = []
-    
-    outputStream.on('data', (chunk) => chunks.push(chunk))
-    outputStream.on('end', () => {
-      const transcodedBuffer = Buffer.concat(chunks)
-      console.log('[VideoTranscode] ✅ Transcoding completed, new size:', transcodedBuffer.length, 'bytes')
-      const compressionRatio = ((videoBuffer.length - transcodedBuffer.length) / videoBuffer.length * 100).toFixed(1)
-      console.log('[VideoTranscode] Size change:', compressionRatio + '%', compressionRatio.startsWith('-') ? 'larger' : 'smaller')
-      resolve(transcodedBuffer)
+    console.log('[VideoTranscode] Starting video transcoding to H.264...')
+    console.log('[VideoTranscode] Original video size:', videoBuffer.length, 'bytes')
+  
+    return new Promise((resolve, reject) => {
+      const inputStream = new Readable()
+      inputStream.push(videoBuffer)
+      inputStream.push(null)
+      
+      const outputStream = new PassThrough()
+      const chunks: Buffer[] = []
+      
+      outputStream.on('data', (chunk) => chunks.push(chunk))
+      outputStream.on('end', () => {
+        const transcodedBuffer = Buffer.concat(chunks)
+        console.log('[VideoTranscode] ✅ Transcoding completed, new size:', transcodedBuffer.length, 'bytes')
+        const compressionRatio = ((videoBuffer.length - transcodedBuffer.length) / videoBuffer.length * 100).toFixed(1)
+        console.log('[VideoTranscode] Size change:', compressionRatio + '%', compressionRatio.startsWith('-') ? 'larger' : 'smaller')
+        resolve(transcodedBuffer)
+      })
+      outputStream.on('error', reject)
+      
+      ffmpeg(inputStream)
+        .videoCodec('libx264')
+        .audioCodec('aac')
+        .format('mp4')
+        .outputOptions([
+          '-preset fast',           // Fast encoding preset
+          '-crf 23',               // Constant Rate Factor (23 is good quality)
+          '-movflags +faststart',  // Enable fast start for web playback
+          '-pix_fmt yuv420p',      // Pixel format compatible with most players
+          '-profile:v baseline',   // H.264 baseline profile for maximum compatibility
+          '-level 3.0',            // H.264 level 3.0 for Twitter compatibility
+          '-maxrate 25M',          // Maximum bitrate for Twitter (25 Mbps)
+          '-bufsize 50M'           // Buffer size
+        ])
+        .on('start', (commandLine) => {
+          console.log('[VideoTranscode] FFmpeg command:', commandLine)
+        })
+        .on('progress', (progress) => {
+          if (progress.percent) {
+            console.log('[VideoTranscode] Progress:', Math.round(progress.percent) + '%')
+          }
+        })
+        .on('error', (err) => {
+          console.error('[VideoTranscode] ❌ Transcoding failed:', err.message)
+          reject(err)
+        })
+        .pipe(outputStream)
     })
-    outputStream.on('error', reject)
-    
-    ffmpeg(inputStream)
-      .videoCodec('libx264')
-      .audioCodec('aac')
-      .format('mp4')
-      .outputOptions([
-        '-preset fast',           // Fast encoding preset
-        '-crf 23',               // Constant Rate Factor (23 is good quality)
-        '-movflags +faststart',  // Enable fast start for web playback
-        '-pix_fmt yuv420p',      // Pixel format compatible with most players
-        '-profile:v baseline',   // H.264 baseline profile for maximum compatibility
-        '-level 3.0',            // H.264 level 3.0 for Twitter compatibility
-        '-maxrate 25M',          // Maximum bitrate for Twitter (25 Mbps)
-        '-bufsize 50M'           // Buffer size
-      ])
-      .on('start', (commandLine) => {
-        console.log('[VideoTranscode] FFmpeg command:', commandLine)
-      })
-      .on('progress', (progress) => {
-        if (progress.percent) {
-          console.log('[VideoTranscode] Progress:', Math.round(progress.percent) + '%')
-        }
-      })
-      .on('error', (err) => {
-        console.error('[VideoTranscode] ❌ Transcoding failed:', err.message)
-        reject(err)
-      })
-      .pipe(outputStream)
-  })
+  } catch (error: any) {
+    console.error('[VideoTranscode] ❌ FFmpeg not available or module import failed:', error.message)
+    throw new Error(`Transcoding failed: ${error.message}`)
+  }
 }
 
 /**
