@@ -614,11 +614,8 @@ export default function ThreadTweetEditor({
         thread_id: result.threadId,
       })
 
-      // Show success message
-      toast.success('Thread posted successfully!', {
-        duration: 4000,
-        icon: '🎉',
-      })
+      // Success message is already handled by postThreadMutation.onSuccess
+      // No need for duplicate notification here
     } catch (error) {
       console.error('[ThreadTweetEditor] Background post operation failed, rolling back UI at', new Date().toISOString(), error)
       // ROLLBACK: Restore content if operation failed
