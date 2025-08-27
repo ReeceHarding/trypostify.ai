@@ -5,7 +5,7 @@ import { BUCKET_NAME, FILE_TYPE_MAP, s3Client } from '@/lib/s3'
 import mammoth from 'mammoth'
 import { FilePart, FileUIPart, ImagePart, TextPart } from 'ai'
 import { db } from '@/db'
-import { knowledgeDocument, tweets, account as accountSchema } from '@/db/schema'
+import { knowledgeDocument, tweets, account as accountSchema, videoJob } from '@/db/schema'
 import { and, asc, eq } from 'drizzle-orm'
 import { SendTweetV2Params, TwitterApi } from 'twitter-api-v2'
 
@@ -225,15 +225,16 @@ export async function publishThreadById({
   })
   if (threadTweets.length === 0) return
 
-  // Check for pending videos and wait for them to complete
-  const hasPendingVideos = threadTweets.some((tweet: any) => 
-    tweet.videoProcessingStatus && 
-    tweet.videoProcessingStatus !== 'complete' && 
-    tweet.videoProcessingStatus !== 'failed'
-  )
+  // Check for pending video jobs and wait for them to complete
+  const pendingVideoJobs = await db.select()
+    .from(videoJob)
+    .where(and(
+      eq(videoJob.threadId, threadId),
+      eq(videoJob.status, 'processing')
+    ))
 
-  if (hasPendingVideos) {
-    console.log(`[${logPrefix}] Thread has pending videos, waiting for completion`)
+  if (pendingVideoJobs.length > 0) {
+    console.log(`[${logPrefix}] Thread has ${pendingVideoJobs.length} pending video jobs, waiting for completion`)
     
     // Wait for videos to complete (max 5 minutes)
     const maxWaitTime = 5 * 60 * 1000 // 5 minutes
@@ -242,23 +243,20 @@ export async function publishThreadById({
     while (Date.now() - startTime < maxWaitTime) {
       await new Promise(resolve => setTimeout(resolve, 5000)) // Check every 5 seconds
       
-      // Re-check video status
-      const updatedTweets = await (db as any).query.tweets.findMany({
-        where: eq(tweets.threadId, threadId),
-      })
+      // Re-check video job status
+      const updatedJobs = await db.select()
+        .from(videoJob)
+        .where(and(
+          eq(videoJob.threadId, threadId),
+          eq(videoJob.status, 'processing')
+        ))
       
-      const stillPending = updatedTweets.some((tweet: any) => 
-        tweet.videoProcessingStatus && 
-        tweet.videoProcessingStatus !== 'complete' && 
-        tweet.videoProcessingStatus !== 'failed'
-      )
-      
-      if (!stillPending) {
-        console.log(`[${logPrefix}] All videos processed, continuing with post`)
+      if (updatedJobs.length === 0) {
+        console.log(`[${logPrefix}] All video jobs completed, continuing with post`)
         break
       }
       
-      console.log(`[${logPrefix}] Still waiting for videos...`, {
+      console.log(`[${logPrefix}] Still waiting for ${updatedJobs.length} video jobs...`, {
         elapsed: Math.round((Date.now() - startTime) / 1000) + 's'
       })
     }

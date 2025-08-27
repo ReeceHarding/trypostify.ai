@@ -47,7 +47,6 @@ const appRouter = j.mergeRouters(api, {
   stripe: dynamic(() => import('./routers/stripe-router')),
   media: dynamic(() => import('./routers/media-router')),
   stats: dynamic(() => import('./routers/stats-router')),
-  videoDownloader: dynamic(() => import('./routers/video-downloader-router')),
   videoJob: dynamic(() => import('./routers/video-job-router')),
 })
 

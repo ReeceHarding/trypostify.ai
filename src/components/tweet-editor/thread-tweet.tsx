@@ -502,13 +502,15 @@ function ThreadTweetContent({
 
   const downloadVideoMutation = useMutation({
     mutationFn: async (url: string) => {
-      const res = await client.videoDownloader.downloadVideo.$post({
-        url,
+      const res = await client.videoJob.createVideoJob.$post({
+        videoUrl: url,
+        threadId: threadId || 'temp-thread-id',
+        platform: 'instagram', // TODO: detect platform from URL
       })
 
       if (!res.ok) {
         const error = await res.text()
-        throw new Error(error || 'Failed to download video')
+        throw new Error(error || 'Failed to start video processing')
       }
 
       const data = await res.json()

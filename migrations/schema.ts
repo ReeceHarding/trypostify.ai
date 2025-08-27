@@ -122,13 +122,6 @@ export const tweets = pgTable("tweets", {
 	replies: integer().default(0),
 	impressions: integer().default(0),
 	metricsUpdatedAt: timestamp("metrics_updated_at", { mode: 'string' }),
-	pendingVideoUrl: text("pending_video_url"),
-	videoProcessingStatus: text("video_processing_status"),
-	videoErrorMessage: text("video_error_message"),
-	videoProcessingStartedAt: timestamp("video_processing_started_at", { mode: 'string' }),
-	videoProcessingCompletedAt: timestamp("video_processing_completed_at", { mode: 'string' }),
-	apifyRunId: text("apify_run_id"),
-	videoCacheId: text("video_cache_id"),
 }, (table) => [
 	foreignKey({
 			columns: [table.userId],

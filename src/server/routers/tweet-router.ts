@@ -74,68 +74,8 @@ async function processScheduledThread(threadId: string) {
   return publishThreadById({ threadId, logPrefix: 'LocalScheduler' })
 }
 
-// Simple in-memory scheduler for local development
-if (process.env.NODE_ENV === 'development') {
-  // Check for scheduled tweets every minute in development
-  setInterval(async () => {
-    try {
-      console.log(`[LocalScheduler] Checking for scheduled tweets at ${new Date().toISOString()}`)
-      const now = Date.now()
-      const scheduledTweets = await db.query.tweets.findMany({
-        where: and(
-          eq(tweets.isScheduled, true),
-          eq(tweets.isPublished, false),
-          lte(tweets.scheduledUnix, now),
-        ),
-        columns: {
-          id: true,
-          threadId: true,
-          content: true,
-          media: true,
-          scheduledUnix: true,
-          position: true,
-        },
-      })
-      
-      console.log(`[LocalScheduler] Debug - Found scheduled tweets:`, scheduledTweets.map((t: any) => ({
-        id: t.id,
-        threadId: t.threadId,
-        position: t.position,
-        contentPreview: t.content.substring(0, 50) + '...',
-        mediaCount: t.media?.length || 0,
-        mediaIds: t.media?.map((m: any) => ({ hasId: !!m.media_id, id: m.media_id?.substring(0, 10) + '...' })) || [],
-        scheduledUnix: t.scheduledUnix,
-        overdue: now - (t.scheduledUnix || 0)
-      })))
-      
-      console.log(`[LocalScheduler] Found ${scheduledTweets.length} scheduled tweets due for posting`)
-      
-      // Group by threadId
-      const threads = scheduledTweets.reduce((acc: any, tweet: any) => {
-        if (tweet.threadId && tweet.scheduledUnix && tweet.scheduledUnix <= now) {
-          if (!acc[tweet.threadId]) {
-            acc[tweet.threadId] = []
-          }
-          acc[tweet.threadId]!.push(tweet)
-        }
-        return acc
-      }, {} as Record<string, typeof scheduledTweets>)
-      
-      console.log(`[LocalScheduler] Found ${Object.keys(threads).length} unique threads to process`)
-      
-      // Process each thread that's due
-      for (const [threadId, threadTweets] of Object.entries(threads)) {
-        if (threadTweets.length > 0) {
-          console.log(`[LocalScheduler] Processing scheduled thread ${threadId} with ${threadTweets.length} tweets`)
-          // Actually process the thread instead of just logging
-          await processScheduledThread(threadId)
-        }
-      }
-    } catch (error) {
-      console.error('[LocalScheduler] Error checking scheduled tweets:', error)
-    }
-  }, 60000) // Check every minute
-}
+// Note: Scheduling is handled by QStash webhooks in production (/api/tweet/postThread)
+// Local development relies on manual testing or QStash for scheduled posts
 
 
 
@@ -195,23 +135,6 @@ export const tweetRouter = j.router({
       })
     }),
 
-  // save: privateProcedure
-  //   .input(
-  //     z.object({
-  //       tweetId: z.string(),
-  //       content: z.string(),
-  //       mediaData: z
-  //         .array(
-  //           z.object({
-  //             media_id: z.string(),
-  //             media_key: z.string().optional(),
-  //             type: z.enum(['image', 'video', 'gif']),
-  //             url: z.string(),
-  //             width: z.number().optional(),
-  //             height: z.number().optional(),
-  //             size: z.number().optional(),
-  //           }),
-  //         )
   uploadMediaToTwitter: privateProcedure
     .input(
       z.object({

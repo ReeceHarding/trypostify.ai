@@ -49,6 +49,7 @@
 - `STRIPE_WEBHOOK_SECRET`
 
 ### Video Processing
+- `APIFY_API_TOKEN` - For video downloading service (apify.com)
 - `COCONUT_API_KEY` - For video transcoding service (coconut.io)
 
 #### Video Transcoding Cost Controls
