@@ -7,10 +7,14 @@
  * Transcodes video to H.264 format compatible with Twitter
  */
 export async function transcodeVideoToH264(videoBuffer: Buffer): Promise<Buffer> {
-  // Check if FFmpeg is available
+  // Use ffmpeg-static for serverless compatibility
   try {
     const ffmpeg = (await import('fluent-ffmpeg')).default
+    const ffmpegPath = require('ffmpeg-static')
     const { Readable, PassThrough } = require('stream')
+    
+    // Set FFmpeg path to the static binary
+    ffmpeg.setFfmpegPath(ffmpegPath)
     
     console.log('[VideoTranscode] Starting video transcoding to H.264...')
     console.log('[VideoTranscode] Original video size:', videoBuffer.length, 'bytes')

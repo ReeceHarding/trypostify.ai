@@ -25,18 +25,24 @@ console.log('[VideoRouter] Module loading with environment:', {
   timestamp: new Date().toISOString()
 })
 
-// Configure FFmpeg path - let fluent-ffmpeg auto-detect FFmpeg location
-// This works on Vercel, local dev, and any system with FFmpeg in PATH
+// Configure FFmpeg path for serverless compatibility
 try {
-  // Only set path if explicitly provided via environment variable
-  if (process.env.FFMPEG_PATH) {
-    ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH)
-    console.log('[FFmpeg] Using custom FFmpeg path:', process.env.FFMPEG_PATH)
+  // Use ffmpeg-static for Vercel compatibility
+  const ffmpegPath = require('ffmpeg-static')
+  if (ffmpegPath) {
+    ffmpeg.setFfmpegPath(ffmpegPath)
+    console.log('[FFmpeg] Using ffmpeg-static binary for serverless compatibility')
   } else {
-    console.log('[FFmpeg] Using auto-detected FFmpeg from system PATH')
+    // Fallback to environment variable or system PATH
+    if (process.env.FFMPEG_PATH) {
+      ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH)
+      console.log('[FFmpeg] Using custom FFmpeg path:', process.env.FFMPEG_PATH)
+    } else {
+      console.log('[FFmpeg] Using auto-detected FFmpeg from system PATH')
+    }
   }
 } catch (error) {
-  console.warn('[FFmpeg] FFmpeg path configuration warning:', error)
+  console.warn('[FFmpeg] FFmpeg configuration warning:', error)
 }
 
 const s3Client = new S3Client({
