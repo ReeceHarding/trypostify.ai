@@ -1122,10 +1122,10 @@ function ThreadTweetContent({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex gap-3 relative z-10 p-4 sm:p-6">
-            <AccountAvatar className="size-12 flex-shrink-0" />
+          <div className="flex gap-0 sm:gap-3 relative z-10 p-4 sm:p-6">
+            <AccountAvatar className="size-12 flex-shrink-0 hidden sm:block" />
 
-            <div className="flex-1 min-w-0 pr-3">
+            <div className="flex-1 min-w-0 sm:pr-3">
               <div className="flex items-center gap-1">
                 <AccountName />
                 <AccountHandle />
@@ -1318,7 +1318,7 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-center sm:justify-between max-[640px]:flex-col max-[640px]:gap-4">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-center sm:justify-between max-[640px]:flex-col max-[640px]:gap-4 max-[640px]:items-stretch">
                 <div
                   className={cn(
                     'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
@@ -1434,13 +1434,13 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-2 max-[640px]:flex-col max-[640px]:items-center max-[640px]:gap-3 max-[640px]:w-full">
+                <div className="flex items-center gap-2 max-[640px]:flex-col max-[640px]:items-stretch max-[640px]:gap-3 max-[640px]:w-full">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>
                       {editMode ? (
                         // Edit mode buttons
-                        <div className="flex gap-2 max-[640px]:flex-col max-[640px]:gap-3 max-[640px]:w-full max-[640px]:items-center">
+                        <div className="flex gap-2 max-[640px]:flex-col max-[640px]:gap-3 max-[640px]:w-full">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -1486,7 +1486,7 @@ function ThreadTweetContent({
                         </div>
                       ) : (
                         // Regular mode buttons
-                        <div className="flex gap-2 max-[640px]:flex-col max-[640px]:gap-3 max-[640px]:w-full max-[640px]:items-center">
+                        <div className="flex gap-2 max-[640px]:flex-col max-[640px]:gap-3 max-[640px]:w-full">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
