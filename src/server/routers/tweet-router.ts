@@ -400,7 +400,9 @@ export const tweetRouter = j.router({
         const { uploadVideoToTwitterWithTranscoding } = await import('../../lib/video-transcode')
         const uploadResult = await uploadVideoToTwitterWithTranscoding(mediaBuffer, client, {
           enableTranscoding: true,
-          maxRetries: 2
+          maxRetries: 2,
+          originalFileName: s3Key.split('/').pop() || 'video.mp4',
+          userId: user.id
         })
         
         if (!uploadResult.success) {

@@ -51,6 +51,13 @@
 ### Video Processing
 - `COCONUT_API_KEY` - For video transcoding service (coconut.io)
 
+#### Video Transcoding Cost Controls
+- **File Size Limit**: 100MB max (larger files blocked)
+- **Duration Limit**: 10 minutes max (longer videos blocked)  
+- **Monthly Limit**: 100 transcodes per user per month
+- **Format Pre-check**: .mp4/.mov files under 25MB try direct upload first
+- **Cost Estimation**: ~$0.05/minute, warns if over $0.50
+
 ### Optional Services
 - `GOOGLE_CLIENT_ID` - For Google OAuth
 - `GOOGLE_CLIENT_SECRET` - For Google OAuth

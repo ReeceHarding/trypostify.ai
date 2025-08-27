@@ -229,11 +229,13 @@ export async function POST(req: NextRequest) {
             const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
             console.log('[VideoProcessor] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
             
-            // Use transcoding-enabled Twitter upload function
+            // Use transcoding-enabled Twitter upload function with cost optimization
             const { uploadVideoToTwitterWithTranscoding } = await import('../../../../lib/video-transcode')
             const uploadResult = await uploadVideoToTwitterWithTranscoding(videoBuffer, client, {
               enableTranscoding: true,
-              maxRetries: 2
+              maxRetries: 2,
+              originalFileName: `video-${job.id}.mp4`,
+              userId: job.userId
             })
             
             if (uploadResult.success) {
