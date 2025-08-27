@@ -896,7 +896,10 @@ export default function ThreadTweetEditor({
               </Link>
             </div>
             <p className="text-xs text-neutral-400">Press {isMac ? 'Cmd' : 'Ctrl'} + 3 to open Schedule</p>
-          </div>
+          </div>,
+          {
+            duration: 3000,
+          }
         )
       }
     } catch (error) {

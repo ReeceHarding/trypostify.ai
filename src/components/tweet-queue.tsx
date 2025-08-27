@@ -279,8 +279,7 @@ export default function TweetQueue() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div
-                  className="grid gap-3"
-                  style={{ gridTemplateColumns: 'auto 1fr auto' }}
+                  className="grid gap-3 grid-cols-[auto_1fr] sm:grid-cols-[auto_1fr_auto]"
                 >
                   {tweets.map(({ unix, tweet, isQueued }) => (
                     <Fragment key={`${day}-${unix}-${tweet?.id || 'no-id'}`}>
@@ -292,7 +291,7 @@ export default function TweetQueue() {
                               {format(unix, "hh:mmaaaaa'm'")}
                             </span>
                           </div>
-                          <div className="flex w-[65px] items-start justify-center gap-2">
+                          <div className="hidden sm:flex w-[65px] items-start justify-center gap-2">
                             {isQueued ? (
                               <DuolingoBadge
                                 variant={tweet ? 'achievement' : 'gray'}
