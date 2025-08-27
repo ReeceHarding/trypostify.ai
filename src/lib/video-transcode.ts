@@ -42,7 +42,7 @@ export async function transcodeVideoToH264(videoBuffer: Buffer, originalFileName
     
     const jobConfig = {
       source: tempVideoUrl,
-      webhook: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://trypostify.ai'}/api/video/transcode-webhook`,
+      webhook: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://trypostify.com'}/api/video/transcode-webhook`,
       outputs: {
         mp4: {
           path: outputUrl,

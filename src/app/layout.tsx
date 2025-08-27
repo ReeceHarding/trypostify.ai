@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     images: ['/favicon.ico'],
     creator: '@ReeceHarding',
   },
-  metadataBase: new URL('https://trypostify.ai'),
+  metadataBase: new URL('https://trypostify.com'),
 }
 
 const elegant = Instrument_Serif({

@@ -96,8 +96,8 @@ For scheduled posts to work, you need to configure QStash webhooks:
 
 The app is configured to accept requests from:
 - `http://localhost:3000` (development)
-- `https://trypostify.ai`
-- `https://www.trypostify.ai`
+- `https://trypostify.com`
+- `https://www.trypostify.com`
 - Your Vercel deployment URL (automatically handled)
 
 ## Potential Issues to Watch

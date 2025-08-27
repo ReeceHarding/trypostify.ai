@@ -19,5 +19,5 @@ export const STRIPE_SUB_TEMPLATE: Stripe.ProductCreateParams = {
   expand: ['default_price', 'marketing_features'],
   description: 'Schedule unlimited tweets, create unlimited images, and more.',
   statement_descriptor: 'Postify Pro',
-  images: ['https://www.trypostify.ai/images/square-og-image.png'],
+  images: ['https://www.trypostify.com/images/square-og-image.png'],
 }

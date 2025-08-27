@@ -3,7 +3,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://trypostify.ai/">
+  <a href="https://trypostify.com/">
     <img src="./public/favicon.ico" alt="Logo" width="80" height="80">
   </a>
 
@@ -12,7 +12,7 @@
   <p align="center">
     The content engine for software companies
     <br />
-    <a href="https://trypostify.ai/">View Demo</a>
+    <a href="https://trypostify.com/">View Demo</a>
     ·
     <a href="https://github.com/ReeceHarding/trypostify.ai/issues">Report Bug</a>
     ·

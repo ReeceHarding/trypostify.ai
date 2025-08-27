@@ -16,12 +16,11 @@ const api = j
       origin: [
         process.env.NEXT_PUBLIC_SITE_URL,
         process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-        'https://contentport-2.vercel.app',
-        'https://www.contentport-2.vercel.app',
-        'https://trypostify.ai',
-        'https://www.trypostify.ai',
-        'https://trypostify.vercel.app',
-        'https://www.trypostify.vercel.app',
+        'https://postify.vercel.app',
+        'https://www.postify.vercel.app',
+        'https://trypostify.com',
+        'https://www.trypostify.com',
+
         // Only add localhost in development
         process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : undefined,
       ].filter(Boolean) as string[],
