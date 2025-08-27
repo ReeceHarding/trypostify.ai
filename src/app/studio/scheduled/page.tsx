@@ -24,38 +24,32 @@ import DuolingoBadge from '@/components/ui/duolingo-badge'
 
 function VideoProcessingStatus() {
   // Query for video processing status
-  const { data: processingVideos, isLoading } = useQuery({
+  const { data: processingVideos, isLoading, error } = useQuery({
     queryKey: ['video-processing-status'],
     queryFn: async () => {
-      // Get tweets that have video processing status
-      const res = await client.video.getProcessingVideos.$get()
-      const result = await res.json()
-      
-      console.log('[VideoProcessingStatus] Processing videos:', result.tweets?.length || 0)
-      
-      // Also get scheduled tweets to check for completed videos
-      const scheduledRes = await client.tweet.getScheduledAndPublished.$get()
-      const scheduledResult = await scheduledRes.json()
-      
-      // Combine processing and scheduled videos
-      const processingTweets = result.tweets || []
-      const scheduledWithVideos = scheduledResult.data?.filter((item: any) => {
-        return item.tweets?.some((tweet: any) => 
-          tweet.pendingVideoUrl || 
-          tweet.videoProcessingStatus || 
-          (tweet.media?.some((media: any) => media.type === 'video'))
-        )
-      }) || []
-      
-      // Merge and deduplicate
-      const allVideos = [...processingTweets, ...scheduledWithVideos.flatMap((item: any) => item.tweets || [])]
-      const uniqueVideos = Array.from(new Map(allVideos.map(v => [v.id, v])).values())
-      
-      console.log('[VideoProcessingStatus] Total videos:', uniqueVideos.length)
-      return uniqueVideos
+      try {
+        // Get video jobs that are currently processing
+        const res = await client.videoJob.listVideoJobs.$get({
+          query: { status: 'processing', limit: 50 }
+        })
+        const result = await res.json()
+        
+        console.log('[VideoProcessingStatus] Processing video jobs:', result.jobs?.length || 0)
+        
+        return result.jobs || []
+      } catch (error) {
+        console.log('[VideoProcessingStatus] No processing videos or error:', error)
+        return []
+      }
     },
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    retry: false, // Don't retry on error
   })
+
+  // Don't show the component if there are no processing videos or if there's an error
+  if (error || (!isLoading && (!processingVideos || processingVideos.length === 0))) {
+    return null
+  }
 
   if (isLoading) {
     return (
