@@ -60,7 +60,7 @@ import {
   DrawerTitle,
 } from '../ui/drawer'
 import { Loader } from '../ui/loader'
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+
 import ContentLengthIndicator from './content-length-indicator'
 import { Calendar20 } from './date-picker'
 
@@ -244,6 +244,7 @@ function ThreadTweetContent({
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
   const [open, setOpen] = useState(false)
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
   const [optimisticActionState, setOptimisticActionState] = useState<'post' | 'queue' | 'schedule' | null>(null)
@@ -965,7 +966,7 @@ function ThreadTweetContent({
           setOptimisticActionState('schedule')
           showAction('schedule')
           // Open schedule modal immediately for instant UI feedback
-          setOpen(true)
+          setScheduleModalOpen(true)
           // Clear optimistic state after brief feedback period
           setTimeout(() => setOptimisticActionState(null), 500)
         }
@@ -1545,71 +1546,21 @@ function ThreadTweetContent({
                               </Tooltip>
 
                               <Tooltip>
-                                <Popover open={open} onOpenChange={setOpen}>
-                                  <TooltipTrigger asChild>
-                                    <PopoverTrigger asChild>
-                                      <DuolingoButton
-                                        loading={isPosting || optimisticActionState === 'schedule'}
-                                        disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
-                                        size="icon"
-                                        className="h-11 w-14 rounded-l-none border-l max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full max-[640px]:justify-center"
-
-                                      >
-                                        <ChevronDown className="size-4" />
-                                        <span className="sr-only max-[640px]:not-sr-only max-[640px]:ml-2">Schedule manually</span>
-                                      </DuolingoButton>
-                                    </PopoverTrigger>
-                                  </TooltipTrigger>
-                                  <PopoverContent 
-                                    side="bottom"
-                                    align="center"
-                                    sideOffset={8}
-                                    avoidCollisions
-                                    collisionPadding={{ top: 16, bottom: 16, left: 8, right: 8 }}
-                                    updatePositionStrategy="always"
-                                    className="w-full max-w-[min(100dvw-1rem,28rem)] md:max-w-[min(100dvw-1rem,40rem)] max-h-[min(90dvh,calc(100dvh-4rem))] overflow-hidden p-0"
-
+                                <TooltipTrigger asChild>
+                                  <DuolingoButton
+                                    loading={isPosting || optimisticActionState === 'schedule'}
+                                    disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
+                                    size="icon"
+                                    className="h-11 w-14 rounded-l-none border-l max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full max-[640px]:justify-center"
+                                    onClick={() => {
+                                      console.log('[ThreadTweet] Manual schedule button clicked')
+                                      setScheduleModalOpen(true)
+                                    }}
                                   >
-                                    <Calendar20
-                                      initialScheduledTime={preScheduleTime || undefined}
-                                      onSchedule={(date, time) => {
-                                        // Combine selected calendar date with the chosen HH:mm time
-                                        try {
-                                          const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
-                                          const scheduled = new Date(date)
-                                          scheduled.setHours(hh || 0, mm || 0, 0, 0)
-                                          // Debug log to trace scheduling values end-to-end
-                                          console.log('[ThreadTweet] onSchedule selected', {
-                                            rawDate: date?.toISOString?.(),
-                                            time,
-                                            combinedIso: scheduled.toISOString(),
-                                          })
-                                          if (onScheduleThread) {
-                                            console.log(`[ThreadTweet] Schedule button clicked at ${new Date().toISOString()}`)
-                                            setOptimisticActionState('schedule')
-                                            showAction('schedule')
-                                            onScheduleThread(scheduled)
-                                            setOpen(false)
-                                            // Clear optimistic state after feedback period
-                                            setTimeout(() => setOptimisticActionState(null), 500)
-                                          }
-                                        } catch (e) {
-                                          console.error('[ThreadTweet] onSchedule combine error', e)
-                                          if (onScheduleThread) {
-                                            console.log(`[ThreadTweet] Schedule fallback button clicked at ${new Date().toISOString()}`)
-                                            setOptimisticActionState('schedule')
-                                            showAction('schedule')
-                                            onScheduleThread(date)
-                                            setOpen(false)
-                                            // Clear optimistic state after feedback period
-                                            setTimeout(() => setOptimisticActionState(null), 500)
-                                          }
-                                        }
-                                      }}
-                                      isPending={isPosting || optimisticActionState === 'schedule'}
-                                    />
-                                  </PopoverContent>
-                                </Popover>
+                                    <ChevronDown className="size-4" />
+                                    <span className="sr-only max-[640px]:not-sr-only max-[640px]:ml-2">Schedule manually</span>
+                                  </DuolingoButton>
+                                </TooltipTrigger>
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Schedule manually</p>
@@ -1763,6 +1714,48 @@ function ThreadTweetContent({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Schedule Modal */}
+      <Calendar20
+        open={scheduleModalOpen}
+        onOpenChange={setScheduleModalOpen}
+        initialScheduledTime={preScheduleTime || undefined}
+        onSchedule={(date, time) => {
+          // Combine selected calendar date with the chosen HH:mm time
+          try {
+            const [hh, mm] = (time || '00:00').split(':').map((v) => Number(v))
+            const scheduled = new Date(date)
+            scheduled.setHours(hh || 0, mm || 0, 0, 0)
+            // Debug log to trace scheduling values end-to-end
+            console.log('[ThreadTweet] onSchedule selected', {
+              rawDate: date?.toISOString?.(),
+              time,
+              combinedIso: scheduled.toISOString(),
+            })
+            if (onScheduleThread) {
+              console.log(`[ThreadTweet] Schedule button clicked at ${new Date().toISOString()}`)
+              setOptimisticActionState('schedule')
+              showAction('schedule')
+              onScheduleThread(scheduled)
+              // Modal will close automatically via onOpenChange in Calendar20
+              // Clear optimistic state after feedback period
+              setTimeout(() => setOptimisticActionState(null), 500)
+            }
+          } catch (e) {
+            console.error('[ThreadTweet] onSchedule combine error', e)
+            if (onScheduleThread) {
+              console.log(`[ThreadTweet] Schedule fallback button clicked at ${new Date().toISOString()}`)
+              setOptimisticActionState('schedule')
+              showAction('schedule')
+              onScheduleThread(date)
+              // Modal will close automatically via onOpenChange in Calendar20
+              // Clear optimistic state after feedback period
+              setTimeout(() => setOptimisticActionState(null), 500)
+            }
+          }
+        }}
+        isPending={isPosting || optimisticActionState === 'schedule'}
+      />
     </>
   )
 }

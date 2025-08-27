@@ -216,99 +216,97 @@ export const Calendar20 = ({
     return dateOnly < todayOnly
   }
 
-  return (
-    <Card className="w-full gap-0 p-0 max-h-[80dvh] overflow-hidden flex flex-col">
-      <CardContent className="relative p-0 md:pr-56 flex-1 min-h-0 overflow-y-auto">
-        {/* Calendar Section */}
-        <div className="p-5">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={setDate}
-            defaultMonth={date}
-            disabled={isPastDate}
-            showOutsideDays={false}
-            startMonth={today}
-            className="p-0 [--cell-size:--spacing(10)] max-[480px]:[--cell-size:--spacing(8)]"
-            formatters={{
-              formatWeekdayName: (date) => {
-                return date.toLocaleString('en-US', { weekday: 'short' })
-              },
-            }}
-            classNames={{
-              day: 'size-10 rounded-lg max-[480px]:size-8 max-[480px]:text-xs',
-              // Remove z-index to prevent calendar day from overlaying the time panel
-              selected: 'rounded-md',
-              [UI.Months]: 'relative',
-              [UI.Month]: 'space-y-4 ml-0',
-              [UI.MonthCaption]: 'flex w-full justify-center items-center h-7',
-              [UI.CaptionLabel]: 'text-sm font-medium max-[480px]:text-xs',
-              [UI.PreviousMonthButton]: cn(
-                buttonVariants({ variant: 'outline' }),
-                'absolute left-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100 max-[480px]:size-6',
-              ),
-              [UI.NextMonthButton]: cn(
-                buttonVariants({ variant: 'outline' }),
-                'absolute right-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100 max-[480px]:size-6',
-              ),
-              [UI.MonthGrid]: 'w-full border-collapse space-y-1',
-              [UI.Weekdays]: 'flex',
-              [UI.Weekday]:
-                'text-muted-foreground rounded-md w-10 font-normal text-[0.8rem] max-[480px]:w-8 max-[480px]:text-[0.7rem]',
-              [UI.Week]: 'flex w-full mt-2',
-              [DayFlag.outside]:
-                'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
-              [DayFlag.disabled]: 'text-muted-foreground opacity-50',
-              [DayFlag.hidden]: 'invisible',
-              ...classNames,
-            }}
-          />
-        </div>
-        
-        {/* Time Slots Section - Mobile First Design */}
-        <div className="flex w-full flex-col border-t p-4 md:absolute md:inset-y-0 md:right-0 md:w-56 md:border-l md:border-t-0 md:p-6 md:max-h-full md:z-10 bg-background">
-          <h3 className="mb-3 text-sm font-medium text-neutral-700 md:hidden">Select Time</h3>
-          <div className="no-scrollbar flex max-h-[30dvh] md:max-h-[calc(100%-2rem)] flex-col gap-2 overflow-y-auto scroll-pb-4">
-            <div className="grid grid-cols-1 gap-2 min-[481px]:grid-cols-3 md:grid-cols-1 md:pr-1">
-              {timeSlots
-                .map((time) => {
-                  console.log('[DatePicker] Processing time slot:', time)
-                  const isDisabled = isTimeSlotDisabled(time)
-                  console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
-                  return (
-                    <Button
-                      key={time}
-                      variant={selectedTime === time ? 'default' : 'outline'}
-                      disabled={isDisabled}
-                      onClick={() => setSelectedTime(time)}
-                      className={cn(
-                        'h-10 text-sm shadow-none min-[481px]:h-8 min-[481px]:text-xs md:h-9 md:text-sm md:w-full touch-manipulation',
-                        selectedTime === time && 'text-success-600',
-                        isDisabled && 'opacity-50'
-                      )}
-                    >
-                      {formatHHmmTo12h(time)}
-                    </Button>
-                  )
-                })}
-            </div>
+  // Common content component for both Dialog and Drawer
+  const CalendarContent = () => (
+    <div className="flex flex-col min-h-0">
+      {/* Calendar Section */}
+      <div className="p-6 pb-4">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          defaultMonth={date}
+          disabled={isPastDate}
+          showOutsideDays={false}
+          startMonth={today}
+          className="w-fit mx-auto p-0 [--cell-size:--spacing(10)] max-[480px]:[--cell-size:--spacing(8)]"
+          formatters={{
+            formatWeekdayName: (date) => {
+              return date.toLocaleString('en-US', { weekday: 'short' })
+            },
+          }}
+          classNames={{
+            day: 'size-10 rounded-lg max-[480px]:size-8 max-[480px]:text-xs',
+            selected: 'rounded-md',
+            [UI.Months]: 'relative',
+            [UI.Month]: 'space-y-4 ml-0',
+            [UI.MonthCaption]: 'flex w-full justify-center items-center h-7',
+            [UI.CaptionLabel]: 'text-sm font-medium max-[480px]:text-xs',
+            [UI.PreviousMonthButton]: cn(
+              buttonVariants({ variant: 'outline' }),
+              'absolute left-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100 max-[480px]:size-6',
+            ),
+            [UI.NextMonthButton]: cn(
+              buttonVariants({ variant: 'outline' }),
+              'absolute right-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100 max-[480px]:size-6',
+            ),
+            [UI.MonthGrid]: 'w-full border-collapse space-y-1',
+            [UI.Weekdays]: 'flex',
+            [UI.Weekday]:
+              'text-muted-foreground rounded-md w-10 font-normal text-[0.8rem] max-[480px]:w-8 max-[480px]:text-[0.7rem]',
+            [UI.Week]: 'flex w-full mt-2',
+            [DayFlag.outside]:
+              'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
+            [DayFlag.disabled]: 'text-muted-foreground opacity-50',
+            [DayFlag.hidden]: 'invisible',
+            ...classNames,
+          }}
+        />
+      </div>
+      
+      {/* Time Slots Section */}
+      <div className="flex-1 p-6 pt-2 border-t">
+        <h3 className="mb-4 text-sm font-medium text-neutral-700">Select Time</h3>
+        <div className="max-h-[40vh] overflow-y-auto scroll-pb-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {timeSlots.map((time) => {
+              console.log('[DatePicker] Processing time slot:', time)
+              const isDisabled = isTimeSlotDisabled(time)
+              console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
+              return (
+                <Button
+                  key={time}
+                  variant={selectedTime === time ? 'default' : 'outline'}
+                  disabled={isDisabled}
+                  onClick={() => setSelectedTime(time)}
+                  className={cn(
+                    'h-10 text-sm shadow-none touch-manipulation',
+                    selectedTime === time && 'text-success-600',
+                    isDisabled && 'opacity-50'
+                  )}
+                >
+                  {formatHHmmTo12h(time)}
+                </Button>
+              )
+            })}
           </div>
         </div>
-      </CardContent>
-      <CardFooter className="flex flex-col gap-4 border-t px-6 !py-5 md:flex-row flex-shrink-0">
-        <div className="text-sm">
+      </div>
+      
+      {/* Footer Section */}
+      <div className="flex flex-col gap-4 border-t p-6 sm:flex-row sm:items-center">
+        <div className="text-sm flex-1">
           {date && selectedTime ? (
             <>
               {editMode ? 'Rescheduled for' : 'Scheduled for'}{' '}
               <span className="font-medium">
-                {' '}
                 {date?.toLocaleDateString('en-US', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
-                })}{' '}
+                })}
               </span>
-              at <span className="font-medium">{formatHHmmTo12h(selectedTime)}</span>.
+              {' '}at <span className="font-medium">{formatHHmmTo12h(selectedTime)}</span>.
             </>
           ) : (
             <>Select a date and time for your meeting.</>
@@ -318,19 +316,50 @@ export const Calendar20 = ({
           loading={isPending}
           size="sm"
           disabled={!date || !selectedTime}
-          className="w-full md:ml-auto md:w-auto"
+          className="w-full sm:w-auto"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
             
             if (date && selectedTime && onSchedule) {
+              console.log('[DatePicker] Schedule button clicked, closing modal')
               onSchedule(date, selectedTime)
+              onOpenChange(false)
             }
           }}
         >
           {editMode ? 'Reschedule' : 'Schedule'}
         </DuolingoButton>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
+  )
+
+  // Render mobile drawer or desktop dialog based on screen size
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader className="text-center">
+            <DrawerTitle>
+              {editMode ? 'Reschedule Post' : 'Schedule Post'}
+            </DrawerTitle>
+          </DrawerHeader>
+          <CalendarContent />
+        </DrawerContent>
+      </Drawer>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[85vh] p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="text-center">
+            {editMode ? 'Reschedule Post' : 'Schedule Post'}
+          </DialogTitle>
+        </DialogHeader>
+        <CalendarContent />
+      </DialogContent>
+    </Dialog>
   )
 }
