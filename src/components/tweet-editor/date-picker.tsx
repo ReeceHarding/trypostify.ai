@@ -266,27 +266,29 @@ export const Calendar20 = ({
         {/* Time Slots Section */}
         <div className="p-6 pt-2 border-t">
           <h3 className="mb-4 text-sm font-medium text-neutral-700">Select Time</h3>
-          <div className="grid grid-cols-3 gap-2">
-            {timeSlots.map((time) => {
-              console.log('[DatePicker] Processing time slot:', time)
-              const isDisabled = isTimeSlotDisabled(time)
-              console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
-              return (
-                <Button
-                  key={time}
-                  variant={selectedTime === time ? 'default' : 'outline'}
-                  disabled={isDisabled}
-                  onClick={() => setSelectedTime(time)}
-                  className={cn(
-                    'h-9 text-sm shadow-none touch-manipulation',
-                    selectedTime === time && 'text-success-600',
-                    isDisabled && 'opacity-50'
-                  )}
-                >
-                  {formatHHmmTo12h(time)}
-                </Button>
-              )
-            })}
+          <div className="max-h-32 overflow-y-auto">
+            <div className="grid grid-cols-3 gap-2">
+              {timeSlots.map((time) => {
+                console.log('[DatePicker] Processing time slot:', time)
+                const isDisabled = isTimeSlotDisabled(time)
+                console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
+                return (
+                  <Button
+                    key={time}
+                    variant={selectedTime === time ? 'default' : 'outline'}
+                    disabled={isDisabled}
+                    onClick={() => setSelectedTime(time)}
+                    className={cn(
+                      'h-9 text-sm shadow-none touch-manipulation',
+                      selectedTime === time && 'text-success-600',
+                      isDisabled && 'opacity-50'
+                    )}
+                  >
+                    {formatHHmmTo12h(time)}
+                  </Button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
