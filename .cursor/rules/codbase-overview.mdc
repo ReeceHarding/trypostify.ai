@@ -271,4 +271,8 @@ initialMedia={tweet.media?.map(m => ({
 - Environment variable validation
 - Webhook URLs that work in production
 
+### OAuth Redirect URL Setup
+
+- **Testing URL**: Use `test-contentport.vercel.app` alias for consistent OAuth callbacks during development
+
 **Always test functionality with deployment in mind, not just local development**

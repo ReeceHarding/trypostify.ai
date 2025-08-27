@@ -292,7 +292,7 @@ export const createScheduleTool = (
         })
 
         // Create the thread using direct function call (more efficient than fetch)
-        const { createThreadInternal } = await import('../../tweet-router')
+        const { createThreadInternal } = await import('../../utils/tweet-utils')
         const createResult = await createThreadInternal(
           { tweets: tweetsToSchedule },
           user.id
@@ -311,7 +311,7 @@ export const createScheduleTool = (
         })
 
         // Schedule the thread using direct function call (more efficient than fetch)
-        const { scheduleThreadInternal } = await import('../../tweet-router')
+        const { scheduleThreadInternal } = await import('../../utils/tweet-utils')
         const result = await scheduleThreadInternal(
           {
             threadId,
