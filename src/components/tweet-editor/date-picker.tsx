@@ -4,18 +4,22 @@ import * as React from 'react'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { DayFlag, DayPicker, SelectionState, UI } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import DuolingoButton from '../ui/duolingo-button'
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   onSchedule?: (date: Date, time: string) => void
   isPending?: boolean
   initialScheduledTime?: Date
   editMode?: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 export const Calendar20 = ({
@@ -26,15 +30,19 @@ export const Calendar20 = ({
   isPending,
   initialScheduledTime,
   editMode,
+  open,
+  onOpenChange,
   ...props
 }: CalendarProps) => {
   const today = new Date()
   const currentHour = today.getHours()
   const currentMinute = today.getMinutes()
+  const isMobile = useIsMobile()
   
   console.log('[DatePicker] Current time:', today.toISOString())
   console.log('[DatePicker] Current local time:', today.toLocaleString())
   console.log('[DatePicker] Current hour:', currentHour, 'Current minute:', currentMinute)
+  console.log('[DatePicker] Mobile detection:', isMobile)
 
   // Fetch user's posting window settings
   const { data: postingWindow } = useQuery({

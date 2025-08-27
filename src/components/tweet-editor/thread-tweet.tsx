@@ -1112,7 +1112,7 @@ function ThreadTweetContent({
       <Drawer modal={false} open={open} onOpenChange={setOpen}>
         <div
           className={cn(
-            'relative bg-white p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
+            'relative bg-white p-4 sm:p-6 rounded-2xl w-full max-w-2xl mx-auto border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
             isDragging && 'border-primary border-dashed',
           )}
           onDragOver={handleDragOver}
@@ -1315,7 +1315,7 @@ function ThreadTweetContent({
                 </div>
               )}
 
-              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-between max-[320px]:flex-col max-[320px]:gap-3">
+              <div className="mt-3 pt-3 border-t border-neutral-200 flex items-center justify-center sm:justify-between max-[640px]:flex-col max-[640px]:gap-4">
                 <div
                   className={cn(
                     'flex items-center gap-1.5 bg-neutral-100 p-1.5 rounded-lg',
@@ -1431,19 +1431,19 @@ function ThreadTweetContent({
                   <ContentLengthIndicator length={charCount} />
                 </div>
 
-                <div className="flex items-center gap-2 max-[320px]:flex-col max-[320px]:items-stretch max-[320px]:gap-3 max-[320px]:w-full">
+                <div className="flex items-center gap-2 max-[640px]:flex-col max-[640px]:items-center max-[640px]:gap-3 max-[640px]:w-full">
                   {/* Show Post/Queue buttons only on first tweet or single tweet */}
                   {(!isThread || isFirstTweet) && (
                     <>
                       {editMode ? (
                         // Edit mode buttons
-                        <div className="flex gap-2 max-[320px]:flex-col max-[320px]:gap-3 max-[320px]:w-full">
+                        <div className="flex gap-2 max-[640px]:flex-col max-[640px]:gap-3 max-[640px]:w-full max-[640px]:items-center">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
                                   variant="secondary"
-                                  className="h-11 px-6 max-[320px]:w-full"
+                                  className="h-11 px-6 max-[640px]:w-full"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
@@ -1463,7 +1463,7 @@ function ThreadTweetContent({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 px-6 max-[320px]:w-full"
+                                  className="h-11 px-6 max-[640px]:w-full"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
@@ -1483,12 +1483,12 @@ function ThreadTweetContent({
                         </div>
                       ) : (
                         // Regular mode buttons
-                        <div className="flex gap-2 max-[320px]:flex-col max-[320px]:gap-3 max-[320px]:w-full">
+                        <div className="flex gap-2 max-[640px]:flex-col max-[640px]:gap-3 max-[640px]:w-full max-[640px]:items-center">
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <DuolingoButton
-                                  className="h-11 px-6 max-[320px]:w-full"
+                                  className="h-11 px-6 max-[640px]:w-full"
                                   variant="secondary"
                                   onClick={handlePostClick}
                                   disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
@@ -1513,14 +1513,14 @@ function ThreadTweetContent({
                             </Tooltip>
                           </TooltipProvider>
 
-                          <div className="flex max-[320px]:w-full max-[320px]:flex-col max-[320px]:gap-3">
+                          <div className="flex max-[640px]:w-full max-[640px]:flex-col max-[640px]:gap-3">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <DuolingoButton
                                     loading={isPosting || optimisticActionState === 'queue'}
                                     disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
-                                    className="h-11 px-4 rounded-r-none border-r-0 max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full"
+                                    className="h-11 px-4 rounded-r-none border-r-0 max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
                                         console.log(`[ThreadTweet] Queue button clicked at ${new Date().toISOString()}`)
@@ -1552,11 +1552,11 @@ function ThreadTweetContent({
                                         loading={isPosting || optimisticActionState === 'schedule'}
                                         disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
                                         size="icon"
-                                        className="h-11 w-14 rounded-l-none border-l max-[320px]:rounded-lg max-[320px]:border max-[320px]:w-full max-[320px]:justify-center"
+                                        className="h-11 w-14 rounded-l-none border-l max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full max-[640px]:justify-center"
 
                                       >
                                         <ChevronDown className="size-4" />
-                                        <span className="sr-only max-[320px]:not-sr-only max-[320px]:ml-2">Schedule manually</span>
+                                        <span className="sr-only max-[640px]:not-sr-only max-[640px]:ml-2">Schedule manually</span>
                                       </DuolingoButton>
                                     </PopoverTrigger>
                                   </TooltipTrigger>

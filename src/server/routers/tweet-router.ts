@@ -66,106 +66,11 @@ async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
   })
 }
 
-// Shared publisher used by local scheduler and webhook
-async function publishThreadById({
-  threadId,
-  userId,
-  accountId,
-  logPrefix = 'Publisher',
-}: {
-  threadId: string
-  userId?: string
-  accountId?: string
-  logPrefix?: string
-}) {
-  console.log(`[${logPrefix}] Starting to publish thread: ${threadId}`)
-  // Determine user/account if not provided
-  let effectiveUserId = userId
-  let effectiveAccountId = accountId
 
-  const firstTweet = await db.query.tweets.findFirst({
-    where: and(eq(tweets.threadId, threadId), eq(tweets.isPublished, false)),
-  })
-  if (!firstTweet) {
-    console.log(`[${logPrefix}] No unpublished tweets in thread ${threadId}`)
-    return
-  }
-  if (!effectiveUserId) effectiveUserId = firstTweet.userId
-
-  const threadTweets = await db.query.tweets.findMany({
-    where: and(eq(tweets.threadId, threadId), eq(tweets.isPublished, false)),
-    orderBy: asc(tweets.position),
-  })
-  if (threadTweets.length === 0) return
-
-  let account = null as any
-  if (effectiveAccountId) {
-    account = await db.query.account.findFirst({
-      where: and(eq(accountSchema.userId, effectiveUserId!), eq(accountSchema.id, effectiveAccountId)),
-    })
-  } else {
-    account = await db.query.account.findFirst({
-      where: and(eq(accountSchema.userId, effectiveUserId!), eq(accountSchema.providerId, 'twitter')),
-    })
-  }
-  if (!account?.accessToken) {
-    console.log(`[${logPrefix}] Missing X access token for user ${effectiveUserId}`)
-    return
-  }
-
-  const client = new TwitterApi({
-    appKey: consumerKey as string,
-    appSecret: consumerSecret as string,
-    accessToken: account.accessToken as string,
-    accessSecret: account.accessSecret as string,
-  })
-
-  let previousTweetId: string | null = null
-  for (const [index, tweet] of threadTweets.entries()) {
-    try {
-      if (index > 0 && tweet.delayMs && tweet.delayMs > 0) {
-        await new Promise((r) => setTimeout(r, tweet.delayMs))
-      }
-      const payload: SendTweetV2Params = { text: tweet.content }
-      if (previousTweetId && index > 0) {
-        payload.reply = { in_reply_to_tweet_id: previousTweetId }
-      }
-      if (tweet.media?.length) {
-        const ids = tweet.media
-          .map((m: any) => m.media_id)
-          .filter((id: any) => typeof id === 'string' && id.trim().length > 0)
-        if (ids.length) {
-          payload.media = { media_ids: ids as any }
-        }
-      }
-      const res = await client.v2.tweet(payload)
-      await db
-        .update(tweets)
-        .set({
-          isScheduled: false,
-          isPublished: true,
-          twitterId: res.data.id,
-          replyToTweetId: previousTweetId,
-          updatedAt: new Date(),
-        })
-        .where(eq(tweets.id, tweet.id))
-      previousTweetId = res.data.id
-    } catch (error) {
-      // stop on rate limits, otherwise continue only for known invalid media issues
-      if ((error as any)?.code === 400) {
-        await db
-          .update(tweets)
-          .set({ isScheduled: false, isPublished: false, updatedAt: new Date() })
-          .where(eq(tweets.id, tweet.id))
-        continue
-      }
-      throw error
-    }
-  }
-}
 
 // Wrapper for local scheduler
 async function processScheduledThread(threadId: string) {
+  const { publishThreadById } = await import('./chat/utils')
   return publishThreadById({ threadId, logPrefix: 'LocalScheduler' })
 }
 
@@ -2307,6 +2212,7 @@ export const tweetRouter = j.router({
 
     // console.log('[postThread] Processing scheduled thread:', threadId)
 
+    const { publishThreadById } = await import('./chat/utils')
     await publishThreadById({ threadId, userId, accountId, logPrefix: 'postThread' })
     return c.json({ success: true })
   }),

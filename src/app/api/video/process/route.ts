@@ -290,7 +290,7 @@ export async function POST(req: NextRequest) {
         
         try {
           // Import the tweet posting function directly
-          const { publishThreadById } = await import('../../../../server/routers/tweet-router')
+          const { publishThreadById } = await import('../../../../server/routers/chat/utils')
           
           // Get user account for posting
           const { account: accountSchema } = await import('../../../../db/schema')
