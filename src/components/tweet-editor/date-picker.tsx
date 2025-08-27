@@ -215,81 +215,84 @@ export const Calendar20 = ({
 
   // Content component for centered popup
   const CalendarContent = () => (
-    <div className="flex flex-col">
-      {/* Calendar Section */}
-      <div className="p-6 pb-4">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
-          defaultMonth={date}
-          disabled={isPastDate}
-          showOutsideDays={false}
-          startMonth={today}
-          className="w-fit mx-auto p-0 [--cell-size:--spacing(9)]"
-          formatters={{
-            formatWeekdayName: (date) => {
-              return date.toLocaleString('en-US', { weekday: 'short' })
-            },
-          }}
-          classNames={{
-            day: 'size-9 rounded-lg text-sm',
-            selected: 'rounded-md',
-            [UI.Months]: 'relative',
-            [UI.Month]: 'space-y-4 ml-0',
-            [UI.MonthCaption]: 'flex w-full justify-center items-center h-7',
-            [UI.CaptionLabel]: 'text-sm font-medium',
-            [UI.PreviousMonthButton]: cn(
-              buttonVariants({ variant: 'outline' }),
-              'absolute left-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100',
-            ),
-            [UI.NextMonthButton]: cn(
-              buttonVariants({ variant: 'outline' }),
-              'absolute right-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100',
-            ),
-            [UI.MonthGrid]: 'w-full border-collapse space-y-1',
-            [UI.Weekdays]: 'flex',
-            [UI.Weekday]:
-              'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
-            [UI.Week]: 'flex w-full mt-2',
-            [DayFlag.outside]:
-              'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
-            [DayFlag.disabled]: 'text-muted-foreground opacity-50',
-            [DayFlag.hidden]: 'invisible',
-            ...classNames,
-          }}
-        />
-      </div>
-      
-      {/* Time Slots Section */}
-      <div className="p-6 pt-2 border-t">
-        <h3 className="mb-4 text-sm font-medium text-neutral-700">Select Time</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {timeSlots.map((time) => {
-            console.log('[DatePicker] Processing time slot:', time)
-            const isDisabled = isTimeSlotDisabled(time)
-            console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
-            return (
-              <Button
-                key={time}
-                variant={selectedTime === time ? 'default' : 'outline'}
-                disabled={isDisabled}
-                onClick={() => setSelectedTime(time)}
-                className={cn(
-                  'h-9 text-sm shadow-none touch-manipulation',
-                  selectedTime === time && 'text-success-600',
-                  isDisabled && 'opacity-50'
-                )}
-              >
-                {formatHHmmTo12h(time)}
-              </Button>
-            )
-          })}
+    <div className="flex flex-col h-full">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Calendar Section */}
+        <div className="p-6 pb-4">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            defaultMonth={date}
+            disabled={isPastDate}
+            showOutsideDays={false}
+            startMonth={today}
+            className="w-fit mx-auto p-0 [--cell-size:--spacing(9)]"
+            formatters={{
+              formatWeekdayName: (date) => {
+                return date.toLocaleString('en-US', { weekday: 'short' })
+              },
+            }}
+            classNames={{
+              day: 'size-9 rounded-lg text-sm',
+              selected: 'rounded-md',
+              [UI.Months]: 'relative',
+              [UI.Month]: 'space-y-4 ml-0',
+              [UI.MonthCaption]: 'flex w-full justify-center items-center h-7',
+              [UI.CaptionLabel]: 'text-sm font-medium',
+              [UI.PreviousMonthButton]: cn(
+                buttonVariants({ variant: 'outline' }),
+                'absolute left-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100',
+              ),
+              [UI.NextMonthButton]: cn(
+                buttonVariants({ variant: 'outline' }),
+                'absolute right-1 top-0 size-7 bg-transparent p-0 opacity-50 hover:opacity-100',
+              ),
+              [UI.MonthGrid]: 'w-full border-collapse space-y-1',
+              [UI.Weekdays]: 'flex',
+              [UI.Weekday]:
+                'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
+              [UI.Week]: 'flex w-full mt-2',
+              [DayFlag.outside]:
+                'day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30',
+              [DayFlag.disabled]: 'text-muted-foreground opacity-50',
+              [DayFlag.hidden]: 'invisible',
+              ...classNames,
+            }}
+          />
+        </div>
+        
+        {/* Time Slots Section */}
+        <div className="p-6 pt-2 border-t">
+          <h3 className="mb-4 text-sm font-medium text-neutral-700">Select Time</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {timeSlots.map((time) => {
+              console.log('[DatePicker] Processing time slot:', time)
+              const isDisabled = isTimeSlotDisabled(time)
+              console.log('[DatePicker] Rendering time slot button:', time, 'disabled:', isDisabled)
+              return (
+                <Button
+                  key={time}
+                  variant={selectedTime === time ? 'default' : 'outline'}
+                  disabled={isDisabled}
+                  onClick={() => setSelectedTime(time)}
+                  className={cn(
+                    'h-9 text-sm shadow-none touch-manipulation',
+                    selectedTime === time && 'text-success-600',
+                    isDisabled && 'opacity-50'
+                  )}
+                >
+                  {formatHHmmTo12h(time)}
+                </Button>
+              )
+            })}
+          </div>
         </div>
       </div>
       
-      {/* Footer Section */}
-      <div className="flex flex-col gap-4 border-t p-6">
+      {/* Fixed Footer Section */}
+      <div className="flex-shrink-0 flex flex-col gap-4 border-t p-6 bg-background">
         <div className="text-sm text-center">
           {date && selectedTime ? (
             <>
