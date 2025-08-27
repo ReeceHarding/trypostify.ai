@@ -209,53 +209,37 @@ async function processVideoAsyncFlow({
     const runId = runData.data.id
     console.log('[processVideoAsyncFlow] Started Apify run:', runId)
 
-    const maxAttempts = 90
-    let attempts = 0
-    let runStatus: any
-    let currentDelayMs = 1500
-    const backoff = 1.25
-    const maxDelayMs = 8000
-
-    while (attempts < maxAttempts) {
-      attempts++
-      await new Promise(resolve => setTimeout(resolve, currentDelayMs))
-      console.log(`[processVideoAsyncFlow] Polling attempt ${attempts}/${maxAttempts}, delay: ${currentDelayMs}ms`)
-      currentDelayMs = Math.min(Math.round(currentDelayMs * backoff), maxDelayMs)
-
-      const statusResponse = await fetch(
-        `https://api.apify.com/v2/acts/marketingme~video-downloader/runs/${runId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
-          },
-        }
-      )
-
-      if (!statusResponse.ok) {
-        console.error('[processVideoAsyncFlow] Failed to check run status')
-        continue
-      }
-
-      runStatus = await statusResponse.json()
-      console.log(`[processVideoAsyncFlow] Run status: ${runStatus.data.status}`)
-
-      if (runStatus.data.status === 'SUCCEEDED') {
-        break
-      } else if (runStatus.data.status === 'FAILED' || runStatus.data.status === 'ABORTED') {
-        throw new Error('Video download failed')
-      }
+    // Use QStash for async processing instead of synchronous polling
+    console.log('[processVideoAsyncFlow] ✅ Video processing started with Apify run:', runId)
+    console.log('[processVideoAsyncFlow] Processing will continue asynchronously via QStash')
+    
+    // Instead of polling here, the /api/video/process endpoint handles async processing
+    // This function now just starts the process and returns
+    return {
+      success: true,
+      message: 'Video processing started successfully',
+      runId: runId,
+      status: 'processing'
     }
+  } catch (error: any) {
+    console.error('[processVideoAsyncFlow] Error:', error.message)
+    throw new Error(error.message || 'Failed to start video processing.')
+  }
+}
 
-    if (runStatus?.data?.status !== 'SUCCEEDED') {
-      throw new Error('Video download timed out')
-    }
-
-    const datasetId = runStatus.data.defaultDatasetId
-    const itemsResponse = await fetch(
-      `https://api.apify.com/v2/datasets/${datasetId}/items`,
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.APIFY_API_TOKEN}`,
+async function processVideoDirectly({
+  url,
+  platform,
+  tweetId,
+  userId,
+  autoPost,
+}: {
+  url: string
+  platform: string
+  tweetId?: string
+  userId: string
+  autoPost: boolean
+}) {
         },
       }
     )

@@ -291,23 +291,13 @@ export const createScheduleTool = (
           },
         })
 
-        // Create the thread first
-        const createRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/createThread`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            tweets: tweetsToSchedule
-          }),
-        })
-
-        if (!createRes.ok) {
-          const error = await createRes.json()
-          throw new Error(error.message || 'Failed to create thread')
-        }
-
-        const { threadId } = await createRes.json()
+        // Create the thread using direct function call (more efficient than fetch)
+        const { createThreadInternal } = await import('../../tweet-router')
+        const createResult = await createThreadInternal(
+          { tweets: tweetsToSchedule },
+          user.id
+        )
+        const threadId = createResult.threadId
         console.log('[SCHEDULE_TOOL] Thread created with ID:', threadId)
 
         // Update status
@@ -320,24 +310,15 @@ export const createScheduleTool = (
           },
         })
 
-        // Schedule the thread
-        const scheduleRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tweet/scheduleThread`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        // Schedule the thread using direct function call (more efficient than fetch)
+        const { scheduleThreadInternal } = await import('../../tweet-router')
+        const result = await scheduleThreadInternal(
+          {
             threadId,
             scheduledUnix: Math.floor(parsedTime.getTime() / 1000) // API expects seconds
-          }),
-        })
-
-        if (!scheduleRes.ok) {
-          const error = await scheduleRes.json()
-          throw new Error(error.message || 'Failed to schedule thread')
-        }
-
-        const result = await scheduleRes.json()
+          },
+          user.id
+        )
         console.log('[SCHEDULE_TOOL] Scheduled successfully:', result)
 
         // Format the scheduled time for display
