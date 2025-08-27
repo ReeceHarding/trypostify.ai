@@ -1120,7 +1120,7 @@ function ThreadTweetContent({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex gap-3 relative z-10">
+          <div className="flex gap-3 relative z-10 items-start">
             <AccountAvatar className="size-12 flex-shrink-0" />
 
             <div className="flex-1 min-w-0">
