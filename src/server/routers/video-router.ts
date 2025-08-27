@@ -25,9 +25,19 @@ console.log('[VideoRouter] Module loading with environment:', {
   timestamp: new Date().toISOString()
 })
 
-// Configure FFmpeg path (use system FFmpeg)
-// TODO: Make this configurable via environment variable
-ffmpeg.setFfmpegPath('/opt/homebrew/bin/ffmpeg')
+// Configure FFmpeg path - let fluent-ffmpeg auto-detect FFmpeg location
+// This works on Vercel, local dev, and any system with FFmpeg in PATH
+try {
+  // Only set path if explicitly provided via environment variable
+  if (process.env.FFMPEG_PATH) {
+    ffmpeg.setFfmpegPath(process.env.FFMPEG_PATH)
+    console.log('[FFmpeg] Using custom FFmpeg path:', process.env.FFMPEG_PATH)
+  } else {
+    console.log('[FFmpeg] Using auto-detected FFmpeg from system PATH')
+  }
+} catch (error) {
+  console.warn('[FFmpeg] FFmpeg path configuration warning:', error)
+}
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
