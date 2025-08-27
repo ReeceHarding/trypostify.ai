@@ -138,7 +138,7 @@ const Page = () => {
           oauthOnboarding={oauthOnboarding}
         />
       ) : null}
-      <div className="w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-2xl mx-auto px-6">
         <ThreadTweetEditor editMode={isEditMode} editTweetId={editTweetId} />
       </div>
     </>
