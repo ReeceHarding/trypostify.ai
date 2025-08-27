@@ -5,6 +5,8 @@ import { eq, and } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { nanoid } from 'nanoid'
+import { qstash } from '@/lib/qstash'
+import { getBaseUrl } from '@/constants/base-url'
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION!,
@@ -20,28 +22,33 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[VideoProcessor] Processing video job webhook...')
     
-    const { videoJobId } = await req.json()
+    const body = await req.json()
+    const { videoJobId, pollingAttempt = 0 } = body as { videoJobId: string; pollingAttempt?: number }
+    const MAX_POLLING_ATTEMPTS = 90
     
     if (!videoJobId) {
       console.error('[VideoProcessor] No videoJobId provided')
       return NextResponse.json({ error: 'Missing videoJobId' }, { status: 400 })
     }
     
-    console.log('[VideoProcessor] Processing video job:', videoJobId)
+    console.log('[VideoProcessor] Processing video job:', videoJobId, 'polling attempt:', pollingAttempt)
     
     // Get the video job from database
-    const job = await db.query.videoJob.findFirst({
-      where: eq(videoJob.id, videoJobId),
-    })
+    const job = await db.select().from(videoJob).where(eq(videoJob.id, videoJobId)).then(rows => rows[0])
     
     if (!job) {
       console.error('[VideoProcessor] Video job not found:', videoJobId)
       return NextResponse.json({ error: 'Video job not found' }, { status: 404 })
     }
     
-    if (job.status !== 'pending') {
-      console.log('[VideoProcessor] Job already processed:', videoJobId, 'status:', job.status)
-      return NextResponse.json({ message: 'Job already processed' }, { status: 200 })
+    if (job.status === 'completed') {
+      console.log('[VideoProcessor] Job already completed:', videoJobId)
+      return NextResponse.json({ message: 'Job already completed' }, { status: 200 })
+    }
+    
+    if (job.status === 'failed') {
+      console.log('[VideoProcessor] Job already failed:', videoJobId)
+      return NextResponse.json({ message: 'Job already failed' }, { status: 200 })
     }
     
     // Update status to processing
@@ -53,66 +60,88 @@ export async function POST(req: NextRequest) {
       })
       .where(eq(videoJob.id, videoJobId))
     
-    console.log('[VideoProcessor] Starting video download for:', job.videoUrl)
-    
     try {
-      // Start Apify actor run
-      const runResponse = await fetch(
-        `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/runs?token=${process.env.APIFY_API_TOKEN}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            video_url: job.videoUrl,
-            quality: 'high',
-          }),
-        },
-      )
-
-      if (!runResponse.ok) {
-        const error = await runResponse.text()
-        throw new Error(`Failed to start Apify run: ${error}`)
-      }
-
-      const runData: any = await runResponse.json()
-      const runId = runData.data.id
-      console.log('[VideoProcessor] Started Apify run:', runId)
-
-      // Poll for completion
-      const maxAttempts = 90
-      let attempts = 0
+      let runId = job.apifyRunId
       let runStatus: any
-      let delay = 2000
-
-      while (attempts < maxAttempts) {
-        attempts++
-        await new Promise(resolve => setTimeout(resolve, delay))
-        delay = Math.min(delay * 1.2, 10000)
-
-        const statusResponse = await fetch(
-          `https://api.apify.com/v2/actor-runs/${runId}?token=${process.env.APIFY_API_TOKEN}`,
+      
+      // If no apifyRunId, start a new Apify run
+      if (!runId) {
+        console.log('[VideoProcessor] Starting video download for:', job.videoUrl)
+        
+        const runResponse = await fetch(
+          `https://api.apify.com/v2/acts/ceeA8aQjRcp3E6cNx/runs?token=${process.env.APIFY_API_TOKEN}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              video_url: job.videoUrl,
+              quality: 'high',
+            }),
+          },
         )
 
-        if (!statusResponse.ok) {
-          throw new Error('Failed to check run status')
+        if (!runResponse.ok) {
+          const error = await runResponse.text()
+          throw new Error(`Failed to start Apify run: ${error}`)
         }
 
-        runStatus = await statusResponse.json()
-        const status = runStatus.data.status
+        const runData: any = await runResponse.json()
+        runId = runData.data.id
+        console.log('[VideoProcessor] Started Apify run:', runId)
+        
+        // Save the apifyRunId to database
+        await db.update(videoJob)
+          .set({
+            apifyRunId: runId,
+            status: 'processing',
+            updatedAt: new Date(),
+          })
+          .where(eq(videoJob.id, videoJobId))
+      }
+      
+      // Check the current status of the Apify run
+      console.log('[VideoProcessor] Checking Apify run status:', runId)
+      const statusResponse = await fetch(
+        `https://api.apify.com/v2/actor-runs/${runId}?token=${process.env.APIFY_API_TOKEN}`,
+      )
 
-        console.log(`[VideoProcessor] Run status (attempt ${attempts}): ${status}`)
-
-        if (status === 'SUCCEEDED') {
-          break
-        } else if (status === 'FAILED') {
-          throw new Error('Apify run failed')
-        }
+      if (!statusResponse.ok) {
+        throw new Error('Failed to check run status')
       }
 
-      if (attempts >= maxAttempts) {
-        throw new Error('Video download timed out')
+      runStatus = await statusResponse.json()
+      const status = runStatus.data.status
+      console.log(`[VideoProcessor] Run status (attempt ${pollingAttempt + 1}): ${status}`)
+
+      // Handle different status scenarios
+      if (status === 'SUCCEEDED') {
+        console.log('[VideoProcessor] Apify run completed successfully, processing results...')
+        // Continue with video processing logic below
+      } else if (status === 'FAILED' || status === 'ABORTED') {
+        throw new Error(`Apify run failed with status: ${status}`)
+      } else if (pollingAttempt < MAX_POLLING_ATTEMPTS) {
+        // Job is still running, re-enqueue the check with QStash
+        console.log('[VideoProcessor] Job still running, re-enqueueing status check...')
+        
+        await qstash.publishJSON({
+          url: `${getBaseUrl()}/api/video/process`,
+          body: { 
+            videoJobId: videoJobId,
+            pollingAttempt: pollingAttempt + 1 
+          },
+          delay: Math.min(10 + pollingAttempt * 2, 30), // Progressive delay: 10s, 12s, 14s... up to 30s
+        })
+        
+        return NextResponse.json({ 
+          message: 'Polling... check re-enqueued.',
+          attempt: pollingAttempt + 1,
+          maxAttempts: MAX_POLLING_ATTEMPTS 
+        })
+      } else {
+        // Exceeded max attempts
+        throw new Error(`Video download timed out after ${MAX_POLLING_ATTEMPTS} attempts`)
       }
 
       // Get video data
@@ -172,15 +201,15 @@ export async function POST(req: NextRequest) {
       try {
         // Get user account for Twitter upload
         const { account: accountSchema } = await import('../../../../db/schema')
-        const { eq, and } = await import('drizzle-orm')
         
         // Find the user's Twitter account
-        const account = await db.query.account.findFirst({
-          where: and(
+        const account = await db.select()
+          .from(accountSchema)
+          .where(and(
             eq(accountSchema.userId, job.userId), 
             eq(accountSchema.providerId, 'twitter')
-          ),
-        })
+          ))
+          .then(rows => rows[0])
         
         if (account?.accessToken && account?.accessSecret) {
           const { TwitterApi } = await import('twitter-api-v2')
@@ -262,18 +291,16 @@ export async function POST(req: NextRequest) {
           const { publishThreadById } = await import('../../../../server/routers/tweet-router')
           
           // Get user account for posting
-          const { db } = await import('../../../../db')
           const { account: accountSchema } = await import('../../../../db/schema')
-          const { tweets } = await import('../../../../db/schema')
-          const { eq, and } = await import('drizzle-orm')
           
           // Find the user's Twitter account
-          const account = await db.query.account.findFirst({
-            where: and(
+          const account = await db.select()
+            .from(accountSchema)
+            .where(and(
               eq(accountSchema.userId, job.userId), 
               eq(accountSchema.providerId, 'twitter')
-            ),
-          })
+            ))
+            .then(rows => rows[0])
           
           if (!account?.id) {
             console.error('[VideoProcessor] No Twitter account found for user:', job.userId)
@@ -284,7 +311,8 @@ export async function POST(req: NextRequest) {
           const threadId = crypto.randomUUID()
           
           // Prepare tweet content with the processed video
-          const tweetsToCreate = job.tweetContent.tweets.map((tweet: any, index: number) => ({
+          const tweetContent = job.tweetContent as any
+          const tweetsToCreate = tweetContent.tweets.map((tweet: any, index: number) => ({
             id: crypto.randomUUID(),
             accountId: account.id,
             userId: job.userId,

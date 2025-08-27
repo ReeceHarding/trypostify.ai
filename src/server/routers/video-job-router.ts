@@ -5,6 +5,8 @@ import { videoJob } from '../../db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { v4 as uuidv4 } from 'uuid'
+import { qstash } from '../../lib/qstash'
+import { getBaseUrl } from '../../constants/base-url'
 
 export const videoJobRouter = j.router({
   
@@ -45,28 +47,47 @@ export const videoJobRouter = j.router({
         
         console.log('[VideoJobRouter] ✅ Video job created successfully:', newJob[0])
         
-        // Process video job in background
-        console.log('[VideoJobRouter] 🔄 Starting background video job processing')
-        setImmediate(async () => {
-          try {
-            console.log('[VideoJobRouter] 📤 Processing video job:', jobId)
-            
-            // Call the webhook processor directly
-            const webhookResponse = await fetch(process.env.WEBHOOK_URL || 'http://localhost:3000' + '/api/video/process', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ videoJobId: jobId }),
+        // Enqueue video job processing with QStash for serverless reliability
+        console.log('[VideoJobRouter] 🔄 Enqueueing video job with QStash for job ID:', jobId)
+        
+        try {
+          const webhookUrl = `${getBaseUrl()}/api/video/process`
+          console.log('[VideoJobRouter] 📤 QStash webhook URL:', webhookUrl)
+          
+          const qstashResponse = await qstash.publishJSON({
+            url: webhookUrl,
+            body: { 
+              videoJobId: jobId,
+              pollingAttempt: 0  // Start with first polling attempt
+            },
+            retries: 3, // Retry failed webhook calls up to 3 times
+          })
+          
+          console.log('[VideoJobRouter] ✅ Video job enqueued successfully with QStash message ID:', qstashResponse.messageId)
+          
+          // Update job with QStash ID for tracking
+          await db.update(videoJob)
+            .set({
+              qstashId: qstashResponse.messageId,
+              updatedAt: new Date(),
             })
+            .where(eq(videoJob.id, jobId))
             
-            if (!webhookResponse.ok) {
-              console.error('[VideoJobRouter] ❌ Video processing failed:', await webhookResponse.text())
-            } else {
-              console.log('[VideoJobRouter] ✅ Video processing completed successfully')
-            }
-          } catch (error) {
-            console.error('[VideoJobRouter] ❌ Video processing error:', error)
-          }
-        })
+        } catch (qstashError) {
+          console.error('[VideoJobRouter] ❌ Failed to enqueue with QStash:', qstashError)
+          // Mark job as failed if we can't even enqueue it
+          await db.update(videoJob)
+            .set({
+              status: 'failed',
+              errorMessage: `Failed to enqueue job: ${qstashError instanceof Error ? qstashError.message : 'Unknown QStash error'}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(videoJob.id, jobId))
+            
+          throw new HTTPException(500, {
+            message: 'Failed to enqueue video processing job. Please try again.'
+          })
+        }
         
         return c.json({
           success: true,

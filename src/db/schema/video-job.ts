@@ -20,6 +20,9 @@ export const videoJob = pgTable('video_jobs', {
   // QStash tracking
   qstashId: text('qstash_id'), // QStash message ID for background processing
   
+  // Apify tracking for polling
+  apifyRunId: text('apify_run_id'), // Apify run ID for status polling
+  
   // Error handling
   errorMessage: text('error_message'),
   retryCount: text('retry_count').default('0'),

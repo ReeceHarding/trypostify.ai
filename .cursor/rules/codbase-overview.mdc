@@ -238,3 +238,37 @@ initialMedia={tweet.media?.map(m => ({
 - Always ORDER BY position, not timestamp
 - Position is 0-based (0, 1, 2...)
 - First tweet must have isThreadStart=true
+
+## Deployment Configuration
+
+### CRITICAL: Vercel Deployment First
+
+**All code must be designed for Vercel deployment, not local development**. This application is built specifically for production deployment on Vercel's serverless platform.
+
+### Deployment Requirements
+
+- **Environment Variables**: All configuration must use Vercel environment variables, not local `.env` files
+- **Serverless Functions**: All API routes are serverless functions with proper timeout and memory configurations
+- **Database Connections**: Use connection pooling and handle cold starts appropriately
+- **File Storage**: All file uploads go to S3, never local filesystem
+- **Background Jobs**: Use QStash for scheduled tasks, not local cron jobs
+- **Build Process**: Code must compile successfully on Vercel's build environment
+- **Edge Compatibility**: Consider Vercel Edge Runtime limitations when applicable
+
+### Forbidden Patterns for Deployment
+
+- Local file system operations (use S3 instead)
+- Long-running processes (use QStash for background jobs)
+- Local database connections without pooling
+- Hardcoded localhost URLs
+- Environment-specific code that only works locally
+
+### Required Patterns for Deployment
+
+- Dynamic base URL detection: `getBaseUrl()` function
+- Proper error handling for serverless cold starts
+- Connection pooling for database operations
+- Environment variable validation
+- Webhook URLs that work in production
+
+**Always test functionality with deployment in mind, not just local development**
