@@ -1113,17 +1113,17 @@ function ThreadTweetContent({
       <Drawer modal={false} open={open} onOpenChange={setOpen}>
         <div
           className={cn(
-            'relative bg-white p-6 rounded-2xl w-full border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
+            'relative bg-white rounded-2xl w-full max-w-2xl mx-auto border border-black border-opacity-[0.01] bg-clip-padding group isolate shadow-[var(--shadow-twitter)] transition-colors',
             isDragging && 'border-primary border-dashed',
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex gap-3 relative z-10 items-start">
+          <div className="flex gap-3 relative z-10 p-4 sm:p-6">
             <AccountAvatar className="size-12 flex-shrink-0" />
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 pr-3">
               <div className="flex items-center gap-1">
                 <AccountName />
                 <AccountHandle />

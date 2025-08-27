@@ -332,13 +332,13 @@ export const Calendar20 = ({
   // Always use centered dialog popup for both mobile and desktop
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-[90vw] max-h-[90vh] p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="max-w-md w-[90vw] max-h-[90vh] p-0 overflow-hidden flex flex-col">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle className="text-center">
             {editMode ? 'Reschedule Post' : 'Schedule Post'}
           </DialogTitle>
         </DialogHeader>
-        <div className="overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           <CalendarContent />
         </div>
       </DialogContent>
