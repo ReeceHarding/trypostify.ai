@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, json } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, boolean, json, integer } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import { tweets, user } from './index'
 
@@ -29,7 +29,7 @@ export const videoJob = pgTable('video_jobs', {
   
   // Error handling
   errorMessage: text('error_message'),
-  retryCount: text('retry_count').default('0'),
+  retryCount: integer('retry_count').default(0),
   
   // Metadata
   videoMetadata: json('video_metadata'), // Duration, dimensions, etc.

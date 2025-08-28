@@ -4,7 +4,7 @@ import { Icons } from '../icons'
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { ChevronsLeft, RotateCcw, ExternalLink } from 'lucide-react'
 import { Button } from '../ui/button'
-import { useTweets } from '@/hooks/use-tweets'
+// Removed useTweets import - using Zustand store directly
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
 import { usePathname, useRouter } from 'next/navigation'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
@@ -18,7 +18,6 @@ export const TweetMockup = memo(
     isLoading = false,
     twitterUrl,
   }: PropsWithChildren<{ isLoading?: boolean; text?: string; twitterUrl?: string }>) => {
-    const { setTweetContent } = useTweets()
     const { tweets, updateTweetContent, reset, getTweetById } = useThreadEditorStore()
     const router = useRouter()
     const pathname = usePathname()
@@ -49,10 +48,7 @@ export const TweetMockup = memo(
         timestamp: new Date().toISOString()
       })
       
-      // First, ensure we have a clean slate and update the legacy context
-      setTweetContent(text)
-      
-      // Then update the store - always reset first to ensure clean state
+      // Reset store to ensure clean state
       reset() // This creates a new empty tweet
       
       // Use setTimeout to ensure the reset has completed and we can access the new tweet

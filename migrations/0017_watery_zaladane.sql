@@ -1,0 +1,1 @@
+ALTER TABLE "video_jobs" ALTER COLUMN "retry_count" SET DATA TYPE integer;

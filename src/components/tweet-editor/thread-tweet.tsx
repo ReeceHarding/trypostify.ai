@@ -4,10 +4,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
-import { useConfetti } from '@/hooks/use-confetti'
-import { useTweets } from '@/hooks/use-tweets'
+// Removed useConfetti import - unused
+// Removed useTweets import - functionality moved to Zustand store
 import { useThreadEditorStore, MediaFile } from '@/stores/thread-editor-store'
-import PlaceholderPlugin from '@/lib/placeholder-plugin'
+// Removed PlaceholderPlugin import - unused
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
@@ -15,16 +15,16 @@ import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical'
-import { initialConfig } from '@/hooks/use-tweets'
+import { initialConfig } from '@/lib/lexical-config'
 import { KeyboardShortcutsPlugin } from '@/lib/lexical-plugins/keyboard-shortcuts-plugin'
 import MediaLibrary from '@/components/media-library'
 import { SelectedMedia } from '@/types/media'
 
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
-import { useAttachments } from '@/hooks/use-attachments'
+// Removed useAttachments import - unused
 import { client } from '@/lib/client'
-import MentionsPlugin from '@/lib/lexical-plugins/mention-plugin'
-import { MentionTooltipPlugin } from '@/lib/lexical-plugins/mention-tooltip-plugin'
+// Removed MentionsPlugin import - unused
+// Removed MentionTooltipPlugin import - unused
 import ReactMentionsInput from './react-mentions-input'
 
 
@@ -42,7 +42,7 @@ import {
   Link2,
 } from 'lucide-react'
 
-import { PropsWithChildren } from 'react'
+// Removed PropsWithChildren import - unused
 import {
   Dialog,
   DialogContent,
@@ -220,7 +220,6 @@ function ThreadTweetContent({
   }, [tweetId, updateTweet, mediaFiles, detectedUrl])
 
   const [editor] = useLexicalComposerContext()
-  const { currentTweet } = useTweets()
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
@@ -322,33 +321,7 @@ function ThreadTweetContent({
     }
   }, [editor, initialContent])
 
-  // Update editor when content is set from AI (only for first tweet)
-  useEffect(() => {
-    if (editor && isFirstTweet && currentTweet.content && !hasBeenCleared) {
-      console.log('[ThreadTweet] AI content sync triggered:', {
-        hasBeenCleared,
-        currentTweetContent: currentTweet.content.substring(0, 50) + '...',
-        timestamp: new Date().toISOString()
-      })
-      
-      // Ensure the visible mentions input reflects AI content
-      setMentionsContent(currentTweet.content)
-
-      editor.update(() => {
-        const root = $getRoot()
-        root.clear()
-        const paragraph = $createParagraphNode()
-        const text = $createTextNode(currentTweet.content)
-        paragraph.append(text)
-        root.append(paragraph)
-      })
-      // Update store with the synced content
-      console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Syncing content change with store')
-      updateTweet(tweetId, currentTweet.content, mediaFiles)
-    } else if (hasBeenCleared) {
-      console.log('[ThreadTweet] Skipping AI content sync due to hasBeenCleared flag')
-    }
-  }, [editor, isFirstTweet, currentTweet.content, hasBeenCleared, tweetId, updateTweet, mediaFiles])
+  // AI content sync removed - content is now managed directly through Zustand store
 
   // Reset the hasBeenCleared flag after we've handled it
   useEffect(() => {
