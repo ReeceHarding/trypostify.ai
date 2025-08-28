@@ -989,12 +989,11 @@ export const tweetRouter = j.router({
         threads: scheduledTweets.filter(t => t.tweets.length > 1).length,
       })
 
-      // Only allow items that were actually queued to occupy preset slots.
-      // Threads and manually scheduled items should not fill queue slots to avoid duplication.
+      // Fill preset slots with ANY scheduled item at that exact time (queued or manual).
+      // This ensures manually scheduled items at preset times occupy the slot
+      // instead of rendering as a separate row.
       const getSlotTweet = (unix: number) => {
-        const slotTweet = scheduledTweets.find(
-          (t) => t.scheduledUnix === unix && Boolean(t.isQueued),
-        )
+        const slotTweet = scheduledTweets.find((t) => t.scheduledUnix === unix)
 
         if (slotTweet) {
           try {
@@ -1053,7 +1052,11 @@ export const tweetRouter = j.router({
           ),
         )
 
-        const manualForThisDay = tweetsForThisDay.filter((t) => !Boolean(t.isQueued))
+        // Only include manual items that DO NOT align with preset slots; those that
+        // match preset times will be rendered in the preset slot via getSlotTweet.
+        const manualForThisDay = tweetsForThisDay.filter(
+          (t) => !Boolean(t.isQueued) && !timestamps.includes(t.scheduledUnix!),
+        )
 
         const timezoneChanged = tweetsForThisDay.filter((t) => {
           return (
