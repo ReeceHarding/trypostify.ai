@@ -69,7 +69,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
 
         <Suspense>
-          <Toaster position="top-center" />
+          <Toaster 
+            position="top-center" 
+            toastOptions={{
+              duration: 4000,
+              style: {
+                maxWidth: '500px',
+              },
+            }}
+          />
 
           <Providers>{children}</Providers>
         </Suspense>

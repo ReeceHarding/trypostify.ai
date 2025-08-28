@@ -105,7 +105,7 @@ const PostsPerDaySettings = () => {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['user-frequency'], data)
-      toast.success(`Updated to ${data.frequency} posts per day`)
+      toast.success(`Updated to ${data.frequency} posts per day`, { duration: 4000 })
       console.log('[ACCOUNTS] Frequency updated successfully:', data.frequency, 'posts per day')
     },
     onError: (error: HTTPException) => {
@@ -300,7 +300,7 @@ export default function AccountsPage() {
         }
       })
 
-      toast.success(`Switched to ${account.name}`)
+      toast.success(`Switched to ${account.name}`, { duration: 4000 })
     },
     onError: (error: HTTPException) => {
       toast.error(error.message)

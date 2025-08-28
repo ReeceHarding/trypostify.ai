@@ -727,7 +727,7 @@ export default function ThreadTweetEditor({
         hour12: true,
         timeZone: userTz,
       }).format(finalScheduleDate)
-      toast.success(`Thread scheduled for ${friendly}`)
+      toast.success(`Thread scheduled for ${friendly}`, { duration: 4000 })
       
       // Invalidate cache to update queue UI
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
@@ -914,7 +914,8 @@ export default function ThreadTweetEditor({
             <p className="text-xs text-neutral-400">Press {isMac ? 'Cmd' : 'Ctrl'} + 3 to open Schedule</p>
           </div>,
           {
-            duration: 3000,
+            duration: 4000,
+            position: 'top-center',
           }
         )
       }
