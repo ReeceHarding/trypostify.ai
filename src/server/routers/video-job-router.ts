@@ -211,22 +211,31 @@ export const videoJobRouter = j.router({
       console.log('[VideoJobRouter] 🧹 Cleaning up stuck video jobs for user:', ctx.user.id)
       
       try {
-        // Find jobs that are stuck in processing for more than 1 hour
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+        // Find jobs that are stuck in processing or pending for more than 10 minutes (much more aggressive)
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
         
         const stuckJobs = await db.select()
           .from(videoJob)
           .where(and(
             eq(videoJob.userId, ctx.user.id),
-            eq(videoJob.status, 'processing')
+            // Look for both processing and pending jobs that are stuck
+            // In production, video processing should complete within 5-10 minutes max
           ))
         
-        // Filter jobs older than 1 hour
+        // Filter jobs older than 10 minutes that are still processing or pending
         const jobsToCleanup = stuckJobs.filter(job => 
-          job.updatedAt && job.updatedAt < oneHourAgo
+          job.updatedAt && 
+          job.updatedAt < tenMinutesAgo && 
+          (job.status === 'processing' || job.status === 'pending')
         )
         
         console.log('[VideoJobRouter] 📊 Found', jobsToCleanup.length, 'stuck jobs to cleanup')
+        console.log('[VideoJobRouter] 🔍 All jobs found:', stuckJobs.map(j => ({
+          id: j.id.substring(0, 8),
+          status: j.status,
+          updatedAt: j.updatedAt,
+          ageMinutes: j.updatedAt ? Math.floor((Date.now() - j.updatedAt.getTime()) / (1000 * 60)) : 'unknown'
+        })))
         
         if (jobsToCleanup.length === 0) {
           return c.json({
@@ -237,10 +246,11 @@ export const videoJobRouter = j.router({
         
         // Update all stuck jobs to failed status
         for (const job of jobsToCleanup) {
+          console.log('[VideoJobRouter] 🗑️ Cleaning up job:', job.id, 'status:', job.status, 'age:', job.updatedAt)
           await db.update(videoJob)
             .set({
               status: 'failed',
-              errorMessage: 'Job timed out - cleaned up automatically',
+              errorMessage: 'Job timed out after 10+ minutes - cleaned up automatically',
               updatedAt: new Date(),
             })
             .where(eq(videoJob.id, job.id))
@@ -258,6 +268,63 @@ export const videoJobRouter = j.router({
         
         throw new HTTPException(500, {
           message: `Failed to cleanup stuck jobs: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        })
+      }
+    }),
+
+  // Delete all stuck video jobs (nuclear option)
+  deleteAllStuckJobs: privateProcedure
+    .mutation(async ({ c, ctx }) => {
+      console.log('[VideoJobRouter] 💥 NUCLEAR: Deleting ALL stuck video jobs for user:', ctx.user.id)
+      
+      try {
+        // Find all jobs that are not completed
+        const stuckJobs = await db.select()
+          .from(videoJob)
+          .where(and(
+            eq(videoJob.userId, ctx.user.id),
+            // Delete anything that's not completed (pending, processing, failed)
+          ))
+        
+        // Filter out only completed jobs - delete everything else
+        const jobsToDelete = stuckJobs.filter(job => 
+          job.status !== 'completed'
+        )
+        
+        console.log('[VideoJobRouter] 💥 Found', jobsToDelete.length, 'jobs to delete')
+        console.log('[VideoJobRouter] 🔍 Jobs to delete:', jobsToDelete.map(j => ({
+          id: j.id.substring(0, 8),
+          status: j.status,
+          updatedAt: j.updatedAt,
+          ageMinutes: j.updatedAt ? Math.floor((Date.now() - j.updatedAt.getTime()) / (1000 * 60)) : 'unknown'
+        })))
+        
+        if (jobsToDelete.length === 0) {
+          return c.json({
+            message: 'No jobs to delete',
+            deleted: 0,
+          })
+        }
+        
+        // Delete all stuck jobs completely
+        for (const job of jobsToDelete) {
+          console.log('[VideoJobRouter] 🗑️ DELETING job:', job.id, 'status:', job.status)
+          await db.delete(videoJob)
+            .where(eq(videoJob.id, job.id))
+        }
+        
+        console.log('[VideoJobRouter] ✅ DELETED', jobsToDelete.length, 'stuck video jobs')
+        
+        return c.json({
+          message: `Successfully deleted ${jobsToDelete.length} stuck video jobs`,
+          deleted: jobsToDelete.length,
+        })
+        
+      } catch (error) {
+        console.error('[VideoJobRouter] ❌ Failed to delete stuck jobs:', error)
+        
+        throw new HTTPException(500, {
+          message: `Failed to delete stuck jobs: ${error instanceof Error ? error.message : 'Unknown error'}`,
         })
       }
     }),

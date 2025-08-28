@@ -1341,7 +1341,7 @@ function ThreadTweetContent({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Upload media</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + U</p>
+                          <p className="text-xs text-neutral-400">{metaKey} + Shift + U</p>
                         </div>
                       </TooltipContent>
                     </Tooltip>

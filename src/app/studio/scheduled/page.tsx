@@ -48,7 +48,7 @@ function VideoProcessingStatus() {
     retry: false, // Don't retry on error
   })
 
-  // Cleanup mutation
+  // Cleanup mutation (marks jobs as failed)
   const cleanupMutation = useMutation({
     mutationFn: async () => {
       const res = await client.videoJob.cleanupStuckJobs.$post()
@@ -61,6 +61,22 @@ function VideoProcessingStatus() {
     onError: (error) => {
       console.error('Failed to cleanup stuck jobs:', error)
       toast.error('Failed to cleanup stuck jobs')
+    },
+  })
+
+  // Delete all mutation (nuclear option - completely removes jobs)
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const res = await client.videoJob.deleteAllStuckJobs.$post()
+      return res.json()
+    },
+    onSuccess: (data) => {
+      toast.success(`Deleted ${data.deleted} stuck video jobs`)
+      queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+    },
+    onError: (error) => {
+      console.error('Failed to delete stuck jobs:', error)
+      toast.error('Failed to delete stuck jobs')
     },
   })
 
@@ -99,16 +115,30 @@ function VideoProcessingStatus() {
             <div className="flex items-center gap-2">
               <Video className="w-5 h-5 text-primary" />
               Video Processing Status
+              <DuolingoBadge variant="warning" className="text-xs">
+                {processingVideos?.length || 0} stuck
+              </DuolingoBadge>
             </div>
-            <DuolingoButton
-              variant="secondary"
-              size="sm"
-              onClick={() => cleanupMutation.mutate()}
-              disabled={cleanupMutation.isPending}
-              className="text-xs"
-            >
-              {cleanupMutation.isPending ? 'Cleaning...' : 'Clean Up'}
-            </DuolingoButton>
+            <div className="flex items-center gap-2">
+              <DuolingoButton
+                variant="secondary"
+                size="sm"
+                onClick={() => cleanupMutation.mutate()}
+                disabled={cleanupMutation.isPending || deleteAllMutation.isPending}
+                className="text-xs"
+              >
+                {cleanupMutation.isPending ? 'Cleaning...' : 'Mark Failed'}
+              </DuolingoButton>
+              <DuolingoButton
+                variant="destructive"
+                size="sm"
+                onClick={() => deleteAllMutation.mutate()}
+                disabled={cleanupMutation.isPending || deleteAllMutation.isPending}
+                className="text-xs"
+              >
+                {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
+              </DuolingoButton>
+            </div>
           </CardTitle>
         </CardHeader>
       <CardContent className="space-y-3">
