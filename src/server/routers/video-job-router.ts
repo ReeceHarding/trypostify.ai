@@ -160,11 +160,15 @@ export const videoJobRouter = j.router({
       limit: z.number().min(1).max(100).default(20),
       offset: z.number().min(0).default(0),
     }))
-    .post(async ({ c, input, ctx }) => {
+    .mutation(async ({ c, input, ctx }) => {
       console.log('[VideoJobRouter] 📝 Listing video jobs for user:', ctx.user.id)
       console.log('[VideoJobRouter] 🔍 Raw input:', JSON.stringify(input))
+      console.log('[VideoJobRouter] 🔍 Input keys:', Object.keys(input))
       console.log('[VideoJobRouter] 🔍 Status filter:', input.status)
+      console.log('[VideoJobRouter] 🔍 Status type:', typeof input.status)
       console.log('[VideoJobRouter] 🔍 Has status filter:', !!input.status)
+      console.log('[VideoJobRouter] 🔍 Request method:', c.req.method)
+      console.log('[VideoJobRouter] 🔍 Request headers:', c.req.headers ? Object.fromEntries(c.req.headers.entries()) : 'No headers')
       
       try {
         const conditions = [eq(videoJob.userId, ctx.user.id)]

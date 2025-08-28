@@ -35,40 +35,37 @@ function VideoProcessingStatus() {
     queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
   }, [queryClient])
   
-  // Query for video processing status
-  const { data: processingVideos, isLoading, error } = useQuery({
-    queryKey: ['video-processing-status-v2', Date.now()], // Changed key to force cache invalidation
-    queryFn: async () => {
-      try {
-        console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=processing...')
-        
-        // Get video jobs that are currently processing
-        const requestBody = { status: 'processing', limit: 50 }
-        console.log('[VideoProcessingStatus] 📤 Sending POST request body:', JSON.stringify(requestBody))
-        
-        const res = await client.videoJob.listVideoJobs.$post({
-          json: requestBody
-        })
-        const result = await res.json()
-        
-        console.log('[VideoProcessingStatus] 📊 API Response:', {
-          jobsCount: result.jobs?.length || 0,
-          jobs: result.jobs?.map(j => ({ id: j.id?.substring(0, 8), status: j.status })) || []
-        })
-        
-        const jobs = result.jobs || []
-        
-        // Additional safety check - filter to only truly processing jobs
-        const actuallyProcessingJobs = jobs.filter(job => job.status === 'processing')
-        
-        console.log('[VideoProcessingStatus] ✅ Filtered processing jobs:', actuallyProcessingJobs.length)
-        
-        return actuallyProcessingJobs
-      } catch (error) {
-        console.log('[VideoProcessingStatus] ❌ Error fetching processing videos:', error)
-        return []
-      }
+  // Mutation for fetching video processing status
+  const fetchVideoJobsMutation = useMutation({
+    mutationFn: async () => {
+      console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=processing...')
+      
+      // Get video jobs that are currently processing
+      const requestBody = { status: 'processing' as const, limit: 50, offset: 0 }
+      console.log('[VideoProcessingStatus] 📤 Sending request body:', JSON.stringify(requestBody))
+      
+      const res = await client.videoJob.listVideoJobs.mutate(requestBody)
+      
+      console.log('[VideoProcessingStatus] 📊 API Response:', {
+        jobsCount: res.jobs?.length || 0,
+        jobs: res.jobs?.map(j => ({ id: j.id?.substring(0, 8), status: j.status })) || []
+      })
+      
+      const jobs = res.jobs || []
+      
+      // Additional safety check - filter to only truly processing jobs
+      const actuallyProcessingJobs = jobs.filter(job => job.status === 'processing')
+      
+      console.log('[VideoProcessingStatus] ✅ Filtered processing jobs:', actuallyProcessingJobs.length)
+      
+      return actuallyProcessingJobs
     },
+  })
+
+  // Use query to manage the data and refetching
+  const { data: processingVideos, isLoading, error } = useQuery({
+    queryKey: ['video-processing-status-v3'],
+    queryFn: () => fetchVideoJobsMutation.mutateAsync(),
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
     retry: false, // Don't retry on error
     staleTime: 0, // Always consider data stale to force fresh fetches
