@@ -350,7 +350,12 @@ export default function ThreadTweetEditor({
         tweets: tweets.map((tweet, index) => ({
           id: tweet.id.startsWith('new-') ? undefined : tweet.id,
           content: tweet.content,
-          media: tweet.media,
+          media: tweet.media
+            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+            .map(m => ({
+              media_id: m.media_id!,
+              s3Key: m.s3Key!,
+            })),
           delayMs: index > 0 ? 1000 : 0,
         })),
       })
@@ -478,7 +483,12 @@ export default function ThreadTweetEditor({
       // Post thread immediately
       const tweetsForPosting = validTweets.map((tweet, index) => ({
         content: tweet.content,
-        media: tweet.media,
+        media: tweet.media
+          .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+          .map(m => ({
+            media_id: m.media_id!,
+            s3Key: m.s3Key!,
+          })),
         delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
       }))
       
@@ -573,7 +583,12 @@ export default function ThreadTweetEditor({
       const createResult = await client.tweet.createThread.$post({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
-          media: tweet.media,
+          media: tweet.media
+            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+            .map(m => ({
+              media_id: m.media_id!,
+              s3Key: m.s3Key!,
+            })),
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
@@ -709,7 +724,12 @@ export default function ThreadTweetEditor({
       const createResult = await client.tweet.createThread.$post({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
-          media: tweet.media,
+          media: tweet.media
+            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+            .map(m => ({
+              media_id: m.media_id!,
+              s3Key: m.s3Key!,
+            })),
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
