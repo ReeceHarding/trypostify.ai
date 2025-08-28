@@ -129,7 +129,7 @@ const PostsPerDaySettings = () => {
   }
 
   const getSlotDescription = (freq: number) => {
-    if (freq === 1) return 'Noon (12pm)'
+    if (freq === 1) return '10am'
     if (freq === 2) return '10am, 12pm'
     return '10am, 12pm, 2pm'
   }
