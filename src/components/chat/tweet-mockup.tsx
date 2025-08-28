@@ -5,6 +5,7 @@ import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { ChevronsLeft, RotateCcw, ExternalLink } from 'lucide-react'
 import { Button } from '../ui/button'
 import { useTweets } from '@/hooks/use-tweets'
+import { useThreadEditorStore } from '@/stores/thread-editor-store'
 import { usePathname, useRouter } from 'next/navigation'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -18,6 +19,7 @@ export const TweetMockup = memo(
     twitterUrl,
   }: PropsWithChildren<{ isLoading?: boolean; text?: string; twitterUrl?: string }>) => {
     const { setTweetContent } = useTweets()
+    const { tweets, updateTweetContent, reset, getTweetById } = useThreadEditorStore()
     const router = useRouter()
     const pathname = usePathname()
     const isMobile = useIsMobile()
@@ -39,14 +41,29 @@ export const TweetMockup = memo(
 
     const apply = () => {
       if (!text) return
-      // Simply set the content directly - no need for complex editor synchronization
+      
+      console.log('[TweetMockup] Apply clicked - updating store with AI content:', {
+        pathname, 
+        textLen: text.length,
+        currentTweetsCount: tweets.length,
+        timestamp: new Date().toISOString()
+      })
+      
+      // First, ensure we have a clean slate and update the legacy context
       setTweetContent(text)
-      try {
-        console.log(
-          `[${new Date().toISOString()}] [TweetMockup] Apply clicked`,
-          { pathname, textLen: text.length },
-        )
-      } catch {}
+      
+      // Then update the store - always reset first to ensure clean state
+      reset() // This creates a new empty tweet
+      
+      // Use setTimeout to ensure the reset has completed and we can access the new tweet
+      setTimeout(() => {
+        const storeState = useThreadEditorStore.getState()
+        const firstTweet = storeState.tweets[0]
+        if (firstTweet) {
+          console.log('[TweetMockup] Updating new tweet in store:', firstTweet.id, 'with content:', text.substring(0, 50) + '...')
+          storeState.updateTweetContent(firstTweet.id, text)
+        }
+      }, 50)
 
       // Close the assistant sheet on mobile for a clean UX
       if (isMobile) {
