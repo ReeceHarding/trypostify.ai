@@ -402,7 +402,10 @@ export function ImageTool({
         onUpload(file)
       }
 
-      toast.success('Image added!', { id: savingToast })
+      toast.success('Image added!', { 
+        id: savingToast,
+        duration: 3000, // Auto-dismiss after 3 seconds
+      })
     } catch (error) {
       toast.error('Something went wrong')
     }

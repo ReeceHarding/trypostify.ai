@@ -229,7 +229,7 @@ export default function AccountsPage() {
   const handleSkipConfirmationToggle = (checked: boolean) => {
     setSkipPostConfirmation(checked)
     localStorage.setItem('skipPostConfirmation', checked.toString())
-    toast.success(checked ? 'Post confirmation disabled' : 'Post confirmation enabled')
+    toast.success(checked ? 'Post confirmation disabled' : 'Post confirmation enabled', { duration: 3000 })
   }
 
   const { mutate: createOAuthLink, isPending: isCreatingOAuthLink } = useMutation({
@@ -330,7 +330,7 @@ export default function AccountsPage() {
       return { previousAccounts }
     },
     onSuccess: () => {
-      toast.success('Account deleted successfully')
+      toast.success('Account deleted successfully', { duration: 3000 })
     },
     onError: (error: HTTPException, _, context) => {
       queryClient.setQueryData(['accounts'], context?.previousAccounts)
@@ -350,7 +350,7 @@ export default function AccountsPage() {
     onSuccess: () => {
       setTweetLink('')
       refetchStyle()
-      toast.success('Post imported successfully')
+      toast.success('Post imported successfully', { duration: 3000 })
     },
     onError: (error: HTTPException) => {
       toast.error(error.message)
@@ -381,7 +381,7 @@ export default function AccountsPage() {
     },
     onSuccess: () => {
       refetchStyle()
-      toast.success('Style saved')
+      toast.success('Style saved', { duration: 3000 })
     },
     onError: (error: HTTPException) => {
       toast.error(error.message)
@@ -876,7 +876,7 @@ export default function AccountsPage() {
                     className="w-fit p-2"
                     onClick={() => {
                       navigator.clipboard.writeText(inviteLink)
-                      toast.success('Link copied to clipboard')
+                      toast.success('Link copied to clipboard', { duration: 2000 })
                     }}
                   >
                     <Copy className="size-4" />

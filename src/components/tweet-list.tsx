@@ -113,7 +113,7 @@ export default function TweetList({
       await client.tweet.deleteThread.$post({ threadId: tweetId })
     },
     onSuccess: () => {
-      toast.success('Post deleted and unscheduled')
+      toast.success('Post deleted and unscheduled', { duration: 3000 })
       queryClient.invalidateQueries({
         queryKey: ['threads-posted', account?.username],
       })
@@ -137,7 +137,7 @@ export default function TweetList({
       return await res.json()
     },
     onSuccess: (data) => {
-      toast.success(`Updated metrics for ${data.updatedCount} posts`)
+      toast.success(`Updated metrics for ${data.updatedCount} posts`, { duration: 3000 })
       queryClient.invalidateQueries({
         queryKey: ['threads-posted', account?.username],
       })

@@ -167,7 +167,7 @@ export default function NewKnowledgePage() {
       })
 
       queryClient.refetchQueries({ queryKey: ['knowledge-documents'] })
-      toast.success(`Successfully imported content from ${data.url}`)
+      toast.success(`Successfully imported content from ${data.url}`, { duration: 4000 })
       setTitle('')
       setUrl('')
       
@@ -244,7 +244,7 @@ export default function NewKnowledgePage() {
           reject(new Error('Network error occurred during upload'))
         }
         xhr.onabort = () => {
-          toast.success('Upload cancelled')
+          toast.success('Upload cancelled', { duration: 2000 })
           reject(new Error('Upload aborted'))
         }
         xhr.send(formData)
@@ -284,7 +284,7 @@ export default function NewKnowledgePage() {
         fileKey: variables.fileKey,
       })
 
-      toast.success('Knowledge added!')
+      toast.success('Knowledge added!', { duration: 3000 })
       setUploadState(null)
       setTitle('')
       queryClient.refetchQueries({ queryKey: ['knowledge-documents'] })
@@ -333,7 +333,7 @@ export default function NewKnowledgePage() {
         fileCount: multiFiles.length,
       })
 
-      toast.success(`Successfully added ${multiFiles.length} documents!`)
+      toast.success(`Successfully added ${multiFiles.length} documents!`, { duration: 4000 })
       setMultiFiles([])
       setUploadState(null)
       setTitle('')

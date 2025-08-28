@@ -261,7 +261,11 @@ export default function ThreadTweetEditor({
               View here
             </Link>
           )}
-        </div>
+        </div>,
+        {
+          duration: 4000, // Auto-dismiss after 4 seconds
+          position: 'top-center',
+        }
       )
       fire()
       
@@ -377,7 +381,11 @@ export default function ThreadTweetEditor({
           >
             View here
           </Link>
-        </div>
+        </div>,
+        {
+          duration: 4000, // Auto-dismiss after 4 seconds
+          position: 'top-center',
+        }
       )
     },
   })
@@ -899,7 +907,11 @@ export default function ThreadTweetEditor({
               </Link>
             </div>
             <p className="text-xs text-neutral-400">Press {isMac ? 'Cmd' : 'Ctrl'} + 3 to open Schedule</p>
-          </div>
+          </div>,
+          {
+            duration: 5000, // Auto-dismiss after 5 seconds (longer for more text)
+            position: 'top-center',
+          }
         )
         
         // Clear URL parameter after successful scheduling

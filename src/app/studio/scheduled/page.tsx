@@ -82,7 +82,7 @@ function VideoProcessingStatus() {
     },
     onSuccess: (data) => {
       console.log('[VideoProcessingStatus] ✅ Cleanup completed:', data)
-      toast.success(`Cleaned up ${data.cleanedUp} stuck video jobs`)
+      toast.success(`Cleaned up ${data.cleanedUp} stuck video jobs`, { duration: 3000 })
       // Aggressively clear cache and refetch
               queryClient.removeQueries({ queryKey: ['video-processing-status'] })
         queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
@@ -105,7 +105,7 @@ function VideoProcessingStatus() {
     },
     onSuccess: (data) => {
       console.log('[VideoProcessingStatus] ✅ Delete completed:', data)
-      toast.success(`Deleted ${data.deleted} stuck video jobs`)
+      toast.success(`Deleted ${data.deleted} stuck video jobs`, { duration: 3000 })
       // Aggressively clear cache and refetch
               queryClient.removeQueries({ queryKey: ['video-processing-status'] })
         queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
@@ -137,7 +137,7 @@ function VideoProcessingStatus() {
     },
     onSuccess: () => {
       console.log('[VideoProcessingStatus] ✅ Successfully refreshed and cleared cache')
-      toast.success('Refreshed video processing status')
+      toast.success('Refreshed video processing status', { duration: 2000 })
     },
     onError: (error) => {
       console.error('[VideoProcessingStatus] ❌ Failed to refresh:', error)
@@ -334,7 +334,7 @@ export default function ScheduledTweetsPage() {
     },
     onSuccess: (data) => {
       console.log('[ScheduledTweetsPage] clearQueue success:', data)
-      toast.success(data.message || `Cleared ${data.deletedCount} queued posts`)
+      toast.success(data.message || `Cleared ${data.deletedCount} queued posts`, { duration: 3000 })
       
       // Invalidate all relevant queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
