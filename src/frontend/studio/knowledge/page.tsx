@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import { client } from '@/lib/client'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -140,11 +140,11 @@ export default function KnowledgePage() {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <DuolingoButton className="w-auto">
+                <Button variant="duolingo-primary" className="w-auto">
                   <Plus className="size-5 mr-2" />
                   <span className="whitespace-nowrap">Add Knowledge</span>
                   <ChevronDown className="size-4 ml-2" />
-                </DuolingoButton>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-96 p-3 border-2 shadow-xl">
                 <div className="space-y-2">
@@ -348,9 +348,9 @@ export default function KnowledgePage() {
                     </div>
                   </div>
                 </a>
-                <DuolingoButton
-                  variant="destructive"
-                  size="icon"
+                <Button
+                  variant="duolingo-destructive"
+                  size="duolingo-icon"
                   className="absolute top-4 right-4 size-8 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                   onClick={(e) => {
                     e.preventDefault()
@@ -359,7 +359,7 @@ export default function KnowledgePage() {
                   }}
                 >
                   <X className="size-4" />
-                </DuolingoButton>
+                </Button>
               </div>
             ))}
           </div>

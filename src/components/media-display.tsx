@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { AlertCircle, CheckCircle, Loader2, X } from 'lucide-react'
 import { Loader } from './ui/loader'
 import {
@@ -131,49 +132,29 @@ export default function MediaDisplay({
 
   return (
     <div className="mt-3 max-w-full">
-      {mediaFiles.length === 1 && mediaFiles[0] && (
-        <div className="relative group">
-          <div className="relative overflow-hidden">
-            {isVideoFile(mediaFiles[0]) ? (
-              renderVideo(mediaFiles[0], "w-full max-h-[510px] object-cover")
-            ) : (
-              renderImage(mediaFiles[0], "w-full max-h-[510px] object-cover")
-            )}
-            {renderMediaOverlays(mediaFiles[0])}
-          </div>
-        </div>
-      )}
-
-      {mediaFiles.length === 2 && (
-        <div className="grid grid-cols-2 gap-0.5 overflow-hidden">
-          {mediaFiles.map((mediaFile, index) => (
-            <div key={mediaFile.url} className="relative group">
-              <div className="relative overflow-hidden h-[254px]">
-                {isVideoFile(mediaFile) ? (
-                  renderVideo(mediaFile, "w-full h-full object-cover")
+      <div 
+        className={cn(
+          "rounded-2xl overflow-hidden border border-neutral-200",
+          mediaFiles.length === 1 && "relative group",
+          mediaFiles.length > 1 && "grid gap-0.5",
+          mediaFiles.length === 2 && "grid-cols-2",
+          mediaFiles.length === 3 && "grid-cols-2 h-[254px]", 
+          mediaFiles.length === 4 && "grid-cols-2 grid-rows-2 h-[254px]"
+        )}
+      >
+        {/* For 3 items, we need special handling for the first item to span 2 rows */}
+        {mediaFiles.length === 3 ? (
+          <>
+            <div className="relative group row-span-2">
+              <div className="relative overflow-hidden h-full">
+                {isVideoFile(mediaFiles[0]) ? (
+                  renderVideo(mediaFiles[0], "w-full h-full object-cover")
                 ) : (
-                  renderImage(mediaFile, "w-full h-full object-cover")
+                  renderImage(mediaFiles[0], "w-full h-full object-cover")
                 )}
-                {renderMediaOverlays(mediaFile)}
+                {renderMediaOverlays(mediaFiles[0])}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {mediaFiles.length === 3 && mediaFiles[0] && (
-        <div className="grid grid-cols-2 gap-0.5 overflow-hidden h-[254px]">
-          <div className="relative group">
-            <div className="relative overflow-hidden h-full">
-              {isVideoFile(mediaFiles[0]) ? (
-                renderVideo(mediaFiles[0], "w-full h-full object-cover")
-              ) : (
-                renderImage(mediaFiles[0], "w-full h-full object-cover")
-              )}
-              {renderMediaOverlays(mediaFiles[0])}
-            </div>
-          </div>
-          <div className="grid grid-rows-2 gap-0.5">
             {mediaFiles.slice(1).map((mediaFile, index) => (
               <div key={mediaFile.url} className="relative group">
                 <div className="relative overflow-hidden h-full">
@@ -186,26 +167,33 @@ export default function MediaDisplay({
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {mediaFiles.length === 4 && (
-        <div className="grid grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden h-[254px]">
-          {mediaFiles.map((mediaFile, index) => (
+          </>
+        ) : (
+          /* For 1, 2, or 4 items, standard grid display */
+          mediaFiles.map((mediaFile, index) => (
             <div key={mediaFile.url} className="relative group">
-              <div className="relative overflow-hidden h-full">
+              <div className={cn(
+                "relative overflow-hidden",
+                mediaFiles.length === 1 && "rounded-2xl",
+                mediaFiles.length > 1 && "h-[254px]"
+              )}>
                 {isVideoFile(mediaFile) ? (
-                  renderVideo(mediaFile, "w-full h-full object-cover")
+                  renderVideo(mediaFile, cn(
+                    "w-full object-cover",
+                    mediaFiles.length === 1 ? "max-h-[510px]" : "h-full"
+                  ))
                 ) : (
-                  renderImage(mediaFile, "w-full h-full object-cover")
+                  renderImage(mediaFile, cn(
+                    "w-full object-cover",
+                    mediaFiles.length === 1 ? "max-h-[510px]" : "h-full"
+                  ))
                 )}
                 {renderMediaOverlays(mediaFile)}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   )
 }

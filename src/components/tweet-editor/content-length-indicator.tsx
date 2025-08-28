@@ -1,14 +1,12 @@
-import useTweetMetadata from '@/hooks/use-tweet-metdata'
 import { useUser } from '@/hooks/use-tweets'
 
 interface ContentLengthIndicatorProps {
-  length?: number
+  length: number // Now required since we removed the hook
 }
 
-const ContentLengthIndicator = ({ length }: ContentLengthIndicatorProps = {}) => {
-  const { charCount: hookCharCount } = useTweetMetadata()
+const ContentLengthIndicator = ({ length }: ContentLengthIndicatorProps) => {
   const { getCharacterLimit } = useUser()
-  const charCount = length ?? hookCharCount
+  const charCount = length
   // Posting limit can be higher for premium users, but visually we want to
   // reflect Twitter's "Show more" threshold at 280 characters. Keep server
   // validation unchanged elsewhere; this only affects the ring UI.

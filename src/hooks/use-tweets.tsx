@@ -121,8 +121,6 @@ interface TweetContextType {
   draftCheckpoint: React.RefObject<string | null>
   selectedDraftIndex: number
   setSelectedDraftIndex: React.Dispatch<React.SetStateAction<number>>
-  mediaFiles: MediaFile[]
-  setMediaFiles: React.Dispatch<React.SetStateAction<MediaFile[]>>
   charCount: number
   setCharCount: React.Dispatch<React.SetStateAction<number>>
 }
@@ -136,28 +134,11 @@ export type CurrentTweet = {
   mediaIds: string[]
 }
 
-export interface MediaFile {
-  file: File | null
-  url: string
-  type: 'image' | 'gif' | 'video'
-  uploading: boolean
-  uploaded: boolean
-  error?: string
-  media_id?: string
-  media_key?: string
-  s3Key?: string
-  isDownloading?: boolean
-  downloadProgress?: number
-  videoUrl?: string // Original video URL for tracking
-  platform?: string // Platform the video was downloaded from (instagram, tiktok, etc.)
-  // NEW: Pending media support
-  isPending?: boolean // True for videos that haven't been downloaded yet
-  pendingJobId?: string // ID to track the background job
-}
+// MediaFile interface moved to src/stores/thread-editor-store.ts
 
 export function TweetProvider({ children }: PropsWithChildren) {
   const { tweetId } = useParams() as { tweetId: string | null }
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  // Media files state removed - now handled by thread-editor-store
 
   // fallback after rejecting all drafts
   const draftCheckpoint = useRef<string | null>(null)
@@ -563,8 +544,6 @@ export function TweetProvider({ children }: PropsWithChildren) {
         setCurrentTweet,
         tweetId,
         shadowEditor,
-        mediaFiles,
-        setMediaFiles,
         // setTweetId,
         setTweetContent,
         removeTweetImage,

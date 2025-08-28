@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
 import { useConfetti } from '@/hooks/use-confetti'
-import { MediaFile, useTweets } from '@/hooks/use-tweets'
+import { useTweets } from '@/hooks/use-tweets'
+import { useThreadEditorStore, MediaFile } from '@/stores/thread-editor-store'
 import PlaceholderPlugin from '@/lib/placeholder-plugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -31,12 +32,10 @@ import { useMutation } from '@tanstack/react-query'
 import { HTTPException } from 'hono/http-exception'
 import { toast } from 'react-hot-toast'
 import {
-  CalendarCog,
   ChevronDown,
   Clock,
   ImagePlus,
   Loader2,
-  Pen,
   Trash2,
   Upload,
   X,
@@ -44,7 +43,6 @@ import {
 } from 'lucide-react'
 
 import { PropsWithChildren } from 'react'
-import { Icons } from '../icons'
 import {
   Dialog,
   DialogContent,
@@ -68,6 +66,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { useHotkeyFeedback } from '../ui/hotkey-feedback'
 
 interface ThreadTweetProps {
+  tweetId: string // ID to identify this tweet in the store
   isThread: boolean
   isFirstTweet: boolean
   isLastTweet: boolean
@@ -82,18 +81,6 @@ interface ThreadTweetProps {
   onUpdateThread?: () => void
   onCancelEdit?: () => void
   isPosting?: boolean
-  onUpdate?: (
-    content: string,
-    media: Array<{
-      s3Key: string
-      media_id: string
-      isPending?: boolean
-      pendingJobId?: string
-      videoUrl?: string
-      platform?: string
-      type?: 'image' | 'gif' | 'video'
-    }>
-  ) => void
   initialContent?: string
   initialMedia?: Array<{
     url: string
@@ -129,6 +116,7 @@ const TWITTER_SIZE_LIMITS = {
 const MAX_MEDIA_COUNT = 4
 
 function ThreadTweetContent({
+  tweetId,
   isThread,
   isFirstTweet,
   isLastTweet,
@@ -143,7 +131,6 @@ function ThreadTweetContent({
   onUpdateThread,
   onCancelEdit,
   isPosting = false,
-  onUpdate,
   initialContent = '',
   initialMedia = [],
   showFocusTooltip = false,
@@ -153,10 +140,15 @@ function ThreadTweetContent({
   isDownloadingVideo: externalIsDownloadingVideo,
   onDownloadingVideoChange,
 }: ThreadTweetProps) {
-  // State for react-mentions content
-  const [mentionsContent, setMentionsContent] = useState(initialContent || '')
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
-  const [charCount, setCharCount] = useState(0)
+  // Get tweet data from store
+  const { getTweetById, updateTweet, updateTweetContent, updateTweetMedia } = useThreadEditorStore()
+  const tweetData = getTweetById(tweetId)
+  
+  console.log('[ThreadTweet] Rendering with tweetId:', tweetId, 'found in store:', !!tweetData)
+  // Initialize state from store data or props
+  const [mentionsContent, setMentionsContent] = useState(tweetData?.content || initialContent || '')
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(tweetData?.media || [])
+  const [charCount, setCharCount] = useState(tweetData?.charCount || 0)
   // State for URL OG preview
   const [detectedUrl, setDetectedUrl] = useState<string | null>(null)
   const [ogPreview, setOgPreview] = useState<{ url: string; title?: string; ogImage?: string } | null>(null)
@@ -222,21 +214,10 @@ function ThreadTweetContent({
       setVideoUrl('')
     }
     
-    // Notify parent component about the update
-    if (onUpdate) {
-      console.log('📝 [MENTIONS_CHANGE] Current mediaFiles before filtering:', mediaFiles.length, mediaFiles.map(f => ({ isPending: f.isPending, s3Key: f.s3Key, pendingJobId: f.pendingJobId })))
-      const filteredMedia = mediaFiles.filter(f => (f.media_id && f.s3Key) || f.isPending).map(f => ({
-        s3Key: f.s3Key || '',
-        media_id: f.media_id || '',
-        isPending: f.isPending,
-        pendingJobId: f.pendingJobId,
-        videoUrl: f.videoUrl,
-        platform: f.platform,
-      }))
-      console.log('📝 [MENTIONS_CHANGE] Filtered media being sent to parent:', filteredMedia.length, filteredMedia.map(f => ({ isPending: f.isPending, s3Key: f.s3Key, pendingJobId: f.pendingJobId })))
-      onUpdate(newContent, filteredMedia)
-    }
-  }, [onUpdate, mediaFiles, detectedUrl])
+    // Update store with the new content and media
+    console.log('📝 [MENTIONS_CHANGE] Updating store for tweet:', tweetId)
+    updateTweet(tweetId, newContent, mediaFiles)
+  }, [tweetId, updateTweet, mediaFiles, detectedUrl])
 
   const [editor] = useLexicalComposerContext()
   const { currentTweet } = useTweets()
@@ -361,30 +342,13 @@ function ThreadTweetContent({
         paragraph.append(text)
         root.append(paragraph)
       })
-      // Also notify the parent component about the update
-      if (onUpdate) {
-        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Syncing content change with parent')
-        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Current mediaFiles:', mediaFiles.map(f => ({ url: f.url, isPending: f.isPending, s3Key: f.s3Key })))
-        
-        const parentMedia = mediaFiles
-          .filter((f) => (f.media_id && f.s3Key) || f.isPending) // Include pending and completed media
-          .map((f) => ({ 
-            s3Key: f.s3Key || '',
-            media_id: f.media_id || '',
-            isPending: f.isPending,
-            pendingJobId: f.pendingJobId,
-            videoUrl: f.videoUrl,
-            platform: f.platform,
-          }))
-        
-        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Filtered parent media:', parentMedia)
-        onUpdate(currentTweet.content, parentMedia)
-        console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Parent sync completed')
-      }
+      // Update store with the synced content
+      console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Syncing content change with store')
+      updateTweet(tweetId, currentTweet.content, mediaFiles)
     } else if (hasBeenCleared) {
       console.log('[ThreadTweet] Skipping AI content sync due to hasBeenCleared flag')
     }
-  }, [editor, isFirstTweet, currentTweet.content, hasBeenCleared])
+  }, [editor, isFirstTweet, currentTweet.content, hasBeenCleared, tweetId, updateTweet, mediaFiles])
 
   // Reset the hasBeenCleared flag after we've handled it
   useEffect(() => {
@@ -662,21 +626,9 @@ function ThreadTweetContent({
           return nextFiles
         })
 
-        // Update parent with the freshly computed media list
-        if (onUpdate) {
-          const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
-          const parentMedia = nextFiles
-            .filter((f) => (f.media_id && f.s3Key) || f.isPending) // Include pending media
-            .map((f) => ({ 
-              s3Key: f.s3Key || '', 
-              media_id: f.media_id || '',
-              isPending: f.isPending,
-              pendingJobId: f.pendingJobId,
-              videoUrl: f.videoUrl,
-              platform: f.platform,
-            }))
-          onUpdate(content, parentMedia)
-        }
+        // Update store with the new media
+        const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
+        updateTweet(tweetId, content, nextFiles)
       } catch (error) {
         console.error('[ThreadTweet] Upload error:', error)
         setMediaFiles((prev) =>
@@ -704,21 +656,9 @@ function ThreadTweetContent({
       return nextFiles
     })
 
-    // Reflect removal in parent immediately
-    if (onUpdate) {
-      const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
-      const parentMedia = nextFiles
-        .filter((f) => (f.media_id && f.s3Key) || f.isPending) // Include pending media
-        .map((f) => ({ 
-          s3Key: f.s3Key || '', 
-          media_id: f.media_id || '',
-          isPending: f.isPending,
-          pendingJobId: f.pendingJobId,
-          videoUrl: f.videoUrl,
-          platform: f.platform,
-        }))
-      onUpdate(content, parentMedia)
-    }
+    // Update store with media removal
+    const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
+    updateTweet(tweetId, content, nextFiles)
   }
 
   const renderMediaOverlays = (mediaFile: MediaFile, index: number) => {
@@ -847,29 +787,11 @@ function ThreadTweetContent({
       return newArray
     })
 
-    // Update parent with the pending media
-    if (onUpdate) {
-      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Updating parent component')
-      const content = mentionsContent
-      const parentMedia = [...mediaFiles, pendingMediaFile]
-        .filter((f) => f.isPending || f.s3Key) // Include pending and completed media
-        .map((f) => ({ 
-          s3Key: f.s3Key || '',
-          media_id: f.media_id || '',
-          isPending: f.isPending,
-          pendingJobId: f.pendingJobId,
-          videoUrl: f.videoUrl,
-          platform: f.platform,
-        }))
-      
-      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Parent media array:', parentMedia)
-      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Content being sent to parent:', content.substring(0, 50) + '...')
-      
-      onUpdate(content, parentMedia)
-      console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Parent update completed')
-    } else {
-      console.log('[ThreadTweet] ⚠️ HANDLE_VIDEO_URL_SUBMIT - No onUpdate callback available')
-    }
+    // Update store with the pending media
+    console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Updating store')
+    const updatedMedia = [...mediaFiles, pendingMediaFile]
+    updateTweet(tweetId, mentionsContent, updatedMedia)
+    console.log('[ThreadTweet] 📤 HANDLE_VIDEO_URL_SUBMIT - Store update completed')
 
     // Show success message - video is "attached" as pending
     console.log('[ThreadTweet] 🎬 HANDLE_VIDEO_URL_SUBMIT - Showing success toast')
@@ -910,10 +832,8 @@ function ThreadTweetContent({
 
     setMediaFiles([])
 
-    // Notify parent immediately
-    if (onUpdate) {
-      onUpdate('', [])
-    }
+    // Update store with cleared content
+    updateTweet(tweetId, '', [])
   }
 
   // Detect OS for keyboard shortcuts
@@ -1093,19 +1013,10 @@ function ThreadTweetContent({
     
     setMediaFiles(prev => [...prev, ...newMediaFiles])
     
-    // Update parent if exists
-    if (onUpdate) {
-      const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
-      const allMedia = [...mediaFiles, ...newMediaFiles].filter(f => (f.media_id && f.s3Key) || f.isPending).map(f => ({
-        s3Key: f.s3Key || '',
-        media_id: f.media_id || '',
-        isPending: f.isPending,
-        pendingJobId: f.pendingJobId,
-        videoUrl: f.videoUrl,
-        platform: f.platform,
-      }))
-      onUpdate(content, allMedia)
-    }
+    // Update store with new media
+    const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
+    const allMedia = [...mediaFiles, ...newMediaFiles]
+    updateTweet(tweetId, content, allMedia)
     
     setOpen(false)
   }

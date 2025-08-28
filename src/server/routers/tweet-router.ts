@@ -123,23 +123,54 @@ function groupTweetsIntoThreads<T extends {
   return allItems
 }
 
-// Helper function to create thread tweets in database (DRY principle)
+// Enhanced helper function to create thread tweets in database (DRY principle)
 // This consolidates the duplicate logic from createThread, updateThread, and postThreadNow
 async function _createThreadTweetsInDb(
   tweetsData: Array<{
     content: string;
-    media?: Array<{ media_id: string; s3Key: string }>;
+    media?: Array<{ 
+      media_id: string; 
+      s3Key: string;
+      // Support for pending video processing
+      isPending?: boolean;
+      pendingJobId?: string;
+      videoUrl?: string;
+      platform?: string;
+      type?: 'image' | 'gif' | 'video';
+    }>;
     delayMs?: number;
     position?: number; // Optional custom position
   }>,
   userId: string,
   accountId: string,
-  threadId: string
+  threadId: string,
+  options?: {
+    isScheduled?: boolean;
+    scheduledFor?: Date;
+    scheduledUnix?: number;
+    qstashId?: string;
+  }
 ) {
+  console.log('[_createThreadTweetsInDb] Creating thread tweets:', {
+    threadId,
+    userId,
+    accountId,
+    tweetCount: tweetsData.length,
+    options,
+    timestamp: new Date().toISOString()
+  })
+
   const createdTweets = await Promise.all(
     tweetsData.map(async (tweet, index) => {
       const tweetId = crypto.randomUUID()
       const position = tweet.position ?? index // Use custom position if provided, otherwise use index
+
+      console.log('[_createThreadTweetsInDb] Creating tweet at position:', position, {
+        tweetId,
+        contentLength: tweet.content.length,
+        mediaCount: tweet.media?.length || 0,
+        hasPendingMedia: tweet.media?.some(m => m.isPending) || false
+      })
 
       const [created] = await db
         .insert(tweets)
@@ -153,14 +184,28 @@ async function _createThreadTweetsInDb(
           position,
           isThreadStart: position === 0,
           delayMs: tweet.delayMs || 0,
-          isScheduled: false,
+          isScheduled: options?.isScheduled || false,
+          scheduledFor: options?.scheduledFor,
+          scheduledUnix: options?.scheduledUnix,
+          qstashId: options?.qstashId,
           isPublished: false,
         })
         .returning()
 
+      console.log('[_createThreadTweetsInDb] Tweet created successfully:', {
+        tweetId: created.id,
+        position: created.position,
+        isThreadStart: created.isThreadStart
+      })
+
       return created
     }),
   )
+
+  console.log('[_createThreadTweetsInDb] All tweets created successfully:', {
+    threadId,
+    createdCount: createdTweets.length
+  })
 
   return createdTweets
 }
@@ -1621,12 +1666,73 @@ export const tweetRouter = j.router({
       )
       
       if (hasPendingMedia) {
-        console.log('[postThreadNow] Pending media detected - this should be handled by a video processing system')
+        console.log('[postThreadNow] Pending media detected - creating video jobs for processing')
         
-        // For now, return an error asking user to wait for video processing to complete
-        // In a full implementation, this would create video jobs and handle async processing
-        throw new HTTPException(400, {
-          message: 'Please wait for video processing to complete before posting'
+        // Create thread in database first
+        const createdTweets = await _createThreadTweetsInDb(
+          threadTweets,
+          user.id,
+          account.id,
+          threadId
+        )
+        
+        console.log('[postThreadNow] Thread created, now creating video jobs for pending media')
+        
+        // Create video jobs for each tweet with pending media
+        const { videoJob } = await import('@/db/schema')
+        const videoJobsCreated = []
+        
+        for (let i = 0; i < threadTweets.length; i++) {
+          const tweet = threadTweets[i]
+          const createdTweet = createdTweets[i]
+          
+          if (tweet?.media) {
+            for (const media of tweet.media) {
+              if (media.isPending && media.videoUrl && createdTweet) {
+                console.log('[postThreadNow] Creating video job for:', {
+                  tweetId: createdTweet.id,
+                  videoUrl: media.videoUrl,
+                  platform: media.platform || 'unknown'
+                })
+                
+                const jobId = crypto.randomUUID()
+                
+                // Create video job with complete thread data for posting later
+                const [videoJobRecord] = await db.insert(videoJob).values({
+                  id: jobId,
+                  userId: user.id,
+                  tweetId: createdTweet.id,
+                  threadId: threadId,
+                  videoUrl: media.videoUrl,
+                  platform: media.platform || 'unknown',
+                  status: 'pending',
+                  // Store complete thread data so video processing can post the thread when ready
+                  tweetContent: {
+                    threadId,
+                    userId: user.id,
+                    accountId: account.id,
+                    tweets: threadTweets,
+                    action: 'post_thread_now'
+                  },
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                }).returning()
+                
+                videoJobsCreated.push(videoJobRecord)
+                console.log('[postThreadNow] Video job created:', jobId)
+              }
+            }
+          }
+        }
+        
+        console.log('[postThreadNow] Created', videoJobsCreated.length, 'video jobs')
+        
+        return c.json({ 
+          success: true, 
+          threadId,
+          message: `Video processing started for ${videoJobsCreated.length} videos. Your thread will be posted automatically when ready.`,
+          videoJobsCreated: videoJobsCreated.length,
+          tweetsCreated: createdTweets.length
         })
       }
 
@@ -2032,7 +2138,7 @@ export const tweetRouter = j.router({
         userFrequency 
       })
 
-      // console.log('[enqueueThread] Next available slot:', nextSlot)
+
 
       if (!nextSlot) {
         throw new HTTPException(409, {
@@ -2060,7 +2166,7 @@ export const tweetRouter = j.router({
         messageId = qstashResponse.messageId
       }
 
-      // console.log('[enqueueThread] QStash message created:', messageId)
+
 
       try {
         // Update all tweets in the thread to queued
@@ -2079,7 +2185,7 @@ export const tweetRouter = j.router({
             eq(tweets.userId, user.id),
           ))
 
-        // console.log('[enqueueThread] Thread queued successfully')
+
       } catch (err) {
         // console.error('[enqueueThread] Database error:', err)
         const messages = qstash.messages
@@ -2114,7 +2220,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId } = input
 
-      // console.log('[getThread] Fetching thread:', threadId)
+
 
       const threadTweets = await db.query.tweets.findMany({
         where: and(
@@ -2124,7 +2230,7 @@ export const tweetRouter = j.router({
         orderBy: asc(tweets.position),
       })
 
-      // console.log('[getThread] Found tweets:', threadTweets.length)
+
 
       // Fetch media URLs for each tweet
       const tweetsWithMedia = await Promise.all(
@@ -2146,7 +2252,7 @@ export const tweetRouter = j.router({
   getThreads: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
 
-    // console.log('[getThreads] Fetching all threads for user:', user.id)
+
 
     // Get all tweets that are thread starts
     const threadStarts = await db.query.tweets.findMany({
@@ -2157,7 +2263,7 @@ export const tweetRouter = j.router({
       orderBy: desc(tweets.createdAt),
     })
 
-    // console.log('[getThreads] Found thread starts:', threadStarts.length)
+
 
     // Get full thread data for each thread
     const threads = await Promise.all(
@@ -2182,7 +2288,7 @@ export const tweetRouter = j.router({
       }),
     )
 
-    // console.log('[getThreads] Returning threads:', threads.length)
+
     return c.json({ threads })
   }),
 
@@ -2196,7 +2302,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId } = input
 
-      // console.log('[deleteThread] Deleting thread:', threadId)
+
 
       // Get all tweets in the thread
       const threadTweets = await db.query.tweets.findMany({
