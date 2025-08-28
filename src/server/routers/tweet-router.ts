@@ -884,7 +884,12 @@ export const tweetRouter = j.router({
         userNow: userNow.toISOString(),
       })
 
-      const today = startOfDay(userNow)
+      // IMPORTANT: Compute "today" in the user's timezone to avoid day-boundary
+      // mismatches in UTC environments (like Vercel). We first shift the user's
+      // provided time into their zone, take startOfDay there, and only convert to
+      // UTC when deriving concrete instants. This prevents the same slot from
+      // appearing under two different day sections (e.g., Today and Tomorrow).
+      const zonedToday = startOfDay(toZonedTime(userNow, timezone))
 
       const account = await getAccount({
         email: user.email,
@@ -1009,15 +1014,21 @@ export const tweetRouter = j.router({
       const all: Array<Record<number, Array<number>>> = []
 
       for (let i = 0; i < daysToLoad; i++) {
-        const currentDay = addDays(today, i)
+        // Day bucket computed in the user's timezone
+        const zonedDay = addDays(zonedToday, i)
 
+        // Build preset slot instants by interpreting hours in the user's timezone,
+        // then converting each to a UTC timestamp for storage/comparison
         const unixTimestamps = SLOTS.map((hour) => {
-          const localDate = startOfHour(setHours(currentDay, hour))
-          const utcDate = fromZonedTime(localDate, timezone)
+          const zonedSlot = startOfHour(setHours(zonedDay, hour))
+          const utcDate = fromZonedTime(zonedSlot, timezone)
           return utcDate.getTime()
         })
 
-        all.push({ [currentDay.getTime()]: unixTimestamps })
+        // Use a UTC key that represents midnight of this zoned day; the client
+        // will render day headers based on this key using its own local clock
+        const dayKeyUtc = fromZonedTime(zonedDay, timezone).getTime()
+        all.push({ [dayKeyUtc]: unixTimestamps })
       }
 
       const results: Array<
