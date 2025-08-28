@@ -4,7 +4,7 @@ import TweetQueue from '@/components/tweet-queue'
 import { AccountAvatar } from '@/hooks/account-ctx'
 import { client } from '@/lib/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Clock, CheckCircle, Loader2, Video, AlertCircle } from 'lucide-react'
+import { Trash2, Clock, CheckCircle, Loader2, Video, AlertCircle, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -46,6 +46,8 @@ function VideoProcessingStatus() {
     },
     refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
     retry: false, // Don't retry on error
+    staleTime: 0, // Always consider data stale to force fresh fetches
+    gcTime: 0, // Don't cache data in garbage collection
   })
 
   // Cleanup mutation (marks jobs as failed)
@@ -56,7 +58,9 @@ function VideoProcessingStatus() {
     },
     onSuccess: (data) => {
       toast.success(`Cleaned up ${data.cleanedUp} stuck video jobs`)
+      // Force immediate cache invalidation and refetch
       queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+      queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
     },
     onError: (error) => {
       console.error('Failed to cleanup stuck jobs:', error)
@@ -72,11 +76,29 @@ function VideoProcessingStatus() {
     },
     onSuccess: (data) => {
       toast.success(`Deleted ${data.deleted} stuck video jobs`)
+      // Force immediate cache invalidation and refetch
       queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+      queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
     },
     onError: (error) => {
       console.error('Failed to delete stuck jobs:', error)
       toast.error('Failed to delete stuck jobs')
+    },
+  })
+
+  // Manual refresh mutation
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      // Just trigger a refetch
+      await queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
+      return { refreshed: true }
+    },
+    onSuccess: () => {
+      toast.success('Refreshed video processing status')
+    },
+    onError: (error) => {
+      console.error('Failed to refresh:', error)
+      toast.error('Failed to refresh status')
     },
   })
 
@@ -121,10 +143,20 @@ function VideoProcessingStatus() {
             </div>
             <div className="flex items-center gap-2">
               <DuolingoButton
+                variant="ghost"
+                size="sm"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+                className="text-xs"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                {refreshMutation.isPending ? 'Refreshing...' : 'Refresh'}
+              </DuolingoButton>
+              <DuolingoButton
                 variant="secondary"
                 size="sm"
                 onClick={() => cleanupMutation.mutate()}
-                disabled={cleanupMutation.isPending || deleteAllMutation.isPending}
+                disabled={cleanupMutation.isPending || deleteAllMutation.isPending || refreshMutation.isPending}
                 className="text-xs"
               >
                 {cleanupMutation.isPending ? 'Cleaning...' : 'Mark Failed'}
@@ -133,7 +165,7 @@ function VideoProcessingStatus() {
                 variant="destructive"
                 size="sm"
                 onClick={() => deleteAllMutation.mutate()}
-                disabled={cleanupMutation.isPending || deleteAllMutation.isPending}
+                disabled={cleanupMutation.isPending || deleteAllMutation.isPending || refreshMutation.isPending}
                 className="text-xs"
               >
                 {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
