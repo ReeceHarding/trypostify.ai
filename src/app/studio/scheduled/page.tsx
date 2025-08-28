@@ -43,13 +43,12 @@ function VideoProcessingStatus() {
         console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=processing...')
         
         // Get video jobs that are currently processing
-        console.log('[VideoProcessingStatus] 🔍 Making API call with query:', { status: 'processing', limit: 50 })
+        const requestBody = { status: 'processing', limit: 50 }
+        console.log('[VideoProcessingStatus] 📤 Sending POST request body:', JSON.stringify(requestBody))
         
-        const res = await client.videoJob.listVideoJobs.$get({
-          query: { status: 'processing', limit: 50 }
+        const res = await client.videoJob.listVideoJobs.$post({
+          json: requestBody
         })
-        
-        console.log('[VideoProcessingStatus] 🌐 Request URL:', res.url)
         const result = await res.json()
         
         console.log('[VideoProcessingStatus] 📊 API Response:', {
