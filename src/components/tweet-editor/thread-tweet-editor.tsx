@@ -953,7 +953,7 @@ export default function ThreadTweetEditor({
 
   const handleCancelEdit = () => {
     // Reset to create mode by clearing edit params from URL
-    const url = new URL(window.location.href)
+    const url = new URL(window.location.href) 
     url.searchParams.delete('edit')
     url.searchParams.delete('tweetId')
     window.history.pushState({}, '', url.toString())
