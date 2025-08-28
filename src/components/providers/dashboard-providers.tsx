@@ -3,7 +3,7 @@
 import { AccountProvider } from '@/hooks/account-ctx'
 import { AttachmentsProvider } from '@/hooks/use-attachments'
 import { ChatProvider } from '@/hooks/use-chat'
-// Removed EditorProvider import - unused
+import { EditorProvider } from '@/hooks/use-editors'
 import { TweetProvider } from '@/hooks/use-tweets'
 import { authClient } from '@/lib/auth-client'
 import { ConfettiProvider } from '@/hooks/use-confetti'
@@ -48,11 +48,13 @@ export function DashboardProviders({ children }: ProvidersProps) {
     <ConfettiProvider>
       <NuqsAdapter>
         <AccountProvider>
-          <TweetProvider>
-            <AttachmentsProvider>
-              <ChatProvider>{children}</ChatProvider>
-            </AttachmentsProvider>
-          </TweetProvider>
+          <EditorProvider>
+            <TweetProvider>
+              <AttachmentsProvider>
+                <ChatProvider>{children}</ChatProvider>
+              </AttachmentsProvider>
+            </TweetProvider>
+          </EditorProvider>
         </AccountProvider>
       </NuqsAdapter>
     </ConfettiProvider>
