@@ -186,6 +186,10 @@ export default function TweetQueue() {
             See tweet
           </Link>
         </div>,
+        {
+          duration: 4000, // Auto-dismiss after 4 seconds
+          position: 'top-center',
+        }
       )
 
       posthog.capture('tweet_posted', {
