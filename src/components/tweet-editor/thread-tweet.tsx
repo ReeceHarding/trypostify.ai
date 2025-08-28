@@ -1530,8 +1530,8 @@ function ThreadTweetContent({
                                         setOptimisticActionState('queue')
                                         showAction('queue')
                                         onQueueThread()
-                                        // Clear optimistic state after feedback period
-                                        setTimeout(() => setOptimisticActionState(null), 500)
+                                        // Clear optimistic state after feedback period - longer delay to prevent double clicks
+                                        setTimeout(() => setOptimisticActionState(null), 1500)
                                       }
                                     }}
                                   >

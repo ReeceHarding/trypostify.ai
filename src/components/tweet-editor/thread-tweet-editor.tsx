@@ -757,7 +757,18 @@ export default function ThreadTweetEditor({
     }
   }
 
+  // Debounce to prevent double-clicks causing duplicate entries
+  const [isQueueing, setIsQueueing] = useState(false)
+  
   const handleQueueThread = async () => {
+    // Prevent rapid successive calls
+    if (isQueueing) {
+      console.log('[ThreadTweetEditor] Queue operation already in progress, ignoring duplicate call')
+      return
+    }
+    
+    setIsQueueing(true)
+    
     // Validate tweets
     const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
@@ -836,9 +847,11 @@ export default function ThreadTweetEditor({
         })
       }
       
-      // Invalidate cache to update queue UI
-      queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
-      queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
+      // Delay cache invalidation to avoid race conditions with database commit
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
+        queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
+      }, 500) // 500ms delay to ensure database transaction is committed
       
       console.log('[ThreadTweetEditor] Background queue operation completed successfully at', new Date().toISOString())
       
@@ -920,6 +933,9 @@ export default function ThreadTweetEditor({
         }
       }, 100)
       toast.error(error instanceof Error ? error.message : 'Failed to queue thread')
+    } finally {
+      // Always clear the queuing flag
+      setIsQueueing(false)
     }
   }
 
