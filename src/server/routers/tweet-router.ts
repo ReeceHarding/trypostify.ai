@@ -1441,9 +1441,24 @@ export const tweetRouter = j.router({
             content: z.string().max(280),
             media: z.array(
               z.object({
-                media_id: z.string(),
-                s3Key: z.string(),
-              }),
+                media_id: z.string().optional(),
+                s3Key: z.string().optional(),
+                // Support for pending video processing
+                isPending: z.boolean().optional(),
+                pendingJobId: z.string().optional(),
+                videoUrl: z.string().optional(),
+                platform: z.string().optional(),
+                type: z.enum(['image', 'gif', 'video']).optional(),
+              }).refine(
+                (media) => 
+                  // Either has uploaded media IDs OR is pending video
+                  (media.media_id && media.s3Key) || 
+                  (media.isPending && (media.videoUrl || media.pendingJobId)),
+                {
+                  message: "Media must have either media_id/s3Key or be a pending video",
+                  path: ["media"]
+                }
+              ),
             ).optional(),
             delayMs: z.number().default(0),
           }).refine(
@@ -1515,9 +1530,24 @@ export const tweetRouter = j.router({
             content: z.string().max(280),
             media: z.array(
               z.object({
-                media_id: z.string(),
-                s3Key: z.string(),
-              }),
+                media_id: z.string().optional(),
+                s3Key: z.string().optional(),
+                // Support for pending video processing
+                isPending: z.boolean().optional(),
+                pendingJobId: z.string().optional(),
+                videoUrl: z.string().optional(),
+                platform: z.string().optional(),
+                type: z.enum(['image', 'gif', 'video']).optional(),
+              }).refine(
+                (media) => 
+                  // Either has uploaded media IDs OR is pending video
+                  (media.media_id && media.s3Key) || 
+                  (media.isPending && (media.videoUrl || media.pendingJobId)),
+                {
+                  message: "Media must have either media_id/s3Key or be a pending video",
+                  path: ["media"]
+                }
+              ),
             ).optional(),
             delayMs: z.number().default(0),
           }).refine(
@@ -1616,9 +1646,24 @@ export const tweetRouter = j.router({
             content: z.string().max(280),
             media: z.array(
               z.object({
-                media_id: z.string(),
-                s3Key: z.string(),
-              }),
+                media_id: z.string().optional(),
+                s3Key: z.string().optional(),
+                // Support for pending video processing
+                isPending: z.boolean().optional(),
+                pendingJobId: z.string().optional(),
+                videoUrl: z.string().optional(),
+                platform: z.string().optional(),
+                type: z.enum(['image', 'gif', 'video']).optional(),
+              }).refine(
+                (media) => 
+                  // Either has uploaded media IDs OR is pending video
+                  (media.media_id && media.s3Key) || 
+                  (media.isPending && (media.videoUrl || media.pendingJobId)),
+                {
+                  message: "Media must have either media_id/s3Key or be a pending video",
+                  path: ["media"]
+                }
+              ),
             ).optional(),
             delayMs: z.number().default(0),
           }).refine(

@@ -351,11 +351,30 @@ export default function ThreadTweetEditor({
           id: tweet.id.startsWith('new-') ? undefined : tweet.id,
           content: tweet.content,
           media: tweet.media
-            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-            .map(m => ({
-              media_id: m.media_id!,
-              s3Key: m.s3Key!,
-            })),
+            .filter(m => 
+              // Include fully uploaded media OR pending videos
+              (m.uploaded && m.media_id && m.s3Key) || 
+              (m.isPending && (m.videoUrl || m.pendingJobId))
+            )
+            .map(m => {
+              // For pending videos, send pending metadata
+              if (m.isPending) {
+                return {
+                  media_id: m.media_id || '', // Empty for pending
+                  s3Key: m.s3Key || '', // May be empty for URL videos
+                  isPending: true,
+                  pendingJobId: m.pendingJobId,
+                  videoUrl: m.videoUrl,
+                  platform: m.platform,
+                  type: m.type,
+                }
+              }
+              // For uploaded media, send normal format
+              return {
+                media_id: m.media_id!,
+                s3Key: m.s3Key!,
+              }
+            }),
           delayMs: index > 0 ? 1000 : 0,
         })),
       })
@@ -484,11 +503,30 @@ export default function ThreadTweetEditor({
       const tweetsForPosting = validTweets.map((tweet, index) => ({
         content: tweet.content,
         media: tweet.media
-          .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-          .map(m => ({
-            media_id: m.media_id!,
-            s3Key: m.s3Key!,
-          })),
+          .filter(m => 
+            // Include fully uploaded media OR pending videos
+            (m.uploaded && m.media_id && m.s3Key) || 
+            (m.isPending && (m.videoUrl || m.pendingJobId))
+          )
+          .map(m => {
+            // For pending videos, send pending metadata
+            if (m.isPending) {
+              return {
+                media_id: m.media_id || '', // Empty for pending
+                s3Key: m.s3Key || '', // May be empty for URL videos
+                isPending: true,
+                pendingJobId: m.pendingJobId,
+                videoUrl: m.videoUrl,
+                platform: m.platform,
+                type: m.type,
+              }
+            }
+            // For uploaded media, send normal format
+            return {
+              media_id: m.media_id!,
+              s3Key: m.s3Key!,
+            }
+          }),
         delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
       }))
       
@@ -584,11 +622,30 @@ export default function ThreadTweetEditor({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media
-            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-            .map(m => ({
-              media_id: m.media_id!,
-              s3Key: m.s3Key!,
-            })),
+            .filter(m => 
+              // Include fully uploaded media OR pending videos
+              (m.uploaded && m.media_id && m.s3Key) || 
+              (m.isPending && (m.videoUrl || m.pendingJobId))
+            )
+            .map(m => {
+              // For pending videos, send pending metadata
+              if (m.isPending) {
+                return {
+                  media_id: m.media_id || '', // Empty for pending
+                  s3Key: m.s3Key || '', // May be empty for URL videos
+                  isPending: true,
+                  pendingJobId: m.pendingJobId,
+                  videoUrl: m.videoUrl,
+                  platform: m.platform,
+                  type: m.type,
+                }
+              }
+              // For uploaded media, send normal format
+              return {
+                media_id: m.media_id!,
+                s3Key: m.s3Key!,
+              }
+            }),
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
@@ -725,11 +782,30 @@ export default function ThreadTweetEditor({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media
-            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-            .map(m => ({
-              media_id: m.media_id!,
-              s3Key: m.s3Key!,
-            })),
+            .filter(m => 
+              // Include fully uploaded media OR pending videos
+              (m.uploaded && m.media_id && m.s3Key) || 
+              (m.isPending && (m.videoUrl || m.pendingJobId))
+            )
+            .map(m => {
+              // For pending videos, send pending metadata
+              if (m.isPending) {
+                return {
+                  media_id: m.media_id || '', // Empty for pending
+                  s3Key: m.s3Key || '', // May be empty for URL videos
+                  isPending: true,
+                  pendingJobId: m.pendingJobId,
+                  videoUrl: m.videoUrl,
+                  platform: m.platform,
+                  type: m.type,
+                }
+              }
+              // For uploaded media, send normal format
+              return {
+                media_id: m.media_id!,
+                s3Key: m.s3Key!,
+              }
+            }),
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
