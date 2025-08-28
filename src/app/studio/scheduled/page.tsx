@@ -6,6 +6,7 @@ import { client } from '@/lib/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Trash2, Clock, CheckCircle, Loader2, Video, AlertCircle, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
+import * as React from 'react'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import {
@@ -25,22 +26,41 @@ import DuolingoBadge from '@/components/ui/duolingo-badge'
 function VideoProcessingStatus() {
   const queryClient = useQueryClient()
   
+  // Clear cache on component mount to ensure fresh data
+  React.useEffect(() => {
+    console.log('[VideoProcessingStatus] 🧹 Clearing cache on mount to ensure fresh data')
+    queryClient.removeQueries({ queryKey: ['video-processing-status'] })
+    queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+  }, [queryClient])
+  
   // Query for video processing status
   const { data: processingVideos, isLoading, error } = useQuery({
-    queryKey: ['video-processing-status'],
+    queryKey: ['video-processing-status', Date.now()], // Add timestamp to force fresh queries
     queryFn: async () => {
       try {
+        console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=processing...')
+        
         // Get video jobs that are currently processing
         const res = await client.videoJob.listVideoJobs.$get({
           query: { status: 'processing', limit: 50 }
         })
         const result = await res.json()
         
-        console.log('[VideoProcessingStatus] Processing video jobs:', result.jobs?.length || 0)
+        console.log('[VideoProcessingStatus] 📊 API Response:', {
+          jobsCount: result.jobs?.length || 0,
+          jobs: result.jobs?.map(j => ({ id: j.id?.substring(0, 8), status: j.status })) || []
+        })
         
-        return result.jobs || []
+        const jobs = result.jobs || []
+        
+        // Additional safety check - filter to only truly processing jobs
+        const actuallyProcessingJobs = jobs.filter(job => job.status === 'processing')
+        
+        console.log('[VideoProcessingStatus] ✅ Filtered processing jobs:', actuallyProcessingJobs.length)
+        
+        return actuallyProcessingJobs
       } catch (error) {
-        console.log('[VideoProcessingStatus] No processing videos or error:', error)
+        console.log('[VideoProcessingStatus] ❌ Error fetching processing videos:', error)
         return []
       }
     },
@@ -48,6 +68,8 @@ function VideoProcessingStatus() {
     retry: false, // Don't retry on error
     staleTime: 0, // Always consider data stale to force fresh fetches
     gcTime: 0, // Don't cache data in garbage collection
+    refetchOnMount: 'always', // Always refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window gains focus
   })
 
   // Cleanup mutation (marks jobs as failed)
@@ -57,8 +79,10 @@ function VideoProcessingStatus() {
       return res.json()
     },
     onSuccess: (data) => {
+      console.log('[VideoProcessingStatus] ✅ Cleanup completed:', data)
       toast.success(`Cleaned up ${data.cleanedUp} stuck video jobs`)
-      // Force immediate cache invalidation and refetch
+      // Aggressively clear cache and refetch
+      queryClient.removeQueries({ queryKey: ['video-processing-status'] })
       queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
       queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
     },
@@ -75,8 +99,10 @@ function VideoProcessingStatus() {
       return res.json()
     },
     onSuccess: (data) => {
+      console.log('[VideoProcessingStatus] ✅ Delete completed:', data)
       toast.success(`Deleted ${data.deleted} stuck video jobs`)
-      // Force immediate cache invalidation and refetch
+      // Aggressively clear cache and refetch
+      queryClient.removeQueries({ queryKey: ['video-processing-status'] })
       queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
       queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
     },
@@ -89,15 +115,23 @@ function VideoProcessingStatus() {
   // Manual refresh mutation
   const refreshMutation = useMutation({
     mutationFn: async () => {
-      // Just trigger a refetch
+      console.log('[VideoProcessingStatus] 🔄 Force refreshing - clearing all cache entries')
+      
+      // Aggressively clear all video processing cache entries
+      queryClient.removeQueries({ queryKey: ['video-processing-status'] })
+      queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+      
+      // Force a fresh fetch by refetching
       await queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
-      return { refreshed: true }
+      
+      return { message: 'Cache cleared and refreshed' }
     },
     onSuccess: () => {
+      console.log('[VideoProcessingStatus] ✅ Successfully refreshed and cleared cache')
       toast.success('Refreshed video processing status')
     },
     onError: (error) => {
-      console.error('Failed to refresh:', error)
+      console.error('[VideoProcessingStatus] ❌ Failed to refresh:', error)
       toast.error('Failed to refresh status')
     },
   })
