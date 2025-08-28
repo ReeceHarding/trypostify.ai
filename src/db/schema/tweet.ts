@@ -8,6 +8,7 @@ import {
   bigint,
 } from 'drizzle-orm/pg-core'
 import { account, user } from './auth'
+import crypto from 'crypto'
 import { InferSelectModel } from 'drizzle-orm'
 
 type Media = {

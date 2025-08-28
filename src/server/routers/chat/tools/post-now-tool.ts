@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { HTTPException } from 'hono/http-exception'
 import { getAccount } from '../../utils/get-account'
+import crypto from 'crypto'
 
 export const createPostNowTool = (
   writer: UIMessageStreamWriter,

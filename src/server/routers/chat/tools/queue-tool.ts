@@ -10,6 +10,7 @@ import { and, eq, asc } from 'drizzle-orm'
 import { qstash } from '../../../../lib/qstash'
 import { getAccount } from '../../utils/get-account'
 import { HTTPException } from 'hono/http-exception'
+import crypto from 'crypto'
 
 export const createQueueTool = (
   writer: UIMessageStreamWriter,
