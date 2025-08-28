@@ -251,10 +251,10 @@ export default function ThreadTweetEditor({
         (t) => (
           <div className="flex items-center gap-2">
             <p>Tweet posted!</p>
-            {data.threadUrl && (
+            {'threadUrl' in data && data.threadUrl && (
               <button
                 onClick={() => {
-                  window.open(data.threadUrl, '_blank', 'noopener,noreferrer')
+                  window.open(data.threadUrl!, '_blank', 'noopener,noreferrer')
                   toast.dismiss(t.id)
                 }}
                 className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors cursor-pointer"
@@ -487,105 +487,10 @@ export default function ThreadTweetEditor({
       return
     }
 
-    // Check if any tweet has PENDING media
-    console.log('[ThreadTweetEditor] Checking for pending media at:', new Date().toISOString())
-    const hasPendingMedia = threadTweets.some(tweet => 
-      tweet.media.some(m => m.isPending === true)
-    )
-    
     // Store current content for potential rollback
     const currentContent = [...threadTweets]
 
-    // SIMPLIFIED FLOW: If pending media exists, ALWAYS queue for background processing
-    if (hasPendingMedia) {
-      console.log('[ThreadTweetEditor] 📎 Pending media detected - queuing entire thread for background processing')
-      
-      try {
-        // Filter out empty tweets before processing
-        const validTweets = currentContent.filter(tweet => tweet.content.trim() || tweet.media.length > 0)
-        
-        console.log('[ThreadTweetEditor] Filtered tweets for video processing:', {
-          original: currentContent.length,
-          filtered: validTweets.length,
-          removed: currentContent.length - validTweets.length
-        })
-        
-        // Create video processing jobs for each pending media
-        const videoJobs = []
-        
-        for (let tweetIndex = 0; tweetIndex < validTweets.length; tweetIndex++) {
-          const tweet = validTweets[tweetIndex]
-          if (!tweet) continue
-          const pendingVideos = tweet.media.filter(m => m.isPending && m.videoUrl)
-          
-          for (const video of pendingVideos) {
-            console.log('[ThreadTweetEditor] Creating video processing job for:', video.videoUrl)
-            
-            // Create video job that will handle the complete posting flow
-            const videoJobResponse = await client.videoJob.createVideoJob.$post({
-              videoUrl: video.videoUrl!,
-              tweetId: '', // Will be created when video is ready
-              threadId: crypto.randomUUID(), // Generate thread ID for the future post
-              platform: video.platform || 'unknown',
-              tweetContent: {
-                tweets: validTweets.map((t, idx) => ({
-                  content: t.content,
-                  media: t.media, // Include ALL media (both pending and completed)
-                  delayMs: idx > 0 ? 1000 : 0,
-                })),
-                pendingVideoJobId: video.pendingJobId, // Track which pending video this job is for
-              }
-            })
-            
-            if (!videoJobResponse.ok) {
-              const errorData = await videoJobResponse.json()
-              console.error('[ThreadTweetEditor] Video job creation failed:', errorData)
-              throw new Error(errorData.error || errorData.message || 'Failed to create video job')
-            }
-            
-            const jobData = await videoJobResponse.json()
-            videoJobs.push(jobData)
-            console.log('[ThreadTweetEditor] Video job created:', jobData)
-          }
-        }
-        
-        // OPTIMISTIC UI UPDATE: Clear content since tweet is queued
-        setHasBeenCleared(true)
-        const newTweetId = crypto.randomUUID()
-        setThreadTweets([{ id: newTweetId, content: '', media: [] }])
-        
-        // AUTO-FOCUS: Focus the new empty tweet for instant typing
-        setTimeout(() => {
-          const firstTweetRef = tweetRefs.current[newTweetId]
-          if (firstTweetRef) {
-            firstTweetRef.focus()
-          }
-        }, 100)
-        
-        // Show queuing message
-        toast.success('Thread queued - will post when video is ready!', {
-          duration: 6000,
-          icon: '⏳',
-        })
-        
-        posthog.capture('thread_queued_for_pending_video', {
-          tweet_count: currentContent.length,
-          video_jobs: videoJobs.length,
-        })
-        
-        return // Exit early - don't post immediately
-        
-      } catch (error) {
-        console.error('[ThreadTweetEditor] Failed to queue tweet for video processing:', error)
-        toast.error(`Failed to queue tweet: ${error instanceof Error ? error.message : 'Unknown error'}`, {
-          duration: 6000,
-        })
-        return
-      }
-    }
-
-    // NO PENDING MEDIA: Post immediately
-    console.log('[ThreadTweetEditor] No pending media - posting immediately')
+    console.log('[ThreadTweetEditor] Posting thread - backend will handle any pending media')
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback

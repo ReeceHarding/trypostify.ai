@@ -1003,25 +1003,17 @@ export const tweetRouter = j.router({
         withoutThreadId: scheduledTweetsWithMedia.filter(t => !t.threadId).length,
       })
       
-      // Group all tweets by threadId (or treat as single-item threads)
-      const threadGroups: Record<string, typeof scheduledTweetsWithMedia> = {}
+      // Use the utility function to group tweets into threads
+      const threadGroups = groupTweetsIntoThreads(scheduledTweetsWithMedia)
       
-      for (const tweet of scheduledTweetsWithMedia) {
-        const groupKey = tweet.threadId || tweet.id
-        if (!threadGroups[groupKey]) {
-          threadGroups[groupKey] = []
-        }
-        threadGroups[groupKey].push(tweet)
-      }
-      
-      // Convert to unified thread structure
-      const scheduledTweets = Object.entries(threadGroups).map(([key, tweets]) => {
-        const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
+      // Convert to the specific format expected by get_queue
+      const scheduledTweets = threadGroups.map((group) => {
+        const sortedTweets = group.tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
         const firstTweet = sortedTweets[0]!
         
         return {
-          id: key,
-          threadId: firstTweet.threadId,
+          id: group.threadId || firstTweet.id,
+          threadId: group.threadId,
           content: sortedTweets.length > 1 
             ? `Thread (${sortedTweets.length} posts)` 
             : firstTweet.content,
@@ -1623,6 +1615,24 @@ export const tweetRouter = j.router({
 
       const threadId = crypto.randomUUID()
 
+      // Check if any tweet has pending media (videos being processed)
+      const hasPendingMedia = threadTweets.some(tweet => 
+        tweet.media?.some((m: any) => m.isPending === true || m.pendingJobId || m.videoUrl)
+      )
+      
+      if (hasPendingMedia) {
+        console.log('[postThreadNow] Pending media detected - this should be handled by a video processing system')
+        
+        // For now, return an error asking user to wait for video processing to complete
+        // In a full implementation, this would create video jobs and handle async processing
+        throw new HTTPException(400, {
+          message: 'Please wait for video processing to complete before posting'
+        })
+      }
+
+      // No pending media - proceed with immediate posting
+      console.log('[postThreadNow] No pending media - posting immediately to Twitter')
+
       // Create all thread tweets in the database using the helper function
       const createdTweets = await _createThreadTweetsInDb(
         threadTweets,
@@ -1818,7 +1828,7 @@ export const tweetRouter = j.router({
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
-      // console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
+
 
       // For local development, skip QStash and just update the database
       let messageId = null
@@ -1885,8 +1895,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, userNow, timezone } = input
 
-      // console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
-      // console.log('[enqueueThread] User timezone:', timezone)
+
 
       console.log('[enqueueThread] Starting authentication checks for user:', user.email, 'at', new Date().toISOString())
       
@@ -1952,11 +1961,11 @@ export const tweetRouter = j.router({
       })
 
       if (threadTweets.length === 0) {
-        // console.log('[enqueueThread] No tweets found in thread')
+
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
-      // console.log('[enqueueThread] Found tweets in thread:', threadTweets.length)
+
 
       // Get all scheduled tweets to check for conflicts
       const scheduledTweets = await db.query.tweets.findMany({
