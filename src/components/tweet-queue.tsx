@@ -182,9 +182,48 @@ export default function TweetQueue() {
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
       queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
 
-      toast.success(`Tweet posted! View: https://x.com/${data.accountUsername}/status/${data.tweetId}`, {
-        duration: 4000,
-      })
+      console.log('[TweetQueue] 🔔 Creating toast notification with duration: 4000ms')
+      console.log('[TweetQueue] 🔄 Current toast count before creation:', document.querySelectorAll('[role="status"][aria-live="polite"]').length)
+      
+      const toastId = toast.success(
+        <div className="flex items-center gap-2">
+          <p>Tweet posted!</p>
+          <Link
+            target="_blank"
+            rel="noreferrer"
+            href={`https://x.com/${data.accountUsername}/status/${data.tweetId}`}
+            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
+          >
+            See tweet
+          </Link>
+        </div>,
+        {
+          duration: 4000, // Auto-dismiss after 4 seconds
+          position: 'top-center',
+          removeDelay: 1000, // Ensure proper cleanup timing
+        }
+      )
+      
+      console.log('[TweetQueue] 🆔 Toast created with ID:', toastId)
+      console.log('[TweetQueue] ⏰ Toast should auto-dismiss at:', new Date(Date.now() + 4000).toISOString())
+      
+      // Set up a timer to check if toast actually dismisses
+      const dismissTimer = setTimeout(() => {
+        console.log('[TweetQueue] ⚠️ 4 seconds passed - toast should have dismissed by now')
+        console.log('[TweetQueue] 🔍 Checking if toast is still visible in DOM...')
+        const toastElements = document.querySelectorAll('[role="status"][aria-live="polite"]')
+        console.log('[TweetQueue] 📊 Toast elements found in DOM:', toastElements.length)
+        toastElements.forEach((el, index) => {
+          console.log(`[TweetQueue] Toast ${index + 1}:`, el.textContent)
+        })
+      }, 4500) // Check 500ms after expected dismiss time
+      
+      // Also set up a timer to check earlier
+      const earlyCheckTimer = setTimeout(() => {
+        console.log('[TweetQueue] 🕐 2 seconds in - toast should still be visible')
+        const toastElements = document.querySelectorAll('[role="status"][aria-live="polite"]')
+        console.log('[TweetQueue] 📊 Toast elements at 2s mark:', toastElements.length)
+      }, 2000)
 
       posthog.capture('tweet_posted', {
         tweetId: data.tweetId,

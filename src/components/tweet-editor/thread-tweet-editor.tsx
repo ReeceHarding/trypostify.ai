@@ -247,13 +247,49 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      const message = data.threadUrl 
-        ? `Tweet posted! View: ${data.threadUrl}`
-        : 'Tweet posted!'
-      
-      toast.success(message, {
-        duration: 4000,
+      console.log('[ThreadTweetEditor] 🎉 Post success callback triggered at:', new Date().toISOString())
+      console.log('[ThreadTweetEditor] 📊 Success data received:', {
+        threadUrl: data.threadUrl,
+        accountUsername: data.accountUsername || 'unknown'
       })
+      
+      console.log('[ThreadTweetEditor] 🔔 Creating toast notification with duration: 4000ms')
+      
+      // Use simple string toast to avoid JSX/React component lifecycle issues
+      const toastId = toast.success(
+        'Tweet posted! Click here to view →',
+        {
+          duration: 4000, // Auto-dismiss after 4 seconds
+          position: 'top-center',
+          removeDelay: 1000, // Ensure proper cleanup
+          onClick: () => {
+            if (data.threadUrl) {
+              window.open(data.threadUrl, '_blank')
+            }
+          },
+        }
+      )
+      
+      console.log('[ThreadTweetEditor] 🆔 Toast created with ID:', toastId)
+      console.log('[ThreadTweetEditor] ⏰ Toast should auto-dismiss at:', new Date(Date.now() + 4000).toISOString())
+      
+      // Set up debugging timers to track dismissal - same as TweetQueue
+      const dismissTimer = setTimeout(() => {
+        console.log('[ThreadTweetEditor] ⚠️ 4 seconds passed - toast should have dismissed by now')
+        console.log('[ThreadTweetEditor] 🔍 Checking if toast is still visible in DOM...')
+        const toastElements = document.querySelectorAll('[role="status"][aria-live="polite"]')
+        console.log('[ThreadTweetEditor] 📊 Toast elements found in DOM:', toastElements.length)
+        toastElements.forEach((el, index) => {
+          console.log(`[ThreadTweetEditor] Toast ${index + 1}:`, el.textContent)
+        })
+      }, 4500) // Check 500ms after expected dismiss time
+      
+      const earlyCheckTimer = setTimeout(() => {
+        console.log('[ThreadTweetEditor] 🕐 2 seconds in - toast should still be visible')
+        const toastElements = document.querySelectorAll('[role="status"][aria-live="polite"]')
+        console.log('[ThreadTweetEditor] 📊 Toast elements at 2s mark:', toastElements.length)
+      }, 2000)
+      
       fire()
       
       // Note: Content clearing is now handled optimistically in handlePostThread
