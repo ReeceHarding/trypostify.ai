@@ -928,13 +928,13 @@ function ThreadTweetContent({
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
       if (editMode) {
-        // Save: Cmd/Ctrl + Shift + S (avoids conflict with browser Save)
-        if (actualMetaKey && e.shiftKey && e.key.toLowerCase() === 's' && onUpdateThread) {
+        // Save: Cmd/Ctrl + Enter
+        if (actualMetaKey && e.key === 'Enter' && !e.shiftKey && onUpdateThread) {
           e.preventDefault()
           onUpdateThread()
         }
-        // Cancel: Esc
-        else if (e.key === 'Escape' && onCancelEdit) {
+        // Cancel: Cmd/Ctrl + Delete
+        else if (actualMetaKey && e.key === 'Delete' && onCancelEdit) {
           e.preventDefault()
           onCancelEdit()
         }
@@ -1456,7 +1456,7 @@ function ThreadTweetContent({
                               <TooltipContent>
                                 <div className="space-y-1">
                                   <p>Cancel editing</p>
-                                  <p className="text-xs text-neutral-400">Esc</p>
+                                  <p className="text-xs text-neutral-400">{metaKey} + Delete</p>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -1478,7 +1478,7 @@ function ThreadTweetContent({
                               <TooltipContent>
                                 <div className="space-y-1">
                                   <p>Save changes</p>
-                                  <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
+                                  <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
