@@ -236,7 +236,8 @@ export async function POST(req: NextRequest) {
               enableTranscoding: true,
               maxRetries: 2,
               originalFileName: `video-${job.id}.mp4`,
-              userId: job.userId
+              userId: job.userId,
+              videoJobId: job.id
             })
             
             if (uploadResult.success) {
@@ -246,11 +247,34 @@ export async function POST(req: NextRequest) {
               }
             } else {
               console.log('[VideoProcessor] Twitter upload failed:', uploadResult.error)
-              if (uploadResult.error === 'UNSUPPORTED_FORMAT') {
-                console.log('[VideoProcessor] Video format still incompatible even after transcoding attempt')
+              
+              // Handle different error scenarios
+              if (uploadResult.error === 'TRANSCODING_IN_PROGRESS') {
+                console.log('[VideoProcessor] Video transcoding in progress, will post when ready')
+                
+                // Update job with transcoding status
+                await db
+                  .update(videoJob)
+                  .set({
+                    status: 'transcoding',
+                    transcodingJobId: uploadResult.transcodingJobId,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(videoJob.id, videoJobId))
+                
+                // Don't post the tweet yet - webhook will handle it
+                return NextResponse.json({ 
+                  success: true, 
+                  message: 'Video transcoding in progress',
+                  videoJobId,
+                  transcodingJobId: uploadResult.transcodingJobId
+                })
               } else if (uploadResult.error === 'TRANSCODING_FAILED') {
-                console.log('[VideoProcessor] FFmpeg transcoding failed - video format conversion unsuccessful')
+                console.log('[VideoProcessor] Video transcoding failed - format conversion unsuccessful')
+              } else if (uploadResult.error === 'TRANSCODED_UPLOAD_FAILED') {
+                console.log('[VideoProcessor] Transcoded video still failed to upload to Twitter')
               }
+              
               twitterMediaId = null
             }
           } else {

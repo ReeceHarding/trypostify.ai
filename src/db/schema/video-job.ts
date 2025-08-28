@@ -11,11 +11,15 @@ export const videoJob = pgTable('video_jobs', {
   platform: text('platform').notNull(), // instagram, tiktok, etc.
   
   // Processing status
-  status: text('status').notNull().default('pending'), // pending, processing, completed, failed
+  status: text('status').notNull().default('pending'), // pending, processing, transcoding, completed, failed
   
   // Results when completed
   s3Key: text('s3_key'), // S3 location of downloaded video
   twitterMediaId: text('twitter_media_id'), // Twitter media_id after upload
+  
+  // Transcoding tracking
+  transcodingJobId: text('transcoding_job_id'), // Coconut.io job ID
+  transcodedS3Key: text('transcoded_s3_key'), // S3 key of transcoded video
   
   // QStash tracking
   qstashId: text('qstash_id'), // QStash message ID for background processing

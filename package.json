@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "node scripts/logger.js --clear \"node scripts/dev-server.js\"",
     "dev-no-log": "node scripts/dev-server.js",
-    "build": "next build",
+    "build": "node scripts/install-ffmpeg.js && next build",
     "build-with-log": "node scripts/logger.js \"next build\"",
     "start": "next start",
     "start-with-log": "node scripts/logger.js \"next start\"",
@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "postinstall": "node scripts/install-ffmpeg.js",
     "clear-logs": "echo '' > log.txt && echo 'Log file cleared' || echo 'No log file to clear'",
     "view-logs": "tail -f log.txt",
     "view-recent-logs": "tail -100 log.txt",

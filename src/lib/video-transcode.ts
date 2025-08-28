@@ -3,91 +3,217 @@
  * This file should only be imported in server-side code (API routes, server actions)
  */
 
+// Import FFmpeg for local transcoding fallback
+import { exec } from 'child_process'
+import { promisify } from 'util'
+import { writeFileSync, unlinkSync, readFileSync, existsSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+
+const execAsync = promisify(exec)
+
+// Check if FFmpeg is available
+async function checkFFmpegAvailable(): Promise<boolean> {
+  try {
+    await execAsync('which ffmpeg')
+    return true
+  } catch {
+    // Check if we're on Vercel
+    if (process.env.VERCEL) {
+      // Try to use the installed FFmpeg binary
+      try {
+        await execAsync('/vercel/path/to/ffmpeg -version')
+        return true
+      } catch {
+        return false
+      }
+    }
+    return false
+  }
+}
+
 /**
  * Transcodes video to H.264 format compatible with Twitter using Coconut.io API
+ * Falls back to local FFmpeg if Coconut.io is unavailable
  */
-export async function transcodeVideoToH264(videoBuffer: Buffer, originalFileName: string = 'video.mp4'): Promise<string> {
-  console.log('[VideoTranscode] Starting video transcoding with Coconut.io...')
+export async function transcodeVideoToH264(
+  videoBuffer: Buffer, 
+  originalFileName: string = 'video.mp4',
+  videoJobId?: string
+): Promise<{ url: string; jobId?: string; isLocal?: boolean }> {
+  console.log('[VideoTranscode] Starting video transcoding...')
   console.log('[VideoTranscode] Original video size:', videoBuffer.length, 'bytes')
   
+  // First, try Coconut.io if API key is available
+  const coconutApiKey = process.env.COCONUT_API_KEY
+  
+  if (coconutApiKey && coconutApiKey !== 'your_coconut_api_key_here') {
+    try {
+      console.log('[VideoTranscode] Attempting Coconut.io transcoding...')
+      
+      // Upload video to temporary storage first (using existing S3)
+      const { s3Client } = await import('@/lib/s3')
+      const { PutObjectCommand } = await import('@aws-sdk/client-s3')
+      const { nanoid } = await import('nanoid')
+      
+      const tempKey = `temp-videos/${nanoid()}-${originalFileName}`
+      const uploadParams = {
+        Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME!,
+        Key: tempKey,
+        Body: videoBuffer,
+        ContentType: 'video/mp4',
+      }
+      
+      await s3Client.send(new PutObjectCommand(uploadParams))
+      const tempVideoUrl = `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${tempKey}`
+      
+      console.log('[VideoTranscode] Uploaded temp video to S3:', tempVideoUrl)
+      
+      // Create Coconut.io transcoding job
+      const outputKey = `transcoded-videos/${nanoid()}-twitter.mp4`
+      const outputUrl = `s3://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}/${outputKey}`
+      
+      // Configure S3 credentials for Coconut.io
+      const storage = {
+        service: 's3',
+        bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME,
+        region: process.env.AWS_REGION || 'us-east-1',
+        credentials: {
+          access_key_id: process.env.AWS_GENERAL_ACCESS_KEY,
+          secret_access_key: process.env.AWS_GENERAL_SECRET_KEY
+        }
+      }
+      
+      const jobConfig = {
+        input: { url: tempVideoUrl },
+        storage,
+        notification: {
+          type: 'http',
+          url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://trypostify.com'}/api/video/transcode-webhook`
+        },
+        outputs: {
+          'mp4:720p': outputUrl
+        }
+      }
+      
+      // Add video job ID to metadata if provided
+      if (videoJobId) {
+        jobConfig.input.metadata = { video_job_id: videoJobId }
+      }
+      
+      console.log('[VideoTranscode] Coconut.io job config:', JSON.stringify(jobConfig, null, 2))
+      
+      // Use the correct Coconut.io API endpoint
+      const response = await fetch('https://api.coconut.co/v2/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${coconutApiKey}`
+        },
+        body: JSON.stringify(jobConfig)
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[VideoTranscode] Coconut.io API response:', errorText)
+        throw new Error(`Coconut.io API error: ${response.status} - ${errorText}`)
+      }
+      
+      const result = await response.json()
+      console.log('[VideoTranscode] ✅ Coconut.io job created:', result)
+      
+      // Return the job info
+      return {
+        url: `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${outputKey}`,
+        jobId: result.id || result.job_id,
+        isLocal: false
+      }
+      
+    } catch (error: any) {
+      console.error('[VideoTranscode] ❌ Coconut.io transcoding failed:', error.message)
+      console.log('[VideoTranscode] Falling back to local FFmpeg transcoding...')
+      // Fall through to FFmpeg fallback
+    }
+  } else {
+    console.log('[VideoTranscode] No Coconut.io API key configured, using local FFmpeg...')
+  }
+  
+  // Check if FFmpeg is available before attempting local transcoding
+  const ffmpegAvailable = await checkFFmpegAvailable()
+  
+  if (!ffmpegAvailable) {
+    console.log('[VideoTranscode] FFmpeg not available in this environment')
+    
+    // If we're on Vercel without FFmpeg, we must rely on Coconut.io
+    if (process.env.VERCEL) {
+      throw new Error('Video transcoding requires Coconut.io API key on Vercel deployment')
+    }
+    
+    throw new Error('FFmpeg not available for video transcoding')
+  }
+  
+  // FFmpeg fallback for local transcoding
   try {
-    // Upload video to temporary storage first (using existing S3)
-    const { s3Client } = await import('@/lib/s3')
-    const { PutObjectCommand } = await import('@aws-sdk/client-s3')
     const { nanoid } = await import('nanoid')
     
-    const tempKey = `temp-videos/${nanoid()}-${originalFileName}`
+    // Create temporary files
+    const tempInputPath = join(tmpdir(), `input-${nanoid()}.mp4`)
+    const tempOutputPath = join(tmpdir(), `output-${nanoid()}.mp4`)
+    
+    // Write input video to temp file
+    writeFileSync(tempInputPath, videoBuffer)
+    
+    console.log('[VideoTranscode] Starting FFmpeg transcoding...')
+    
+    // FFmpeg command optimized for Twitter
+    const ffmpegCommand = `ffmpeg -i "${tempInputPath}" -y -c:v libx264 -preset fast -crf 23 -vf "scale='min(1280,iw)':min'(720,ih)':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2" -c:a aac -b:a 128k -movflags +faststart -max_muxing_queue_size 1024 "${tempOutputPath}"`
+    
+    console.log('[VideoTranscode] FFmpeg command:', ffmpegCommand)
+    
+    // Execute FFmpeg
+    const { stdout, stderr } = await execAsync(ffmpegCommand)
+    
+    if (stderr && stderr.includes('error')) {
+      throw new Error(`FFmpeg error: ${stderr}`)
+    }
+    
+    console.log('[VideoTranscode] FFmpeg transcoding completed')
+    
+    // Read the transcoded video
+    const transcodedBuffer = readFileSync(tempOutputPath)
+    
+    // Clean up temp files
+    try {
+      unlinkSync(tempInputPath)
+      unlinkSync(tempOutputPath)
+    } catch (e) {
+      console.warn('[VideoTranscode] Failed to clean up temp files:', e)
+    }
+    
+    // Upload transcoded video to S3
+    const { s3Client } = await import('@/lib/s3')
+    const { PutObjectCommand } = await import('@aws-sdk/client-s3')
+    
+    const outputKey = `transcoded-videos/${nanoid()}-twitter.mp4`
     const uploadParams = {
       Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME!,
-      Key: tempKey,
-      Body: videoBuffer,
+      Key: outputKey,
+      Body: transcodedBuffer,
       ContentType: 'video/mp4',
     }
     
     await s3Client.send(new PutObjectCommand(uploadParams))
-    const tempVideoUrl = `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${tempKey}`
-    
-    console.log('[VideoTranscode] Uploaded temp video to S3:', tempVideoUrl)
-    
-    // Create Coconut.io transcoding job
-    const outputKey = `transcoded-videos/${nanoid()}-twitter.mp4`
-    const outputUrl = `s3://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}/${outputKey}`
-    
-    const coconutApiKey = process.env.COCONUT_API_KEY
-    if (!coconutApiKey) {
-      throw new Error('COCONUT_API_KEY environment variable is required')
-    }
-    
-    console.log('[VideoTranscode] Creating Coconut.io transcoding job...')
-    
-    const jobConfig = {
-      source: tempVideoUrl,
-      webhook: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://trypostify.com'}/api/video/transcode-webhook`,
-      outputs: {
-        mp4: {
-          path: outputUrl,
-          video: {
-            codec: 'h264',
-            bitrate: '2000k',
-            fps: 30,
-            size: '1280x720'
-          },
-          audio: {
-            codec: 'aac',
-            bitrate: '128k'
-          }
-        }
-      }
-    }
-    
-    const response = await fetch('https://api.coconut.co/job', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${coconutApiKey}`
-      },
-      body: JSON.stringify(jobConfig)
-    })
-    
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Coconut.io API error: ${response.status} - ${errorText}`)
-    }
-    
-    const result = await response.json()
-    console.log('[VideoTranscode] ✅ Coconut.io job created:', result.id)
-    
-    // For now, return the expected output URL
-    // In a real implementation, you'd poll for completion or use webhooks
     const finalUrl = `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${outputKey}`
-    console.log('[VideoTranscode] Expected output URL:', finalUrl)
     
-    // TODO: Implement polling or webhook handling for job completion
-    // For now, return the URL where the transcoded video will be available
-    return finalUrl
+    console.log('[VideoTranscode] ✅ FFmpeg transcoding complete, uploaded to:', finalUrl)
+    
+    return {
+      url: finalUrl,
+      isLocal: true
+    }
     
   } catch (error: any) {
-    console.error('[VideoTranscode] ❌ Coconut.io transcoding failed:', error.message)
+    console.error('[VideoTranscode] ❌ FFmpeg transcoding failed:', error.message)
     throw new Error(`Transcoding failed: ${error.message}`)
   }
 }
@@ -115,9 +241,10 @@ export async function uploadVideoToTwitterWithTranscoding(
     enableTranscoding?: boolean
     originalFileName?: string
     userId?: string
+    videoJobId?: string
   } = {}
-): Promise<{ success: boolean; mediaId?: string; error?: string; transcoded?: boolean; costOptimized?: boolean }> {
-  const { maxRetries = 2, enableTranscoding = true, originalFileName = '', userId } = options
+): Promise<{ success: boolean; mediaId?: string; error?: string; transcoded?: boolean; costOptimized?: boolean; transcodingJobId?: string }> {
+  const { maxRetries = 2, enableTranscoding = true, originalFileName = '', userId, videoJobId } = options
   
   console.log('[TwitterUploadTranscode] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
   
@@ -139,34 +266,72 @@ export async function uploadVideoToTwitterWithTranscoding(
   // First, try uploading the original video
   try {
     const mediaId = await twitterClient.v1.uploadMedia(videoBuffer, { mimeType: 'video/mp4' })
-      console.log('[TwitterUploadTranscode] ✅ Video uploaded successfully with media_id:', mediaId)
+    console.log('[TwitterUploadTranscode] ✅ Video uploaded successfully with media_id:', mediaId)
     return { success: true, mediaId, transcoded: false, costOptimized: false }
-    } catch (error: any) {
+  } catch (error: any) {
     console.log('[TwitterUploadTranscode] ❌ Initial upload failed:', error.message)
     
     // SMART TRANSCODING: Only if it's a format error AND passes cost checks
     if ((error.message?.includes('InvalidMedia') || error.message?.includes('Invalid or Unsupported media')) 
         && enableTranscoding && costOptimization.shouldTranscode) {
       
-      console.log('[TwitterUploadTranscode] 🔄 Video format incompatible - starting cost-optimized Coconut.io transcoding...')
+      console.log('[TwitterUploadTranscode] 🔄 Video format incompatible - starting transcoding...')
       console.log('[TwitterUploadTranscode] 💰 Estimated cost: $' + (costOptimization.estimatedCost).toFixed(2))
       
       try {
         // Track transcoding usage
         await trackTranscodingUsage(userId, fileSizeMB, costOptimization.estimatedDuration)
         
-        // Use Coconut.io for transcoding
-        const transcodedUrl = await transcodeVideoToH264(videoBuffer, originalFileName)
-        console.log('[TwitterUploadTranscode] 🎬 Transcoding initiated with Coconut.io')
+        // Transcode the video
+        const transcodingResult = await transcodeVideoToH264(videoBuffer, originalFileName, videoJobId)
         
-        // Note: In a real implementation, you'd need to wait for Coconut.io webhook
-        // or poll for completion before downloading the transcoded video
-        // For now, we return an error indicating async transcoding is in progress
-        return { 
-          success: false, 
-          error: 'TRANSCODING_IN_PROGRESS', 
-          transcoded: true,
-          costOptimized: true
+        if (transcodingResult.isLocal) {
+          // Local FFmpeg transcoding completed immediately
+          console.log('[TwitterUploadTranscode] 🎬 Local FFmpeg transcoding completed')
+          
+          // Download the transcoded video from S3
+          const { s3Client } = await import('@/lib/s3')
+          const { GetObjectCommand } = await import('@aws-sdk/client-s3')
+          
+          const s3Key = transcodingResult.url.split('.amazonaws.com/')[1]
+          const getObjectParams = {
+            Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME!,
+            Key: s3Key,
+          }
+          
+          const s3Response = await s3Client.send(new GetObjectCommand(getObjectParams))
+          const transcodedBuffer = Buffer.from(await s3Response.Body!.transformToByteArray())
+          
+          // Try uploading the transcoded video to Twitter
+          try {
+            const mediaId = await twitterClient.v1.uploadMedia(transcodedBuffer, { mimeType: 'video/mp4' })
+            console.log('[TwitterUploadTranscode] ✅ Transcoded video uploaded successfully with media_id:', mediaId)
+            return { 
+              success: true, 
+              mediaId, 
+              transcoded: true, 
+              costOptimized: true 
+            }
+          } catch (uploadError: any) {
+            console.error('[TwitterUploadTranscode] ❌ Transcoded video upload failed:', uploadError.message)
+            return { 
+              success: false, 
+              error: 'TRANSCODED_UPLOAD_FAILED', 
+              transcoded: true, 
+              costOptimized: true 
+            }
+          }
+        } else {
+          // Coconut.io async transcoding initiated
+          console.log('[TwitterUploadTranscode] 🎬 Coconut.io transcoding initiated, job ID:', transcodingResult.jobId)
+          
+          return { 
+            success: false, 
+            error: 'TRANSCODING_IN_PROGRESS', 
+            transcoded: true,
+            costOptimized: true,
+            transcodingJobId: transcodingResult.jobId
+          }
         }
         
       } catch (transcodeError: any) {
@@ -176,7 +341,7 @@ export async function uploadVideoToTwitterWithTranscoding(
     }
     
     // For other errors or if cost optimization blocked transcoding
-    console.log('[TwitterUploadTranscode] Upload failed - no transcoding attempted due to cost optimization')
+    console.log('[TwitterUploadTranscode] Upload failed - no transcoding attempted')
     return { 
       success: false, 
       error: error.message, 
