@@ -1,7 +1,7 @@
 'use client'
 
 import DuolingoBadge from '@/components/ui/duolingo-badge'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import DuolingoInput from '@/components/ui/duolingo-input'
 import { Label } from '@/components/ui/label'
 import { client } from '@/lib/client'
@@ -478,9 +478,9 @@ export default function NewKnowledgePage() {
           </div>
         </div>
 
-        <DuolingoButton
-          variant="destructive"
-          size="icon"
+        <Button
+          variant="duolingo-destructive"
+          size="duolingo-icon"
           className="absolute size-8 top-2 right-2"
           onClick={() => {
             if (uploadState?.xhr && !uploadState.isUploadDone) {
@@ -496,7 +496,7 @@ export default function NewKnowledgePage() {
           }}
         >
           <X className="size-4" />
-        </DuolingoButton>
+        </Button>
       </div>
     )
   }
@@ -528,14 +528,14 @@ export default function NewKnowledgePage() {
                 </p>
               </div>
               
-              <DuolingoButton
-                variant="destructive"
-                size="icon"
+              <Button
+                variant="duolingo-destructive"
+                size="duolingo-icon"
                 className="size-8"
                 onClick={() => removeFile(index)}
               >
                 <X className="size-4" />
-              </DuolingoButton>
+              </Button>
             </div>
             
             <div className="space-y-1">
@@ -583,14 +583,14 @@ export default function NewKnowledgePage() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <DuolingoButton
-                        variant="secondary"
-                        size="sm"
+                      <Button
+                        variant="duolingo-secondary"
+                        size="duolingo-sm"
                         className="w-auto pointer-events-none"
                       >
                         <Upload className="size-4 mr-2" />
                         Browse Files
-                      </DuolingoButton>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <div className="space-y-1">
@@ -678,15 +678,15 @@ export default function NewKnowledgePage() {
   return (
     <div className="relative z-10 min-h-screen">
       <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <DuolingoButton
-          variant="secondary"
+        <Button
+          variant="duolingo-secondary"
           className="w-fit mb-8"
-          size="sm"
+          size="duolingo-sm"
           onClick={() => router.push('/studio/knowledge')}
         >
           <ArrowLeft className="size-8 shrink-0 mr-2" />
           Back to Knowledge Base
-        </DuolingoButton>
+        </Button>
 
         <div className="bg-white p-6 space-y-4 rounded-3xl border-2 border-neutral-200 shadow-xl">
           <div>
@@ -697,7 +697,8 @@ export default function NewKnowledgePage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DuolingoButton
+                <Button
+                  variant="duolingo-primary"
                   loading={isProcessing || isImporting || isMultiProcessing}
                   onClick={handleSubmit}
                   disabled={getDisabled()}
@@ -706,7 +707,7 @@ export default function NewKnowledgePage() {
                     ? `Add ${multiFiles.length} Documents` 
                     : 'Add Knowledge'
                   }
-                </DuolingoButton>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="space-y-1">

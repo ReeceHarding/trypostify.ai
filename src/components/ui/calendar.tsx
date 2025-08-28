@@ -186,7 +186,7 @@ function CalendarDayButton({
     <Button
       ref={ref}
       variant="ghost"
-      size="icon"
+      size="duolingo-icon"
       data-day={day.date.toLocaleDateString('en-US')}
       data-selected-single={
         modifiers.selected &&

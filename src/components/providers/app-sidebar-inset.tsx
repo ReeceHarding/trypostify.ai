@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Menu, PanelRight, ArrowRightFromLine, ArrowLeftFromLine } from 'lucide-react'
-import DuolingoButton from '../ui/duolingo-button'
+import { Button } from '../ui/button'
 import { useSidebar } from '../ui/sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useState } from 'react'
@@ -78,14 +78,14 @@ function MobileNavigationMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <DuolingoButton
-          variant="secondary"
-          size="icon"
+        <Button
+          variant="duolingo-secondary"
+          size="duolingo-icon"
           className="h-10 w-10"
           aria-label="Open navigation menu"
         >
           <Menu className="h-5 w-5" />
-        </DuolingoButton>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="start" 
@@ -178,17 +178,17 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
           <TooltipProvider delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DuolingoButton
+                <Button
                   onClick={toggleRightSidebar}
-                  size="icon"
-                  variant="secondary"
+                  size="duolingo-icon"
+                  variant="duolingo-secondary"
                   className="aspect-square group/toggle-button"
                 >
                   <PanelRight className="size-4 transition-all duration-200 group-hover/toggle-button:opacity-0 group-hover/toggle-button:scale-75" />
                   <div className="absolute transition-all duration-200 opacity-0 scale-75 group-hover/toggle-button:opacity-100 group-hover/toggle-button:scale-100">
                     <ArrowRightFromLine className="size-4" />
                   </div>
-                </DuolingoButton>
+                </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 <div className="space-y-1">

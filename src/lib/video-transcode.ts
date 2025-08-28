@@ -249,7 +249,7 @@ export async function uploadVideoToTwitterWithTranscoding(
   console.log('[TwitterUploadTranscode] Uploading video to Twitter, size:', videoBuffer.length, 'bytes')
   
   const fileSizeMB = videoBuffer.length / (1024 * 1024)
-  let transcoded = false
+  const transcoded = false
   
   // COST OPTIMIZATION: Pre-flight checks before any processing
   const costOptimization = await performCostOptimizationChecks(videoBuffer, originalFileName, userId)

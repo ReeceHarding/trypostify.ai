@@ -39,10 +39,18 @@ interface ThreadTweetEditorProps {
 
 // Validation helper
 function validateThreadTweets(tweets: ThreadTweetData[], characterLimit: number): { valid: boolean; error?: string } {
-  // Check for empty tweets
-  const emptyTweets = tweets.filter(t => !t.content.trim())
+  // Filter out completely empty tweets (no content AND no media)
+  const validTweets = tweets.filter(t => t.content.trim() || t.media.length > 0)
+  
+  // Check if we have at least one valid tweet
+  if (validTweets.length === 0) {
+    return { valid: false, error: 'Thread must contain at least one tweet with content or media' }
+  }
+  
+  // Check for tweets that have neither content nor media among the "valid" tweets
+  const emptyTweets = validTweets.filter(t => !t.content.trim() && t.media.length === 0)
   if (emptyTweets.length > 0) {
-    return { valid: false, error: 'All tweets in the thread must have content' }
+    return { valid: false, error: 'All tweets in the thread must have content or media' }
   }
 
   // Check character limits
@@ -435,79 +443,71 @@ export default function ThreadTweetEditor({
   }
 
   const handlePostThread = async () => {
+    // Add debugging for validation issue
+    console.log('[ThreadTweetEditor] Validating tweets before posting:', {
+      timestamp: new Date().toISOString(),
+      tweetsCount: threadTweets.length,
+      tweets: threadTweets.map((tweet, index) => ({
+        index,
+        id: tweet.id,
+        content: tweet.content,
+        contentLength: tweet.content.length,
+        contentTrimmed: tweet.content.trim(),
+        contentTrimmedLength: tweet.content.trim().length,
+        isEmpty: !tweet.content.trim(),
+        mediaCount: tweet.media.length
+      }))
+    })
+    
     // Validate tweets
     const validation = validateThreadTweets(threadTweets, characterLimit)
     if (!validation.valid) {
+      console.error('[ThreadTweetEditor] Validation failed:', {
+        error: validation.error,
+        emptyTweets: threadTweets.filter(t => !t.content.trim()).map((t, i) => ({
+          index: i,
+          id: t.id,
+          content: JSON.stringify(t.content),
+          contentLength: t.content.length
+        }))
+      })
       toast.error(validation.error!)
       return
     }
 
     // Check if any tweet has PENDING media
-    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - Starting pending media detection at:', new Date().toISOString())
-    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - threadTweets count:', threadTweets.length)
-    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - Raw threadTweets data:', JSON.stringify(threadTweets, null, 2))
-    
-    threadTweets.forEach((tweet, index) => {
-      console.log(`[ThreadTweetEditor] 🔍 POST_THREAD - Analyzing Tweet ${index}:`, {
-        id: tweet.id,
-        content: tweet.content.substring(0, 50) + '...',
-        mediaCount: tweet.media.length,
-        rawMedia: tweet.media,
-        media: tweet.media.map(m => ({
-          s3Key: m.s3Key,
-          isPending: m.isPending,
-          pendingJobId: m.pendingJobId,
-          videoUrl: m.videoUrl,
-          platform: m.platform,
-          type: m.isPending ? 'PENDING' : (m.media_id ? 'completed' : 'uploaded')
-        }))
-      })
-      
-      // Check each media item specifically for pending status
-      tweet.media.forEach((mediaItem, mediaIndex) => {
-        console.log(`[ThreadTweetEditor] 🔍 POST_THREAD - Tweet ${index} Media ${mediaIndex}:`, {
-          isPending: mediaItem.isPending,
-          hasPendingProperty: 'isPending' in mediaItem,
-          pendingValue: mediaItem.isPending,
-          pendingType: typeof mediaItem.isPending,
-          s3Key: mediaItem.s3Key,
-          videoUrl: mediaItem.videoUrl,
-          allProperties: Object.keys(mediaItem)
-        })
-      })
-    })
-    
+    console.log('[ThreadTweetEditor] Checking for pending media at:', new Date().toISOString())
     const hasPendingMedia = threadTweets.some(tweet => 
       tweet.media.some(m => m.isPending === true)
     )
     
-    console.log('[ThreadTweetEditor] 🔍 POST_THREAD - hasPendingMedia calculation:', {
-      result: hasPendingMedia,
-      calculationDetails: threadTweets.map(tweet => ({
-        tweetId: tweet.id,
-        mediaWithPending: tweet.media.filter(m => m.isPending === true),
-        pendingCount: tweet.media.filter(m => m.isPending === true).length
-      }))
-    })
-    
     // Store current content for potential rollback
     const currentContent = [...threadTweets]
 
-    // IF PENDING MEDIA EXISTS: Queue the tweet for background processing
+    // SIMPLIFIED FLOW: If pending media exists, ALWAYS queue for background processing
     if (hasPendingMedia) {
-      console.log('[ThreadTweetEditor] 📎 PENDING media detected - QUEUING tweet for background processing')
+      console.log('[ThreadTweetEditor] 📎 Pending media detected - queuing entire thread for background processing')
       
       try {
+        // Filter out empty tweets before processing
+        const validTweets = currentContent.filter(tweet => tweet.content.trim() || tweet.media.length > 0)
+        
+        console.log('[ThreadTweetEditor] Filtered tweets for video processing:', {
+          original: currentContent.length,
+          filtered: validTweets.length,
+          removed: currentContent.length - validTweets.length
+        })
+        
         // Create video processing jobs for each pending media
         const videoJobs = []
         
-        for (let tweetIndex = 0; tweetIndex < currentContent.length; tweetIndex++) {
-          const tweet = currentContent[tweetIndex]
+        for (let tweetIndex = 0; tweetIndex < validTweets.length; tweetIndex++) {
+          const tweet = validTweets[tweetIndex]
           if (!tweet) continue
           const pendingVideos = tweet.media.filter(m => m.isPending && m.videoUrl)
           
           for (const video of pendingVideos) {
-            console.log('[ThreadTweetEditor] 🔄 Creating video processing job for pending video:', video.videoUrl)
+            console.log('[ThreadTweetEditor] Creating video processing job for:', video.videoUrl)
             
             // Create video job that will handle the complete posting flow
             const videoJobResponse = await client.videoJob.createVideoJob.$post({
@@ -516,32 +516,28 @@ export default function ThreadTweetEditor({
               threadId: crypto.randomUUID(), // Generate thread ID for the future post
               platform: video.platform || 'unknown',
               tweetContent: {
-                tweets: currentContent.map((t, idx) => ({
+                tweets: validTweets.map((t, idx) => ({
                   content: t.content,
-                  media: t.media.filter(m => !m.isPending), // Only include non-pending media in the stored content
+                  media: t.media, // Include ALL media (both pending and completed)
                   delayMs: idx > 0 ? 1000 : 0,
                 })),
                 pendingVideoJobId: video.pendingJobId, // Track which pending video this job is for
               }
             })
             
-            console.log('[ThreadTweetEditor] 📋 Video job response status:', videoJobResponse.status)
-            
             if (!videoJobResponse.ok) {
               const errorData = await videoJobResponse.json()
-              console.error('[ThreadTweetEditor] ❌ Video job creation failed:', errorData)
+              console.error('[ThreadTweetEditor] Video job creation failed:', errorData)
               throw new Error(errorData.error || errorData.message || 'Failed to create video job')
             }
             
             const jobData = await videoJobResponse.json()
-            
             videoJobs.push(jobData)
-            console.log('[ThreadTweetEditor] ✅ Video job created for pending media:', jobData)
+            console.log('[ThreadTweetEditor] Video job created:', jobData)
           }
         }
         
         // OPTIMISTIC UI UPDATE: Clear content since tweet is queued
-        console.log('[ThreadTweetEditor] Clearing UI - tweet queued for processing')
         setHasBeenCleared(true)
         const newTweetId = crypto.randomUUID()
         setThreadTweets([{ id: newTweetId, content: '', media: [] }])
@@ -550,13 +546,12 @@ export default function ThreadTweetEditor({
         setTimeout(() => {
           const firstTweetRef = tweetRefs.current[newTweetId]
           if (firstTweetRef) {
-            console.log('[ThreadTweetEditor] Auto-focusing new tweet after queuing')
             firstTweetRef.focus()
           }
         }, 100)
         
         // Show queuing message
-        toast.success('Tweet queued - will post when video is ready!', {
+        toast.success('Thread queued - will post when video is ready!', {
           duration: 6000,
           icon: '⏳',
         })
@@ -569,7 +564,7 @@ export default function ThreadTweetEditor({
         return // Exit early - don't post immediately
         
       } catch (error) {
-        console.error('[ThreadTweetEditor] ❌ Failed to queue tweet for video processing:', error)
+        console.error('[ThreadTweetEditor] Failed to queue tweet for video processing:', error)
         toast.error(`Failed to queue tweet: ${error instanceof Error ? error.message : 'Unknown error'}`, {
           duration: 6000,
         })
@@ -577,13 +572,11 @@ export default function ThreadTweetEditor({
       }
     }
 
-    // NO PENDING MEDIA: Post immediately with completed media only
+    // NO PENDING MEDIA: Post immediately
     console.log('[ThreadTweetEditor] No pending media - posting immediately')
-    console.log('[ThreadTweetEditor] Starting immediate post flow at', new Date().toISOString())
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
-    console.log('[ThreadTweetEditor] Optimistically clearing UI content at', new Date().toISOString())
     setHasBeenCleared(true)
     const newTweetId = crypto.randomUUID()
     setThreadTweets([{ id: newTweetId, content: '', media: [] }])
@@ -592,35 +585,38 @@ export default function ThreadTweetEditor({
     setTimeout(() => {
       const firstTweetRef = tweetRefs.current[newTweetId]
       if (firstTweetRef) {
-        console.log('[ThreadTweetEditor] Auto-focusing new tweet after post at', new Date().toISOString())
         firstTweetRef.focus()
       }
     }, 100)
 
     try {
-      // IMMEDIATE POSTING: Post tweets without downloading videos
-      console.log('[ThreadTweetEditor] Starting immediate post operation at', new Date().toISOString())
+      // Filter out empty tweets (no content AND no media) before posting
+      const validTweets = currentContent.filter(tweet => tweet.content.trim() || tweet.media.length > 0)
       
-      // Prepare tweets for posting (exclude any pending media)
-      const tweetsForPosting = currentContent.map((tweet, index) => ({
+      console.log('[ThreadTweetEditor] Filtered tweets for posting:', {
+        original: currentContent.length,
+        filtered: validTweets.length,
+        removed: currentContent.length - validTweets.length
+      })
+      
+      // Post thread immediately
+      const tweetsForPosting = validTweets.map((tweet, index) => ({
         content: tweet.content,
-        media: tweet.media.filter(m => !m.isPending), // Only include completed media
+        media: tweet.media,
         delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
       }))
       
-      // Post thread immediately
       const result = await postThreadMutation.mutateAsync(tweetsForPosting)
       
-      console.log('[ThreadTweetEditor] Immediate post operation completed successfully at', new Date().toISOString())
+      console.log('[ThreadTweetEditor] Post completed successfully')
       posthog.capture('thread_posted', {
         tweet_count: currentContent.length,
         thread_id: result.threadId,
       })
 
-      // Success message is already handled by postThreadMutation.onSuccess
-      // No need for duplicate notification here
+      // Success message is handled by postThreadMutation.onSuccess
     } catch (error) {
-      console.error('[ThreadTweetEditor] Background post operation failed, rolling back UI at', new Date().toISOString(), error)
+      console.error('[ThreadTweetEditor] Post failed, rolling back UI', error)
       // ROLLBACK: Restore content if operation failed
       setThreadTweets(currentContent)
       setHasBeenCleared(false)
@@ -629,11 +625,10 @@ export default function ThreadTweetEditor({
       setTimeout(() => {
         const firstTweetId = currentContent[0]?.id
         if (firstTweetId && tweetRefs.current[firstTweetId]) {
-          console.log('[ThreadTweetEditor] Re-focusing original tweet after post rollback at', new Date().toISOString())
           tweetRefs.current[firstTweetId].focus()
         }
       }, 100)
-      // Error toast is already handled by mutation onError
+      // Error toast is handled by mutation onError
     }
   }
 
@@ -686,10 +681,19 @@ export default function ThreadTweetEditor({
     }, 100)
 
     try {
+      // Filter out empty tweets (no content AND no media) before creating thread
+      const validTweets = currentContent.filter(tweet => tweet.content.trim() || tweet.media.length > 0)
+      
+      console.log('[ThreadTweetEditor] Filtered tweets for background schedule:', {
+        original: currentContent.length,
+        filtered: validTweets.length,
+        removed: currentContent.length - validTweets.length
+      })
+      
       // First create the thread in background
       console.log('[ThreadTweetEditor] Starting background schedule operation at', new Date().toISOString())
       const createResult = await client.tweet.createThread.$post({
-        tweets: currentContent.map((tweet, index) => ({
+        tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
@@ -811,10 +815,19 @@ export default function ThreadTweetEditor({
     }, 100)
 
     try {
+      // Filter out empty tweets (no content AND no media) before creating thread
+      const validTweets = currentContent.filter(tweet => tweet.content.trim() || tweet.media.length > 0)
+      
+      console.log('[ThreadTweetEditor] Filtered tweets for background queue:', {
+        original: currentContent.length,
+        filtered: validTweets.length,
+        removed: currentContent.length - validTweets.length
+      })
+      
       // Create thread first in background
       console.log('[ThreadTweetEditor] Starting background queue operation at', new Date().toISOString())
       const createResult = await client.tweet.createThread.$post({
-        tweets: currentContent.map((tweet, index) => ({
+        tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,

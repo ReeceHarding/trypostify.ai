@@ -1,7 +1,7 @@
 import { PropsWithChildren, memo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Globe, ExternalLink, Copy } from 'lucide-react'
-import DuolingoButton from '../ui/duolingo-button'
+import { Button } from '../ui/button'
 
 export const WebsiteMockup = memo(
   ({
@@ -76,14 +76,14 @@ export const WebsiteMockup = memo(
               animate={{ opacity: 1 }}
               className="flex items-center gap-2"
             >
-              <DuolingoButton
+              <Button
                 onClick={openUrl}
-                variant="secondary"
-                size="sm"
+                variant="duolingo-secondary"
+                size="duolingo-sm"
                 className="text-sm w-fit h-8 px-2"
               >
                 <ExternalLink className="size-3 mr-1" /> Open
-              </DuolingoButton>
+              </Button>
             </motion.div>
           )}
         </div>

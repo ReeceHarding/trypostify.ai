@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/tooltip";
 import { useSidebarResize } from "@/hooks/use-sidebar-resize";
 import { mergeButtonRefs } from "@/lib/merge-button-refs";
-import DuolingoButton from "./duolingo-button";
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
@@ -331,18 +330,18 @@ const Sidebar = React.forwardRef<
 Sidebar.displayName = "Sidebar";
 
 const SidebarTrigger = React.forwardRef<
-  React.ElementRef<typeof DuolingoButton>,
-  Omit<React.ComponentProps<typeof DuolingoButton>, 'children'> & {
+  React.ElementRef<typeof Button>,
+  Omit<React.ComponentProps<typeof Button>, 'children'> & {
     children?: React.ReactNode
   }
 >(({ className, onClick, children, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
   return (
-    <DuolingoButton
+    <Button
       data-sidebar="trigger"
-      variant="secondary"
-      size="icon"
+      variant="duolingo-secondary"
+      size="duolingo-icon"
       className={cn(className)}
       onClick={(event) => {
         onClick?.(event);
@@ -356,7 +355,7 @@ const SidebarTrigger = React.forwardRef<
           <span className="sr-only">Toggle Sidebar</span>
         </>
       )}
-    </DuolingoButton>
+    </Button>
   );
 });
 SidebarTrigger.displayName = "SidebarTrigger";

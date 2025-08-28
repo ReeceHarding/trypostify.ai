@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Icons } from '@/components/icons'
-import { baseStyles, sizeStyles, variantStyles } from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Menu, X } from 'lucide-react'
 import Link from 'next/link'
@@ -24,18 +24,19 @@ const ActionButtons = ({
   title: string
 }) => (
   <div className={cn('flex gap-2 items-center', className)}>
-    <Link
-      className={cn(
-        baseStyles,
-        variantStyles.primary,
-        sizeStyles.sm,
-        className?.includes('w-full') && 'w-full justify-center',
-      )}
-      href={title === 'Studio' ? '/studio' : '/login'}
-      onClick={onLinkClick}
+    <Button
+      variant="duolingo-primary"
+      size="duolingo-sm"
+      className={cn(className?.includes('w-full') && 'w-full justify-center')}
+      asChild
     >
-      {title}
-    </Link>
+      <Link
+        href={title === 'Studio' ? '/studio' : '/login'}
+        onClick={onLinkClick}
+      >
+        {title}
+      </Link>
+    </Button>
   </div>
 )
 

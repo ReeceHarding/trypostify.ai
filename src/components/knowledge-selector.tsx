@@ -15,7 +15,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import { KnowledgeDocument } from '@/db/schema'
 import { InferOutput } from '@/server'
 import { Icons } from './icons'
@@ -81,16 +81,16 @@ export function KnowledgeSelector({ onSelectDocument }: KnowledgeSelectorProps) 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <DuolingoButton
+        <Button
           type="button"
-          variant="secondary"
-          size="icon"
+          variant="duolingo-secondary"
+          size="duolingo-icon"
           className="flex items-center justify-center"
           onMouseEnter={handlePrefetch}
           onFocus={handlePrefetch}
         >
           <Brain className="size-5" />
-        </DuolingoButton>
+        </Button>
       </PopoverTrigger>
       <PopoverContent align="start" side="top" className="w-[420px] p-0" sideOffset={12}>
         <Command className="rounded-xl border-neutral-200 bg-white">

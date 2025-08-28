@@ -29,7 +29,6 @@ import {
   RefreshCw,
   Edit,
 } from 'lucide-react'
-import DuolingoButton from '@/components/ui/duolingo-button'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -297,13 +296,13 @@ export default function TweetList({
               {emptyStateIcon}
               <h3 className="text-lg font-medium text-neutral-800">{emptyStateTitle}</h3>
               <p className="text-neutral-600">{emptyStateDescription}</p>
-              <DuolingoButton
+              <Button
                 onClick={() => router.push('/studio')}
                 className="w-fit mx-auto"
               >
                 <Edit className="size-4 mr-1" />
                 Start creating
-              </DuolingoButton>
+              </Button>
             </div>
           </Card>
         ) : (

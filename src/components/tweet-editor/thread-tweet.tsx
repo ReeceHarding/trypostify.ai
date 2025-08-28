@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
 import { useConfetti } from '@/hooks/use-confetti'
 import { MediaFile, useTweets } from '@/hooks/use-tweets'
@@ -504,7 +504,7 @@ function ThreadTweetContent({
     mutationFn: async (url: string) => {
       const res = await client.videoJob.createVideoJob.$post({
         videoUrl: url,
-        threadId: threadId || 'temp-thread-id',
+        threadId: 'temp-thread-id', // TODO: Pass threadId as prop when available
         platform: 'instagram', // TODO: detect platform from URL
       })
 
@@ -1177,69 +1177,41 @@ function ThreadTweetContent({
               {/* Media Files Display */}
               {mediaFiles.length > 0 && (
                 <div className="mt-3">
-                  {mediaFiles.length === 1 && mediaFiles[0] && (
-                    <div className="relative group">
-                      <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
-                        {isVideoFile(mediaFiles[0]) || mediaFiles[0].isPending ? (
-                          renderVideo(mediaFiles[0], "w-full max-h-[510px] object-cover")
-                        ) : (
-                          <img
-                            src={mediaFiles[0].url || '/placeholder.jpg'}
-                            alt="Upload preview"
-                            className="w-full max-h-[510px] object-cover"
-                          />
-                        )}
-                        {renderMediaOverlays(mediaFiles[0], 0)}
-                      </div>
-                    </div>
-                  )}
-
-                  {mediaFiles.length === 2 && (
-                    <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200">
-                      {mediaFiles.map((mediaFile, index) => (
-                        <div key={mediaFile.url} className="relative group">
-                          <div className="relative overflow-hidden h-[254px]">
-                            {isVideoFile(mediaFile) || mediaFile.isPending ? (
-                              renderVideo(mediaFile, "w-full h-full object-cover")
+                  <div 
+                    className={cn(
+                      "rounded-2xl overflow-hidden border border-neutral-200",
+                      mediaFiles.length === 1 && "relative group",
+                      mediaFiles.length > 1 && "grid gap-0.5",
+                      mediaFiles.length === 2 && "grid-cols-2",
+                      mediaFiles.length === 3 && "grid-cols-2 h-[254px]", 
+                      mediaFiles.length === 4 && "grid-cols-2 grid-rows-2 h-[254px]"
+                    )}
+                  >
+                    {/* For 3 items, we need special handling for the first item to span 2 rows */}
+                    {mediaFiles.length === 3 ? (
+                      <>
+                        <div className="relative group row-span-2">
+                          <div className="relative overflow-hidden h-full">
+                            {isVideoFile(mediaFiles[0]) || mediaFiles[0].isPending ? (
+                              renderVideo(mediaFiles[0], "w-full h-full object-cover")
                             ) : (
                               <img
-                                src={mediaFile.url || '/placeholder.jpg'}
+                                src={mediaFiles[0].url || '/placeholder.jpg'}
                                 alt="Upload preview"
                                 className="w-full h-full object-cover"
                               />
                             )}
-                            {renderMediaOverlays(mediaFile, index)}
+                            {renderMediaOverlays(mediaFiles[0], 0)}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {mediaFiles.length === 3 && mediaFiles[0] && (
-                    <div className="grid grid-cols-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200 h-[254px]">
-                      <div className="relative group">
-                        <div className="relative overflow-hidden h-full">
-                          {isVideoFile(mediaFiles[0]) ? (
-                            renderVideo(mediaFiles[0], "w-full h-full object-cover")
-                          ) : (
-                            <img
-                              src={mediaFiles[0].url}
-                              alt="Upload preview"
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                          {renderMediaOverlays(mediaFiles[0], 0)}
-                        </div>
-                      </div>
-                      <div className="grid grid-rows-2 gap-0.5">
                         {mediaFiles.slice(1).map((mediaFile, index) => (
                           <div key={mediaFile.url} className="relative group">
                             <div className="relative overflow-hidden h-full">
-                              {isVideoFile(mediaFile) ? (
+                              {isVideoFile(mediaFile) || mediaFile.isPending ? (
                                 renderVideo(mediaFile, "w-full h-full object-cover")
                               ) : (
                                 <img
-                                  src={mediaFile.url}
+                                  src={mediaFile.url || '/placeholder.jpg'}
                                   alt="Upload preview"
                                   className="w-full h-full object-cover"
                                 />
@@ -1248,30 +1220,37 @@ function ThreadTweetContent({
                             </div>
                           </div>
                         ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {mediaFiles.length === 4 && (
-                    <div className="grid grid-cols-2 grid-rows-2 gap-0.5 rounded-2xl overflow-hidden border border-neutral-200 h-[254px]">
-                      {mediaFiles.map((mediaFile, index) => (
+                      </>
+                    ) : (
+                      /* For 1, 2, or 4 items, standard grid display */
+                      mediaFiles.map((mediaFile, index) => (
                         <div key={mediaFile.url} className="relative group">
-                          <div className="relative overflow-hidden h-full">
+                          <div className={cn(
+                            "relative overflow-hidden",
+                            mediaFiles.length === 1 && "rounded-2xl",
+                            mediaFiles.length > 1 && "h-[254px]"
+                          )}>
                             {isVideoFile(mediaFile) || mediaFile.isPending ? (
-                              renderVideo(mediaFile, "w-full h-full object-cover")
+                              renderVideo(mediaFile, cn(
+                                "w-full object-cover",
+                                mediaFiles.length === 1 ? "max-h-[510px]" : "h-full"
+                              ))
                             ) : (
                               <img
                                 src={mediaFile.url || '/placeholder.jpg'}
                                 alt="Upload preview"
-                                className="w-full h-full object-cover"
+                                className={cn(
+                                  "w-full object-cover",
+                                  mediaFiles.length === 1 ? "max-h-[510px]" : "h-full"
+                                )}
                               />
                             )}
                             {renderMediaOverlays(mediaFile, index)}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1327,16 +1306,16 @@ function ThreadTweetContent({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
-                          variant="secondary"
-                          size="icon"
+                        <Button
+                          variant="duolingo-secondary"
+                          size="duolingo-icon"
                           className="rounded-md"
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                         >
                           <Upload className="size-4" />
                           <span className="sr-only">Upload files</span>
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -1364,15 +1343,15 @@ function ThreadTweetContent({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
-                          variant="secondary"
-                          size="icon"
+                        <Button
+                          variant="duolingo-secondary"
+                          size="duolingo-icon"
                           className="rounded-md"
                           onClick={() => setMediaLibraryOpen(true)}
                         >
                           <ImagePlus className="size-4" />
                           <span className="sr-only">Choose from library</span>
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -1386,16 +1365,16 @@ function ThreadTweetContent({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
-                          variant="secondary"
-                          size="icon"
+                        <Button
+                          variant="duolingo-secondary"
+                          size="duolingo-icon"
                           className="rounded-md"
                           onClick={() => setShowVideoUrlInput(!showVideoUrlInput)}
                           disabled={mediaFiles.length >= MAX_MEDIA_COUNT || isDownloadingVideo}
                         >
                           <Link2 className="size-4" />
                           <span className="sr-only">Add video from URL</span>
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -1410,15 +1389,15 @@ function ThreadTweetContent({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
-                          variant="secondary"
-                          size="icon"
+                        <Button
+                          variant="duolingo-secondary"
+                          size="duolingo-icon"
                           className="rounded-md"
                           onClick={canDelete ? onRemove : handleClearTweet}
                         >
                           <Trash2 className="size-4" />
                           <span className="sr-only">{canDelete ? 'Remove post' : 'Clear post'}</span>
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -1444,14 +1423,14 @@ function ThreadTweetContent({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <DuolingoButton
-                                  variant="secondary"
+                                <Button
+                                  variant="duolingo-secondary"
                                   className="h-11 px-6 max-[640px]:w-full"
                                   onClick={onCancelEdit}
                                   disabled={isPosting}
                                 >
                                   Cancel
-                                </DuolingoButton>
+                                </Button>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <div className="space-y-1">
@@ -1465,7 +1444,8 @@ function ThreadTweetContent({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <DuolingoButton
+                                <Button
+                                  variant="duolingo-primary"
                                   className="h-11 px-6 max-[640px]:w-full"
                                   onClick={onUpdateThread}
                                   disabled={isPosting || mediaFiles.some((f) => f.uploading)}
@@ -1473,7 +1453,7 @@ function ThreadTweetContent({
                                   <span className="text-sm">
                                     {isPosting ? 'Saving...' : 'Save'}
                                   </span>
-                                </DuolingoButton>
+                                </Button>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <div className="space-y-1">
@@ -1490,9 +1470,9 @@ function ThreadTweetContent({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <DuolingoButton
+                                <Button
                                   className="h-11 px-6 max-[640px]:w-full"
-                                  variant="secondary"
+                                  variant="duolingo-secondary"
                                   onClick={handlePostClick}
                                   disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
                                   loading={isPosting || optimisticActionState === 'post'}
@@ -1501,7 +1481,7 @@ function ThreadTweetContent({
                                     {isPosting || optimisticActionState === 'post' ? 'Posting...' : 'Post'}
                                   </span>
                                   <span className="sr-only">Post to Twitter</span>
-                                </DuolingoButton>
+                                </Button>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <div className="space-y-1">
@@ -1520,7 +1500,8 @@ function ThreadTweetContent({
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <DuolingoButton
+                                  <Button
+                                    variant="duolingo-primary"
                                     loading={isPosting || optimisticActionState === 'queue'}
                                     disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
                                     className="h-11 px-4 rounded-r-none border-r-0 max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full"
@@ -1537,7 +1518,7 @@ function ThreadTweetContent({
                                   >
                                     <Clock className="size-4 mr-2" />
                                     <span className="text-sm">Queue</span>
-                                  </DuolingoButton>
+                                  </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <div className="space-y-1">
@@ -1549,10 +1530,11 @@ function ThreadTweetContent({
 
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <DuolingoButton
+                                  <Button
+                                    variant="duolingo-primary"
                                     loading={isPosting || optimisticActionState === 'schedule'}
                                     disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
-                                    size="icon"
+                                    size="duolingo-icon"
                                     className="h-11 w-14 rounded-l-none border-l max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full max-[640px]:justify-center"
                                     onClick={() => {
                                       console.log('[ThreadTweet] Manual schedule button clicked')
@@ -1561,7 +1543,7 @@ function ThreadTweetContent({
                                   >
                                     <ChevronDown className="size-4" />
                                     <span className="sr-only max-[640px]:not-sr-only max-[640px]:ml-2">Schedule manually</span>
-                                  </DuolingoButton>
+                                  </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <div className="space-y-1">
@@ -1643,8 +1625,8 @@ function ThreadTweetContent({
             </div>
           </div>
           <DialogFooter>
-            <DuolingoButton
-              variant="secondary"
+            <Button
+              variant="duolingo-secondary"
               className="px-4"
               onClick={() => {
                 setShowVideoUrlInput(false)
@@ -1653,8 +1635,9 @@ function ThreadTweetContent({
               disabled={isDownloadingVideo}
             >
               Cancel
-            </DuolingoButton>
-            <DuolingoButton
+            </Button>
+            <Button
+              variant="duolingo-primary"
               className="px-4"
               onClick={() => {
                 console.log('[ThreadTweet] 🎬 VIDEO_SUBMIT_BUTTON - Button clicked at:', new Date().toISOString())
@@ -1673,7 +1656,7 @@ function ThreadTweetContent({
               ) : (
                 'Download & Add'
               )}
-            </DuolingoButton>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1703,15 +1686,15 @@ function ThreadTweetContent({
               </label>
             </div>
             <div className="flex gap-3 justify-end">
-              <DuolingoButton
-                variant="secondary"
+              <Button
+                variant="duolingo-secondary"
                 onClick={() => setShowPostConfirmModal(false)}
               >
                 Cancel
-              </DuolingoButton>
-              <DuolingoButton onClick={handleConfirmPost}>
+              </Button>
+              <Button variant="duolingo-primary" onClick={handleConfirmPost}>
                 Post
-              </DuolingoButton>
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>

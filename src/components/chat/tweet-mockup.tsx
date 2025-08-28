@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Icons } from '../icons'
 import { AccountAvatar, AccountHandle, AccountName } from '@/hooks/account-ctx'
 import { ChevronsLeft, RotateCcw, ExternalLink } from 'lucide-react'
-import DuolingoButton from '../ui/duolingo-button'
+import { Button } from '../ui/button'
 import { useTweets } from '@/hooks/use-tweets'
 import { usePathname, useRouter } from 'next/navigation'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
@@ -106,14 +106,14 @@ export const TweetMockup = memo(
               {twitterUrl ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DuolingoButton
+                    <Button
                       onClick={() => window.open(twitterUrl, '_blank')}
-                      variant="secondary"
-                      size="sm"
+                      variant="duolingo-secondary"
+                      size="duolingo-sm"
                       className="text-sm w-fit h-8 px-2"
                     >
                       <ExternalLink className="size-4 mr-1" /> View Tweet
-                    </DuolingoButton>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>View posted tweet on Twitter/X</p>
@@ -122,14 +122,14 @@ export const TweetMockup = memo(
               ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <DuolingoButton
+                    <Button
                       onClick={apply}
-                      variant="secondary"
-                      size="sm"
+                      variant="duolingo-secondary"
+                      size="duolingo-sm"
                       className="text-sm w-fit h-8 px-2"
                     >
                       <ChevronsLeft className="size-4 mr-1" /> Apply
-                    </DuolingoButton>
+                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="space-y-1">

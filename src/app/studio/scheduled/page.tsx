@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
 
@@ -185,34 +185,34 @@ function VideoProcessingStatus() {
               </DuolingoBadge>
             </div>
             <div className="flex items-center gap-2">
-              <DuolingoButton
+              <Button
                 variant="ghost"
-                size="sm"
+                size="duolingo-sm"
                 onClick={() => refreshMutation.mutate()}
                 disabled={refreshMutation.isPending}
                 className="text-xs"
               >
                 <RefreshCw className={`w-3 h-3 mr-1 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
                 {refreshMutation.isPending ? 'Refreshing...' : 'Refresh'}
-              </DuolingoButton>
-              <DuolingoButton
-                variant="secondary"
-                size="sm"
+              </Button>
+              <Button
+                variant="duolingo-secondary"
+                size="duolingo-sm"
                 onClick={() => cleanupMutation.mutate()}
                 disabled={cleanupMutation.isPending || deleteAllMutation.isPending || refreshMutation.isPending}
                 className="text-xs"
               >
                 {cleanupMutation.isPending ? 'Cleaning...' : 'Mark Failed'}
-              </DuolingoButton>
-              <DuolingoButton
-                variant="destructive"
-                size="sm"
+              </Button>
+              <Button
+                variant="duolingo-destructive"
+                size="duolingo-sm"
                 onClick={() => deleteAllMutation.mutate()}
                 disabled={cleanupMutation.isPending || deleteAllMutation.isPending || refreshMutation.isPending}
                 className="text-xs"
               >
                 {deleteAllMutation.isPending ? 'Deleting...' : 'Delete All'}
-              </DuolingoButton>
+              </Button>
             </div>
           </CardTitle>
         </CardHeader>
@@ -370,9 +370,9 @@ export default function ScheduledTweetsPage() {
         {/* Clear Queue Button with Confirmation Dialog */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <DuolingoButton
-              variant="secondary"
-              size="sm"
+            <Button
+              variant="duolingo-secondary"
+              size="duolingo-sm"
               className="ml-auto"
               onClick={() => {
                 console.log('[ScheduledTweetsPage] Clear Queue button clicked at', new Date().toISOString())
@@ -381,7 +381,7 @@ export default function ScheduledTweetsPage() {
             >
               <Trash2 className="size-4 mr-2" />
               Clear Queue
-            </DuolingoButton>
+            </Button>
           </DialogTrigger>
           
           <DialogContent className="max-h-[80vh] overflow-y-auto">
@@ -404,19 +404,19 @@ export default function ScheduledTweetsPage() {
             
             <DialogFooter className="gap-2">
               <DialogClose asChild>
-                <DuolingoButton
-                  variant="secondary"
+                <Button
+                  variant="duolingo-secondary"
                   onClick={() => {
                     console.log('[ScheduledTweetsPage] Cancel button clicked at', new Date().toISOString())
                     setIsDialogOpen(false)
                   }}
                 >
                   Cancel
-                </DuolingoButton>
+                </Button>
               </DialogClose>
               
-              <DuolingoButton
-                variant="destructive"
+              <Button
+                variant="duolingo-destructive"
                 onClick={handleClearQueue}
                 disabled={isClearingQueue}
                 className="bg-error-500 hover:bg-error-600 text-white"
@@ -432,7 +432,7 @@ export default function ScheduledTweetsPage() {
                     Clear Queue
                   </>
                 )}
-              </DuolingoButton>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

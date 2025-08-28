@@ -20,7 +20,7 @@ import {
   ChevronRight,
   AlertCircle,
 } from 'lucide-react'
-import DuolingoButton from './ui/duolingo-button'
+import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs'
 import { Loader } from './ui/loader'
@@ -159,8 +159,8 @@ export default function MediaLibrary({
               className="pl-10 rounded-full h-11"
             />
           </div>
-          <DuolingoButton
-            size="icon"
+          <Button
+            size="duolingo-icon"
             variant={showStarredOnly ? 'primary' : 'secondary'}
             onClick={() => {
               setShowStarredOnly(!showStarredOnly)
@@ -168,7 +168,7 @@ export default function MediaLibrary({
             }}
           >
             <Star className={cn('size-4', showStarredOnly && 'fill-current')} />
-          </DuolingoButton>
+          </Button>
         </div>
 
         {/* Filters */}
@@ -276,22 +276,22 @@ export default function MediaLibrary({
             Showing {offset + 1}-{Math.min(offset + ITEMS_PER_PAGE, data.total)} of {data.total}
           </p>
           <div className="flex gap-2">
-            <DuolingoButton
-              size="sm"
-              variant="secondary"
+            <Button
+              size="duolingo-sm"
+              variant="duolingo-secondary"
               disabled={page === 0}
               onClick={() => setPage(p => Math.max(0, p - 1))}
             >
               <ChevronLeft className="size-4" />
-            </DuolingoButton>
-            <DuolingoButton
-              size="sm"
-              variant="secondary"
+            </Button>
+            <Button
+              size="duolingo-sm"
+              variant="duolingo-secondary"
               disabled={page >= totalPages - 1}
               onClick={() => setPage(p => p + 1)}
             >
               <ChevronRight className="size-4" />
-            </DuolingoButton>
+            </Button>
           </div>
         </div>
       )}
@@ -301,12 +301,12 @@ export default function MediaLibrary({
         <p className="text-sm text-neutral-600">
           Click any item to add it to your post
         </p>
-        <DuolingoButton
-          variant="secondary"
+        <Button
+          variant="duolingo-secondary"
           onClick={onClose}
         >
           Close
-        </DuolingoButton>
+        </Button>
       </div>
 
       {/* Delete confirmation dialog */}
@@ -319,14 +319,14 @@ export default function MediaLibrary({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DuolingoButton
-              variant="secondary"
+            <Button
+              variant="duolingo-secondary"
               onClick={() => setDeleteId(null)}
             >
               Cancel
-            </DuolingoButton>
-            <DuolingoButton
-              variant="destructive"
+            </Button>
+            <Button
+              variant="duolingo-destructive"
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
               disabled={deleteMutation.isPending}
             >
@@ -335,7 +335,7 @@ export default function MediaLibrary({
               ) : (
                 'Delete'
               )}
-            </DuolingoButton>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

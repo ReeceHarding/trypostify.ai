@@ -34,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu'
 import DuolingoBadge from './ui/duolingo-badge'
-import DuolingoButton from './ui/duolingo-button'
+import { Button } from './ui/button'
 import DuolingoCheckbox from './ui/duolingo-checkbox'
 import { Loader } from './ui/loader'
 import { Separator } from './ui/separator'
@@ -368,8 +368,8 @@ export default function TweetQueue() {
                             )}
                           </div>
                         ) : (
-                          <DuolingoButton
-                            variant="secondary"
+                          <Button
+                            variant="duolingo-secondary"
                             className="flex items-center gap-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 w-full justify-start p-2 h-auto min-h-[2rem]"
                             onClick={() => {
                               console.log('[TweetQueue] Empty slot clicked:', { unix, time: new Date(unix).toISOString() })
@@ -379,7 +379,7 @@ export default function TweetQueue() {
                             }}
                           >
                             <span className="text-sm">Empty slot - Click to schedule</span>
-                          </DuolingoButton>
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -415,9 +415,9 @@ export default function TweetQueue() {
                           >
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <DuolingoButton
-                                  variant="secondary"
-                                  size="icon"
+                                <Button
+                                  variant="duolingo-secondary"
+                                  size="duolingo-icon"
                                   className="h-8 w-8"
                                   onClick={(e) => {
                                     e.stopPropagation() // Prevent card click when clicking menu
@@ -425,7 +425,7 @@ export default function TweetQueue() {
                                 >
                                   <MoreHorizontal className="size-4" />
                                   <span className="sr-only">Tweet options</span>
-                                </DuolingoButton>
+                                </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
@@ -477,7 +477,7 @@ export default function TweetQueue() {
                                 <Separator />
 
                                 <DropdownMenuItem
-                                  variant="destructive"
+                                  variant="duolingo-destructive"
                                   className="mt-1 w-full"
                                   onClick={() => {
                                     if (tweet!.tweets && tweet!.tweets.length > 1) {
@@ -530,20 +530,20 @@ export default function TweetQueue() {
 
                               <DialogFooter>
                                 <DialogClose asChild>
-                                  <DuolingoButton
-                                    variant="secondary"
-                                    size="sm"
+                                  <Button
+                                    variant="duolingo-secondary"
+                                    size="duolingo-sm"
                                     className="h-11"
                                     onClick={() => {
                                       setDidTogglePostConfirmation(false)
                                     }}
                                   >
                                     Cancel
-                                  </DuolingoButton>
+                                  </Button>
                                 </DialogClose>
-                                <DuolingoButton
+                                <Button
                                   loading={isPosting || isPostingThread}
-                                  size="sm"
+                                  size="duolingo-sm"
                                   className="h-11"
                                   onClick={(e) => {
                                     e.preventDefault()
@@ -562,7 +562,7 @@ export default function TweetQueue() {
                                 >
                                   <Icons.twitter className="size-4 mr-2" />
                                   {isPosting || isPostingThread ? 'Posting...' : 'Post'}
-                                </DuolingoButton>
+                                </Button>
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
@@ -580,13 +580,13 @@ export default function TweetQueue() {
           {isFetching && !isPending && <Loader />}
           
           {!isPending && !isFetching && daysLoaded < 365 && (
-            <DuolingoButton
-              variant="secondary"
+            <Button
+              variant="duolingo-secondary"
               onClick={loadMoreDays}
               className="w-full max-w-xs"
             >
               Load More Days
-            </DuolingoButton>
+            </Button>
           )}
           
           {daysLoaded >= 365 && (

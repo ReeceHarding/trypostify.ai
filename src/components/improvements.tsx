@@ -5,7 +5,7 @@ import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 import { Check, ChevronLeft, ChevronRight, Trash, X, PenTool, Lightbulb } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import DuolingoButton from './ui/duolingo-button'
+import { Button } from './ui/button'
 
 const CATEGORY_LABELS: Record<string, string> = {
   'write-initial-content': 'Initial Content',
@@ -64,17 +64,17 @@ export function SuggestionCard({
           />
         </div>
         <div className="flex gap-2 ml-auto">
-          <DuolingoButton className="h-8" onClick={onAccept} size="sm">
+          <Button variant="duolingo-primary" className="h-8" onClick={onAccept} size="duolingo-sm">
             <Check className="w-4 h-4 mr-1" /> Apply
-          </DuolingoButton>
-          <DuolingoButton
+          </Button>
+          <Button
             className="h-8"
-            variant="destructive"
+            variant="duolingo-destructive"
             onClick={onReject}
-            size="sm"
+            size="duolingo-sm"
           >
             <X className="w-4 h-4" /> Reject
-          </DuolingoButton>
+          </Button>
         </div>
       </div>
 
@@ -240,25 +240,25 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
           {drafts.length > 1 && (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
-                <DuolingoButton
-                  size="icon"
-                  variant="secondary"
+                <Button
+                  size="duolingo-icon"
+                  variant="duolingo-secondary"
                   onClick={() => cycleDraft('prev')}
                   className="h-7 w-7"
                 >
                   <ChevronLeft className="size-3" />
-                </DuolingoButton>
+                </Button>
                 <span className="text-xs text-neutral-500 px-2">
                   {selectedDraftIndex + 1}/{drafts.length}
                 </span>
-                <DuolingoButton
-                  size="icon"
-                  variant="secondary"
+                <Button
+                  size="duolingo-icon"
+                  variant="duolingo-secondary"
                   onClick={() => cycleDraft('next')}
                   className="h-7 w-7"
                 >
                   <ChevronRight className="size-3" />
-                </DuolingoButton>
+                </Button>
               </div>
             </div>
           )}
@@ -269,21 +269,22 @@ function DraftsSelector({ drafts }: { drafts: Draft[] }) {
         <div className="w-full flex items-center justify-between">
           <div className="w-full flex flex-col gap-1.5">
             <div className="w-full flex gap-1.5">
-              <DuolingoButton
+              <Button
+                variant="duolingo-primary"
                 className="flex items-center gap-1.5 text-xs"
                 onClick={handleApplyCurrentDraft}
               >
                 <Check className="size-4" />
                 Apply
-              </DuolingoButton>
-              <DuolingoButton
-                variant="destructive"
+              </Button>
+              <Button
+                variant="duolingo-destructive"
                 className="flex items-center gap-1.5 text-xs"
                 onClick={handleRejectAllDrafts}
               >
                 <Trash className="size-4" />
                 Reject all
-              </DuolingoButton>
+              </Button>
             </div>
           </div>
         </div>

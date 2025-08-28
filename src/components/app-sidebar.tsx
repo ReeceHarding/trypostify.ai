@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, Globe, History, Paperclip, Plus, RotateCcw, Square, Upload, X } from 'lucide-react'
+import { ArrowUp, Globe, History, Paperclip, Plus, Square, Upload, X } from 'lucide-react'
 import { useCallback, useContext, useEffect, useMemo, useState, useRef } from 'react'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -24,7 +24,7 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { motion } from 'framer-motion'
 import {
@@ -38,7 +38,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { AttachmentItem } from './attachment-item'
 import { Messages } from './chat/messages'
 import { KnowledgeSelector, SelectedKnowledgeDocument } from './knowledge-selector'
-import DuolingoButton from './ui/duolingo-button'
+import { Button } from './ui/button'
 import { FileUpload, FileUploadContext, FileUploadTrigger } from './ui/file-upload'
 import { PromptSuggestion } from './ui/prompt-suggestion'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
@@ -424,9 +424,9 @@ const ChatInput = ({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <FileUploadTrigger asChild>
-                          <DuolingoButton type="button" variant="secondary" size="icon">
+                          <Button type="button" variant="duolingo-secondary" size="duolingo-icon">
                             <Paperclip className="text-neutral-600 size-5" />
-                          </DuolingoButton>
+                          </Button>
                         </FileUploadTrigger>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -445,14 +445,14 @@ const ChatInput = ({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
+                        <Button
                           onClick={onStop}
-                          variant="icon"
-                          size="icon"
+                          variant="duolingo-primary"
+                          size="duolingo-icon"
                           aria-label="Stop message"
                         >
                           <Square className="size-3 fill-white" />
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Stop generating</p>
@@ -463,15 +463,15 @@ const ChatInput = ({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
+                        <Button
                           disabled={hasUploading}
                           onClick={handleSubmit}
-                          variant="icon"
-                          size="icon"
+                          variant="duolingo-primary"
+                          size="duolingo-icon"
                           aria-label="Send message"
                         >
                           <ArrowUp className="size-5" />
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -752,15 +752,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
+                        <Button
                           onClick={handleNewChat}
-                          size="sm"
-                          variant="secondary"
+                          size="duolingo-sm"
+                          variant="duolingo-secondary"
                           className="inline-flex items-center gap-1.5 whitespace-nowrap"
                         >
                           <Plus className="size-4" />
                           <p className="text-sm">New Chat</p>
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -777,14 +777,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
+                        <Button
                           onClick={() => setIsHistoryOpen(true)}
-                          size="icon"
-                          variant="secondary"
+                          size="duolingo-icon"
+                          variant="duolingo-secondary"
                           className="aspect-square"
                         >
                           <History className="size-4" />
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -796,14 +796,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <DuolingoButton
+                        <Button
                           onClick={toggleSidebar}
-                          variant="secondary"
+                          variant="duolingo-secondary"
                           className="aspect-square"
-                          size="icon"
+                          size="duolingo-icon"
                         >
                           <X className="size-4" />
-                        </DuolingoButton>
+                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <div className="space-y-1">
@@ -821,15 +821,15 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <DuolingoButton
+                      <Button
                         onClick={handleNewChat}
-                        size="sm"
-                        variant="secondary"
+                        size="duolingo-sm"
+                        variant="duolingo-secondary"
                         className="inline-flex items-center gap-1.5 whitespace-nowrap"
                       >
                         <Plus className="size-4" />
                         <p className="text-sm">New Chat</p>
-                      </DuolingoButton>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <div className="space-y-1">
@@ -841,14 +841,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <DuolingoButton
+                      <Button
                         onClick={() => setIsHistoryOpen(true)}
-                        size="icon"
-                        variant="secondary"
+                        size="duolingo-icon"
+                        variant="duolingo-secondary"
                         className="aspect-square"
                       >
                         <History className="size-4" />
-                      </DuolingoButton>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <div className="space-y-1">
@@ -860,14 +860,14 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
 
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <DuolingoButton
+                      <Button
                         onClick={toggleSidebar}
-                        variant="secondary"
+                        variant="duolingo-secondary"
                         className="aspect-square"
-                        size="icon"
+                        size="duolingo-icon"
                       >
                         <X className="size-4" />
-                      </DuolingoButton>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <div className="space-y-1">

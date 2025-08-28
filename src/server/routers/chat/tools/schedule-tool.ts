@@ -186,7 +186,7 @@ export const createScheduleTool = (
           // Try multiple patterns to find tweet content
           
           // Pattern 1: Look for tool output with text field
-          let tweetMatch = conversationContext.match(/data-tool-output[^}]*?"text"\s*:\s*"([^"]+)"/i)
+          const tweetMatch = conversationContext.match(/data-tool-output[^}]*?"text"\s*:\s*"([^"]+)"/i)
           
           // Pattern 2: If not found, look for text in conversation that looks like a tweet
           if (!tweetMatch || !tweetMatch[1]) {

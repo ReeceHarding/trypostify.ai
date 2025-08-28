@@ -1,13 +1,13 @@
 import { getBaseUrl } from '@/constants/base-url'
 import { db } from '@/db'
-import { account as accountSchema, tweets, mediaLibrary, user as userSchema } from '@/db/schema'
+import { account as accountSchema, tweets, mediaLibrary, user as userSchema, twitterUser } from '@/db/schema'
 import { qstash } from '@/lib/qstash'
 import { redis } from '@/lib/redis'
 import { BUCKET_NAME, s3Client } from '@/lib/s3'
 import { HeadObjectCommand } from '@aws-sdk/client-s3'
 import { Receiver } from '@upstash/qstash'
 import { Ratelimit } from '@upstash/ratelimit'
-import { and, desc, eq, asc, inArray, lte } from 'drizzle-orm'
+import { and, desc, eq, asc, inArray, lte, or, sql } from 'drizzle-orm'
 import crypto from 'crypto'
 import { HTTPException } from 'hono/http-exception'
 
@@ -64,6 +64,105 @@ async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
       file: null,
     }
   })
+}
+
+// Utility function to group tweets into threads (DRY principle)
+// This consolidates the duplicate logic from getScheduledAndPublished, getPosted, and get_queue
+function groupTweetsIntoThreads<T extends { 
+  id: string; 
+  threadId?: string | null; 
+  position?: number | null;
+  scheduledFor?: Date | null;
+  scheduledUnix?: number | null;
+  updatedAt?: Date | null;
+}>(tweets: T[]): Array<{
+  threadId: string | null;
+  tweets: T[];
+  scheduledFor?: Date | null;
+  scheduledUnix?: number | null;
+  updatedAt?: Date | null;
+}> {
+  // Group all tweets by threadId (or treat as single-item threads)
+  const threadGroups: Record<string, T[]> = {}
+  
+  for (const tweet of tweets) {
+    const groupKey = tweet.threadId || tweet.id
+    if (!threadGroups[groupKey]) {
+      threadGroups[groupKey] = []
+    }
+    threadGroups[groupKey].push(tweet)
+  }
+
+  // Convert to unified thread structure
+  const allItems = Object.entries(threadGroups)
+    .map(([key, tweets]) => {
+      const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
+      const firstTweet = sortedTweets[0]!
+      
+      return {
+        threadId: firstTweet.threadId,
+        tweets: sortedTweets,
+        scheduledFor: firstTweet.scheduledFor,
+        scheduledUnix: firstTweet.scheduledUnix,
+        updatedAt: firstTweet.updatedAt,
+      }
+    })
+    .sort((a, b) => {
+      // Sort by scheduled time if available, otherwise by updated time
+      if (a.scheduledUnix !== undefined && b.scheduledUnix !== undefined) {
+        return b.scheduledUnix - a.scheduledUnix // Newest first
+      }
+      if (a.updatedAt && b.updatedAt) {
+        const timeA = new Date(a.updatedAt).getTime()
+        const timeB = new Date(b.updatedAt).getTime()
+        return timeB - timeA // Newest first
+      }
+      return 0
+    })
+
+  return allItems
+}
+
+// Helper function to create thread tweets in database (DRY principle)
+// This consolidates the duplicate logic from createThread, updateThread, and postThreadNow
+async function _createThreadTweetsInDb(
+  tweetsData: Array<{
+    content: string;
+    media?: Array<{ media_id: string; s3Key: string }>;
+    delayMs?: number;
+    position?: number; // Optional custom position
+  }>,
+  userId: string,
+  accountId: string,
+  threadId: string
+) {
+  const createdTweets = await Promise.all(
+    tweetsData.map(async (tweet, index) => {
+      const tweetId = crypto.randomUUID()
+      const position = tweet.position ?? index // Use custom position if provided, otherwise use index
+
+      const [created] = await db
+        .insert(tweets)
+        .values({
+          id: tweetId,
+          accountId,
+          userId,
+          content: tweet.content,
+          media: tweet.media || [],
+          threadId,
+          position,
+          isThreadStart: position === 0,
+          delayMs: tweet.delayMs || 0,
+          isScheduled: false,
+          isPublished: false,
+        })
+        .returning()
+
+      return created
+    }),
+  )
+
+  return createdTweets
 }
 
 
@@ -205,7 +304,7 @@ export const tweetRouter = j.router({
       const mediaBuffer = Buffer.from(buffer)
       
       // Get video metadata from S3 URL if available
-      let videoMetadata = null
+      const videoMetadata = null
       if (mediaType === 'video' && s3Key.includes('tweet-media/')) {
         // This is likely from our video downloader, log more details
         console.log(`[TwitterUpload] Uploading downloaded video to Twitter:`, {
@@ -561,7 +660,7 @@ export const tweetRouter = j.router({
   postImmediate: privateProcedure
     .input(
       z.object({
-        content: z.string().min(1).max(4000),
+        content: z.string().max(4000),
         media: z.array(
           z.object({
             media_id: z.string(),
@@ -570,7 +669,13 @@ export const tweetRouter = j.router({
         ),
         // mediaIds: z.array(z.string()).default([]),
         // s3Keys: z.array(z.string()).default([]),
-      }),
+      }).refine(
+        (input) => input.content.trim().length > 0 || input.media.length > 0,
+        {
+          message: "Post must have either content or media",
+          path: ["content"]
+        }
+      ),
     )
     .post(async ({ c, ctx, input }) => {
       const { user } = ctx
@@ -682,36 +787,8 @@ export const tweetRouter = j.router({
       }),
     )
 
-    // Group all tweets by threadId (or treat as single-item threads)
-    const threadGroups: Record<string, typeof tweetsWithMedia> = {}
-    
-    for (const tweet of tweetsWithMedia) {
-      const groupKey = tweet.threadId || tweet.id
-      if (!threadGroups[groupKey]) {
-        threadGroups[groupKey] = []
-      }
-      threadGroups[groupKey].push(tweet)
-    }
-
-    // Convert to unified thread structure
-    const allItems = Object.entries(threadGroups)
-      .map(([key, tweets]) => {
-        const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
-        const firstTweet = sortedTweets[0]!
-        
-        return {
-          threadId: firstTweet.threadId,
-          tweets: sortedTweets,
-          scheduledFor: firstTweet.scheduledFor,
-          scheduledUnix: firstTweet.scheduledUnix,
-        }
-      })
-      .sort((a, b) => {
-        // Sort by scheduled time, newest first
-        const timeA = a.scheduledUnix || 0
-        const timeB = b.scheduledUnix || 0
-        return timeB - timeA
-      })
+    // Use the utility function to group tweets into threads
+    const allItems = groupTweetsIntoThreads(tweetsWithMedia)
 
     console.log('[getScheduledAndPublished] Returning items:', {
       totalItems: allItems.length,
@@ -751,35 +828,8 @@ export const tweetRouter = j.router({
       }),
     )
 
-    // Group all tweets by threadId (or treat as single-item threads)
-    const threadGroups: Record<string, typeof tweetsWithMedia> = {}
-    
-    for (const tweet of tweetsWithMedia) {
-      const groupKey = tweet.threadId || tweet.id
-      if (!threadGroups[groupKey]) {
-        threadGroups[groupKey] = []
-      }
-      threadGroups[groupKey].push(tweet)
-    }
-
-    // Convert to unified thread structure
-    const allItems = Object.entries(threadGroups)
-      .map(([key, tweets]) => {
-        const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
-        const firstTweet = sortedTweets[0]!
-        
-        return {
-          threadId: firstTweet.threadId,
-          tweets: sortedTweets,
-          updatedAt: firstTweet.updatedAt,
-        }
-      })
-      .sort((a, b) => {
-        // Sort by updated time, newest first
-        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
-        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
-        return timeB - timeA
-      })
+    // Use the utility function to group tweets into threads
+    const allItems = groupTweetsIntoThreads(tweetsWithMedia)
 
     return c.superjson({ items: allItems, tweets: tweetsWithMedia, accountId: account.id })
   }),
@@ -1114,15 +1164,58 @@ export const tweetRouter = j.router({
         return c.json({ data: [] })
       }
 
-      // TODO: Re-enable local database search once twitter_user table is created
-      // For now, fall back to Twitter API only search
-      console.log(`[getHandles] Skipping local database search - twitter_user table not yet created`)
-      const localUsers = []
+      // Search local database first
+      const localUsers = await db
+        .select({
+          id: twitterUser.id,
+          username: twitterUser.username,
+          name: twitterUser.name,
+          profileImageUrl: twitterUser.profileImageUrl,
+          verified: twitterUser.verified,
+          followersCount: twitterUser.followersCount,
+          description: twitterUser.description,
+        })
+        .from(twitterUser)
+        .where(
+          or(
+            sql`lower(${twitterUser.username}) LIKE ${`%${cleanQuery}%`}`,
+            sql`lower(${twitterUser.name}) LIKE ${`%${cleanQuery}%`}`
+          )
+        )
+        .orderBy(desc(twitterUser.searchCount), desc(twitterUser.followersCount))
+        .limit(limit)
 
       console.log(`[getHandles] Found ${localUsers.length} users in local database`)
 
-      // Skip local database logic since table doesn't exist yet
-      // if (localUsers.length >= limit) { ... }
+      // If we have enough results from local database, return them
+      if (localUsers.length >= limit) {
+        // Update search count and last searched timestamp for these users
+        await Promise.all(
+          localUsers.map(user =>
+            db
+              .update(twitterUser)
+              .set({
+                searchCount: sql`${twitterUser.searchCount} + 1`,
+                lastSearchedAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(twitterUser.id, user.id))
+          )
+        )
+
+        const formattedUsers = localUsers.map(user => ({
+          id: user.username,
+          display: `${user.name} (@${user.username})`,
+          username: user.username,
+          name: user.name,
+          profile_image_url: user.profileImageUrl,
+          verified: user.verified,
+          followers_count: user.followersCount,
+          description: user.description,
+        }))
+
+        return c.json({ data: formattedUsers })
+      }
 
       // If we need more results, search Twitter API
       const account = await getAccount({
@@ -1227,8 +1320,47 @@ export const tweetRouter = j.router({
 
         console.log(`[getHandles] Found ${twitterUsers.length} users from Twitter API`)
         
-        // TODO: Re-enable database storage once twitter_user table is created
-        console.log(`[getHandles] Skipping database storage - twitter_user table not yet created`)
+        // Store Twitter API results in database for future searches
+        if (twitterUsers.length > 0) {
+          const now = new Date()
+          const usersToInsert = twitterUsers.map(user => ({
+            id: user.id,
+            username: user.username,
+            name: user.name,
+            profileImageUrl: user.profile_image_url || null,
+            verified: user.verified || false,
+            followersCount: user.public_metrics?.followers_count || 0,
+            description: user.description || null,
+            createdAt: now,
+            updatedAt: now,
+            lastSearchedAt: now,
+            searchCount: 1,
+          }))
+
+          // Use upsert (insert or update) to handle existing users
+          await Promise.all(
+            usersToInsert.map(async (user) => {
+              await db
+                .insert(twitterUser)
+                .values(user)
+                .onConflictDoUpdate({
+                  target: twitterUser.username,
+                  set: {
+                    name: user.name,
+                    profileImageUrl: user.profileImageUrl,
+                    verified: user.verified,
+                    followersCount: user.followersCount,
+                    description: user.description,
+                    updatedAt: now,
+                    lastSearchedAt: now,
+                    searchCount: sql`${twitterUser.searchCount} + 1`,
+                  },
+                })
+            })
+          )
+          
+          console.log(`[getHandles] Stored ${usersToInsert.length} users in database`)
+        }
 
         // Format Twitter users for consistent response (prioritizing followers first)
         const formattedUsers = twitterUsers.slice(0, limit).map((user, index) => ({
@@ -1269,7 +1401,7 @@ export const tweetRouter = j.router({
       z.object({
         tweets: z.array(
           z.object({
-            content: z.string().min(1).max(280),
+            content: z.string().max(280),
             media: z.array(
               z.object({
                 media_id: z.string(),
@@ -1277,7 +1409,13 @@ export const tweetRouter = j.router({
               }),
             ).optional(),
             delayMs: z.number().default(0),
-          }),
+          }).refine(
+            (tweet) => tweet.content.trim().length > 0 || (tweet.media && tweet.media.length > 0),
+            {
+              message: "Tweet must have either content or media",
+              path: ["content"]
+            }
+          ),
         ),
       }),
     )
@@ -1308,33 +1446,12 @@ export const tweetRouter = j.router({
       const threadId = crypto.randomUUID()
       console.log('[tweetRouter.createThread] generated threadId', threadId)
 
-
-      // Create all thread tweets in the database
-      const createdTweets = await Promise.all(
-        threadTweets.map(async (tweet, index) => {
-          const tweetId = crypto.randomUUID()
-
-
-          const [created] = await db
-            .insert(tweets)
-            .values({
-              id: tweetId,
-              accountId: account.id,
-              userId: user.id,
-              content: tweet.content,
-              media: tweet.media || [],
-              threadId,
-              position: index,
-              isThreadStart: index === 0,
-              delayMs: tweet.delayMs || 0,
-              isScheduled: false,
-              isPublished: false,
-            })
-            .returning()
-
-
-          return created
-        }),
+      // Create all thread tweets in the database using the helper function
+      const createdTweets = await _createThreadTweetsInDb(
+        threadTweets,
+        user.id,
+        account.id,
+        threadId
       )
 
 
@@ -1358,7 +1475,7 @@ export const tweetRouter = j.router({
         tweets: z.array(
           z.object({
             id: z.string().optional(),
-            content: z.string().min(1).max(280),
+            content: z.string().max(280),
             media: z.array(
               z.object({
                 media_id: z.string(),
@@ -1366,7 +1483,13 @@ export const tweetRouter = j.router({
               }),
             ).optional(),
             delayMs: z.number().default(0),
-          }),
+          }).refine(
+            (tweet) => tweet.content.trim().length > 0 || (tweet.media && tweet.media.length > 0),
+            {
+              message: "Tweet must have either content or media",
+              path: ["content"]
+            }
+          ),
         ),
       }),
     )
@@ -1416,30 +1539,25 @@ export const tweetRouter = j.router({
             return updated
           } else {
             // Create new tweet
-            const tweetId = crypto.randomUUID()
-
             // Get account ID from existing tweets
             if (!existingTweets[0]) {
               throw new HTTPException(400, { message: 'Cannot add tweets to empty thread' })
             }
             const accountId = existingTweets[0].accountId
             
-            const [created] = await db
-              .insert(tweets)
-              .values({
-                id: tweetId,
-                accountId,
-                userId: user.id,
+            // Use the helper function to create a single tweet 
+            // (we wrap it in an array and extract the first result)
+            const [created] = await _createThreadTweetsInDb(
+              [{
                 content: tweet.content,
-                media: tweet.media || [],
-                threadId,
-                position: index,
-                isThreadStart: index === 0,
-                delayMs: tweet.delayMs || 0,
-                isScheduled: false,
-                isPublished: false,
-              })
-              .returning()
+                media: tweet.media,
+                delayMs: tweet.delayMs,
+                position: index, // Pass the specific position
+              }],
+              user.id,
+              accountId,
+              threadId
+            )
             return created
           }
         }),
@@ -1458,7 +1576,7 @@ export const tweetRouter = j.router({
       z.object({
         tweets: z.array(
           z.object({
-            content: z.string().min(1).max(280),
+            content: z.string().max(280),
             media: z.array(
               z.object({
                 media_id: z.string(),
@@ -1466,7 +1584,13 @@ export const tweetRouter = j.router({
               }),
             ).optional(),
             delayMs: z.number().default(0),
-          }),
+          }).refine(
+            (tweet) => tweet.content.trim().length > 0 || (tweet.media && tweet.media.length > 0),
+            {
+              message: "Tweet must have either content or media",
+              path: ["content"]
+            }
+          ),
         ),
       }),
     )
@@ -1499,30 +1623,12 @@ export const tweetRouter = j.router({
 
       const threadId = crypto.randomUUID()
 
-      // Create all thread tweets in the database
-      const createdTweets = await Promise.all(
-        threadTweets.map(async (tweet, index) => {
-          const tweetId = crypto.randomUUID()
-
-          const [created] = await db
-            .insert(tweets)
-            .values({
-              id: tweetId,
-              accountId: account.id,
-              userId: user.id,
-              content: tweet.content,
-              media: tweet.media || [],
-              threadId,
-              position: index,
-              isThreadStart: index === 0,
-              delayMs: tweet.delayMs || 0,
-              isScheduled: false,
-              isPublished: false,
-            })
-            .returning()
-
-          return created
-        }),
+      // Create all thread tweets in the database using the helper function
+      const createdTweets = await _createThreadTweetsInDb(
+        threadTweets,
+        user.id,
+        account.id,
+        threadId
       )
 
       // Get account with tokens

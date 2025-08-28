@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import DuolingoInput from '@/components/ui/duolingo-input'
 import DuolingoTextarea from '@/components/ui/duolingo-textarea'
 import { Separator } from '@/components/ui/separator'
@@ -425,11 +425,11 @@ export default function AccountsPage() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <DuolingoButton size="sm" className="w-auto relative z-20">
+              <Button variant="duolingo-primary" size="duolingo-sm" className="w-auto relative z-20">
                 <Plus className="size-4 mr-2" />
                 <span className="whitespace-nowrap">Add Account</span>
                 <ChevronDown className="size-4 ml-2" />
-              </DuolingoButton>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="p-3 border-2 shadow-xl">
               <div className="space-y-2">
@@ -537,51 +537,51 @@ export default function AccountsPage() {
                     </div>
                     {acc.isActive ? (
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                        <DuolingoButton
+                        <Button
                           onClick={() => createOAuthLink('onboarding')}
-                          variant="secondary"
-                          size="sm"
+                          variant="duolingo-secondary"
+                          size="duolingo-sm"
                           className="w-fit"
                           loading={isCreatingOAuthLink}
                         >
                           <LinkIcon className="size-4 mr-1" />
                           Reconnect
-                        </DuolingoButton>
+                        </Button>
                       </div>
                     ) : (
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                        <DuolingoButton
+                        <Button
                           onClick={() => switchAccount({ accountId: acc.id })}
-                          variant="secondary"
-                          size="sm"
+                          variant="duolingo-secondary"
+                          size="duolingo-sm"
                           className="w-fit"
                           loading={
                             isSwitching && switchAccountVariables?.accountId === acc.id
                           }
                         >
                           Switch
-                        </DuolingoButton>
-                        <DuolingoButton
+                        </Button>
+                        <Button
                           onClick={() => createOAuthLink('onboarding')}
-                          variant="secondary"
-                          size="sm"
+                          variant="duolingo-secondary"
+                          size="duolingo-sm"
                           className="w-fit"
                           loading={isCreatingOAuthLink}
                         >
                           <LinkIcon className="size-4 mr-1" />
                           Reconnect
-                        </DuolingoButton>
-                        <DuolingoButton
+                        </Button>
+                        <Button
                           onClick={() => deleteAccount({ accountId: acc.id })}
-                          variant="destructive"
-                          size="icon"
+                          variant="duolingo-destructive"
+                          size="duolingo-icon"
                           loading={
                             isDeletingAccount &&
                             deleteAccountVariables?.accountId === acc.id
                           }
                         >
                           <Trash2 className="size-4" />
-                        </DuolingoButton>
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -593,14 +593,15 @@ export default function AccountsPage() {
             ) : (
           <div className="rounded-lg bg-white border border-dashed border-neutral-300 p-8 text-center space-y-4">
             <p className="text-neutral-600">No accounts connected yet</p>
-            <DuolingoButton
-              size="sm"
+            <Button
+              variant="duolingo-primary"
+              size="duolingo-sm"
               onClick={() => setShowConnectDialog(true)}
               className="w-fit"
             >
               <Plus className="size-4 mr-2" />
               Connect account
-            </DuolingoButton>
+            </Button>
           </div>
         )}
       </div>
@@ -693,15 +694,16 @@ export default function AccountsPage() {
                 onChange={(e) => setPrompt(e.target.value)}
               />
 
-              <DuolingoButton
+              <Button
                 onClick={() => savePrompt()}
-                size="sm"
+                variant="duolingo-primary"
+                size="duolingo-sm"
                 disabled={isSaving}
                 className="w-fit"
               >
                 <Save className="mr-2 size-4" />
                 Save Writing Style
-              </DuolingoButton>
+              </Button>
             </div>
 
             <Separator className="mx-4" />
@@ -726,15 +728,15 @@ export default function AccountsPage() {
                   type="text"
                   placeholder="https://x.com/username/status/1234567890123456789"
                 />
-                <DuolingoButton
+                <Button
                   onClick={() => importTweets({ link: tweetLink })}
                   disabled={isImporting || !tweetLink.trim()}
-                  variant="secondary"
-                  size="sm"
+                  variant="duolingo-secondary"
+                  size="duolingo-sm"
                   className="w-fit"
                 >
                   Import
-                </DuolingoButton>
+                </Button>
               </div>
 
               <div className="">
@@ -747,8 +749,8 @@ export default function AccountsPage() {
                     <div className="space-y-3">
                       {style.tweets.map((tweet, index) => (
                         <div className="relative" key={index}>
-                          <DuolingoButton
-                            variant="destructive"
+                          <Button
+                            variant="duolingo-destructive"
                             className="absolute top-3 right-3 w-fit p-1.5 text-white aspect-square z-10"
                             onClick={() => deleteTweet({ tweetId: tweet.id })}
                             disabled={isDeleting && deleteVariables?.tweetId === tweet.id}
@@ -758,7 +760,7 @@ export default function AccountsPage() {
                             ) : (
                               <X className="size-4" />
                             )}
-                          </DuolingoButton>
+                          </Button>
                           <TweetCard
                             username={tweet.author.username}
                             name={tweet.author.name}
@@ -807,20 +809,21 @@ export default function AccountsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row">
-            <DuolingoButton
-              variant="secondary"
-              size="sm"
+            <Button
+              variant="duolingo-secondary"
+              size="duolingo-sm"
               onClick={() => setShowConnectDialog(false)}
               className="w-full sm:w-auto"
             >
               Cancel
-            </DuolingoButton>
-            <DuolingoButton
+            </Button>
+            <Button
               onClick={() => {
                 createOAuthLink('add-account')
                 setShowConnectDialog(false)
               }}
-              size="sm"
+              variant="duolingo-primary"
+              size="duolingo-sm"
               disabled={isCreatingOAuthLink}
               className="w-full sm:w-auto"
             >
@@ -832,7 +835,7 @@ export default function AccountsPage() {
               ) : (
                 'Connect'
               )}
-            </DuolingoButton>
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -867,9 +870,9 @@ export default function AccountsPage() {
                     readOnly
                     className="flex-1 bg-transparent text-sm text-neutral-700 outline-none"
                   />
-                  <DuolingoButton
-                    variant="secondary"
-                    size="sm"
+                  <Button
+                    variant="duolingo-secondary"
+                    size="duolingo-sm"
                     className="w-fit p-2"
                     onClick={() => {
                       navigator.clipboard.writeText(inviteLink)
@@ -877,19 +880,20 @@ export default function AccountsPage() {
                     }}
                   >
                     <Copy className="size-4" />
-                  </DuolingoButton>
+                  </Button>
                 </div>
                 <p className="text-xs text-neutral-600">This link is valid for 24 hours.</p>
               </div>
 
               <DialogFooter>
-                <DuolingoButton
-                  size="sm"
+                <Button
+                  variant="duolingo-primary"
+                  size="duolingo-sm"
                   onClick={() => setShowInviteDialog(false)}
                   className="w-full"
                 >
                   Got it
-                </DuolingoButton>
+                </Button>
               </DialogFooter>
             </>
           )}

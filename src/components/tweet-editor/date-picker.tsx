@@ -7,7 +7,6 @@ import { Calendar } from '@/components/ui/calendar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DayFlag, DayPicker, SelectionState, UI } from 'react-day-picker'
 import { cn } from '@/lib/utils'
-import DuolingoButton from '../ui/duolingo-button'
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
 
@@ -174,7 +173,7 @@ export const Calendar20 = ({
                 {fallbackSlots.map((time) => (
                   <Button
                     key={time}
-                    variant={selectedTime === time ? 'default' : 'outline'}
+                    variant={selectedTime === time ? 'duolingo-primary' : 'duolingo-outline'}
                     onClick={() => setSelectedTime(time)}
                     className="h-10 text-sm shadow-none min-[481px]:h-8 min-[481px]:text-xs md:h-9 md:text-sm md:w-full touch-manipulation"
                   >
@@ -275,7 +274,7 @@ export const Calendar20 = ({
                 return (
                   <Button
                     key={time}
-                    variant={selectedTime === time ? 'default' : 'outline'}
+                    variant={selectedTime === time ? 'duolingo-primary' : 'duolingo-outline'}
                     disabled={isDisabled}
                     onClick={() => setSelectedTime(time)}
                     className={cn(
@@ -312,9 +311,10 @@ export const Calendar20 = ({
             <>Select a date and time for your meeting.</>
           )}
         </div>
-        <DuolingoButton
+        <Button
+          variant="duolingo-primary"
           loading={isPending}
-          size="sm"
+          size="duolingo-sm"
           disabled={!date || !selectedTime}
           className="w-full"
           onClick={(e) => {
@@ -329,7 +329,7 @@ export const Calendar20 = ({
           }}
         >
           {editMode ? 'Reschedule' : 'Schedule'}
-        </DuolingoButton>
+        </Button>
       </div>
     </div>
   )

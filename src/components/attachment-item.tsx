@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog'
-import DuolingoButton from './ui/duolingo-button'
+import { Button } from './ui/button'
 import { Attachment } from '@/server/routers/chat/chat-router'
 import { LocalAttachment, useAttachments } from '@/hooks/use-attachments'
 import { useQuery } from '@tanstack/react-query'
@@ -234,14 +234,14 @@ function ImageAttachment({ attachment, onRemove, className }: ImageReferenceProp
         )}
 
         {onRemove && !isUploading && (
-          <DuolingoButton
-            variant="destructive"
-            size="icon"
+          <Button
+            variant="duolingo-destructive"
+            size="duolingo-icon"
             className="absolute z-10 top-1.5 right-1.5 size-6 shrink-0"
             onClick={onRemove}
           >
             <X className="size-3" />
-          </DuolingoButton>
+          </Button>
         )}
       </div>
     </div>

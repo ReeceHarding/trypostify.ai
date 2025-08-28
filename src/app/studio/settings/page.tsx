@@ -3,7 +3,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
-import DuolingoButton from '@/components/ui/duolingo-button'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { UpgradeDrawer } from '@/components/upgrade-drawer'
@@ -234,12 +233,13 @@ const Page = () => {
               <p className="text-sm opacity-60">
                 You have unlimited access to all features!
               </p>
-              <DuolingoButton
+              <Button
+                variant="duolingo-primary"
                 onClick={() => createBillingPortalUrl()}
                 loading={isCreatingBillingPortalUrl}
               >
                 Manage plan
-              </DuolingoButton>
+              </Button>
             </div>
           </div>
         </div>
@@ -310,8 +310,9 @@ const Page = () => {
                 <div className="text-sm text-neutral-600">
                   Current window: {formatHour(postingWindowStart)} - {formatHour(postingWindowEnd)}
                 </div>
-                <DuolingoButton
-                  size="sm"
+                <Button
+                  variant="duolingo-primary"
+                  size="duolingo-sm"
                   onClick={handlePostingWindowUpdate}
                   disabled={isUpdatingPostingWindow || postingWindowStart >= postingWindowEnd}
                 >
@@ -323,7 +324,7 @@ const Page = () => {
                   ) : (
                     'Save Window'
                   )}
-                </DuolingoButton>
+                </Button>
               </div>
             </div>
           </div>
@@ -339,9 +340,9 @@ const Page = () => {
                 Permanently delete your account, connected social accounts, queued content, knowledge, and media. This action cannot be undone.
               </p>
             </div>
-            <DuolingoButton
-              variant="destructive"
-              size="sm"
+            <Button
+              variant="duolingo-destructive"
+              size="duolingo-sm"
               className="w-fit"
               onClick={() => {
                 const ok = window.confirm('This will erase all your data. Are you sure?')
@@ -360,7 +361,7 @@ const Page = () => {
                   Delete
                 </>
               )}
-            </DuolingoButton>
+            </Button>
           </div>
         </div>
       </div>

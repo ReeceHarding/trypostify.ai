@@ -208,7 +208,7 @@ export async function publishThreadById({
 }) {
   console.log(`[${logPrefix}] Starting to publish thread: ${threadId}`)
   let effectiveUserId = userId
-  let effectiveAccountId = accountId
+  const effectiveAccountId = accountId
 
   const firstTweet = await (db as any).query.tweets.findFirst({
     where: and(eq(tweets.threadId, threadId), eq(tweets.isPublished, false)),

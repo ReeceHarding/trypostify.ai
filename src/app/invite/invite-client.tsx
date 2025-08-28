@@ -2,10 +2,10 @@
 
 import { client } from '@/lib/client'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, Twitter, UserPlus, X } from 'lucide-react'
+import { UserPlus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import { HTTPException } from 'hono/http-exception'
 import { Icons } from '@/components/icons'
 
@@ -71,14 +71,15 @@ export default function InviteClient({ isInvalid, inviteId, inviterName }: Props
 
           {!isInvalid && (
             <div className="space-y-4">
-              <DuolingoButton
+              <Button
+                variant="duolingo-primary"
                 onClick={() => acceptInvite()}
                 loading={isAccepting}
                 className="w-full"
               >
                 <Icons.twitter className="mr-2 size-5" />
                 Connect Twitter Account
-              </DuolingoButton>
+              </Button>
 
               <p className="text-xs text-neutral-500">
                 You'll be redirected to Twitter to authorize your account

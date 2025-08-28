@@ -121,7 +121,7 @@ export const createQueueTool = (
             // Try multiple patterns to find tweet content
             
             // Pattern 1: Look for tool output with text field (improved regex)
-            let tweetMatch = conversationContext.match(/"text"\s*:\s*"([^"]{20,}?)"/i)
+            const tweetMatch = conversationContext.match(/"text"\s*:\s*"([^"]{20,}?)"/i)
             
             // Pattern 2: If not found, look for text in conversation that looks like a tweet
             if (!tweetMatch || !tweetMatch[1]) {

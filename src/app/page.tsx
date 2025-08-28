@@ -1,5 +1,5 @@
 import Navbar from '@/components/navbar'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import { auth } from '@/lib/auth'
 import MuxPlayer from '@mux/mux-player-react'
 import { headers } from 'next/headers'
@@ -98,15 +98,15 @@ const Page = async () => {
                     <div className="flex mt-4 flex-col gap-2 max-w-sm w-full">
                       {session?.user ? (
                         <Link href="/studio">
-                          <DuolingoButton className="w-full h-12 sm:px-8">
+                          <Button variant="duolingo-primary" className="w-full h-12 sm:px-8">
                             Start Posting More →
-                          </DuolingoButton>
+                          </Button>
                         </Link>
                       ) : (
                         <Link href="/login">
-                          <DuolingoButton className="w-full h-12 sm:px-8">
+                          <Button variant="duolingo-primary" className="w-full h-12 sm:px-8">
                             Start Posting More →
-                          </DuolingoButton>
+                          </Button>
                         </Link>
                       )}
                     </div>

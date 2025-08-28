@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import type Stripe from 'stripe'
-import DuolingoButton from './ui/duolingo-button'
+import { Button } from './ui/button'
 import dynamic from 'next/dynamic'
 
 const SenjaWidgetDynamic = dynamic(
@@ -86,9 +86,9 @@ export const UpgradeDrawer = () => {
       ) : subscription ? (
         <Drawer>
           <DrawerTrigger asChild>
-            <DuolingoButton size="sm" className="w-full gap-1.5">
+            <Button variant="duolingo-primary" size="duolingo-sm" className="w-full gap-1.5">
               Get Pro
-            </DuolingoButton>
+            </Button>
           </DrawerTrigger>
           <DrawerContent>
             <DrawerClose />
@@ -149,14 +149,15 @@ export const UpgradeDrawer = () => {
               </div>
               <DrawerFooter>
                 <div className="flex gap-2 items-center justify-between">
-                  <DuolingoButton
-                    size="sm"
+                  <Button
+                    variant="duolingo-primary"
+                    size="duolingo-sm"
                     className="h-12"
                     loading={isPending}
                     onClick={() => handleSubscribe()}
                   >
                     Get Pro
-                  </DuolingoButton>
+                  </Button>
                 </div>
               </DrawerFooter>
             </div>

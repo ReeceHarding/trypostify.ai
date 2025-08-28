@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
-import DuolingoButton from './ui/duolingo-button'
+import { Button } from './ui/button'
 import DuolingoCheckbox from './ui/duolingo-checkbox'
 import { Icons } from './icons'
 
@@ -59,20 +59,20 @@ export default function TweetPostConfirmationDialog({
           />
         </div>
         <div className="flex justify-end gap-3">
-          <DuolingoButton
-            variant="secondary"
-            size="sm"
+          <Button
+            variant="duolingo-secondary"
+            size="duolingo-sm"
             onClick={() => {
               onOpenChange(false)
               onCancel?.()
             }}
           >
             Cancel
-          </DuolingoButton>
-          <DuolingoButton size="sm" onClick={handleConfirm} disabled={isPosting}>
+          </Button>
+          <Button variant="duolingo-primary" size="duolingo-sm" onClick={handleConfirm} disabled={isPosting}>
             <Icons.twitter className="size-4 mr-2" />
             {isPosting ? 'Posting...' : 'Post'}
-          </DuolingoButton>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

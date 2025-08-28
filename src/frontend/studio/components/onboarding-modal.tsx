@@ -1,7 +1,7 @@
 'use client'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import DuolingoButton from '@/components/ui/duolingo-button'
+import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { Progress } from '@/components/ui/progress'
 import { useConfetti } from '@/hooks/use-confetti'
@@ -302,14 +302,14 @@ export const OnboardingModal = ({
               <SwiperSlide>
                 <div className="flex flex-col gap-6 w-full">
                   <div className="flex w-full items-center">
-                    <DuolingoButton
-                      variant="secondary"
-                      size="icon"
+                    <Button
+                      variant="duolingo-secondary"
+                      size="duolingo-icon"
                       onClick={handleBack}
                       className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
                     >
                       <ArrowLeft className="size-5" />
-                    </DuolingoButton>
+                    </Button>
                     <Progress value={progress} className="h-2 flex-1" />
                   </div>
 
@@ -333,14 +333,14 @@ export const OnboardingModal = ({
               <SwiperSlide>
                 <div className="flex flex-col gap-6 w-full">
                   <div className="flex w-full items-center">
-                    <DuolingoButton
-                      variant="secondary"
-                      size="icon"
+                    <Button
+                      variant="duolingo-secondary"
+                      size="duolingo-icon"
                       onClick={handleBack}
                       className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
                     >
                       <ArrowLeft className="size-5" />
-                    </DuolingoButton>
+                    </Button>
                     <Progress value={progress} className="h-2 flex-1" />
                   </div>
 
@@ -364,14 +364,14 @@ export const OnboardingModal = ({
               <SwiperSlide>
                 <div className="flex flex-col gap-6 w-full">
                   <div className="flex w-full items-center">
-                    <DuolingoButton
-                      variant="secondary"
-                      size="icon"
+                    <Button
+                      variant="duolingo-secondary"
+                      size="duolingo-icon"
                       onClick={handleBack}
                       className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
                     >
                       <ArrowLeft className="size-5" />
-                    </DuolingoButton>
+                    </Button>
                     <Progress value={progress} className="h-2 flex-1" />
                   </div>
 
@@ -416,14 +416,14 @@ export const OnboardingModal = ({
               <SwiperSlide className="px-1">
                 <div className="flex w-full space-y-6 flex-col items-center justify-center">
                   <div className="flex w-full items-center">
-                    <DuolingoButton
-                      variant="secondary"
-                      size="icon"
+                    <Button
+                      variant="duolingo-secondary"
+                      size="duolingo-icon"
                       onClick={handleBack}
                       className="mr-2 bg-neutral-100 hover:bg-neutral-100 rounded-full"
                     >
                       <ArrowLeft className="size-5" />
-                    </DuolingoButton>
+                    </Button>
                     <Progress value={progress} className="h-2 flex-1" />
                   </div>
 
@@ -437,13 +437,14 @@ export const OnboardingModal = ({
                     </p>
                   </div>
 
-                  <DuolingoButton
+                  <Button
+                    variant="duolingo-primary"
                     loading={isCreatingOAuthLink}
                     className="relative z-20"
                     onClick={() => createOAuthLink()}
                   >
                     Connect Twitter
-                  </DuolingoButton>
+                  </Button>
                 </div>
               </SwiperSlide>
 
@@ -475,7 +476,7 @@ export const OnboardingModal = ({
           )}
           <div className="mt-8 flex flex-col gap-6">
             <div className="w-full">
-              <DuolingoButton onClick={handleNext} disabled={isButtonDisabled()}>
+              <Button variant="duolingo-primary" onClick={handleNext} disabled={isButtonDisabled()}>
                 {swiperRef?.activeIndex === 0
                   ? 'Continue'
                   : swiperRef?.activeIndex === SLIDES.GOAL_SLIDE
@@ -484,7 +485,7 @@ export const OnboardingModal = ({
                       ? 'Start posting'
                       : 'Continue'}
                 <ArrowRight className="ml-1.5 size-4" />
-              </DuolingoButton>
+              </Button>
             </div>
           </div>
         </DialogContent>
