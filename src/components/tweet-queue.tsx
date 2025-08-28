@@ -295,9 +295,25 @@ export default function TweetQueue() {
                         className={cn(
                           'px-4 py-3 rounded-lg border relative',
                           tweet
-                            ? 'bg-white border-neutral-200 shadow-sm'
+                            ? 'bg-white border-neutral-200 shadow-sm cursor-pointer hover:bg-neutral-50 transition-colors'
                             : 'bg-neutral-50 border-dashed border-neutral-300',
                         )}
+                        onClick={tweet ? () => {
+                          // Same logic as Edit menu item
+                          const firstId = tweet.tweets?.[0]?.id || tweet.id
+                          
+                          console.log('[TweetQueue] Tweet card clicked for edit', {
+                            firstId,
+                            threadId: tweet.threadId,
+                            tweetsCount: tweet.tweets?.length || 1,
+                          })
+                          
+                          if (firstId) {
+                            router.push(`/studio?edit=${firstId}`)
+                          } else {
+                            console.warn('[TweetQueue] No id found for editing', tweet)
+                          }
+                        } : undefined}
                       >
 
                         {tweet ? (
@@ -403,6 +419,9 @@ export default function TweetQueue() {
                                   variant="secondary"
                                   size="icon"
                                   className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation() // Prevent card click when clicking menu
+                                  }}
                                 >
                                   <MoreHorizontal className="size-4" />
                                   <span className="sr-only">Tweet options</span>
