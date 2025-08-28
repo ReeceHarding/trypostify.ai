@@ -939,6 +939,10 @@ export default function ThreadTweetEditor({
         tweet_count: threadTweets.length,
         thread_id: threadData?.threadId,
       })
+      
+      // Navigate back to schedule page after successful update
+      toast.success('Thread updated successfully!')
+      router.push('/studio/scheduled')
     } catch (error) {
       // console.error('[ThreadTweetEditor] Error updating thread:', error)
       toast.error('Failed to update thread')
