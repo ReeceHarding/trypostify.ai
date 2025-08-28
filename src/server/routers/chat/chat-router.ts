@@ -179,21 +179,21 @@ export const chatRouter = j.router({
                   { expiresIn: 3600 } // 1 hour
                 )
                 
-                console.log('[CHAT_HISTORY] Generated fresh S3 URL for fileKey:', fileKey.substring(0, 50) + '...')
+                console.log('[CHAT_HISTORY] Generated fresh S3 URL for expired image, fileKey:', fileKey.substring(0, 50) + '...')
                 return { 
                   ...part, 
                   url: freshUrl,
                   _permanentFileKey: fileKey // Preserve the file key for future regeneration
                 }
               } catch (error) {
-                console.log('[CHAT_HISTORY] Error regenerating S3 URL, removing to prevent errors:', error)
+                console.log('[CHAT_HISTORY] Error regenerating S3 URL, removing to prevent OpenAI errors:', error)
                 return {
                   type: 'text' as const,
                   text: '[Image unavailable - file may have been deleted]'
                 }
               }
             } else {
-              console.log('[CHAT_HISTORY] No permanent file key found, removing expired image')
+              console.log('[CHAT_HISTORY] No permanent file key found for expired URL, removing to prevent OpenAI errors')
               return {
                 type: 'text' as const,
                 text: '[Image removed - no file key available]'
@@ -356,10 +356,11 @@ export const chatRouter = j.router({
           // Check if this is an S3 URL download error from OpenAI
           const errorMessage = error instanceof Error ? error.message : 'Something went wrong.'
           if (errorMessage.includes('Error while downloading') && errorMessage.includes('s3.us-east-1.amazonaws.com')) {
-            console.log('[CHAT_ROUTER] S3 URL download error detected - this should have been prevented by URL filtering')
-            console.log('[CHAT_ROUTER] Please check the chat history filtering logic')
+            console.log('[CHAT_ROUTER] S3 URL download error detected - expired URL slipped through filtering')
+            console.log('[CHAT_ROUTER] Error details:', errorMessage)
+            console.log('[CHAT_ROUTER] This indicates an expired S3 URL was sent to OpenAI API')
             // Return a helpful message instead of throwing
-            return 'I encountered an issue with an expired image from your chat history. The image has been removed to prevent future errors.'
+            return 'I encountered an issue with an expired image from your chat history. The image has been automatically removed to prevent future errors. Please try your request again.'
           }
 
           throw new HTTPException(500, {
@@ -497,8 +498,8 @@ export const chatRouter = j.router({
                           const signedDate = new Date(formattedDate);
                           const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
                           
-                          // If URL expires within the next 5 minutes, regenerate it
-                          if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                          // If URL has already expired, regenerate it
+                          if (expirationDate.getTime() < Date.now()) {
                             console.log('[CHAT_ROUTER] Regenerating expired S3 URL in historical message for fileKey:', part.fileKey);
                             
                             // Import S3 utilities
@@ -671,8 +672,8 @@ export const chatRouter = j.router({
                           const signedDate = new Date(formattedDate);
                           const expirationDate = new Date(signedDate.getTime() + parseInt(expiresParam) * 1000);
                           
-                          // If URL expires within the next 5 minutes, regenerate it
-                          if (expirationDate.getTime() < Date.now() + (5 * 60 * 1000)) {
+                          // If URL has already expired, regenerate it
+                          if (expirationDate.getTime() < Date.now()) {
                             console.log('[CHAT_ROUTER] Regenerating expired S3 URL in non-vision historical message for fileKey:', part.fileKey);
                             
                             // Import S3 utilities
