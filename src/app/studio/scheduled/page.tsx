@@ -30,20 +30,26 @@ function VideoProcessingStatus() {
   React.useEffect(() => {
     console.log('[VideoProcessingStatus] 🧹 Clearing cache on mount to ensure fresh data')
     queryClient.removeQueries({ queryKey: ['video-processing-status'] })
+    queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
     queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+    queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
   }, [queryClient])
   
   // Query for video processing status
   const { data: processingVideos, isLoading, error } = useQuery({
-    queryKey: ['video-processing-status', Date.now()], // Add timestamp to force fresh queries
+    queryKey: ['video-processing-status-v2', Date.now()], // Changed key to force cache invalidation
     queryFn: async () => {
       try {
         console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=processing...')
         
         // Get video jobs that are currently processing
+        console.log('[VideoProcessingStatus] 🔍 Making API call with query:', { status: 'processing', limit: 50 })
+        
         const res = await client.videoJob.listVideoJobs.$get({
           query: { status: 'processing', limit: 50 }
         })
+        
+        console.log('[VideoProcessingStatus] 🌐 Request URL:', res.url)
         const result = await res.json()
         
         console.log('[VideoProcessingStatus] 📊 API Response:', {
@@ -82,9 +88,12 @@ function VideoProcessingStatus() {
       console.log('[VideoProcessingStatus] ✅ Cleanup completed:', data)
       toast.success(`Cleaned up ${data.cleanedUp} stuck video jobs`)
       // Aggressively clear cache and refetch
-      queryClient.removeQueries({ queryKey: ['video-processing-status'] })
-      queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
-      queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
+              queryClient.removeQueries({ queryKey: ['video-processing-status'] })
+        queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
+        queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+        queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
+        queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
+        queryClient.refetchQueries({ queryKey: ['video-processing-status-v2'] })
     },
     onError: (error) => {
       console.error('Failed to cleanup stuck jobs:', error)
@@ -102,9 +111,12 @@ function VideoProcessingStatus() {
       console.log('[VideoProcessingStatus] ✅ Delete completed:', data)
       toast.success(`Deleted ${data.deleted} stuck video jobs`)
       // Aggressively clear cache and refetch
-      queryClient.removeQueries({ queryKey: ['video-processing-status'] })
-      queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
-      queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
+              queryClient.removeQueries({ queryKey: ['video-processing-status'] })
+        queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
+        queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+        queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
+        queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
+        queryClient.refetchQueries({ queryKey: ['video-processing-status-v2'] })
     },
     onError: (error) => {
       console.error('Failed to delete stuck jobs:', error)
@@ -119,10 +131,11 @@ function VideoProcessingStatus() {
       
       // Aggressively clear all video processing cache entries
       queryClient.removeQueries({ queryKey: ['video-processing-status'] })
-      queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
+      queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
+      queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
       
       // Force a fresh fetch by refetching
-      await queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
+      await queryClient.refetchQueries({ queryKey: ['video-processing-status-v2'] })
       
       return { message: 'Cache cleared and refreshed' }
     },

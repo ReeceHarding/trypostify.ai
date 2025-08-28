@@ -160,15 +160,20 @@ export const videoJobRouter = j.router({
       limit: z.number().min(1).max(100).default(20),
       offset: z.number().min(0).default(0),
     }))
-    .query(async ({ c, input, ctx }) => {
+    .post(async ({ c, input, ctx }) => {
       console.log('[VideoJobRouter] 📝 Listing video jobs for user:', ctx.user.id)
-      console.log('[VideoJobRouter] 🔍 Filters:', input)
+      console.log('[VideoJobRouter] 🔍 Raw input:', JSON.stringify(input))
+      console.log('[VideoJobRouter] 🔍 Status filter:', input.status)
+      console.log('[VideoJobRouter] 🔍 Has status filter:', !!input.status)
       
       try {
         const conditions = [eq(videoJob.userId, ctx.user.id)]
         
         if (input.status) {
+          console.log('[VideoJobRouter] ➕ Adding status condition:', input.status)
           conditions.push(eq(videoJob.status, input.status))
+        } else {
+          console.log('[VideoJobRouter] ⚠️ No status filter applied - will return all jobs')
         }
 
         const jobs = await db.select()
@@ -179,20 +184,25 @@ export const videoJobRouter = j.router({
           .offset(input.offset)
         
         console.log('[VideoJobRouter] 📊 Found', jobs.length, 'video jobs')
+        console.log('[VideoJobRouter] 📋 Job statuses:', jobs.map(j => ({ id: j.id.substring(0, 8), status: j.status })))
+        
+        const mappedJobs = jobs.map(job => ({
+          id: job.id,
+          tweetId: job.tweetId,
+          threadId: job.threadId,
+          videoUrl: job.videoUrl,
+          platform: job.platform,
+          status: job.status,
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+          completedAt: job.completedAt,
+          errorMessage: job.errorMessage,
+        }))
+        
+        console.log('[VideoJobRouter] 📤 Returning jobs with statuses:', mappedJobs.map(j => ({ id: j.id.substring(0, 8), status: j.status })))
         
         return c.json({
-          jobs: jobs.map(job => ({
-            id: job.id,
-            tweetId: job.tweetId,
-            threadId: job.threadId,
-            videoUrl: job.videoUrl,
-            platform: job.platform,
-            status: job.status,
-            createdAt: job.createdAt,
-            updatedAt: job.updatedAt,
-            completedAt: job.completedAt,
-            errorMessage: job.errorMessage,
-          })),
+          jobs: mappedJobs,
           total: jobs.length,
         })
         
