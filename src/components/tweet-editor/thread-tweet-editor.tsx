@@ -471,6 +471,18 @@ export default function ThreadTweetEditor({
     const currentContent = [...threadTweets]
 
     console.log('[ThreadTweetEditor] Posting thread - backend will handle any pending media')
+    
+    // Check if any media is still uploading (not pending videos, but actual uploads)
+    const hasActiveUploads = currentContent.some(tweet => 
+      tweet.media.some(m => m.uploading && !m.isPending)
+    )
+    
+    if (hasActiveUploads) {
+      console.log('[ThreadTweetEditor] Waiting for uploads to complete before posting...')
+      toast.error('Please wait for uploads to complete before posting')
+      return
+    }
+    
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
