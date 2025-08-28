@@ -1861,12 +1861,12 @@ export const tweetRouter = j.router({
         userFrequency: number
       }) {
         // Get preset slots based on user frequency
-        // 1 post per day: noon (12pm)
+        // 1 post per day: 10am
         // 2 posts per day: 10am, 12pm  
         // 3 posts per day: 10am, 12pm, 2pm
         let presetSlots: number[]
         if (userFrequency === 1) {
-          presetSlots = [12] // Just noon
+          presetSlots = [10] // Just 10am
         } else if (userFrequency === 2) {
           presetSlots = [10, 12] // 10am and noon
         } else {
