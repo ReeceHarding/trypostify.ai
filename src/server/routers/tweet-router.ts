@@ -1733,12 +1733,19 @@ export const tweetRouter = j.router({
           
           if (tweet?.media) {
             for (const media of tweet.media) {
-              if (media.isPending && media.videoUrl && createdTweet) {
-                console.log('[postThreadNow] Creating video job for:', {
-                  tweetId: createdTweet.id,
-                  videoUrl: media.videoUrl,
-                  platform: media.platform || 'unknown'
-                })
+              if (media.isPending && createdTweet) {
+                // Handle both URL videos and uploaded video files
+                const isUrlVideo = !!media.videoUrl
+                const isFileVideo = !media.videoUrl && media.s3Key && media.type === 'video'
+                
+                if (isUrlVideo || isFileVideo) {
+                  console.log('[postThreadNow] Creating video job for:', {
+                    tweetId: createdTweet.id,
+                    videoUrl: media.videoUrl || null,
+                    s3Key: media.s3Key || null,
+                    platform: media.platform || 'unknown',
+                    type: isUrlVideo ? 'url' : 'file'
+                  })
                 
                 const jobId = crypto.randomUUID()
                 
@@ -1748,9 +1755,10 @@ export const tweetRouter = j.router({
                   userId: user.id,
                   tweetId: createdTweet.id,
                   threadId: threadId,
-                  videoUrl: media.videoUrl,
-                  platform: media.platform || 'unknown',
-                  status: 'pending',
+                  videoUrl: media.videoUrl || '', // Empty for file uploads
+                  s3Key: isFileVideo ? media.s3Key : undefined, // S3 key for uploaded files
+                  platform: media.platform || (isFileVideo ? 'file_upload' : 'unknown'),
+                  status: isFileVideo ? 'transcoding' : 'pending', // Files skip download, go straight to transcoding
                   // Store complete thread data so video processing can post the thread when ready
                   tweetContent: {
                     threadId,
@@ -1763,8 +1771,9 @@ export const tweetRouter = j.router({
                   updatedAt: new Date(),
                 }).returning()
                 
-                videoJobsCreated.push(videoJobRecord)
-                console.log('[postThreadNow] Video job created:', jobId)
+                  videoJobsCreated.push(videoJobRecord)
+                  console.log('[postThreadNow] Video job created:', jobId)
+                }
               }
             }
           }
