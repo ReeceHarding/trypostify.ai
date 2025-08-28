@@ -1073,7 +1073,7 @@ export const tweetRouter = j.router({
             })),
           ]
             .sort((a, b) => a.unix - b.unix)
-            .filter((entry) => isFuture(entry.unix)),
+            .filter((entry) => isAfter(new Date(entry.unix), toZonedTime(new Date(), timezone))),
         })
       })
 
