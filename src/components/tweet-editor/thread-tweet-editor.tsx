@@ -247,8 +247,14 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[postThreadMutation] Success callback triggered at', new Date().toISOString())
-      toast.success(
+      console.log('[ThreadTweetEditor] 🎉 Post success callback triggered at:', new Date().toISOString())
+      console.log('[ThreadTweetEditor] 📊 Success data received:', {
+        threadUrl: data.threadUrl,
+        accountUsername: data.accountUsername || 'unknown'
+      })
+      
+      console.log('[ThreadTweetEditor] 🔔 Creating toast notification with duration: 4000ms')
+      const toastId = toast.success(
         <div className="flex items-center gap-2">
           <p>Tweet posted!</p>
           {data.threadUrl && (
@@ -267,6 +273,9 @@ export default function ThreadTweetEditor({
           position: 'top-center',
         }
       )
+      
+      console.log('[ThreadTweetEditor] 🆔 Toast created with ID:', toastId)
+      console.log('[ThreadTweetEditor] ⏰ Toast should auto-dismiss at:', new Date(Date.now() + 4000).toISOString())
       fire()
       
       // Note: Content clearing is now handled optimistically in handlePostThread
