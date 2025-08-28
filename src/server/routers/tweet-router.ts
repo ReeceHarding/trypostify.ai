@@ -1723,6 +1723,24 @@ export const tweetRouter = j.router({
         
         console.log('[postThreadNow] Thread created, now creating video jobs for pending media')
         
+        // Debug: Log all media objects to understand the structure
+        console.log('[postThreadNow] DEBUG - Analyzing all media objects:')
+        threadTweets.forEach((tweet, tweetIndex) => {
+          console.log(`[postThreadNow] Tweet ${tweetIndex} media:`, {
+            mediaCount: tweet.media?.length || 0,
+            media: tweet.media?.map((m, mediaIndex) => ({
+              index: mediaIndex,
+              isPending: m.isPending,
+              videoUrl: m.videoUrl,
+              s3Key: m.s3Key,
+              media_id: m.media_id,
+              type: m.type,
+              platform: m.platform,
+              pendingJobId: m.pendingJobId
+            }))
+          })
+        })
+        
         // Create video jobs for each tweet with pending media
         const { videoJob } = await import('@/db/schema')
         const videoJobsCreated = []
@@ -1731,8 +1749,21 @@ export const tweetRouter = j.router({
           const tweet = threadTweets[i]
           const createdTweet = createdTweets[i]
           
+          console.log(`[postThreadNow] Processing tweet ${i} for video jobs:`, {
+            hasMedia: !!tweet?.media,
+            mediaCount: tweet?.media?.length || 0
+          })
+          
           if (tweet?.media) {
             for (const media of tweet.media) {
+              console.log('[postThreadNow] Checking media for video job creation:', {
+                isPending: media.isPending,
+                hasVideoUrl: !!media.videoUrl,
+                hasS3Key: !!media.s3Key,
+                type: media.type,
+                shouldCreateJob: media.isPending && createdTweet
+              })
+              
               if (media.isPending && createdTweet) {
                 // Handle both URL videos and uploaded video files
                 const isUrlVideo = !!media.videoUrl

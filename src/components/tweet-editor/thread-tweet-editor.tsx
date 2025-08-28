@@ -500,9 +500,26 @@ export default function ThreadTweetEditor({
       })
       
       // Post thread immediately
-      const tweetsForPosting = validTweets.map((tweet, index) => ({
-        content: tweet.content,
-        media: tweet.media
+      console.log('[ThreadTweetEditor] DEBUG - Preparing tweets for posting with media:')
+      currentContent.forEach((tweet, index) => {
+        console.log(`[ThreadTweetEditor] Tweet ${index} media before filtering:`, {
+          mediaCount: tweet.media.length,
+          media: tweet.media.map((m, mediaIndex) => ({
+            index: mediaIndex,
+            isPending: m.isPending,
+            uploaded: m.uploaded,
+            uploading: m.uploading,
+            videoUrl: m.videoUrl,
+            s3Key: m.s3Key,
+            media_id: m.media_id,
+            type: m.type,
+            pendingJobId: m.pendingJobId
+          }))
+        })
+      })
+      
+      const tweetsForPosting = validTweets.map((tweet, index) => {
+        const processedMedia = tweet.media
           .filter(m => 
             // Include fully uploaded media OR pending videos
             (m.uploaded && m.media_id && m.s3Key) || 
@@ -526,9 +543,20 @@ export default function ThreadTweetEditor({
               media_id: m.media_id!,
               s3Key: m.s3Key!,
             }
-          }),
-        delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
-      }))
+          })
+          
+        console.log(`[ThreadTweetEditor] Tweet ${index} processed media for backend:`, {
+          originalCount: tweet.media.length,
+          filteredCount: processedMedia.length,
+          processedMedia
+        })
+        
+        return {
+          content: tweet.content,
+          media: processedMedia,
+          delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
+        }
+      })
       
       const result = await postThreadMutation.mutateAsync(tweetsForPosting)
       
