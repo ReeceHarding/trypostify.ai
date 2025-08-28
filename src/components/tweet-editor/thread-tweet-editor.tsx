@@ -247,35 +247,13 @@ export default function ThreadTweetEditor({
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] 🎉 Post success callback triggered at:', new Date().toISOString())
-      console.log('[ThreadTweetEditor] 📊 Success data received:', {
-        threadUrl: data.threadUrl,
-        accountUsername: data.accountUsername || 'unknown'
+      const message = data.threadUrl 
+        ? `Tweet posted! View: ${data.threadUrl}`
+        : 'Tweet posted!'
+      
+      toast.success(message, {
+        duration: 4000,
       })
-      
-      console.log('[ThreadTweetEditor] 🔔 Creating toast notification with duration: 4000ms')
-      const toastId = toast.success(
-        <div className="flex items-center gap-2">
-          <p>Tweet posted!</p>
-          {data.threadUrl && (
-            <Link
-              target="_blank"
-              rel="noreferrer"
-              href={data.threadUrl}
-              className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
-            >
-              View here
-            </Link>
-          )}
-        </div>,
-        {
-          duration: 4000, // Auto-dismiss after 4 seconds
-          position: 'top-center',
-        }
-      )
-      
-      console.log('[ThreadTweetEditor] 🆔 Toast created with ID:', toastId)
-      console.log('[ThreadTweetEditor] ⏰ Toast should auto-dismiss at:', new Date(Date.now() + 4000).toISOString())
       fire()
       
       // Note: Content clearing is now handled optimistically in handlePostThread
