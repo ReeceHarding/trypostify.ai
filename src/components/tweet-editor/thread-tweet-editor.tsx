@@ -356,6 +356,10 @@ export default function ThreadTweetEditor({
       // Invalidate thread cache to ensure fresh data on next edit
       queryClient.invalidateQueries({ queryKey: ['thread'] })
       
+      // Invalidate queue/scheduled caches to update UI
+      queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
+      queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
+      
       toast.success(
         <div className="flex items-center gap-2">
           <p>Thread updated!</p>
@@ -367,7 +371,6 @@ export default function ThreadTweetEditor({
           </Link>
         </div>
       )
-      // Stay on current page instead of redirecting
     },
   })
 
@@ -941,7 +944,6 @@ export default function ThreadTweetEditor({
       })
       
       // Navigate back to schedule page after successful update
-      toast.success('Thread updated successfully!')
       router.push('/studio/scheduled')
     } catch (error) {
       // console.error('[ThreadTweetEditor] Error updating thread:', error)
