@@ -1934,6 +1934,42 @@ export const tweetRouter = j.router({
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
+      // CHECK FOR VIDEO URLs AND CREATE VIDEO JOBS IF NEEDED
+      const { extractVideoUrls, createVideoJobForAction } = await import('./utils/video-job-utils')
+      
+      for (const tweet of threadTweets) {
+        const videoUrls = extractVideoUrls(tweet.content)
+        
+        if (videoUrls.length > 0) {
+          console.log(`[scheduleThread] Found ${videoUrls.length} video URLs in tweet:`, tweet.id)
+          
+          for (const videoUrl of videoUrls) {
+            // Create video job for schedule action
+            await createVideoJobForAction({
+              userId: user.id,
+              videoUrl,
+              tweetContent: {
+                action: 'schedule_thread',
+                threadId: threadId,
+                userId: user.id,
+                accountId: dbAccount.id,
+                tweets: threadTweets.map((t, index) => ({
+                  content: t.content,
+                  media: t.media || [],
+                  delayMs: index > 0 ? 1000 : 0,
+                })),
+                scheduledUnix: scheduledUnix,
+                scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
+              },
+              threadId: threadId,
+              tweetId: tweet.id,
+            })
+            
+            console.log(`[scheduleThread] ✅ Video job created for URL: ${videoUrl}`)
+          }
+        }
+      }
+
 
 
       // For local development, skip QStash and just update the database
@@ -2069,6 +2105,42 @@ export const tweetRouter = j.router({
       if (threadTweets.length === 0) {
 
         throw new HTTPException(404, { message: 'Thread not found' })
+      }
+
+      // CHECK FOR VIDEO URLs AND CREATE VIDEO JOBS IF NEEDED
+      const { extractVideoUrls, createVideoJobForAction } = await import('./utils/video-job-utils')
+      
+      for (const tweet of threadTweets) {
+        const videoUrls = extractVideoUrls(tweet.content)
+        
+        if (videoUrls.length > 0) {
+          console.log(`[enqueueThread] Found ${videoUrls.length} video URLs in tweet:`, tweet.id)
+          
+          for (const videoUrl of videoUrls) {
+            // Create video job for queue action
+            await createVideoJobForAction({
+              userId: user.id,
+              videoUrl,
+              tweetContent: {
+                action: 'queue_thread',
+                threadId: threadId,
+                userId: user.id,
+                accountId: dbAccount.id,
+                tweets: threadTweets.map((t, index) => ({
+                  content: t.content,
+                  media: t.media || [],
+                  delayMs: index > 0 ? 1000 : 0,
+                })),
+                timezone,
+                userNow: userNow.toISOString(),
+              },
+              threadId: threadId,
+              tweetId: tweet.id,
+            })
+            
+            console.log(`[enqueueThread] ✅ Video job created for URL: ${videoUrl}`)
+          }
+        }
       }
 
 
