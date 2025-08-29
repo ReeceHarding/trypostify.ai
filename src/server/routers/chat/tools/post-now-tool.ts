@@ -106,6 +106,108 @@ export const createPostNowTool = (
         if (!finalContent) {
           throw new Error('No tweet content provided and could not find a recent tweet in the conversation')
         }
+
+        // Check for video URLs in content and create video jobs if found
+        const videoPatterns = [
+          /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\//,
+          /(?:tiktok\.com\/@[\w.-]+\/video\/|vm\.tiktok\.com\/)/,
+          /(?:twitter\.com|x\.com)\/\w+\/status\//,
+          /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)/,
+        ]
+        
+        const urlRegex = /https?:\/\/[^\s]+/g
+        const urls = finalContent.match(urlRegex) || []
+        const videoUrls = urls.filter(url => videoPatterns.some(pattern => pattern.test(url)))
+        
+        if (videoUrls.length > 0) {
+          console.log('[POST_NOW_TOOL] 🎬 Video URLs detected:', videoUrls)
+          
+          // Send status update
+          writer.write({
+            type: 'data-tool-output',
+            id: toolId,
+            data: {
+              text: 'Video URLs detected. Processing videos before posting...',
+              status: 'processing',
+            },
+          })
+
+          // Create video jobs for each URL using direct database operations
+          const { videoJob } = await import('../../../../db/schema')
+          const { v4: uuidv4 } = await import('uuid')
+          const { qstash } = await import('../../../../lib/qstash')
+          const { getBaseUrl } = await import('../../../../constants/base-url')
+          const videoJobs = []
+          
+          for (const videoUrl of videoUrls) {
+            try {
+              const platform = videoUrl.includes('instagram') ? 'instagram' : 
+                              videoUrl.includes('tiktok') ? 'tiktok' :
+                              videoUrl.includes('youtube') || videoUrl.includes('youtu.be') ? 'youtube' :
+                              videoUrl.includes('twitter') || videoUrl.includes('x.com') ? 'twitter' : 'unknown'
+              
+              // Create video job record directly
+              const jobId = uuidv4()
+              const tempThreadId = crypto.randomUUID()
+              
+              await db.insert(videoJob).values({
+                id: jobId,
+                userId: userId,
+                tweetId: '',
+                threadId: tempThreadId,
+                videoUrl: videoUrl,
+                platform: platform,
+                status: 'pending',
+                tweetContent: {
+                  tweets: [{
+                    content: finalContent,
+                    media: media || [],
+                    delayMs: 0
+                  }]
+                },
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              })
+
+              // Enqueue video job processing with QStash
+              const webhookUrl = `${getBaseUrl()}/api/video/process`
+              const qstashResponse = await qstash.publishJSON({
+                url: webhookUrl,
+                body: { 
+                  videoJobId: jobId,
+                  pollingAttempt: 0
+                },
+                retries: 3,
+              })
+              
+              // Update job with QStash ID
+              await db.update(videoJob)
+                .set({
+                  qstashId: qstashResponse.messageId,
+                  updatedAt: new Date(),
+                })
+                .where(eq(videoJob.id, jobId))
+              
+              videoJobs.push({ jobId, videoUrl, platform })
+              console.log('[POST_NOW_TOOL] ✅ Video job created:', jobId)
+            } catch (error) {
+              console.error('[POST_NOW_TOOL] ❌ Failed to create video job for:', videoUrl, error)
+            }
+          }
+
+          if (videoJobs.length > 0) {
+            // Video processing will handle posting when complete
+            writer.write({
+              type: 'data-tool-output',
+              id: toolId,
+              data: {
+                text: `Video processing started for ${videoJobs.length} video(s). Tweet will post automatically when videos are ready.`,
+                status: 'complete',
+              },
+            })
+            return
+          }
+        }
         
         // Send initial status
         writer.write({
