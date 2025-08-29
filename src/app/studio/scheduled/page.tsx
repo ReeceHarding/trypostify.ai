@@ -38,10 +38,10 @@ function VideoProcessingStatus() {
   // Mutation for fetching video processing status
   const fetchVideoJobsMutation = useMutation({
     mutationFn: async () => {
-      console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=pending...')
+      console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=processing...')
       
-      // Get video jobs that are pending or processing
-      const requestBody = { status: 'pending' as const, limit: 50, offset: 0 }
+      // Get video jobs that are currently processing
+      const requestBody = { status: 'processing' as const, limit: 50, offset: 0 }
       console.log('[VideoProcessingStatus] 📤 Sending request body:', JSON.stringify(requestBody))
       
       const res = await client.videoJob.listVideoJobs.mutate(requestBody)
@@ -53,12 +53,12 @@ function VideoProcessingStatus() {
       
       const jobs = res.jobs || []
       
-      // Additional safety check - filter to pending and processing jobs
-      const activeJobs = jobs.filter(job => job.status === 'pending' || job.status === 'processing')
+      // Additional safety check - filter to only truly processing jobs
+      const actuallyProcessingJobs = jobs.filter(job => job.status === 'processing')
       
-      console.log('[VideoProcessingStatus] ✅ Filtered active jobs:', activeJobs.length)
+      console.log('[VideoProcessingStatus] ✅ Filtered processing jobs:', actuallyProcessingJobs.length)
       
-      return activeJobs
+      return actuallyProcessingJobs
     },
   })
 

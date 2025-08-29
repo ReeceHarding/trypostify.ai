@@ -1441,24 +1441,9 @@ export const tweetRouter = j.router({
             content: z.string().max(280),
             media: z.array(
               z.object({
-                media_id: z.string().optional(),
-                s3Key: z.string().optional(),
-                // Support for pending video processing
-                isPending: z.boolean().optional(),
-                pendingJobId: z.string().optional(),
-                videoUrl: z.string().optional(),
-                platform: z.string().optional(),
-                type: z.enum(['image', 'gif', 'video']).optional(),
-              }).refine(
-                (media) => 
-                  // Either has uploaded media IDs OR is pending video
-                  (media.media_id && media.s3Key) || 
-                  (media.isPending && (media.videoUrl || media.pendingJobId)),
-                {
-                  message: "Media must have either media_id/s3Key or be a pending video",
-                  path: ["media"]
-                }
-              ),
+                media_id: z.string(),
+                s3Key: z.string(),
+              }),
             ).optional(),
             delayMs: z.number().default(0),
           }).refine(
@@ -1530,24 +1515,9 @@ export const tweetRouter = j.router({
             content: z.string().max(280),
             media: z.array(
               z.object({
-                media_id: z.string().optional(),
-                s3Key: z.string().optional(),
-                // Support for pending video processing
-                isPending: z.boolean().optional(),
-                pendingJobId: z.string().optional(),
-                videoUrl: z.string().optional(),
-                platform: z.string().optional(),
-                type: z.enum(['image', 'gif', 'video']).optional(),
-              }).refine(
-                (media) => 
-                  // Either has uploaded media IDs OR is pending video
-                  (media.media_id && media.s3Key) || 
-                  (media.isPending && (media.videoUrl || media.pendingJobId)),
-                {
-                  message: "Media must have either media_id/s3Key or be a pending video",
-                  path: ["media"]
-                }
-              ),
+                media_id: z.string(),
+                s3Key: z.string(),
+              }),
             ).optional(),
             delayMs: z.number().default(0),
           }).refine(
@@ -1646,24 +1616,9 @@ export const tweetRouter = j.router({
             content: z.string().max(280),
             media: z.array(
               z.object({
-                media_id: z.string().optional(),
-                s3Key: z.string().optional(),
-                // Support for pending video processing
-                isPending: z.boolean().optional(),
-                pendingJobId: z.string().optional(),
-                videoUrl: z.string().optional(),
-                platform: z.string().optional(),
-                type: z.enum(['image', 'gif', 'video']).optional(),
-              }).refine(
-                (media) => 
-                  // Either has uploaded media IDs OR is pending video
-                  (media.media_id && media.s3Key) || 
-                  (media.isPending && (media.videoUrl || media.pendingJobId)),
-                {
-                  message: "Media must have either media_id/s3Key or be a pending video",
-                  path: ["media"]
-                }
-              ),
+                media_id: z.string(),
+                s3Key: z.string(),
+              }),
             ).optional(),
             delayMs: z.number().default(0),
           }).refine(
@@ -1723,24 +1678,6 @@ export const tweetRouter = j.router({
         
         console.log('[postThreadNow] Thread created, now creating video jobs for pending media')
         
-        // Debug: Log all media objects to understand the structure
-        console.log('[postThreadNow] DEBUG - Analyzing all media objects:')
-        threadTweets.forEach((tweet, tweetIndex) => {
-          console.log(`[postThreadNow] Tweet ${tweetIndex} media:`, {
-            mediaCount: tweet.media?.length || 0,
-            media: tweet.media?.map((m, mediaIndex) => ({
-              index: mediaIndex,
-              isPending: m.isPending,
-              videoUrl: m.videoUrl,
-              s3Key: m.s3Key,
-              media_id: m.media_id,
-              type: m.type,
-              platform: m.platform,
-              pendingJobId: m.pendingJobId
-            }))
-          })
-        })
-        
         // Create video jobs for each tweet with pending media
         const { videoJob } = await import('@/db/schema')
         const videoJobsCreated = []
@@ -1749,34 +1686,14 @@ export const tweetRouter = j.router({
           const tweet = threadTweets[i]
           const createdTweet = createdTweets[i]
           
-          console.log(`[postThreadNow] Processing tweet ${i} for video jobs:`, {
-            hasMedia: !!tweet?.media,
-            mediaCount: tweet?.media?.length || 0
-          })
-          
           if (tweet?.media) {
             for (const media of tweet.media) {
-              console.log('[postThreadNow] Checking media for video job creation:', {
-                isPending: media.isPending,
-                hasVideoUrl: !!media.videoUrl,
-                hasS3Key: !!media.s3Key,
-                type: media.type,
-                shouldCreateJob: media.isPending && createdTweet
-              })
-              
-              if (media.isPending && createdTweet) {
-                // Handle both URL videos and uploaded video files
-                const isUrlVideo = !!media.videoUrl
-                const isFileVideo = !media.videoUrl && media.s3Key && media.type === 'video'
-                
-                if (isUrlVideo || isFileVideo) {
-                  console.log('[postThreadNow] Creating video job for:', {
-                    tweetId: createdTweet.id,
-                    videoUrl: media.videoUrl || null,
-                    s3Key: media.s3Key || null,
-                    platform: media.platform || 'unknown',
-                    type: isUrlVideo ? 'url' : 'file'
-                  })
+              if (media.isPending && media.videoUrl && createdTweet) {
+                console.log('[postThreadNow] Creating video job for:', {
+                  tweetId: createdTweet.id,
+                  videoUrl: media.videoUrl,
+                  platform: media.platform || 'unknown'
+                })
                 
                 const jobId = crypto.randomUUID()
                 
@@ -1786,10 +1703,9 @@ export const tweetRouter = j.router({
                   userId: user.id,
                   tweetId: createdTweet.id,
                   threadId: threadId,
-                  videoUrl: media.videoUrl || '', // Empty for file uploads
-                  s3Key: isFileVideo ? media.s3Key : undefined, // S3 key for uploaded files
-                  platform: media.platform || (isFileVideo ? 'file_upload' : 'unknown'),
-                  status: isFileVideo ? 'transcoding' : 'pending', // Files skip download, go straight to transcoding
+                  videoUrl: media.videoUrl,
+                  platform: media.platform || 'unknown',
+                  status: 'pending',
                   // Store complete thread data so video processing can post the thread when ready
                   tweetContent: {
                     threadId,
@@ -1802,9 +1718,8 @@ export const tweetRouter = j.router({
                   updatedAt: new Date(),
                 }).returning()
                 
-                  videoJobsCreated.push(videoJobRecord)
-                  console.log('[postThreadNow] Video job created:', jobId)
-                }
+                videoJobsCreated.push(videoJobRecord)
+                console.log('[postThreadNow] Video job created:', jobId)
               }
             }
           }

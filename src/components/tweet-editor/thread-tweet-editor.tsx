@@ -218,13 +218,13 @@ export default function ThreadTweetEditor({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isMac, threadTweets])
 
-  // Reset state when switching from edit mode to create mode
+  // Initialize store with a tweet on client mount to prevent hydration mismatch
   useEffect(() => {
-    if (!editMode && !editTweetId) {
-      console.log('[ThreadTweetEditor] Resetting to create mode')
+    if (!editMode && !editTweetId && threadTweets.length === 0) {
+      console.log('[ThreadTweetEditor] Initializing store with first tweet on client')
       resetTweets()
     }
-  }, [editMode, editTweetId, resetTweets])
+  }, [editMode, editTweetId, threadTweets.length, resetTweets])
 
   // Post thread mutation - combines create and post
   const postThreadMutation = useMutation({
@@ -351,30 +351,11 @@ export default function ThreadTweetEditor({
           id: tweet.id.startsWith('new-') ? undefined : tweet.id,
           content: tweet.content,
           media: tweet.media
-            .filter(m => 
-              // Include fully uploaded media OR pending videos
-              (m.uploaded && m.media_id && m.s3Key) || 
-              (m.isPending && (m.videoUrl || m.pendingJobId))
-            )
-            .map(m => {
-              // For pending videos, send pending metadata
-              if (m.isPending) {
-                return {
-                  media_id: m.media_id || '', // Empty for pending
-                  s3Key: m.s3Key || '', // May be empty for URL videos
-                  isPending: true,
-                  pendingJobId: m.pendingJobId,
-                  videoUrl: m.videoUrl,
-                  platform: m.platform,
-                  type: m.type,
-                }
-              }
-              // For uploaded media, send normal format
-              return {
-                media_id: m.media_id!,
-                s3Key: m.s3Key!,
-              }
-            }),
+            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+            .map(m => ({
+              media_id: m.media_id!,
+              s3Key: m.s3Key!,
+            })),
           delayMs: index > 0 ? 1000 : 0,
         })),
       })
@@ -471,18 +452,6 @@ export default function ThreadTweetEditor({
     const currentContent = [...threadTweets]
 
     console.log('[ThreadTweetEditor] Posting thread - backend will handle any pending media')
-    
-    // Check if any media is still uploading (not pending videos, but actual uploads)
-    const hasActiveUploads = currentContent.some(tweet => 
-      tweet.media.some(m => m.uploading && !m.isPending)
-    )
-    
-    if (hasActiveUploads) {
-      console.log('[ThreadTweetEditor] Waiting for uploads to complete before posting...')
-      toast.error('Please wait for uploads to complete before posting')
-      return
-    }
-    
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
@@ -512,63 +481,16 @@ export default function ThreadTweetEditor({
       })
       
       // Post thread immediately
-      console.log('[ThreadTweetEditor] DEBUG - Preparing tweets for posting with media:')
-      currentContent.forEach((tweet, index) => {
-        console.log(`[ThreadTweetEditor] Tweet ${index} media before filtering:`, {
-          mediaCount: tweet.media.length,
-          media: tweet.media.map((m, mediaIndex) => ({
-            index: mediaIndex,
-            isPending: m.isPending,
-            uploaded: m.uploaded,
-            uploading: m.uploading,
-            videoUrl: m.videoUrl,
-            s3Key: m.s3Key,
-            media_id: m.media_id,
-            type: m.type,
-            pendingJobId: m.pendingJobId
-          }))
-        })
-      })
-      
-      const tweetsForPosting = validTweets.map((tweet, index) => {
-        const processedMedia = tweet.media
-          .filter(m => 
-            // Include fully uploaded media OR pending videos
-            (m.uploaded && m.media_id && m.s3Key) || 
-            (m.isPending && (m.videoUrl || m.pendingJobId))
-          )
-          .map(m => {
-            // For pending videos, send pending metadata
-            if (m.isPending) {
-              return {
-                media_id: m.media_id || '', // Empty for pending
-                s3Key: m.s3Key || '', // May be empty for URL videos
-                isPending: true,
-                pendingJobId: m.pendingJobId,
-                videoUrl: m.videoUrl,
-                platform: m.platform,
-                type: m.type,
-              }
-            }
-            // For uploaded media, send normal format
-            return {
-              media_id: m.media_id!,
-              s3Key: m.s3Key!,
-            }
-          })
-          
-        console.log(`[ThreadTweetEditor] Tweet ${index} processed media for backend:`, {
-          originalCount: tweet.media.length,
-          filteredCount: processedMedia.length,
-          processedMedia
-        })
-        
-        return {
-          content: tweet.content,
-          media: processedMedia,
-          delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
-        }
-      })
+      const tweetsForPosting = validTweets.map((tweet, index) => ({
+        content: tweet.content,
+        media: tweet.media
+          .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+          .map(m => ({
+            media_id: m.media_id!,
+            s3Key: m.s3Key!,
+          })),
+        delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
+      }))
       
       const result = await postThreadMutation.mutateAsync(tweetsForPosting)
       
@@ -662,30 +584,11 @@ export default function ThreadTweetEditor({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media
-            .filter(m => 
-              // Include fully uploaded media OR pending videos
-              (m.uploaded && m.media_id && m.s3Key) || 
-              (m.isPending && (m.videoUrl || m.pendingJobId))
-            )
-            .map(m => {
-              // For pending videos, send pending metadata
-              if (m.isPending) {
-                return {
-                  media_id: m.media_id || '', // Empty for pending
-                  s3Key: m.s3Key || '', // May be empty for URL videos
-                  isPending: true,
-                  pendingJobId: m.pendingJobId,
-                  videoUrl: m.videoUrl,
-                  platform: m.platform,
-                  type: m.type,
-                }
-              }
-              // For uploaded media, send normal format
-              return {
-                media_id: m.media_id!,
-                s3Key: m.s3Key!,
-              }
-            }),
+            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+            .map(m => ({
+              media_id: m.media_id!,
+              s3Key: m.s3Key!,
+            })),
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
@@ -822,30 +725,11 @@ export default function ThreadTweetEditor({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
           media: tweet.media
-            .filter(m => 
-              // Include fully uploaded media OR pending videos
-              (m.uploaded && m.media_id && m.s3Key) || 
-              (m.isPending && (m.videoUrl || m.pendingJobId))
-            )
-            .map(m => {
-              // For pending videos, send pending metadata
-              if (m.isPending) {
-                return {
-                  media_id: m.media_id || '', // Empty for pending
-                  s3Key: m.s3Key || '', // May be empty for URL videos
-                  isPending: true,
-                  pendingJobId: m.pendingJobId,
-                  videoUrl: m.videoUrl,
-                  platform: m.platform,
-                  type: m.type,
-                }
-              }
-              // For uploaded media, send normal format
-              return {
-                media_id: m.media_id!,
-                s3Key: m.s3Key!,
-              }
-            }),
+            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
+            .map(m => ({
+              media_id: m.media_id!,
+              s3Key: m.s3Key!,
+            })),
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
@@ -1019,6 +903,15 @@ export default function ThreadTweetEditor({
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-neutral-500">Loading thread...</div>
+      </div>
+    )
+  }
+
+  // Prevent hydration mismatch by not rendering until store is initialized
+  if (threadTweets.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-neutral-500">Initializing editor...</div>
       </div>
     )
   }

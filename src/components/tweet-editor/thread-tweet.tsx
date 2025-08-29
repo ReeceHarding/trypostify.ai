@@ -557,27 +557,13 @@ function ThreadTweetContent({
       }
 
       const url = URL.createObjectURL(file)
-      
-      // For videos, use pending approach to allow background processing
-      const isVideoFile = validation.type === 'video'
-      
       const mediaFile: MediaFile = {
         file,
         url,
         type: validation.type!,
-        uploading: !isVideoFile, // Videos don't block, images/gifs do
+        uploading: true,
         uploaded: false,
-        // Video-specific pending state
-        isPending: isVideoFile,
-        pendingJobId: isVideoFile ? crypto.randomUUID() : undefined,
       }
-
-      console.log(`[ThreadTweet] Created ${isVideoFile ? 'PENDING' : 'UPLOADING'} media file:`, {
-        type: validation.type,
-        isPending: mediaFile.isPending,
-        uploading: mediaFile.uploading,
-        pendingJobId: mediaFile.pendingJobId
-      })
 
       setMediaFiles((prev) => [...prev, mediaFile])
 
@@ -589,55 +575,29 @@ function ThreadTweetContent({
           fileUrl: url,
         })
 
-        let nextFiles: MediaFile[] = []
-        
-        if (isVideoFile) {
-          // For videos: Only upload to S3, mark as pending for background processing
-          console.log('[ThreadTweet] Video uploaded to S3, marking as pending for background processing')
-          setMediaFiles((prev) => {
-            nextFiles = prev.map((mf) =>
-              mf.url === url
-                ? {
-                    ...mf,
-                    uploading: false, // Stop blocking the UI
-                    uploaded: false, // Not fully uploaded until Twitter upload completes
-                    s3Key: s3Result.fileKey,
-                    // Keep pending state for background processing
-                  }
-                : mf,
-            )
-            return nextFiles
-          })
-          
-          toast.success('Video uploaded! Will process in background when you post.', {
-            duration: 3000,
-            icon: '🎬',
-          })
-        } else {
-          // For images/gifs: Upload to both S3 and Twitter immediately
-          console.log('[ThreadTweet] Image/GIF uploading to Twitter immediately')
-          const twitterResult = await uploadToTwitterMutation.mutateAsync({
-            s3Key: s3Result.fileKey,
-            mediaType: s3Result.mediaType,
-            fileUrl: url,
-          })
+        // Upload to Twitter
+        const twitterResult = await uploadToTwitterMutation.mutateAsync({
+          s3Key: s3Result.fileKey,
+          mediaType: s3Result.mediaType,
+          fileUrl: url,
+        })
 
-          setMediaFiles((prev) => {
-            nextFiles = prev.map((mf) =>
-              mf.url === url
-                ? {
-                    ...mf,
-                    uploading: false,
-                    uploaded: true,
-                    media_id: twitterResult.media_id,
-                    media_key: twitterResult.media_key,
-                    s3Key: s3Result.fileKey,
-                  }
-                : mf,
-            )
-            return nextFiles
-          })
-        }
+        let nextFiles: MediaFile[] = []
+        setMediaFiles((prev) => {
+          nextFiles = prev.map((mf) =>
+            mf.url === url
+              ? {
+                  ...mf,
+                  uploading: false,
+                  uploaded: true,
+                  media_id: twitterResult.media_id,
+                  media_key: twitterResult.media_key,
+                  s3Key: s3Result.fileKey,
+                }
+              : mf,
+          )
+          return nextFiles
+        })
 
         // Update store with the new media
         const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
@@ -1372,7 +1332,7 @@ function ThreadTweetContent({
                                   variant="duolingo-primary"
                                   className="h-11 px-6 max-[640px]:w-full"
                                   onClick={onUpdateThread}
-                                  disabled={isPosting || mediaFiles.some((f) => f.uploading && !f.isPending)}
+                                  disabled={isPosting || mediaFiles.some((f) => f.uploading)}
                                 >
                                   <span className="text-sm">
                                     {isPosting ? 'Saving...' : 'Save'}
@@ -1398,7 +1358,7 @@ function ThreadTweetContent({
                                   className="h-11 px-6 max-[640px]:w-full"
                                   variant="duolingo-secondary"
                                   onClick={handlePostClick}
-                                  disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading && !f.isPending)}
+                                  disabled={isPosting || optimisticActionState === 'post' || mediaFiles.some((f) => f.uploading)}
                                   loading={isPosting || optimisticActionState === 'post'}
                                 >
                                   <span className="text-sm">
@@ -1427,7 +1387,7 @@ function ThreadTweetContent({
                                   <Button
                                     variant="duolingo-primary"
                                     loading={isPosting || optimisticActionState === 'queue'}
-                                    disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading && !f.isPending)}
+                                    disabled={isPosting || optimisticActionState === 'queue' || mediaFiles.some((f) => f.uploading)}
                                     className="h-11 px-4 rounded-r-none border-r-0 max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full"
                                     onClick={() => {
                                       if (onQueueThread) {
@@ -1457,7 +1417,7 @@ function ThreadTweetContent({
                                   <Button
                                     variant="duolingo-primary"
                                     loading={isPosting || optimisticActionState === 'schedule'}
-                                    disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading && !f.isPending)}
+                                    disabled={isPosting || optimisticActionState === 'schedule' || mediaFiles.some((f) => f.uploading)}
                                     size="duolingo-icon"
                                     className="h-11 w-14 rounded-l-none border-l max-[640px]:rounded-lg max-[640px]:border max-[640px]:w-full max-[640px]:justify-center"
                                     onClick={() => {
