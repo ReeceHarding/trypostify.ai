@@ -1935,40 +1935,81 @@ export const tweetRouter = j.router({
       }
 
       // CHECK FOR VIDEO URLs AND CREATE VIDEO JOBS IF NEEDED
+      console.log(`[scheduleThread] 🔍 CHECKING FOR VIDEO URLs in ${threadTweets.length} tweets at ${new Date().toISOString()}`)
       const { extractVideoUrls, createVideoJobForAction } = await import('./utils/video-job-utils')
       
+      let totalVideoJobsCreated = 0
+      
       for (const tweet of threadTweets) {
+        console.log(`[scheduleThread] 🔍 Analyzing tweet ${tweet.id} content: "${tweet.content.substring(0, 100)}..."`)
         const videoUrls = extractVideoUrls(tweet.content)
         
+        console.log(`[scheduleThread] 🎬 Found ${videoUrls.length} video URLs in tweet ${tweet.id}:`, videoUrls)
+        
         if (videoUrls.length > 0) {
-          console.log(`[scheduleThread] Found ${videoUrls.length} video URLs in tweet:`, tweet.id)
+          console.log(`[scheduleThread] 🚀 CREATING VIDEO JOBS FOR SCHEDULE ACTION - Thread: ${threadId}, Tweet: ${tweet.id}`)
           
           for (const videoUrl of videoUrls) {
-            // Create video job for schedule action
-            await createVideoJobForAction({
+            console.log(`[scheduleThread] 📝 Creating video job for URL: ${videoUrl}`)
+            console.log(`[scheduleThread] 📝 Video job details:`, {
               userId: user.id,
               videoUrl,
-              tweetContent: {
-                action: 'schedule_thread',
-                threadId: threadId,
-                userId: user.id,
-                accountId: dbAccount.id,
-                tweets: threadTweets.map((t, index) => ({
-                  content: t.content,
-                  media: t.media || [],
-                  delayMs: index > 0 ? 1000 : 0,
-                })),
-                scheduledUnix: scheduledUnix,
-                scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
-              },
+              action: 'schedule_thread',
               threadId: threadId,
-              tweetId: tweet.id,
+              accountId: dbAccount.id,
+              tweetCount: threadTweets.length,
+              scheduledUnix: scheduledUnix,
+              scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
             })
             
-            console.log(`[scheduleThread] ✅ Video job created for URL: ${videoUrl}`)
+            try {
+              // Create video job for schedule action
+              const result = await createVideoJobForAction({
+                userId: user.id,
+                videoUrl,
+                tweetContent: {
+                  action: 'schedule_thread',
+                  threadId: threadId,
+                  userId: user.id,
+                  accountId: dbAccount.id,
+                  tweets: threadTweets.map((t, index) => ({
+                    content: t.content,
+                    media: t.media || [],
+                    delayMs: index > 0 ? 1000 : 0,
+                  })),
+                  scheduledUnix: scheduledUnix,
+                  scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
+                },
+                threadId: threadId,
+                tweetId: tweet.id,
+              })
+              
+              totalVideoJobsCreated++
+              console.log(`[scheduleThread] ✅ Video job #${totalVideoJobsCreated} created successfully:`, {
+                jobId: result.jobId,
+                qstashMessageId: result.qstashMessageId,
+                videoUrl,
+                action: 'schedule_thread'
+              })
+              
+            } catch (videoJobError) {
+              console.error(`[scheduleThread] ❌ FAILED to create video job for URL ${videoUrl}:`, videoJobError)
+              throw videoJobError // Re-throw to fail the entire operation
+            }
           }
+        } else {
+          console.log(`[scheduleThread] ℹ️ No video URLs found in tweet ${tweet.id}`)
         }
       }
+      
+      console.log(`[scheduleThread] 📊 VIDEO JOB CREATION SUMMARY:`, {
+        totalTweets: threadTweets.length,
+        totalVideoJobsCreated,
+        threadId,
+        scheduledUnix,
+        scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
+        timestamp: new Date().toISOString()
+      })
 
 
 
@@ -2108,40 +2149,79 @@ export const tweetRouter = j.router({
       }
 
       // CHECK FOR VIDEO URLs AND CREATE VIDEO JOBS IF NEEDED
+      console.log(`[enqueueThread] 🔍 CHECKING FOR VIDEO URLs in ${threadTweets.length} tweets at ${new Date().toISOString()}`)
       const { extractVideoUrls, createVideoJobForAction } = await import('./utils/video-job-utils')
       
+      let totalVideoJobsCreated = 0
+      
       for (const tweet of threadTweets) {
+        console.log(`[enqueueThread] 🔍 Analyzing tweet ${tweet.id} content: "${tweet.content.substring(0, 100)}..."`)
         const videoUrls = extractVideoUrls(tweet.content)
         
+        console.log(`[enqueueThread] 🎬 Found ${videoUrls.length} video URLs in tweet ${tweet.id}:`, videoUrls)
+        
         if (videoUrls.length > 0) {
-          console.log(`[enqueueThread] Found ${videoUrls.length} video URLs in tweet:`, tweet.id)
+          console.log(`[enqueueThread] 🚀 CREATING VIDEO JOBS FOR QUEUE ACTION - Thread: ${threadId}, Tweet: ${tweet.id}`)
           
           for (const videoUrl of videoUrls) {
-            // Create video job for queue action
-            await createVideoJobForAction({
+            console.log(`[enqueueThread] 📝 Creating video job for URL: ${videoUrl}`)
+            console.log(`[enqueueThread] 📝 Video job details:`, {
               userId: user.id,
               videoUrl,
-              tweetContent: {
-                action: 'queue_thread',
-                threadId: threadId,
-                userId: user.id,
-                accountId: dbAccount.id,
-                tweets: threadTweets.map((t, index) => ({
-                  content: t.content,
-                  media: t.media || [],
-                  delayMs: index > 0 ? 1000 : 0,
-                })),
-                timezone,
-                userNow: userNow.toISOString(),
-              },
+              action: 'queue_thread',
               threadId: threadId,
-              tweetId: tweet.id,
+              accountId: dbAccount.id,
+              tweetCount: threadTweets.length,
+              timezone,
+              userNow: userNow.toISOString(),
             })
             
-            console.log(`[enqueueThread] ✅ Video job created for URL: ${videoUrl}`)
+            try {
+              // Create video job for queue action
+              const result = await createVideoJobForAction({
+                userId: user.id,
+                videoUrl,
+                tweetContent: {
+                  action: 'queue_thread',
+                  threadId: threadId,
+                  userId: user.id,
+                  accountId: dbAccount.id,
+                  tweets: threadTweets.map((t, index) => ({
+                    content: t.content,
+                    media: t.media || [],
+                    delayMs: index > 0 ? 1000 : 0,
+                  })),
+                  timezone,
+                  userNow: userNow.toISOString(),
+                },
+                threadId: threadId,
+                tweetId: tweet.id,
+              })
+              
+              totalVideoJobsCreated++
+              console.log(`[enqueueThread] ✅ Video job #${totalVideoJobsCreated} created successfully:`, {
+                jobId: result.jobId,
+                qstashMessageId: result.qstashMessageId,
+                videoUrl,
+                action: 'queue_thread'
+              })
+              
+            } catch (videoJobError) {
+              console.error(`[enqueueThread] ❌ FAILED to create video job for URL ${videoUrl}:`, videoJobError)
+              throw videoJobError // Re-throw to fail the entire operation
+            }
           }
+        } else {
+          console.log(`[enqueueThread] ℹ️ No video URLs found in tweet ${tweet.id}`)
         }
       }
+      
+      console.log(`[enqueueThread] 📊 VIDEO JOB CREATION SUMMARY:`, {
+        totalTweets: threadTweets.length,
+        totalVideoJobsCreated,
+        threadId,
+        timestamp: new Date().toISOString()
+      })
 
 
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { videoJob, tweets } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, asc } from 'drizzle-orm'
 import { HTTPException } from 'hono/http-exception'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { nanoid } from 'nanoid'
@@ -310,15 +310,30 @@ export async function POST(req: NextRequest) {
       console.log('[VideoProcessor] Video job completed successfully:', videoJobId)
       
       // HANDLE DIFFERENT ACTIONS AFTER VIDEO PROCESSING
+      console.log(`[VideoProcessor] 🎬 VIDEO PROCESSING COMPLETED - Starting action handling at ${new Date().toISOString()}`)
+      console.log(`[VideoProcessor] 📋 Job details:`, {
+        videoJobId,
+        userId: job.userId,
+        threadId: job.threadId,
+        videoUrl: job.videoUrl,
+        platform: job.platform,
+        hasTwitterMediaId: !!twitterMediaId,
+        s3Key,
+        hasTweetContent: !!job.tweetContent
+      })
+      
       if (job.tweetContent) {
         const tweetContent = job.tweetContent as any
         const action = tweetContent.action || 'post_thread_now' // Default to post now for backward compatibility
         
-        console.log(`[VideoProcessor] Processing action: ${action} after video completion`)
+        console.log(`[VideoProcessor] 🎯 PROCESSING ACTION: ${action}`)
+        console.log(`[VideoProcessor] 📝 Full tweetContent:`, JSON.stringify(tweetContent, null, 2))
         
         try {
           // Get user account for operations
           const { account: accountSchema } = await import('../../../../db/schema')
+          
+          console.log(`[VideoProcessor] 🔍 Finding Twitter account for user: ${job.userId}`)
           
           // Find the user's Twitter account
           const account = await db.select()
@@ -330,31 +345,52 @@ export async function POST(req: NextRequest) {
             .then(rows => rows[0])
           
           if (!account?.id) {
-            console.error('[VideoProcessor] No Twitter account found for user:', job.userId)
+            console.error('[VideoProcessor] ❌ No Twitter account found for user:', job.userId)
             throw new Error('No Twitter account connected')
           }
           
+          console.log(`[VideoProcessor] ✅ Found Twitter account:`, {
+            accountId: account.id,
+            username: account.username,
+            hasAccessToken: !!account.accessToken
+          })
+          
+          console.log(`[VideoProcessor] 🚀 EXECUTING ACTION: ${action}`)
+          
           if (action === 'post_thread_now') {
-            // POST NOW: Create new thread and post immediately
+            console.log(`[VideoProcessor] 📮 POST NOW ACTION - Creating new thread and posting immediately`)
             await handlePostNowAction(job, twitterMediaId, s3Key, account)
             
           } else if (action === 'queue_thread') {
-            // QUEUE: Update existing thread with video and schedule for next slot
+            console.log(`[VideoProcessor] ⏰ QUEUE ACTION - Updating existing thread with video`)
             await handleQueueAction(job, twitterMediaId, s3Key, account)
             
           } else if (action === 'schedule_thread') {
-            // SCHEDULE: Update existing thread with video and schedule for specific time
+            console.log(`[VideoProcessor] 📅 SCHEDULE ACTION - Updating existing thread with video`)
             await handleScheduleAction(job, twitterMediaId, s3Key, account)
             
           } else {
-            console.error('[VideoProcessor] Unknown action:', action)
+            console.error('[VideoProcessor] ❌ UNKNOWN ACTION:', action)
+            console.error('[VideoProcessor] Available actions: post_thread_now, queue_thread, schedule_thread')
             throw new Error(`Unknown action: ${action}`)
           }
           
+          console.log(`[VideoProcessor] ✅ ACTION ${action} COMPLETED SUCCESSFULLY`)
+          
         } catch (actionError) {
-          console.error(`[VideoProcessor] ❌ Failed to handle ${action} action:`, actionError)
+          console.error(`[VideoProcessor] ❌ CRITICAL ERROR handling ${action} action:`, {
+            error: actionError instanceof Error ? actionError.message : 'Unknown error',
+            stack: actionError instanceof Error ? actionError.stack : undefined,
+            action,
+            videoJobId,
+            userId: job.userId,
+            threadId: job.threadId,
+            timestamp: new Date().toISOString()
+          })
           // Don't fail the video job, just log the error
         }
+      } else {
+        console.log(`[VideoProcessor] ⚠️ NO TWEET CONTENT - Skipping action handling`)
       }
       
       return NextResponse.json({ 
@@ -454,30 +490,55 @@ async function handleQueueAction(job: any, twitterMediaId: string | null, s3Key:
   const { tweets } = await import('../../../../db/schema')
   const tweetContent = job.tweetContent as any
   
+  console.log(`[VideoProcessor] 🔄 STARTING QUEUE ACTION HANDLER at ${new Date().toISOString()}`)
+  console.log(`[VideoProcessor] 📋 Queue action parameters:`, {
+    jobId: job.id,
+    hasTwitterMediaId: !!twitterMediaId,
+    s3Key,
+    accountId: account.id
+  })
+  
   // Get the existing thread ID
   const existingThreadId = tweetContent.threadId || job.threadId
   
+  console.log(`[VideoProcessor] 🎯 Target thread ID: ${existingThreadId}`)
+  
   if (!existingThreadId) {
+    console.error('[VideoProcessor] ❌ CRITICAL: No thread ID found for queue action')
     throw new Error('No thread ID found for queue action')
   }
   
-  console.log('[VideoProcessor] Updating existing thread for Queue action:', {
-    threadId: existingThreadId,
-    hasVideo: !!twitterMediaId
-  })
+  console.log('[VideoProcessor] 🔍 Looking for existing thread tweets...')
+  
+  // Get all tweets in the thread to verify it exists
+  const threadTweets = await db.select()
+    .from(tweets)
+    .where(eq(tweets.threadId, existingThreadId))
+    .orderBy(asc(tweets.position))
+  
+  console.log(`[VideoProcessor] 📊 Found ${threadTweets.length} tweets in thread ${existingThreadId}`)
+  
+  if (threadTweets.length === 0) {
+    console.error(`[VideoProcessor] ❌ CRITICAL: No tweets found in thread ${existingThreadId}`)
+    throw new Error(`Thread ${existingThreadId} not found or has no tweets`)
+  }
   
   // Update existing tweets in the thread to add the video
   if (twitterMediaId) {
+    console.log('[VideoProcessor] 🎬 Adding video to first tweet in thread...')
+    
     // Get the first tweet in the thread to add video to
-    const firstTweet = await db.select()
-      .from(tweets)
-      .where(and(
-        eq(tweets.threadId, existingThreadId),
-        eq(tweets.position, 0)
-      ))
-      .then(rows => rows[0])
+    const firstTweet = threadTweets.find(t => t.position === 0)
     
     if (firstTweet) {
+      console.log(`[VideoProcessor] 📝 Found first tweet:`, {
+        tweetId: firstTweet.id,
+        position: firstTweet.position,
+        currentMediaCount: firstTweet.media?.length || 0,
+        isScheduled: firstTweet.isScheduled,
+        scheduledFor: firstTweet.scheduledFor
+      })
+      
       // Add video to existing media array
       const updatedMedia = [
         ...firstTweet.media || [],
@@ -489,6 +550,8 @@ async function handleQueueAction(job: any, twitterMediaId: string | null, s3Key:
         }
       ]
       
+      console.log(`[VideoProcessor] 🔄 Updating tweet media (${firstTweet.media?.length || 0} -> ${updatedMedia.length} items)`)
+      
       await db.update(tweets)
         .set({
           media: updatedMedia,
@@ -496,14 +559,24 @@ async function handleQueueAction(job: any, twitterMediaId: string | null, s3Key:
         })
         .where(eq(tweets.id, firstTweet.id))
       
-      console.log('[VideoProcessor] ✅ Queue action completed - video added to existing thread:', existingThreadId)
+      console.log('[VideoProcessor] ✅ QUEUE ACTION COMPLETED - Video added to existing scheduled thread:', {
+        threadId: existingThreadId,
+        tweetId: firstTweet.id,
+        newMediaCount: updatedMedia.length,
+        scheduledFor: firstTweet.scheduledFor,
+        timestamp: new Date().toISOString()
+      })
     } else {
-      console.error('[VideoProcessor] No first tweet found in thread for queue action:', existingThreadId)
+      console.error('[VideoProcessor] ❌ CRITICAL: No first tweet (position 0) found in thread:', existingThreadId)
+      console.error('[VideoProcessor] Available tweets:', threadTweets.map(t => ({ id: t.id, position: t.position })))
+      throw new Error(`No first tweet found in thread ${existingThreadId}`)
     }
+  } else {
+    console.warn('[VideoProcessor] ⚠️ No Twitter media ID available - cannot add video to thread')
   }
   
-  // Note: The thread is already scheduled by the enqueueThread endpoint
-  // We just needed to add the video to the existing scheduled tweets
+  console.log('[VideoProcessor] ℹ️ NOTE: Thread is already scheduled by enqueueThread endpoint')
+  console.log('[VideoProcessor] ✅ QUEUE ACTION HANDLER COMPLETED')
 }
 
 /**
