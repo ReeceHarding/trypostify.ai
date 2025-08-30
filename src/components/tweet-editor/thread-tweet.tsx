@@ -655,9 +655,10 @@ function ThreadTweetContent({
           return nextFiles
         })
 
-        // Update store with the new media
-        const content = editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
-        updateTweet(tweetId, content, nextFiles)
+        // Update store with the new media - preserve existing content
+        const currentContent = mentionsContent || editor?.getEditorState().read(() => $getRoot().getTextContent()) || ''
+        console.log('[ThreadTweet] Twitter upload complete - preserving content:', currentContent)
+        updateTweet(tweetId, currentContent, nextFiles)
       } catch (error) {
         console.error('[ThreadTweet] Upload error:', error)
         setMediaFiles((prev) =>

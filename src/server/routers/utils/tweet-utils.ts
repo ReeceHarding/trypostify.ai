@@ -302,7 +302,8 @@ export async function enqueueThreadInternal(input: {
 
     console.log('[enqueueThreadInternal] Using preset slots for', userFrequency, 'posts per day:', presetSlots)
 
-    for (let dayOffset = 0; dayOffset <= 90; dayOffset++) {
+    // Limit to 7 days to stay within QStash maxDelay limit (604800 seconds = 7 days)
+    for (let dayOffset = 0; dayOffset <= 6; dayOffset++) {
       const checkDay = dayOffset === 0 ? startOfDay(userNow) : startOfDay(addDays(userNow, dayOffset))
       
       for (const hour of presetSlots) {
@@ -319,7 +320,7 @@ export async function enqueueThreadInternal(input: {
 
   const nextSlot = getNextAvailableSlot()
   if (!nextSlot) {
-    throw new Error('Queue for the next 3 months is already full!')
+    throw new Error('Queue for the next 7 days is already full! Please try again later or manually schedule for a specific time.')
   }
 
   const scheduledUnix = nextSlot.getTime()
