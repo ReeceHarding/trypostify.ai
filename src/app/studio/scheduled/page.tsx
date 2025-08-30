@@ -26,6 +26,7 @@ import { useThreadEditorStore } from '@/stores/thread-editor-store'
 import { useBackgroundProcessStore } from '@/stores/background-process-store'
 
 function BackgroundProcessStatus() {
+  const queryClient = useQueryClient()
   const { getActiveProcesses } = useBackgroundProcessStore()
   
   // Simple and reliable: Use the background process store
