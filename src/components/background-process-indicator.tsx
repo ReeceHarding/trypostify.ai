@@ -8,11 +8,14 @@ import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
-  const { getActiveProcesses } = useBackgroundProcessStore()
+  const { getActiveProcesses, cleanupOldProcesses } = useBackgroundProcessStore()
   
-  // Debug logging
+  // Debug logging and cleanup
   useEffect(() => {
     console.log('[BackgroundProcessIndicator] Component mounted')
+    // Clean up old processes on mount (in case of page refresh)
+    cleanupOldProcesses()
+    
     return () => {
       console.log('[BackgroundProcessIndicator] Component unmounted')
     }

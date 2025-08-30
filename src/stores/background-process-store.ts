@@ -1,10 +1,12 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 interface BackgroundProcess {
   id: string
   type: 'video-processing' | 'posting' | 'queueing'
   description: string
   startedAt: number
+  videoJobId?: string // Track actual video job ID for persistence
 }
 
 interface BackgroundProcessStore {
@@ -13,10 +15,13 @@ interface BackgroundProcessStore {
   removeProcess: (id: string) => void
   clearAllProcesses: () => void
   getActiveProcesses: () => BackgroundProcess[]
+  cleanupOldProcesses: () => void
 }
 
-export const useBackgroundProcessStore = create<BackgroundProcessStore>((set, get) => ({
-  processes: [],
+export const useBackgroundProcessStore = create<BackgroundProcessStore>()(
+  persist(
+    (set, get) => ({
+      processes: [],
   
   addProcess: (process) => {
     const id = crypto.randomUUID()
@@ -56,5 +61,20 @@ export const useBackgroundProcessStore = create<BackgroundProcessStore>((set, ge
     const now = Date.now()
     // Consider processes active if they're less than 2 minutes old
     return get().processes.filter(p => now - p.startedAt < 120000)
+  },
+
+  cleanupOldProcesses: () => {
+    const now = Date.now()
+    set((state) => ({
+      processes: state.processes.filter(p => now - p.startedAt < 120000)
+    }))
   }
-}))
+}),
+{
+  name: 'background-processes',
+  // Only persist video processing jobs, not short-term operations
+  partialize: (state) => ({
+    processes: state.processes.filter(p => p.type === 'video-processing')
+  })
+}
+))

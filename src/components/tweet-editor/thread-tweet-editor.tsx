@@ -572,7 +572,8 @@ export default function ThreadTweetEditor({
             // Add to background process store for immediate tracking
             const processId = addProcess({
               type: 'video-processing',
-              description: `Processing video from ${video.videoUrl?.includes('instagram') ? 'Instagram' : video.videoUrl?.includes('tiktok') ? 'TikTok' : 'social media'}`
+              description: `Processing video from ${video.videoUrl?.includes('instagram') ? 'Instagram' : video.videoUrl?.includes('tiktok') ? 'TikTok' : 'social media'}`,
+              videoJobId: '' // Will be updated with actual job ID
             })
             
             try {
