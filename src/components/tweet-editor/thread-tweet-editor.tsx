@@ -146,6 +146,13 @@ export default function ThreadTweetEditor({
         media: tweet.media?.map((m: any) => ({
           s3Key: m.s3Key,
           media_id: m.media_id,
+          url: m.url || (m.s3Key ? `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${m.s3Key}` : ''),
+          type: m.type || 'image',
+          // Preserve any pending video metadata
+          isPending: m.isPending,
+          pendingJobId: m.pendingJobId,
+          videoUrl: m.videoUrl,
+          platform: m.platform,
         })) || [],
       })))
     }

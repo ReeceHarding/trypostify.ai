@@ -149,9 +149,33 @@ function ThreadTweetContent({
   if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
     console.log('[ThreadTweet] Rendering with tweetId:', tweetId, 'found in store:', !!tweetData)
   }
-  // Initialize state from store data or props
-  const [mentionsContent, setMentionsContent] = useState(tweetData?.content || initialContent || '')
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(tweetData?.media || [])
+  // Initialize state from store data or props - prioritize initialContent in edit mode
+  const [mentionsContent, setMentionsContent] = useState(() => {
+    if (editMode && initialContent) {
+      console.log('[ThreadTweet] Edit mode - using initialContent:', initialContent)
+      return initialContent
+    }
+    return tweetData?.content || initialContent || ''
+  })
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(() => {
+    if (editMode && initialMedia && initialMedia.length > 0) {
+      console.log('[ThreadTweet] Edit mode - using initialMedia:', initialMedia.length, 'items')
+      return initialMedia.map(media => ({
+        url: media.url,
+        type: media.type,
+        s3Key: media.s3Key,
+        media_id: media.media_id,
+        uploaded: true,
+        uploading: false,
+        file: null,
+        isPending: media.isPending,
+        pendingJobId: media.pendingJobId,
+        videoUrl: media.videoUrl,
+        platform: media.platform,
+      }))
+    }
+    return tweetData?.media || []
+  })
   const [charCount, setCharCount] = useState(tweetData?.charCount || 0)
   // State for URL OG preview
   const [detectedUrl, setDetectedUrl] = useState<string | null>(null)
@@ -353,9 +377,10 @@ function ThreadTweetContent({
     }
   }, [hasBeenCleared, onClearComplete])
 
-  // Initialize media files when editing
+  // Initialize media files when editing - update when props change
   useEffect(() => {
-    if (initialMedia && initialMedia.length > 0) {
+    if (editMode && initialMedia && initialMedia.length > 0) {
+      console.log('[ThreadTweet] Updating media files from initialMedia:', initialMedia.length, 'items')
       setMediaFiles(initialMedia.map(media => ({
         url: media.url,
         type: media.type,
@@ -371,7 +396,16 @@ function ThreadTweetContent({
         platform: media.platform,
       })))
     }
-  }, [initialMedia])
+  }, [editMode, initialMedia])
+
+  // Update content when initialContent changes (for async data loading)
+  useEffect(() => {
+    if (editMode && initialContent && initialContent !== mentionsContent) {
+      console.log('[ThreadTweet] Updating content from initialContent:', initialContent)
+      setMentionsContent(initialContent)
+      setCharCount(initialContent.length)
+    }
+  }, [editMode, initialContent, mentionsContent])
 
   // Character count is now handled in handleMentionsContentChange
   // Keep this effect for initial character count setup
