@@ -15,6 +15,7 @@ import { SendTweetV2Params, TwitterApi, UserV2 } from 'twitter-api-v2'
 import { z } from 'zod'
 import { j, privateProcedure, publicProcedure } from '../jstack'
 import { getAccount } from './utils/get-account'
+import { enqueueThreadInternal } from './utils/tweet-utils'
 import { waitUntil } from '@vercel/functions'
 import {
   addDays,
@@ -1885,213 +1886,21 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, userNow, timezone } = input
 
-      // console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
-      // console.log('[enqueueThread] User timezone:', timezone)
-
-      console.log('[enqueueThread] Starting authentication checks for user:', user.email, 'at', new Date().toISOString())
+      console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
       
-      const account = await getAccount({
-        email: user.email,
-      })
-
-      if (!account?.id) {
-        console.log('[enqueueThread] No active account found for user:', user.email)
-        throw new HTTPException(400, {
-          message: 'Please connect your X account. Go to Settings to link your Twitter account.',
-        })
-      }
-
-      console.log('[enqueueThread] Found active account:', account.id, 'username:', account.username)
-
-      const dbAccount = await db.query.account.findFirst({
-        where: and(eq(accountSchema.userId, user.id), eq(accountSchema.id, account.id)),
-      })
-
-      if (!dbAccount) {
-        console.log('[enqueueThread] Database account not found for account ID:', account.id)
-        throw new HTTPException(400, {
-          message: 'X account database entry missing. Please reconnect your Twitter account in Settings.',
-        })
-      }
-
-      if (!dbAccount.accessToken || !dbAccount.accessSecret) {
-        console.log('[enqueueThread] Access tokens missing for account:', account.id, 'accessToken present:', Boolean(dbAccount.accessToken), 'accessSecret present:', Boolean(dbAccount.accessSecret))
-        throw new HTTPException(400, {
-          message: 'X account authentication incomplete. Please reconnect your Twitter account in Settings to complete the OAuth flow.',
-        })
-      }
-
-      console.log('[enqueueThread] Authentication successful for account:', account.id)
-
-      // Get user's frequency and posting window settings
-      const userRecord = await db
-        .select({
-          postingWindowStart: userSchema.postingWindowStart,
-          postingWindowEnd: userSchema.postingWindowEnd,
-          frequency: userSchema.frequency,
-        })
-        .from(userSchema)
-        .where(eq(userSchema.id, user.id))
-        .limit(1)
-        .then(rows => rows[0])
-
-      const postingWindowStart = userRecord?.postingWindowStart ?? 8 // Default 8am
-      const postingWindowEnd = userRecord?.postingWindowEnd ?? 18 // Default 6pm
-      const userFrequency = userRecord?.frequency ?? 3 // Default 3 posts per day
-
-      console.log('[enqueueThread] User posting window:', postingWindowStart, '-', postingWindowEnd)
-      console.log('[enqueueThread] User frequency:', userFrequency, 'posts per day')
-
-      // Get all tweets in the thread
-      const threadTweets = await db.query.tweets.findMany({
-        where: and(
-          eq(tweets.threadId, threadId),
-          eq(tweets.userId, user.id),
-        ),
-        orderBy: asc(tweets.position),
-      })
-
-      if (threadTweets.length === 0) {
-        // console.log('[enqueueThread] No tweets found in thread')
-        throw new HTTPException(404, { message: 'Thread not found' })
-      }
-
-      // console.log('[enqueueThread] Found tweets in thread:', threadTweets.length)
-
-      // Get all scheduled tweets to check for conflicts
-      const scheduledTweets = await db.query.tweets.findMany({
-        where: and(eq(tweets.accountId, account.id), eq(tweets.isScheduled, true)),
-        columns: { scheduledUnix: true },
-      })
-
-      function isSpotEmpty(time: Date) {
-        const unix = time.getTime()
-        return !Boolean(scheduledTweets.some((t) => t.scheduledUnix === unix))
-      }
-
-      function getNextAvailableSlot({
+      // The complex logic that was here has been moved to enqueueThreadInternal.
+      // It is replaced by a single call to our new utility function.
+      const result = await enqueueThreadInternal({
+        threadId,
+        userId: user.id,
         userNow,
         timezone,
-        maxDaysAhead,
-        userFrequency,
-      }: {
-        userNow: Date
-        timezone: string
-        maxDaysAhead: number
-        userFrequency: number
-      }) {
-        // Get preset slots based on user frequency
-        // 1 post per day: 10am
-        // 2 posts per day: 10am, 12pm  
-        // 3 posts per day: 10am, 12pm, 2pm
-        let presetSlots: number[]
-        if (userFrequency === 1) {
-          presetSlots = [10] // Just 10am
-        } else if (userFrequency === 2) {
-          presetSlots = [10, 12] // 10am and noon
-        } else {
-          presetSlots = [10, 12, 14] // 10am, noon, 2pm (default for 3+ posts)
-        }
-
-        console.log('[enqueueThread] Using preset slots for', userFrequency, 'posts per day:', presetSlots)
-
-        for (let dayOffset = 0; dayOffset <= maxDaysAhead; dayOffset++) {
-          let checkDay: Date | undefined = undefined
-
-          if (dayOffset === 0) checkDay = startOfDay(userNow)
-          else checkDay = startOfDay(addDays(userNow, dayOffset))
-
-          // Check preset slots for this day
-          for (const hour of presetSlots) {
-            const localSlotTime = startOfHour(setHours(checkDay, hour))
-            const slotTime = fromZonedTime(localSlotTime, timezone)
-
-            if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
-              console.log('[enqueueThread] Found available preset slot:', slotTime, 'hour:', hour)
-              return slotTime
-            }
-          }
-        }
-
-        return null // no slot found in next N days
-      }
-
-      const nextSlot = getNextAvailableSlot({ 
-        userNow, 
-        timezone, 
-        maxDaysAhead: 90,
-        userFrequency 
       })
-
-      // console.log('[enqueueThread] Next available slot:', nextSlot)
-
-      if (!nextSlot) {
-        throw new HTTPException(409, {
-          message: 'Queue for the next 3 months is already full!',
-        })
-      }
-
-      const scheduledUnix = nextSlot.getTime()
-
-      // For local development, skip QStash and just update the database
-      let messageId = null
-      
-      if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
-        // In development, generate a fake message ID
-        messageId = `local-${Date.now()}-${Math.random().toString(36).substring(7)}`
-        console.log('[enqueueThread] Local development - skipping QStash, using fake messageId:', messageId)
-      } else {
-        // In production, use QStash
-        const baseUrl = process.env.WEBHOOK_URL
-        const qstashResponse = await qstash.publishJSON({
-          url: baseUrl + '/api/tweet/postThread',
-          body: { threadId, userId: user.id, accountId: dbAccount.id },
-          notBefore: scheduledUnix / 1000, // needs to be in seconds
-        })
-        messageId = qstashResponse.messageId
-      }
-
-      // console.log('[enqueueThread] QStash message created:', messageId)
-
-      try {
-        // Update all tweets in the thread to queued
-        await db
-          .update(tweets)
-          .set({
-            isScheduled: true,
-            isQueued: true,
-            scheduledFor: new Date(scheduledUnix),
-            scheduledUnix: scheduledUnix,
-            qstashId: messageId,
-            updatedAt: new Date(),
-          })
-          .where(and(
-            eq(tweets.threadId, threadId),
-            eq(tweets.userId, user.id),
-          ))
-
-        // console.log('[enqueueThread] Thread queued successfully')
-      } catch (err) {
-        // console.error('[enqueueThread] Database error:', err)
-        const messages = qstash.messages
-
-        try {
-          await messages.delete(messageId)
-        } catch (err) {
-          // fail silently
-          // console.error('[enqueueThread] Failed to delete QStash message:', err)
-        }
-
-        throw new HTTPException(500, { message: 'Problem with database' })
-      }
 
       return c.json({
         success: true,
-        threadId,
-        scheduledUnix: scheduledUnix,
-        accountId: account.id,
-        accountName: account.name,
-        message: `Thread queued with ${threadTweets.length} tweets`,
+        ...result,
+        message: `Thread queued with ${result.tweetCount} tweets`,
       })
     }),
 

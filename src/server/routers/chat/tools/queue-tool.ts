@@ -163,23 +163,13 @@ export const createQueueTool = (
         }
 
         // Check for video URLs in any tweet content and create video jobs if found
-        const videoPatterns = [
-          /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\//,
-          /(?:tiktok\.com\/@[\w.-]+\/video\/|vm\.tiktok\.com\/)/,
-          /(?:twitter\.com|x\.com)\/\w+\/status\//,
-          /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)/,
-        ]
-        
-        const urlRegex = /https?:\/\/[^\s]+/g
-        const tweetsWithVideos = tweetsToQueue.filter(tweet => {
-          const urls = tweet.content.match(urlRegex) || []
-          return urls.some(url => videoPatterns.some(pattern => pattern.test(url)))
-        })
-        
-        if (tweetsWithVideos.length > 0) {
-          console.log('[QUEUE_TOOL] 🎬 Video URLs detected in', tweetsWithVideos.length, 'tweet(s)')
+        const { extractVideoUrls, createVideoJobForAction } = await import('../../utils/video-job-utils')
+        const allContent = tweetsToQueue.map(t => t.content).join(' ')
+        const videoUrls = extractVideoUrls(allContent)
+
+        if (videoUrls.length > 0) {
+          console.log('[QUEUE_TOOL] 🎬 Video URLs detected:', videoUrls)
           
-          // Send status update
           writer.write({
             type: 'data-tool-output',
             id: toolId,
@@ -189,73 +179,34 @@ export const createQueueTool = (
             },
           })
 
-          // Create video jobs for tweets with video URLs using direct database operations
-          const { videoJob } = await import('../../../../db/schema')
-          const { v4: uuidv4 } = await import('uuid')
-          const { qstash } = await import('../../../../lib/qstash')
-          const { getBaseUrl } = await import('../../../../constants/base-url')
-          
-          for (const tweet of tweetsWithVideos) {
-            const urls = tweet.content.match(urlRegex) || []
-            const videoUrls = urls.filter(url => videoPatterns.some(pattern => pattern.test(url)))
-            
-            for (const videoUrl of videoUrls) {
-              try {
-                const platform = videoUrl.includes('instagram') ? 'instagram' : 
-                                videoUrl.includes('tiktok') ? 'tiktok' :
-                                videoUrl.includes('youtube') || videoUrl.includes('youtu.be') ? 'youtube' :
-                                videoUrl.includes('twitter') || videoUrl.includes('x.com') ? 'twitter' : 'unknown'
-                
-                // Create video job record directly
-                const jobId = uuidv4()
-                const tempThreadId = crypto.randomUUID()
-                
-                await db.insert(videoJob).values({
-                  id: jobId,
-                  userId: userId,
-                  tweetId: '',
-                  threadId: tempThreadId,
-                  videoUrl: videoUrl,
-                  platform: platform,
-                  status: 'pending',
-                  tweetContent: {
-                    tweets: tweetsToQueue.map((t, index) => ({
-                      content: t.content,
-                      media: t.media || [],
-                      delayMs: index > 0 ? 1000 : 0
-                    }))
-                  },
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                })
+          // Remove video URLs from content
+          const cleanedTweets = tweetsToQueue.map(tweet => {
+            let cleanedContent = tweet.content
+            videoUrls.forEach(url => {
+              cleanedContent = cleanedContent.replace(url, '').trim()
+            })
+            return { ...tweet, content: cleanedContent }
+          })
 
-                // Enqueue video job processing with QStash
-                const webhookUrl = `${getBaseUrl()}/api/video/process`
-                const qstashResponse = await qstash.publishJSON({
-                  url: webhookUrl,
-                  body: { 
-                    videoJobId: jobId,
-                    pollingAttempt: 0
-                  },
-                  retries: 3,
-                })
-                
-                // Update job with QStash ID
-                await db.update(videoJob)
-                  .set({
-                    qstashId: qstashResponse.messageId,
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(videoJob.id, jobId))
-                
-                console.log('[QUEUE_TOOL] ✅ Video job created for queue:', jobId)
-              } catch (error) {
-                console.error('[QUEUE_TOOL] ❌ Failed to create video job for:', videoUrl, error)
+          // Create a video job for each detected URL
+          for (const videoUrl of videoUrls) {
+            await createVideoJobForAction({
+              userId,
+              videoUrl,
+              tweetContent: {
+                action: 'queue_thread',
+                userId,
+                accountId,
+                tweets: cleanedTweets.map(t => ({
+                  ...t,
+                  delayMs: t.delayMs || 0
+                })),
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                userNow: new Date().toISOString(),
               }
-            }
+            })
           }
 
-          // Video processing will handle queueing when complete
           writer.write({
             type: 'data-tool-output',
             id: toolId,
@@ -264,7 +215,7 @@ export const createQueueTool = (
               status: 'complete',
             },
           })
-          return
+          return // Stop execution, webhook will handle the rest
         }
         
         // Send initial status

@@ -434,60 +434,43 @@ export async function POST(req: NextRequest) {
  */
 async function handlePostNowAction(job: any, twitterMediaId: string | null, s3Key: string, account: any) {
   const { publishThreadById } = await import('../../../../server/routers/chat/utils')
-  const { tweets } = await import('../../../../db/schema')
+  const { createThreadInternal } = await import('../../../../server/routers/utils/tweet-utils')
   
-  // Create a thread ID for the new tweets
-  const threadId = crypto.randomUUID()
-  
-  // Prepare tweet content with the processed video
   const tweetContent = job.tweetContent as any
-  const tweetsToCreate = tweetContent.tweets.map((tweet: any, index: number) => ({
-    id: crypto.randomUUID(),
-    accountId: account.id,
-    userId: job.userId,
+  
+  // Add the processed video to the first tweet's media
+  const tweetsWithVideo = tweetContent.tweets.map((tweet: any, index: number) => ({
     content: tweet.content,
     media: [
       ...tweet.media || [], // Existing media
-      ...(twitterMediaId ? [{
+      ...(twitterMediaId && index === 0 ? [{
         s3Key,
         media_id: twitterMediaId,
         url: `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`,
         type: 'video' as const,
-      }] : []), // Only add video if Twitter upload succeeded
+      }] : []), // Only add video to first tweet if Twitter upload succeeded
     ],
-    threadId,
-    position: index,
-    isThreadStart: index === 0,
     delayMs: tweet.delayMs || (index > 0 ? 1000 : 0),
-    isScheduled: false,
-    isPublished: false,
   }))
+
+  const { threadId } = await createThreadInternal({ tweets: tweetsWithVideo }, job.userId)
   
-  console.log('[VideoProcessor] Creating tweets for Post Now action:', {
-    tweetCount: tweetsToCreate.length,
-    threadId,
-    accountId: account.id,
-  })
-  
-  // Insert tweets into database
-  await db.insert(tweets).values(tweetsToCreate)
-  
-  // Post the thread immediately
-  const postResult = await publishThreadById({
+  await publishThreadById({
     threadId,
     userId: job.userId,
     accountId: account.id,
     logPrefix: 'VideoProcessor-PostNow',
   })
   
-  console.log('[VideoProcessor] ✅ Post Now action completed successfully:', postResult)
+  console.log('[VideoProcessor] ✅ Post Now action completed successfully for thread:', threadId)
 }
 
 /**
- * Handle Queue action - update existing thread with video and schedule for next slot
+ * Handle Queue action - create thread and schedule for next available slot
  */
 async function handleQueueAction(job: any, twitterMediaId: string | null, s3Key: string, account: any) {
-  const { tweets } = await import('../../../../db/schema')
+  const { createThreadInternal, enqueueThreadInternal } = await import('../../../../server/routers/utils/tweet-utils')
+  
   const tweetContent = job.tweetContent as any
   
   console.log(`[VideoProcessor] 🔄 STARTING QUEUE ACTION HANDLER at ${new Date().toISOString()}`)
@@ -498,143 +481,68 @@ async function handleQueueAction(job: any, twitterMediaId: string | null, s3Key:
     accountId: account.id
   })
   
-  // Get the existing thread ID
-  const existingThreadId = tweetContent.threadId || job.threadId
+  // Add the processed video to the first tweet's media
+  const tweetsWithVideo = tweetContent.tweets.map((tweet: any, index: number) => ({
+    content: tweet.content,
+    media: [
+      ...tweet.media || [], // Existing media
+      ...(twitterMediaId && index === 0 ? [{
+        s3Key,
+        media_id: twitterMediaId,
+        url: `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`,
+        type: 'video' as const,
+      }] : []), // Only add video to first tweet if Twitter upload succeeded
+    ],
+    delayMs: tweet.delayMs || (index > 0 ? 1000 : 0),
+  }))
+
+  const { threadId } = await createThreadInternal({ tweets: tweetsWithVideo }, job.userId)
   
-  console.log(`[VideoProcessor] 🎯 Target thread ID: ${existingThreadId}`)
+  await enqueueThreadInternal({
+    threadId,
+    userId: job.userId,
+    userNow: new Date(tweetContent.userNow),
+    timezone: tweetContent.timezone,
+  })
   
-  if (!existingThreadId) {
-    console.error('[VideoProcessor] ❌ CRITICAL: No thread ID found for queue action')
-    throw new Error('No thread ID found for queue action')
-  }
-  
-  console.log('[VideoProcessor] 🔍 Looking for existing thread tweets...')
-  
-  // Get all tweets in the thread to verify it exists
-  const threadTweets = await db.select()
-    .from(tweets)
-    .where(eq(tweets.threadId, existingThreadId))
-    .orderBy(asc(tweets.position))
-  
-  console.log(`[VideoProcessor] 📊 Found ${threadTweets.length} tweets in thread ${existingThreadId}`)
-  
-  if (threadTweets.length === 0) {
-    console.error(`[VideoProcessor] ❌ CRITICAL: No tweets found in thread ${existingThreadId}`)
-    throw new Error(`Thread ${existingThreadId} not found or has no tweets`)
-  }
-  
-  // Update existing tweets in the thread to add the video
-  if (twitterMediaId) {
-    console.log('[VideoProcessor] 🎬 Adding video to first tweet in thread...')
-    
-    // Get the first tweet in the thread to add video to
-    const firstTweet = threadTweets.find(t => t.position === 0)
-    
-    if (firstTweet) {
-      console.log(`[VideoProcessor] 📝 Found first tweet:`, {
-        tweetId: firstTweet.id,
-        position: firstTweet.position,
-        currentMediaCount: firstTweet.media?.length || 0,
-        isScheduled: firstTweet.isScheduled,
-        scheduledFor: firstTweet.scheduledFor
-      })
-      
-      // Add video to existing media array
-      const updatedMedia = [
-        ...firstTweet.media || [],
-        {
-          s3Key,
-          media_id: twitterMediaId,
-          url: `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`,
-          type: 'video' as const,
-        }
-      ]
-      
-      console.log(`[VideoProcessor] 🔄 Updating tweet media (${firstTweet.media?.length || 0} -> ${updatedMedia.length} items)`)
-      
-      await db.update(tweets)
-        .set({
-          media: updatedMedia,
-          updatedAt: new Date(),
-        })
-        .where(eq(tweets.id, firstTweet.id))
-      
-      console.log('[VideoProcessor] ✅ QUEUE ACTION COMPLETED - Video added to existing scheduled thread:', {
-        threadId: existingThreadId,
-        tweetId: firstTweet.id,
-        newMediaCount: updatedMedia.length,
-        scheduledFor: firstTweet.scheduledFor,
-        timestamp: new Date().toISOString()
-      })
-    } else {
-      console.error('[VideoProcessor] ❌ CRITICAL: No first tweet (position 0) found in thread:', existingThreadId)
-      console.error('[VideoProcessor] Available tweets:', threadTweets.map(t => ({ id: t.id, position: t.position })))
-      throw new Error(`No first tweet found in thread ${existingThreadId}`)
-    }
-  } else {
-    console.warn('[VideoProcessor] ⚠️ No Twitter media ID available - cannot add video to thread')
-  }
-  
-  console.log('[VideoProcessor] ℹ️ NOTE: Thread is already scheduled by enqueueThread endpoint')
-  console.log('[VideoProcessor] ✅ QUEUE ACTION HANDLER COMPLETED')
+  console.log('[VideoProcessor] ✅ Queue action completed successfully for thread:', threadId)
 }
 
 /**
- * Handle Schedule action - update existing thread with video and schedule for specific time
+ * Handle Schedule action - create thread and schedule for specific time
  */
 async function handleScheduleAction(job: any, twitterMediaId: string | null, s3Key: string, account: any) {
-  const { tweets } = await import('../../../../db/schema')
+  const { createThreadInternal, scheduleThreadInternal } = await import('../../../../server/routers/utils/tweet-utils')
+  
   const tweetContent = job.tweetContent as any
   
-  // Get the existing thread ID
-  const existingThreadId = tweetContent.threadId || job.threadId
-  
-  if (!existingThreadId) {
-    throw new Error('No thread ID found for schedule action')
-  }
-  
-  console.log('[VideoProcessor] Updating existing thread for Schedule action:', {
-    threadId: existingThreadId,
+  console.log('[VideoProcessor] Starting Schedule action:', {
     hasVideo: !!twitterMediaId,
-    scheduledTime: tweetContent.scheduledTime
+    scheduledTime: tweetContent.scheduledTime,
+    scheduledUnix: tweetContent.scheduledUnix
   })
   
-  // Update existing tweets in the thread to add the video
-  if (twitterMediaId) {
-    // Get the first tweet in the thread to add video to
-    const firstTweet = await db.select()
-      .from(tweets)
-      .where(and(
-        eq(tweets.threadId, existingThreadId),
-        eq(tweets.position, 0)
-      ))
-      .then(rows => rows[0])
-    
-    if (firstTweet) {
-      // Add video to existing media array
-      const updatedMedia = [
-        ...firstTweet.media || [],
-        {
-          s3Key,
-          media_id: twitterMediaId,
-          url: `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`,
-          type: 'video' as const,
-        }
-      ]
-      
-      await db.update(tweets)
-        .set({
-          media: updatedMedia,
-          updatedAt: new Date(),
-        })
-        .where(eq(tweets.id, firstTweet.id))
-      
-      console.log('[VideoProcessor] ✅ Schedule action completed - video added to existing thread:', existingThreadId)
-    } else {
-      console.error('[VideoProcessor] No first tweet found in thread for schedule action:', existingThreadId)
-    }
-  }
+  // Add the processed video to the first tweet's media
+  const tweetsWithVideo = tweetContent.tweets.map((tweet: any, index: number) => ({
+    content: tweet.content,
+    media: [
+      ...tweet.media || [], // Existing media
+      ...(twitterMediaId && index === 0 ? [{
+        s3Key,
+        media_id: twitterMediaId,
+        url: `https://${BUCKET_NAME}.s3.amazonaws.com/${s3Key}`,
+        type: 'video' as const,
+      }] : []), // Only add video to first tweet if Twitter upload succeeded
+    ],
+    delayMs: tweet.delayMs || (index > 0 ? 1000 : 0),
+  }))
+
+  const { threadId } = await createThreadInternal({ tweets: tweetsWithVideo }, job.userId)
   
-  // Note: The thread is already scheduled by the scheduleThread endpoint
-  // We just needed to add the video to the existing scheduled tweets
+  await scheduleThreadInternal({
+    threadId,
+    scheduledUnix: tweetContent.scheduledUnix,
+  }, job.userId)
+  
+  console.log('[VideoProcessor] ✅ Schedule action completed successfully for thread:', threadId)
 }

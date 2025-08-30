@@ -5,6 +5,14 @@ import { qstash } from '@/lib/qstash'
 import { eq, and, asc } from 'drizzle-orm'
 import crypto from 'crypto'
 import { getAccount } from './get-account'
+import {
+  addDays,
+  isAfter,
+  startOfDay,
+  startOfHour,
+  setHours,
+} from 'date-fns'
+import { fromZonedTime } from 'date-fns-tz'
 
 /**
  * Internal function to create a thread directly (bypasses HTTP layer)
@@ -141,6 +149,150 @@ export async function scheduleThreadInternal(input: {
   return {
     success: true,
     threadId,
+    messageId,
+  }
+}
+
+/**
+ * Internal function to enqueue a thread directly (bypasses HTTP layer)
+ * Finds the next available slot and schedules the thread for posting.
+ */
+export async function enqueueThreadInternal(input: {
+  threadId: string
+  userId: string
+  userNow: Date
+  timezone: string
+}): Promise<{ tweetCount: number; scheduledUnix: number; accountId: string; accountName: string; messageId: string | null }> {
+  const { threadId, userId, userNow, timezone } = input
+
+  console.log('[enqueueThreadInternal] Starting internal thread queue for threadId:', threadId)
+  console.log('[enqueueThreadInternal] User timezone:', timezone)
+
+  const userRecord = await db.query.user.findFirst({ where: eq(userSchema.id, userId) })
+  if (!userRecord) throw new Error('User not found')
+
+  const account = await getAccount({ email: userRecord.email })
+  if (!account?.id) {
+    throw new Error('Please connect your X account.')
+  }
+
+  const dbAccount = await db.query.account.findFirst({
+    where: and(eq(accountSchema.userId, userId), eq(accountSchema.id, account.id)),
+  })
+  if (!dbAccount?.accessToken || !dbAccount?.accessSecret) {
+    throw new Error('X account authentication incomplete.')
+  }
+
+  console.log('[enqueueThreadInternal] Authentication successful for account:', account.id)
+
+  const threadTweets = await db.query.tweets.findMany({
+    where: and(eq(tweets.threadId, threadId), eq(tweets.userId, userId)),
+  })
+  if (threadTweets.length === 0) {
+    throw new Error('Thread not found or has no tweets')
+  }
+
+  console.log('[enqueueThreadInternal] Found tweets in thread:', threadTweets.length)
+
+  const userSettings = await db.query.user.findFirst({
+    where: eq(userSchema.id, userId),
+    columns: {
+      postingWindowStart: true,
+      postingWindowEnd: true,
+      frequency: true,
+    },
+  })
+
+  const postingWindowStart = userSettings?.postingWindowStart ?? 8
+  const postingWindowEnd = userSettings?.postingWindowEnd ?? 18
+  const userFrequency = userSettings?.frequency ?? 3
+
+  console.log('[enqueueThreadInternal] User posting window:', postingWindowStart, '-', postingWindowEnd)
+  console.log('[enqueueThreadInternal] User frequency:', userFrequency, 'posts per day')
+
+  const scheduledTweets = await db.query.tweets.findMany({
+    where: and(eq(tweets.accountId, account.id), eq(tweets.isScheduled, true)),
+    columns: { scheduledUnix: true },
+  })
+
+  function isSpotEmpty(time: Date) {
+    const unix = time.getTime()
+    return !scheduledTweets.some((t) => t.scheduledUnix === unix)
+  }
+
+  function getNextAvailableSlot() {
+    // Get preset slots based on user frequency
+    // 1 post per day: 10am
+    // 2 posts per day: 10am, 12pm  
+    // 3 posts per day: 10am, 12pm, 2pm
+    let presetSlots: number[]
+    if (userFrequency === 1) {
+      presetSlots = [10] // Just 10am
+    } else if (userFrequency === 2) {
+      presetSlots = [10, 12] // 10am and noon
+    } else {
+      presetSlots = [10, 12, 14] // 10am, noon, 2pm (default for 3+ posts)
+    }
+
+    console.log('[enqueueThreadInternal] Using preset slots for', userFrequency, 'posts per day:', presetSlots)
+
+    for (let dayOffset = 0; dayOffset <= 90; dayOffset++) {
+      const checkDay = dayOffset === 0 ? startOfDay(userNow) : startOfDay(addDays(userNow, dayOffset))
+      
+      for (const hour of presetSlots) {
+        const localSlotTime = startOfHour(setHours(checkDay, hour))
+        const slotTime = fromZonedTime(localSlotTime, timezone)
+        if (isAfter(slotTime, userNow) && isSpotEmpty(slotTime)) {
+          console.log('[enqueueThreadInternal] Found available preset slot:', slotTime, 'hour:', hour)
+          return slotTime
+        }
+      }
+    }
+    return null
+  }
+
+  const nextSlot = getNextAvailableSlot()
+  if (!nextSlot) {
+    throw new Error('Queue for the next 3 months is already full!')
+  }
+
+  const scheduledUnix = nextSlot.getTime()
+  let messageId = null
+
+  if (process.env.NODE_ENV === 'development' || !process.env.WEBHOOK_URL) {
+    messageId = `local-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    console.log('[enqueueThreadInternal] Local development - skipping QStash, using fake messageId:', messageId)
+  } else {
+    const baseUrl = process.env.WEBHOOK_URL
+    const qstashResponse = await qstash.publishJSON({
+      url: baseUrl + '/api/tweet/postThread',
+      body: { threadId, userId, accountId: dbAccount.id },
+      notBefore: scheduledUnix / 1000,
+    })
+    messageId = qstashResponse.messageId
+  }
+
+  console.log('[enqueueThreadInternal] QStash message created:', messageId)
+
+  await db
+    .update(tweets)
+    .set({
+      isScheduled: true,
+      isQueued: true,
+      scheduledFor: new Date(scheduledUnix),
+      scheduledUnix: scheduledUnix,
+      qstashId: messageId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(tweets.threadId, threadId), eq(tweets.userId, userId)))
+
+  console.log('[enqueueThreadInternal] Thread queued successfully')
+
+  return {
+    tweetCount: threadTweets.length,
+    scheduledUnix,
+    accountId: account.id,
+    accountName: account.name,
     messageId,
   }
 }

@@ -241,21 +241,12 @@ export const createScheduleTool = (
         }
 
         // Check for video URLs in content and create video jobs if found
-        const videoPatterns = [
-          /(?:instagram\.com|instagr\.am)\/(?:p|reel|tv)\//,
-          /(?:tiktok\.com\/@[\w.-]+\/video\/|vm\.tiktok\.com\/)/,
-          /(?:twitter\.com|x\.com)\/\w+\/status\//,
-          /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)/,
-        ]
-        
-        const urlRegex = /https?:\/\/[^\s]+/g
-        const urls = finalContent.match(urlRegex) || []
-        const videoUrls = urls.filter(url => videoPatterns.some(pattern => pattern.test(url)))
-        
+        const { extractVideoUrls, createVideoJobForAction } = await import('../../utils/video-job-utils')
+        const videoUrls = extractVideoUrls(finalContent)
+
         if (videoUrls.length > 0) {
           console.log('[SCHEDULE_TOOL] 🎬 Video URLs detected:', videoUrls)
           
-          // Send status update
           writer.write({
             type: 'data-tool-output',
             id: toolId,
@@ -265,96 +256,46 @@ export const createScheduleTool = (
             },
           })
 
-          // Parse the time expression first
           const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
           const parsedTime = parseTimeExpression(scheduledTime, timezone)
-          
-          if (!parsedTime) {
-            throw new Error(`Could not understand the time "${scheduledTime}". Try phrases like "tomorrow at 9am", "in 2 hours", or "3:30pm".`)
+          if (!parsedTime || isBefore(parsedTime, new Date())) {
+            throw new Error('Invalid or past schedule time provided.')
           }
 
-          // Validate the time is in the future
-          if (isBefore(parsedTime, new Date())) {
-            throw new Error('Cannot schedule tweets in the past')
-          }
-
-          // Create video jobs for each URL using direct database operations
-          const { videoJob } = await import('../../../../db/schema')
-          const { v4: uuidv4 } = await import('uuid')
-          const { qstash } = await import('../../../../lib/qstash')
-          const { getBaseUrl } = await import('../../../../constants/base-url')
-          const videoJobs = []
-          
+          // Create a video job for each detected URL
           for (const videoUrl of videoUrls) {
-            try {
-              const platform = videoUrl.includes('instagram') ? 'instagram' : 
-                              videoUrl.includes('tiktok') ? 'tiktok' :
-                              videoUrl.includes('youtube') || videoUrl.includes('youtu.be') ? 'youtube' :
-                              videoUrl.includes('twitter') || videoUrl.includes('x.com') ? 'twitter' : 'unknown'
-              
-              // Create video job record directly
-              const jobId = uuidv4()
-              const tempThreadId = crypto.randomUUID()
-              
-              await db.insert(videoJob).values({
-                id: jobId,
-                userId: userId,
-                tweetId: '',
-                threadId: tempThreadId,
-                videoUrl: videoUrl,
-                platform: platform,
-                status: 'pending',
-                tweetContent: {
-                  tweets: [{
-                    content: finalContent,
-                    media: media || [],
-                    delayMs: 0
-                  }],
-                  scheduledTime: parsedTime.toISOString()
-                },
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              })
-
-              // Enqueue video job processing with QStash
-              const webhookUrl = `${getBaseUrl()}/api/video/process`
-              const qstashResponse = await qstash.publishJSON({
-                url: webhookUrl,
-                body: { 
-                  videoJobId: jobId,
-                  pollingAttempt: 0
-                },
-                retries: 3,
-              })
-              
-              // Update job with QStash ID
-              await db.update(videoJob)
-                .set({
-                  qstashId: qstashResponse.messageId,
-                  updatedAt: new Date(),
-                })
-                .where(eq(videoJob.id, jobId))
-              
-              videoJobs.push({ jobId, videoUrl, platform })
-              console.log('[SCHEDULE_TOOL] ✅ Video job created for schedule:', jobId)
-            } catch (error) {
-              console.error('[SCHEDULE_TOOL] ❌ Failed to create video job for:', videoUrl, error)
-            }
-          }
-
-          if (videoJobs.length > 0) {
-            // Video processing will handle scheduling when complete
-            const formattedTime = format(parsedTime, 'PPpp')
-            writer.write({
-              type: 'data-tool-output',
-              id: toolId,
-              data: {
-                text: `Video processing started for ${videoJobs.length} video(s). Tweet will be automatically scheduled for ${formattedTime} when videos are ready.`,
-                status: 'complete',
-              },
+            await createVideoJobForAction({
+              userId,
+              videoUrl,
+              tweetContent: {
+                action: 'schedule_thread',
+                userId,
+                accountId,
+                tweets: [{
+                  content: finalContent.replace(videoUrl, '').trim(),
+                  media: media || [],
+                  delayMs: 0
+                }, ...additionalTweets.map(t => ({
+                  ...t,
+                  media: t.media || [],
+                  delayMs: t.delayMs || 0
+                }))],
+                scheduledTime: parsedTime.toISOString(),
+                scheduledUnix: Math.floor(parsedTime.getTime() / 1000),
+              }
             })
-            return
           }
+
+          const formattedTime = format(parsedTime, 'PPpp')
+          writer.write({
+            type: 'data-tool-output',
+            id: toolId,
+            data: {
+              text: `Video processing started. Tweet will be automatically scheduled for ${formattedTime} when videos are ready.`,
+              status: 'complete',
+            },
+          })
+          return // Stop execution, webhook will handle the rest
         }
         
         // Send initial status
