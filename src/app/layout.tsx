@@ -5,6 +5,7 @@ import { Instrument_Serif, JetBrains_Mono, Rubik } from 'next/font/google'
 import { Suspense } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { Databuddy, track } from '@databuddy/sdk'
+import BackgroundProcessIndicator from '@/components/background-process-indicator'
 
 import './globals.css'
 
@@ -79,7 +80,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             }}
           />
 
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+            {/* Global background process indicator */}
+            <Suspense fallback={null}>
+              <BackgroundProcessIndicator />
+            </Suspense>
+          </Providers>
         </Suspense>
       </body>
     </html>

@@ -44,6 +44,7 @@ export default function TweetQueue() {
   const { fire } = useConfetti()
   const [pendingPostId, setPendingPostId] = useState<string | null>(null)
   const [daysLoaded, setDaysLoaded] = useState(7) // Start with 7 days
+  const [isProcessing, setIsProcessing] = useState(false)
 
   // Legacy shadow editor and media files functionality removed
   const router = useRouter()
@@ -170,6 +171,7 @@ export default function TweetQueue() {
     },
     onSuccess: (data) => {
       setPendingPostId(null)
+      setIsProcessing(false)
 
       queryClient.invalidateQueries({ queryKey: ['queue-slots'] })
       queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
@@ -209,6 +211,7 @@ export default function TweetQueue() {
     },
     onError: (error) => {
       console.error('Failed to post content:', error)
+      setIsProcessing(false)
       toast.error('Failed to post content')
     },
   })
@@ -272,6 +275,17 @@ export default function TweetQueue() {
 
   return (
     <>
+      {/* Processing Indicator */}
+      {isProcessing && (
+        <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          <div>
+            <div className="font-medium text-primary">Posting in progress...</div>
+            <div className="text-sm text-neutral-600">Your tweet is being posted to Twitter</div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         {data?.results.map((result) => {
           const [day, tweets] = Object.entries(result)[0]!
@@ -576,6 +590,8 @@ export default function TweetQueue() {
                                   className="h-11"
                                   onClick={(e) => {
                                     e.preventDefault()
+                                    setIsProcessing(true)
+                                    
                                     if (didTogglePostConfirmation) {
                                       toggleSkipConfirmation(true)
                                     }

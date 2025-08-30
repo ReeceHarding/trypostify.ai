@@ -23,12 +23,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
 
-function VideoProcessingStatus() {
+function BackgroundProcessStatus() {
   const queryClient = useQueryClient()
   
   // Clear cache on component mount to ensure fresh data
   React.useEffect(() => {
-    console.log('[VideoProcessingStatus] 🧹 Clearing cache on mount to ensure fresh data')
+    console.log('[BackgroundProcessStatus] 🧹 Clearing cache on mount to ensure fresh data')
     queryClient.removeQueries({ queryKey: ['video-processing-status'] })
     queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
     queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
@@ -145,6 +145,23 @@ function VideoProcessingStatus() {
     },
   })
 
+  // Add visual feedback for background processes
+  const hasActiveProcesses = processingVideos && processingVideos.length > 0
+
+  // Show page title indicator when processes are running
+  React.useEffect(() => {
+    if (hasActiveProcesses) {
+      document.title = `(${processingVideos.length}) Processing - Postify`
+    } else {
+      document.title = 'Scheduled - Postify'
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.title = 'Postify'
+    }
+  }, [hasActiveProcesses, processingVideos?.length])
+
   // Don't show the component if there are no processing videos or if there's an error
   if (error || (!isLoading && (!processingVideos || processingVideos.length === 0))) {
     return null
@@ -174,14 +191,31 @@ function VideoProcessingStatus() {
   }
 
   return (
+    <>
+      {/* Floating Status Indicator */}
+      {hasActiveProcesses && (
+        <div className="fixed top-4 right-4 z-50 bg-primary text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm font-medium">{processingVideos.length} processing</span>
+        </div>
+      )}
+      
+      {/* Main Processing Status Card */}
           <Card className="border-neutral-200 bg-neutral-50">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Video className="w-5 h-5 text-primary" />
-              Video Processing Status
-              <DuolingoBadge variant="warning" className="text-xs">
-                {processingVideos?.length || 0} stuck
+              <Video className="w-5 h-5 text-primary animate-pulse" />
+              Background Processing
+              <div className="animate-pulse">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                </div>
+              </div>
+              <DuolingoBadge variant="warning" className="text-xs animate-pulse">
+                {processingVideos?.length || 0} active
               </DuolingoBadge>
             </div>
             <div className="flex items-center gap-2">
@@ -314,6 +348,7 @@ function VideoProcessingStatus() {
         })}
       </CardContent>
     </Card>
+    </>
   )
 }
 
@@ -439,7 +474,7 @@ export default function ScheduledTweetsPage() {
       </div>
 
       {/* Video Processing Status Section */}
-      <VideoProcessingStatus />
+      <BackgroundProcessStatus />
 
       <TweetQueue />
     </div>
