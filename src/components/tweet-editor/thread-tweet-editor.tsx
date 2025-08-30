@@ -360,6 +360,25 @@ export default function ThreadTweetEditor({
     },
   })
 
+  // Video job creation mutation
+  const createVideoJobMutation = useMutation({
+    mutationKey: ['create-video-job'],
+    mutationFn: async (params: {
+      videoUrl: string
+      tweetId: string
+      threadId: string
+      platform: string
+      tweetContent: any
+    }) => {
+      const response = await client.videoJob.createVideoJob.$post(params)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || errorData.message || 'Failed to create video job')
+      }
+      return response.json()
+    },
+  })
+
   // Update thread mutation (for edit mode)
   const updateThreadMutation = useMutation({
     mutationFn: async ({ tweets }: { tweets: ThreadTweetData[] }) => {
@@ -548,8 +567,8 @@ export default function ThreadTweetEditor({
           for (const video of pendingVideos) {
             console.log('[ThreadTweetEditor] Creating video processing job for:', video.videoUrl)
             
-            // Create video job that will handle the complete posting flow
-            const videoJobResponse = await client.videoJob.createVideoJob.$post({
+            // Create video job using mutation (this will be tracked by React Query)
+            const jobData = await createVideoJobMutation.mutateAsync({
               videoUrl: video.videoUrl!,
               tweetId: '', // Will be created when video is ready
               threadId: crypto.randomUUID(), // Generate thread ID for the future post
@@ -564,13 +583,6 @@ export default function ThreadTweetEditor({
               }
             })
             
-            if (!videoJobResponse.ok) {
-              const errorData = await videoJobResponse.json()
-              console.error('[ThreadTweetEditor] Video job creation failed:', errorData)
-              throw new Error(errorData.error || errorData.message || 'Failed to create video job')
-            }
-            
-            const jobData = await videoJobResponse.json()
             videoJobs.push(jobData)
             console.log('[ThreadTweetEditor] Video job created:', jobData)
           }
