@@ -1,12 +1,12 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { client } from '@/lib/client'
+import { useThreadEditorStore } from '@/stores/thread-editor-store'
 import { Loader2, Video, Send, Clock } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
+  const { tweets } = useThreadEditorStore()
   
   // Debug logging
   useEffect(() => {
@@ -16,61 +16,27 @@ export default function BackgroundProcessIndicator() {
     }
   }, [])
 
-  // Check for background video processing
-  const { data: processingVideos } = useQuery({
-    queryKey: ['global-background-processes'],
-    queryFn: async () => {
-      try {
-        console.log('[BackgroundProcessIndicator] 🔍 Fetching video jobs...')
-        const res = await client.videoJob.listVideoJobs.mutate({ 
-          status: 'processing' as const, 
-          limit: 50, 
-          offset: 0 
-        })
-        console.log('[BackgroundProcessIndicator] 📊 Response:', res)
-        console.log('[BackgroundProcessIndicator] 📋 Jobs found:', res.jobs?.length || 0)
-        
-        // Also check for other active status types
-        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
-          status: 'pending' as const, 
-          limit: 50, 
-          offset: 0 
-        })
-        console.log('[BackgroundProcessIndicator] 📋 Pending jobs found:', pendingRes.jobs?.length || 0)
-        
-        // Check for all jobs to see what statuses exist
-        const allJobsRes = await client.videoJob.listVideoJobs.mutate({ 
-          limit: 50, 
-          offset: 0 
-        })
-        console.log('[BackgroundProcessIndicator] 📋 All jobs found:', allJobsRes.jobs?.length || 0)
-        console.log('[BackgroundProcessIndicator] 📋 All job statuses:', allJobsRes.jobs?.map(j => ({ id: j.id?.substring(0, 8), status: j.status })))
-        
-        const allActiveJobs = [...(res.jobs || []), ...(pendingRes.jobs || [])]
-        console.log('[BackgroundProcessIndicator] 📊 Total active jobs:', allActiveJobs.length)
-        
-        return allActiveJobs
-      } catch (error) {
-        console.error('[BackgroundProcessIndicator] Error fetching video jobs:', error)
-        return []
-      }
-    },
-    refetchInterval: 3000, // Check every 3 seconds
-    retry: false,
-    staleTime: 0,
+  // Simple approach: Check frontend state for pending media
+  const pendingMediaCount = tweets.reduce((count, tweet) => {
+    const pendingMedia = tweet.media?.filter(m => m.isPending) || []
+    return count + pendingMedia.length
+  }, 0)
+
+  const hasActiveProcesses = pendingMediaCount > 0
+  const activeProcessCount = pendingMediaCount
+
+  console.log('[BackgroundProcessIndicator] Simple check:', {
+    tweetsCount: tweets.length,
+    pendingMediaCount,
+    hasActiveProcesses,
+    tweetDetails: tweets.map(t => ({
+      id: t.id.substring(0, 8),
+      mediaCount: t.media?.length || 0,
+      pendingMedia: t.media?.filter(m => m.isPending)?.length || 0
+    }))
   })
 
-  const activeProcessCount = processingVideos?.length || 0
-  const hasActiveProcesses = activeProcessCount > 0
-  
-  // Debug logging for process detection
-  useEffect(() => {
-    console.log('[BackgroundProcessIndicator] Process status:', {
-      activeProcessCount,
-      hasActiveProcesses,
-      processingVideos: processingVideos?.map(v => ({ id: v.id?.substring(0, 8), status: v.status }))
-    })
-  }, [activeProcessCount, hasActiveProcesses, processingVideos])
+
 
   // Show page title indicator when processes are running
   useEffect(() => {

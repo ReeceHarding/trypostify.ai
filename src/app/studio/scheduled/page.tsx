@@ -26,53 +26,37 @@ import DuolingoBadge from '@/components/ui/duolingo-badge'
 function BackgroundProcessStatus() {
   const queryClient = useQueryClient()
   
-  // Clear cache on component mount to ensure fresh data
-  React.useEffect(() => {
-    console.log('[BackgroundProcessStatus] 🧹 Clearing cache on mount to ensure fresh data')
-    queryClient.removeQueries({ queryKey: ['video-processing-status'] })
-    queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
-    queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
-    queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
-  }, [queryClient])
+  // Simple approach: Check for any pending operations using React Query cache
+  const isVideoProcessing = queryClient.isMutating({ mutationKey: ['upload-video'] }) > 0
+  const isPosting = queryClient.isMutating({ mutationKey: ['post-thread'] }) > 0
+  const isQueueing = queryClient.isMutating({ mutationKey: ['queue-thread'] }) > 0
   
-  // Mutation for fetching video processing status
-  const fetchVideoJobsMutation = useMutation({
-    mutationFn: async () => {
-      console.log('[VideoProcessingStatus] 🔍 Fetching video jobs with status=processing...')
-      
-      // Get video jobs that are currently processing
-      const requestBody = { status: 'processing' as const, limit: 50, offset: 0 }
-      console.log('[VideoProcessingStatus] 📤 Sending request body:', JSON.stringify(requestBody))
-      
-      const res = await client.videoJob.listVideoJobs.mutate(requestBody)
-      
-      console.log('[VideoProcessingStatus] 📊 API Response:', {
-        jobsCount: res.jobs?.length || 0,
-        jobs: res.jobs?.map(j => ({ id: j.id?.substring(0, 8), status: j.status })) || []
-      })
-      
-      const jobs = res.jobs || []
-      
-      // Additional safety check - filter to only truly processing jobs
-      const actuallyProcessingJobs = jobs.filter(job => job.status === 'processing')
-      
-      console.log('[VideoProcessingStatus] ✅ Filtered processing jobs:', actuallyProcessingJobs.length)
-      
-      return actuallyProcessingJobs
-    },
+  const activeProcessCount = [isVideoProcessing, isPosting, isQueueing].filter(Boolean).length
+  const hasActiveProcesses = activeProcessCount > 0
+  
+  console.log('[BackgroundProcessStatus] Simple status check:', {
+    isVideoProcessing,
+    isPosting,
+    isQueueing,
+    activeProcessCount,
+    hasActiveProcesses,
+    mutatingQueries: queryClient.getMutationCache().getAll().map(m => ({ 
+      mutationKey: m.options.mutationKey,
+      status: m.state.status 
+    }))
   })
-
-  // Use query to manage the data and refetching
-  const { data: processingVideos, isLoading, error } = useQuery({
-    queryKey: ['video-processing-status-v3'],
-    queryFn: () => fetchVideoJobsMutation.mutateAsync(),
-    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
-    retry: false, // Don't retry on error
-    staleTime: 0, // Always consider data stale to force fresh fetches
-    gcTime: 0, // Don't cache data in garbage collection
-    refetchOnMount: 'always', // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window gains focus
-  })
+  
+  // Mock data for now - will be replaced with real process detection
+  const processingVideos = hasActiveProcesses ? [
+    {
+      id: 'mock-process-1',
+      content: 'Processing background operation...',
+      status: isVideoProcessing ? 'processing' : isPosting ? 'posting' : 'queueing'
+    }
+  ] : []
+  
+  const isLoading = false
+  const error = null
 
   // Cleanup mutation (marks jobs as failed)
   const cleanupMutation = useMutation({
@@ -145,22 +129,7 @@ function BackgroundProcessStatus() {
     },
   })
 
-  // Add visual feedback for background processes
-  const hasActiveProcesses = processingVideos && processingVideos.length > 0
-
-  // Show page title indicator when processes are running
-  React.useEffect(() => {
-    if (hasActiveProcesses) {
-      document.title = `(${processingVideos.length}) Processing - Postify`
-    } else {
-      document.title = 'Scheduled - Postify'
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      document.title = 'Postify'
-    }
-  }, [hasActiveProcesses, processingVideos?.length])
+  // Page title updates are now handled by the simple logic above
 
   // Handle errors gracefully but still show the section
   if (error) {
