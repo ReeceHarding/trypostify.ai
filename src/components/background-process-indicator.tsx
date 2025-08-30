@@ -17,34 +17,35 @@ export default function BackgroundProcessIndicator() {
     }
   }, [])
 
-  // Listen for video job creation events
+  // Listen for video job creation events via React Query mutation success
+  const { data: recentMutations } = useQuery({
+    queryKey: ['recent-video-mutations'],
+    queryFn: () => {
+      // This is just to trigger re-renders, the actual logic is below
+      return Date.now()
+    },
+    refetchInterval: 1000, // Check every second for recent mutations
+    retry: false,
+    staleTime: 0,
+  })
+
+  // Check for recent successful video job mutations
   useEffect(() => {
-    const handleJobCreated = () => {
-      console.log('[BackgroundProcessIndicator] Video job creation detected!')
-      setRecentJobCreated(true)
-      // Show indicator for 15 seconds after job creation
-      setTimeout(() => setRecentJobCreated(false), 15000)
-    }
-
-    // Listen for the success toast that indicates job creation
-    const originalToastSuccess = window.toast?.success
-    if (typeof window !== 'undefined' && window.toast) {
-      const wrappedSuccess = (...args: any[]) => {
-        const message = args[0]
-        if (typeof message === 'string' && message.includes('queued - will post when video is ready')) {
-          handleJobCreated()
-        }
-        return originalToastSuccess?.(...args)
-      }
-      window.toast.success = wrappedSuccess
-    }
-
-    return () => {
-      if (typeof window !== 'undefined' && window.toast && originalToastSuccess) {
-        window.toast.success = originalToastSuccess
+    if (typeof window !== 'undefined' && window.queryClient) {
+      const queryClient = window.queryClient
+      const recentVideoJobMutations = queryClient.getMutationCache().getAll().filter(m => 
+        m.options.mutationKey?.[0] === 'create-video-job' && 
+        m.state.status === 'success' &&
+        Date.now() - (m.state.dataUpdatedAt || 0) < 15000 // Last 15 seconds
+      )
+      
+      const hasRecentMutation = recentVideoJobMutations.length > 0
+      if (hasRecentMutation !== recentJobCreated) {
+        console.log('[BackgroundProcessIndicator] Recent mutation state changed:', hasRecentMutation)
+        setRecentJobCreated(hasRecentMutation)
       }
     }
-  }, [])
+  }, [recentMutations, recentJobCreated])
 
   // Simply query the actual backend for active video jobs
   const { data: activeJobs, isLoading } = useQuery({

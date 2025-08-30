@@ -12,8 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { useHotkeyFeedback } from './ui/hotkey-feedback'
-import { useQuery } from '@tanstack/react-query'
-import { client } from '@/lib/client'
+import { useBackgroundProcessStore } from '@/stores/background-process-store'
 import {
   Sidebar,
   SidebarContent,
@@ -54,32 +53,20 @@ export const LeftSidebar = () => {
   // Global hotkey feedback
   const { showNavigation } = useHotkeyFeedback()
 
-  // Check for active background processes to show notification bell
-  const { data: activeJobs } = useQuery({
-    queryKey: ['sidebar-background-processes'],
-    queryFn: async () => {
-      try {
-        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
-          status: 'processing' as const, 
-          limit: 10, 
-          offset: 0 
-        })
-        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
-          status: 'pending' as const, 
-          limit: 10, 
-          offset: 0 
-        })
-        return [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
-      } catch (error) {
-        return []
-      }
-    },
-    refetchInterval: 5000,
-    retry: false,
-    staleTime: 0,
-  })
+  // Use the same store as the other indicators for consistency
+  const { getActiveProcesses } = useBackgroundProcessStore()
+  const activeProcesses = getActiveProcesses()
+  const hasActiveProcesses = activeProcesses.length > 0
 
-  const hasActiveProcesses = (activeJobs?.length || 0) > 0
+  console.log('[LeftSidebar] Notification bell status:', {
+    activeProcessCount: activeProcesses.length,
+    hasActiveProcesses,
+    processes: activeProcesses.map(p => ({
+      id: p.id.substring(0, 8),
+      type: p.type,
+      age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
+    }))
+  })
 
   // Log component mount
   useEffect(() => {
