@@ -174,7 +174,7 @@ function BackgroundProcessStatus() {
 
   // Always show the section if there might be background processes
   // This ensures users can see the status even when jobs complete quickly
-  const shouldShowSection = processingVideos && processingVideos.length > 0
+  const shouldShowSection = hasActiveProcesses
   
   if (!shouldShowSection) {
     // Show a minimal status section when no active processes
@@ -218,7 +218,7 @@ function BackgroundProcessStatus() {
       {hasActiveProcesses && (
         <div className="fixed top-4 right-4 z-50 bg-primary text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm font-medium">{processingVideos.length} processing</span>
+          <span className="text-sm font-medium">{activeProcessCount} processing</span>
         </div>
       )}
       
@@ -237,7 +237,7 @@ function BackgroundProcessStatus() {
                 </div>
               </div>
               <DuolingoBadge variant="warning" className="text-xs animate-pulse">
-                {processingVideos?.length || 0} active
+                {activeProcessCount} active
               </DuolingoBadge>
             </div>
             <div className="flex items-center gap-2">
@@ -273,12 +273,12 @@ function BackgroundProcessStatus() {
           </CardTitle>
         </CardHeader>
       <CardContent className="space-y-3">
-        {processingVideos.map((tweet: any) => {
-          const videoMedia = tweet.media?.find((media: any) => media.type === 'video')
-          const videoStatus = tweet.videoProcessingStatus
-          const pendingUrl = tweet.pendingVideoUrl
-          const errorMessage = tweet.videoErrorMessage
-          const scheduledTime = tweet.scheduledFor ? new Date(tweet.scheduledFor) : null
+        {processingVideos.map((process: any) => {
+          const videoMedia = process.media?.find((media: any) => media.type === 'video')
+          const videoStatus = process.status
+          const pendingUrl = process.videoUrl
+          const errorMessage = process.errorMessage
+          const scheduledTime = process.scheduledFor ? new Date(process.scheduledFor) : null
           
           // Determine status and icon
           const getStatusDisplay = () => {
@@ -330,7 +330,7 @@ function BackgroundProcessStatus() {
           const status = getStatusDisplay()
           
           return (
-            <div key={tweet.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
+            <div key={process.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   {status.icon}
@@ -338,9 +338,9 @@ function BackgroundProcessStatus() {
                 
                 <div>
                   <div className="font-medium text-neutral-900">
-                    {tweet.content?.length > 50 
-                      ? `${tweet.content.substring(0, 50)}...` 
-                      : tweet.content || 'Video tweet'}
+                    {process.content?.length > 50 
+                      ? `${process.content.substring(0, 50)}...` 
+                      : process.content || 'Background process'}
                   </div>
                   <div className="text-sm text-neutral-600">
                     {status.text}
