@@ -184,12 +184,24 @@ export async function scheduleThreadInternal(input: {
   } else {
     // In production, use QStash
     const baseUrl = process.env.WEBHOOK_URL || getBaseUrl()
-    const qstashResponse = await qstash.publishJSON({
-      url: `${baseUrl}/api/tweet/publishThread`,
-      body: { threadId },
-      notBefore: scheduledUnix,
-    })
-    messageId = qstashResponse.messageId
+    try {
+      const qstashResponse = await qstash.publishJSON({
+        url: `${baseUrl}/api/tweet/publishThread`,
+        body: { threadId },
+        notBefore: scheduledUnix,
+      })
+      messageId = qstashResponse.messageId
+    } catch (error: any) {
+      console.error('[scheduleThreadInternal] QStash error:', error)
+      
+      // Handle QStash quota exceeded error with helpful message
+      if (error.message?.includes('quota maxDelay exceeded')) {
+        const scheduledDate = new Date(scheduledUnix * 1000).toLocaleDateString()
+        throw new Error(`The selected date (${scheduledDate}) is beyond QStash's current plan limit. Please upgrade to QStash Pay-As-You-Go plan for 1-year scheduling capability.`)
+      }
+      
+      throw new Error(`Failed to schedule tweet: ${error.message || 'Unknown QStash error'}`)
+    }
   }
 
   console.log('[scheduleThreadInternal] Updating tweets with scheduled time')
@@ -302,8 +314,9 @@ export async function enqueueThreadInternal(input: {
 
     console.log('[enqueueThreadInternal] Using preset slots for', userFrequency, 'posts per day:', presetSlots)
 
-    // Limit to 7 days to stay within QStash maxDelay limit (604800 seconds = 7 days)
-    for (let dayOffset = 0; dayOffset <= 6; dayOffset++) {
+    // Search up to 90 days for available slots
+    // Note: QStash free tier limits to 7 days, but PAYG plan allows 1 year
+    for (let dayOffset = 0; dayOffset <= 90; dayOffset++) {
       const checkDay = dayOffset === 0 ? startOfDay(userNow) : startOfDay(addDays(userNow, dayOffset))
       
       for (const hour of presetSlots) {
@@ -320,7 +333,7 @@ export async function enqueueThreadInternal(input: {
 
   const nextSlot = getNextAvailableSlot()
   if (!nextSlot) {
-    throw new Error('Queue for the next 7 days is already full! Please try again later or manually schedule for a specific time.')
+    throw new Error('Queue for the next 3 months is already full! Please try again later or manually schedule for a specific time.')
   }
 
   const scheduledUnix = nextSlot.getTime()
@@ -331,12 +344,24 @@ export async function enqueueThreadInternal(input: {
     console.log('[enqueueThreadInternal] Local development - skipping QStash, using fake messageId:', messageId)
   } else {
     const baseUrl = process.env.WEBHOOK_URL
-    const qstashResponse = await qstash.publishJSON({
-      url: baseUrl + '/api/tweet/postThread',
-      body: { threadId, userId, accountId: dbAccount.id },
-      notBefore: scheduledUnix / 1000,
-    })
-    messageId = qstashResponse.messageId
+    try {
+      const qstashResponse = await qstash.publishJSON({
+        url: baseUrl + '/api/tweet/postThread',
+        body: { threadId, userId, accountId: dbAccount.id },
+        notBefore: scheduledUnix / 1000,
+      })
+      messageId = qstashResponse.messageId
+    } catch (error: any) {
+      console.error('[enqueueThreadInternal] QStash error:', error)
+      
+      // Handle QStash quota exceeded error with helpful message
+      if (error.message?.includes('quota maxDelay exceeded')) {
+        const scheduledDate = new Date(scheduledUnix).toLocaleDateString()
+        throw new Error(`The selected date (${scheduledDate}) is beyond QStash's current plan limit. Please upgrade to QStash Pay-As-You-Go plan for 1-year scheduling, or manually schedule this tweet using the Schedule button instead of Queue.`)
+      }
+      
+      throw new Error(`Failed to schedule tweet: ${error.message || 'Unknown QStash error'}`)
+    }
   }
 
   console.log('[enqueueThreadInternal] QStash message created:', messageId)
