@@ -1062,6 +1062,7 @@ export default function ThreadTweetEditor({
             
             <ThreadTweet
               key={tweet.id}
+              tweetId={tweet.id}
               ref={(el) => {
                 if (el) {
                   tweetRefs.current[tweet.id] = el
