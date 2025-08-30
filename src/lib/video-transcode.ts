@@ -47,6 +47,12 @@ export async function transcodeVideoToH264(
   // First, try Coconut.io if API key is available
   const coconutApiKey = process.env.COCONUT_API_KEY
   
+  console.log('[VideoTranscode] Coconut API key check:', {
+    hasKey: !!coconutApiKey,
+    keyLength: coconutApiKey?.length || 0,
+    keyPreview: coconutApiKey ? `${coconutApiKey.substring(0, 4)}...${coconutApiKey.slice(-4)}` : 'none'
+  })
+  
   if (coconutApiKey && coconutApiKey !== 'your_coconut_api_key_here') {
     try {
       console.log('[VideoTranscode] Attempting Coconut.io transcoding...')
@@ -103,12 +109,12 @@ export async function transcodeVideoToH264(
       
       console.log('[VideoTranscode] Coconut.io job config:', JSON.stringify(jobConfig, null, 2))
       
-      // Use the correct Coconut.io API endpoint
+      // Use the correct Coconut.io API endpoint with Basic authentication
       const response = await fetch('https://api.coconut.co/v2/jobs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${coconutApiKey}`
+          'Authorization': `Basic ${Buffer.from(`${coconutApiKey}:`).toString('base64')}`
         },
         body: JSON.stringify(jobConfig)
       })
