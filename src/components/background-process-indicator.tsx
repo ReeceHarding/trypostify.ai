@@ -7,12 +7,42 @@ import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
+  const [recentJobCreated, setRecentJobCreated] = useState(false)
   
   // Debug logging
   useEffect(() => {
     console.log('[BackgroundProcessIndicator] Component mounted')
     return () => {
       console.log('[BackgroundProcessIndicator] Component unmounted')
+    }
+  }, [])
+
+  // Listen for video job creation events
+  useEffect(() => {
+    const handleJobCreated = () => {
+      console.log('[BackgroundProcessIndicator] Video job creation detected!')
+      setRecentJobCreated(true)
+      // Show indicator for 15 seconds after job creation
+      setTimeout(() => setRecentJobCreated(false), 15000)
+    }
+
+    // Listen for the success toast that indicates job creation
+    const originalToastSuccess = window.toast?.success
+    if (typeof window !== 'undefined' && window.toast) {
+      const wrappedSuccess = (...args: any[]) => {
+        const message = args[0]
+        if (typeof message === 'string' && message.includes('queued - will post when video is ready')) {
+          handleJobCreated()
+        }
+        return originalToastSuccess?.(...args)
+      }
+      window.toast.success = wrappedSuccess
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && window.toast && originalToastSuccess) {
+        window.toast.success = originalToastSuccess
+      }
     }
   }, [])
 
@@ -58,10 +88,25 @@ export default function BackgroundProcessIndicator() {
     refetchInterval: 3000, // Check backend every 3 seconds
     retry: false,
     staleTime: 0,
+    refetchOnMount: 'always',
+    // Add small delay on first fetch to ensure DB transactions are committed
+    refetchOnWindowFocus: true,
   })
 
-  const hasActiveProcesses = (activeJobs?.length || 0) > 0
-  const activeProcessCount = activeJobs?.length || 0
+  // Combine backend jobs + recent job creation for immediate feedback
+  const backendJobCount = activeJobs?.length || 0
+  const recentJobCount = recentJobCreated ? 1 : 0
+  const totalActiveCount = backendJobCount + recentJobCount
+  
+  const hasActiveProcesses = totalActiveCount > 0
+  const activeProcessCount = totalActiveCount
+
+  console.log('[BackgroundProcessIndicator] Combined status:', {
+    backendJobCount,
+    recentJobCreated,
+    totalActiveCount,
+    hasActiveProcesses
+  })
 
 
 
