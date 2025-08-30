@@ -15,6 +15,7 @@ import { format } from 'date-fns'
 import { useUser } from '@/hooks/use-tweets'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
+import { useThreadEditorStore } from '@/stores/thread-editor-store'
 
 interface ThreadTweetData {
   id: string
@@ -68,15 +69,22 @@ export default function ThreadTweetEditor({
   editTweetId,
 }: ThreadTweetEditorProps) {
   
+  // Use ThreadEditorStore for state management
+  const { tweets: storeTweets, setTweets: setStoreTweets, reset: resetStore } = useThreadEditorStore()
+  
   // Track which tweets have pending video downloads
   const [tweetsWithPendingVideos, setTweetsWithPendingVideos] = useState<Set<string>>(new Set())
   
   const { getCharacterLimit } = useUser()
   const characterLimit = getCharacterLimit()
   
-  const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
-    { id: 'initial-tweet', content: '', media: [] },
-  ])
+  // Use store tweets as the source of truth
+  const threadTweets = storeTweets
+  const setThreadTweets = (tweets: ThreadTweetData[]) => {
+    console.log('[ThreadTweetEditor] Setting tweets in store:', tweets.length, 'tweets')
+    setStoreTweets(tweets)
+  }
+  
   const [hasBeenCleared, setHasBeenCleared] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -94,13 +102,13 @@ export default function ThreadTweetEditor({
   // Refs to focus tweets
   const tweetRefs = useRef<{ [key: string]: { focus: () => void } | null }>({})
 
-  // Generate proper UUID after mount to avoid hydration issues
+  // Initialize store on mount if not in edit mode
   useEffect(() => {
-    if (threadTweets.length === 1 && threadTweets[0]?.id === 'initial-tweet') {
-      console.log('[ThreadTweetEditor] Generating proper UUID after mount to avoid hydration mismatch')
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    if (!editMode) {
+      console.log('[ThreadTweetEditor] Resetting to create mode')
+      resetStore()
     }
-  }, [])
+  }, [editMode, resetStore])
 
   // Load thread data if in edit mode
   const { data: threadData, isLoading: loadingThread } = useQuery({
@@ -439,6 +447,13 @@ export default function ThreadTweetEditor({
       allKeys: Object.keys(m)
     })))
     
+    // Use the store's updateTweet method
+    const { updateTweet } = useThreadEditorStore.getState()
+    updateTweet(id, content, media)
+    
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Updated tweet in store for ID:', id)
+    
+    // Also update local state for backward compatibility
     setThreadTweets(prevTweets => {
       const newTweets = prevTweets.map(tweet =>
         tweet.id === id ? { ...tweet, content, media } : tweet
