@@ -123,54 +123,23 @@ function groupTweetsIntoThreads<T extends {
   return allItems
 }
 
-// Enhanced helper function to create thread tweets in database (DRY principle)
+// Helper function to create thread tweets in database (DRY principle)
 // This consolidates the duplicate logic from createThread, updateThread, and postThreadNow
 async function _createThreadTweetsInDb(
   tweetsData: Array<{
     content: string;
-    media?: Array<{ 
-      media_id: string; 
-      s3Key: string;
-      // Support for pending video processing
-      isPending?: boolean;
-      pendingJobId?: string;
-      videoUrl?: string;
-      platform?: string;
-      type?: 'image' | 'gif' | 'video';
-    }>;
+    media?: Array<{ media_id: string; s3Key: string }>;
     delayMs?: number;
     position?: number; // Optional custom position
   }>,
   userId: string,
   accountId: string,
-  threadId: string,
-  options?: {
-    isScheduled?: boolean;
-    scheduledFor?: Date;
-    scheduledUnix?: number;
-    qstashId?: string;
-  }
+  threadId: string
 ) {
-  console.log('[_createThreadTweetsInDb] Creating thread tweets:', {
-    threadId,
-    userId,
-    accountId,
-    tweetCount: tweetsData.length,
-    options,
-    timestamp: new Date().toISOString()
-  })
-
   const createdTweets = await Promise.all(
     tweetsData.map(async (tweet, index) => {
       const tweetId = crypto.randomUUID()
       const position = tweet.position ?? index // Use custom position if provided, otherwise use index
-
-      console.log('[_createThreadTweetsInDb] Creating tweet at position:', position, {
-        tweetId,
-        contentLength: tweet.content.length,
-        mediaCount: tweet.media?.length || 0,
-        hasPendingMedia: tweet.media?.some(m => m.isPending) || false
-      })
 
       const [created] = await db
         .insert(tweets)
@@ -184,28 +153,14 @@ async function _createThreadTweetsInDb(
           position,
           isThreadStart: position === 0,
           delayMs: tweet.delayMs || 0,
-          isScheduled: options?.isScheduled || false,
-          scheduledFor: options?.scheduledFor,
-          scheduledUnix: options?.scheduledUnix,
-          qstashId: options?.qstashId,
+          isScheduled: false,
           isPublished: false,
         })
         .returning()
 
-      console.log('[_createThreadTweetsInDb] Tweet created successfully:', {
-        tweetId: created.id,
-        position: created.position,
-        isThreadStart: created.isThreadStart
-      })
-
       return created
     }),
   )
-
-  console.log('[_createThreadTweetsInDb] All tweets created successfully:', {
-    threadId,
-    createdCount: createdTweets.length
-  })
 
   return createdTweets
 }
@@ -550,18 +505,9 @@ export const tweetRouter = j.router({
 
       // Add media if present
       if (tweet.media && tweet.media.length > 0) {
-        const mediaIds = tweet.media
-          .map((media) => media.media_id)
-          .filter((id) => typeof id === 'string' && id && id.trim().length > 0)
-        
-        if (mediaIds.length > 0) {
-          tweetPayload.media = {
-            // @ts-expect-error tuple type vs. string[]
-            media_ids: mediaIds,
-          }
-          console.log('[POST] Added valid media IDs:', mediaIds)
-        } else {
-          console.log('[POST] No valid media IDs found, skipping media attachment')
+        tweetPayload.media = {
+          // @ts-expect-error tuple type vs. string[]
+          media_ids: tweet.media.map((media) => media.media_id),
         }
       }
 
@@ -1057,17 +1003,25 @@ export const tweetRouter = j.router({
         withoutThreadId: scheduledTweetsWithMedia.filter(t => !t.threadId).length,
       })
       
-      // Use the utility function to group tweets into threads
-      const threadGroups = groupTweetsIntoThreads(scheduledTweetsWithMedia)
+      // Group all tweets by threadId (or treat as single-item threads)
+      const threadGroups: Record<string, typeof scheduledTweetsWithMedia> = {}
       
-      // Convert to the specific format expected by get_queue
-      const scheduledTweets = threadGroups.map((group) => {
-        const sortedTweets = group.tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
+      for (const tweet of scheduledTweetsWithMedia) {
+        const groupKey = tweet.threadId || tweet.id
+        if (!threadGroups[groupKey]) {
+          threadGroups[groupKey] = []
+        }
+        threadGroups[groupKey].push(tweet)
+      }
+      
+      // Convert to unified thread structure
+      const scheduledTweets = Object.entries(threadGroups).map(([key, tweets]) => {
+        const sortedTweets = tweets.sort((a, b) => (a.position || 0) - (b.position || 0))
         const firstTweet = sortedTweets[0]!
         
         return {
-          id: group.threadId || firstTweet.id,
-          threadId: group.threadId,
+          id: key,
+          threadId: firstTweet.threadId,
           content: sortedTweets.length > 1 
             ? `Thread (${sortedTweets.length} posts)` 
             : firstTweet.content,
@@ -1669,142 +1623,6 @@ export const tweetRouter = j.router({
 
       const threadId = crypto.randomUUID()
 
-      // Check if any tweet has pending media (videos being processed) OR video URLs in content
-      const hasPendingMedia = threadTweets.some(tweet => 
-        tweet.media?.some((m: any) => m.isPending === true || m.pendingJobId || m.videoUrl)
-      )
-      
-      // ALSO CHECK FOR VIDEO URLs IN TEXT CONTENT
-      const { extractVideoUrls } = await import('./utils/video-job-utils')
-      let hasVideoUrlsInContent = false
-      let totalVideoUrls: string[] = []
-      
-      for (const tweet of threadTweets) {
-        const videoUrls = extractVideoUrls(tweet.content)
-        if (videoUrls.length > 0) {
-          hasVideoUrlsInContent = true
-          totalVideoUrls.push(...videoUrls)
-        }
-      }
-      
-      console.log('[postThreadNow] Video detection results:', {
-        hasPendingMedia,
-        hasVideoUrlsInContent,
-        totalVideoUrls,
-        videoUrlCount: totalVideoUrls.length
-      })
-      
-      if (hasPendingMedia || hasVideoUrlsInContent) {
-        console.log('[postThreadNow] Pending media detected - creating video jobs for processing')
-        
-        // Create thread in database first
-        const createdTweets = await _createThreadTweetsInDb(
-          threadTweets,
-          user.id,
-          account.id,
-          threadId
-        )
-        
-        console.log('[postThreadNow] Thread created, now creating video jobs for pending media')
-        
-        // Create video jobs for pending media AND video URLs in content
-        const { videoJob } = await import('@/db/schema')
-        const { createVideoJobForAction } = await import('./utils/video-job-utils')
-        const videoJobsCreated = []
-        
-        // FIRST: Handle pending media (existing logic)
-        for (let i = 0; i < threadTweets.length; i++) {
-          const tweet = threadTweets[i]
-          const createdTweet = createdTweets[i]
-          
-          if (tweet?.media) {
-            for (const media of tweet.media) {
-              if (media.isPending && media.videoUrl && createdTweet) {
-                console.log('[postThreadNow] 🎬 Creating video job for PENDING MEDIA:', {
-                  tweetId: createdTweet.id,
-                  videoUrl: media.videoUrl,
-                  platform: media.platform || 'unknown'
-                })
-                
-                const result = await createVideoJobForAction({
-                  userId: user.id,
-                  videoUrl: media.videoUrl,
-                  tweetContent: {
-                    action: 'post_thread_now',
-                    threadId,
-                    userId: user.id,
-                    accountId: account.id,
-                    tweets: threadTweets.map((t, index) => ({
-                      content: t.content,
-                      media: t.media || [],
-                      delayMs: index > 0 ? 1000 : 0,
-                    })),
-                  },
-                  threadId: threadId,
-                  tweetId: createdTweet.id,
-                })
-                
-                videoJobsCreated.push({ jobId: result.jobId, source: 'pending_media' })
-                console.log('[postThreadNow] ✅ Video job created for pending media:', result.jobId)
-              }
-            }
-          }
-        }
-        
-        // SECOND: Handle video URLs in text content (new logic)
-        if (hasVideoUrlsInContent) {
-          console.log('[postThreadNow] 🎬 Creating video jobs for VIDEO URLs IN CONTENT:', totalVideoUrls)
-          
-          for (let i = 0; i < threadTweets.length; i++) {
-            const tweet = threadTweets[i]
-            const createdTweet = createdTweets[i]
-            const videoUrls = extractVideoUrls(tweet.content)
-            
-            for (const videoUrl of videoUrls) {
-              console.log('[postThreadNow] 🎬 Creating video job for CONTENT URL:', {
-                tweetId: createdTweet?.id,
-                videoUrl,
-                tweetContent: tweet.content.substring(0, 100)
-              })
-              
-              const result = await createVideoJobForAction({
-                userId: user.id,
-                videoUrl,
-                tweetContent: {
-                  action: 'post_thread_now',
-                  threadId,
-                  userId: user.id,
-                  accountId: account.id,
-                  tweets: threadTweets.map((t, index) => ({
-                    content: t.content,
-                    media: t.media || [],
-                    delayMs: index > 0 ? 1000 : 0,
-                  })),
-                },
-                threadId: threadId,
-                tweetId: createdTweet?.id || '',
-              })
-              
-              videoJobsCreated.push({ jobId: result.jobId, source: 'content_url' })
-              console.log('[postThreadNow] ✅ Video job created for content URL:', result.jobId)
-            }
-          }
-        }
-        
-        console.log('[postThreadNow] Created', videoJobsCreated.length, 'video jobs')
-        
-        return c.json({ 
-          success: true, 
-          threadId,
-          message: `Video processing started for ${videoJobsCreated.length} videos. Your thread will be posted automatically when ready.`,
-          videoJobsCreated: videoJobsCreated.length,
-          tweetsCreated: createdTweets.length
-        })
-      }
-
-      // No pending media - proceed with immediate posting
-      console.log('[postThreadNow] No pending media - posting immediately to Twitter')
-
       // Create all thread tweets in the database using the helper function
       const createdTweets = await _createThreadTweetsInDb(
         threadTweets,
@@ -1864,17 +1682,9 @@ export const tweetRouter = j.router({
 
           // Add media if present
           if (tweet.media && tweet.media.length > 0) {
-            const mediaIds = tweet.media
-              .map((media) => media.media_id)
-              .filter((id) => typeof id === 'string' && id && id.trim().length > 0)
-            
-            if (mediaIds.length > 0) {
-              tweetPayload.media = {
-                media_ids: mediaIds as any,
-              }
-              console.log(`[postThreadNow] Added ${mediaIds.length} valid media IDs to tweet ${index + 1}`)
-            } else {
-              console.log(`[postThreadNow] No valid media IDs found for tweet ${index + 1}, skipping media`)
+            const mediaIds = tweet.media.map((media) => media.media_id)
+            tweetPayload.media = {
+              media_ids: mediaIds as any,
             }
           }
 
@@ -2008,84 +1818,7 @@ export const tweetRouter = j.router({
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
-      // CHECK FOR VIDEO URLs AND CREATE VIDEO JOBS IF NEEDED
-      console.log(`[scheduleThread] 🔍 CHECKING FOR VIDEO URLs in ${threadTweets.length} tweets at ${new Date().toISOString()}`)
-      const { extractVideoUrls, createVideoJobForAction } = await import('./utils/video-job-utils')
-      
-      let totalVideoJobsCreated = 0
-      
-      for (const tweet of threadTweets) {
-        console.log(`[scheduleThread] 🔍 Analyzing tweet ${tweet.id} content: "${tweet.content.substring(0, 100)}..."`)
-        const videoUrls = extractVideoUrls(tweet.content)
-        
-        console.log(`[scheduleThread] 🎬 Found ${videoUrls.length} video URLs in tweet ${tweet.id}:`, videoUrls)
-        
-        if (videoUrls.length > 0) {
-          console.log(`[scheduleThread] 🚀 CREATING VIDEO JOBS FOR SCHEDULE ACTION - Thread: ${threadId}, Tweet: ${tweet.id}`)
-          
-          for (const videoUrl of videoUrls) {
-            console.log(`[scheduleThread] 📝 Creating video job for URL: ${videoUrl}`)
-            console.log(`[scheduleThread] 📝 Video job details:`, {
-              userId: user.id,
-              videoUrl,
-              action: 'schedule_thread',
-              threadId: threadId,
-              accountId: dbAccount.id,
-              tweetCount: threadTweets.length,
-              scheduledUnix: scheduledUnix,
-              scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
-            })
-            
-            try {
-              // Create video job for schedule action
-              const result = await createVideoJobForAction({
-                userId: user.id,
-                videoUrl,
-                tweetContent: {
-                  action: 'schedule_thread',
-                  threadId: threadId,
-                  userId: user.id,
-                  accountId: dbAccount.id,
-                  tweets: threadTweets.map((t, index) => ({
-                    content: t.content,
-                    media: t.media || [],
-                    delayMs: index > 0 ? 1000 : 0,
-                  })),
-                  scheduledUnix: scheduledUnix,
-                  scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
-                },
-                threadId: threadId,
-                tweetId: tweet.id,
-              })
-              
-              totalVideoJobsCreated++
-              console.log(`[scheduleThread] ✅ Video job #${totalVideoJobsCreated} created successfully:`, {
-                jobId: result.jobId,
-                qstashMessageId: result.qstashMessageId,
-                videoUrl,
-                action: 'schedule_thread'
-              })
-              
-            } catch (videoJobError) {
-              console.error(`[scheduleThread] ❌ FAILED to create video job for URL ${videoUrl}:`, videoJobError)
-              throw videoJobError // Re-throw to fail the entire operation
-            }
-          }
-        } else {
-          console.log(`[scheduleThread] ℹ️ No video URLs found in tweet ${tweet.id}`)
-        }
-      }
-      
-      console.log(`[scheduleThread] 📊 VIDEO JOB CREATION SUMMARY:`, {
-        totalTweets: threadTweets.length,
-        totalVideoJobsCreated,
-        threadId,
-        scheduledUnix,
-        scheduledTime: new Date(scheduledUnix * 1000).toISOString(),
-        timestamp: new Date().toISOString()
-      })
-
-
+      // console.log('[scheduleThread] Scheduling', threadTweets.length, 'tweets')
 
       // For local development, skip QStash and just update the database
       let messageId = null
@@ -2152,7 +1885,8 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId, userNow, timezone } = input
 
-
+      // console.log('[enqueueThread] Starting thread queue for threadId:', threadId)
+      // console.log('[enqueueThread] User timezone:', timezone)
 
       console.log('[enqueueThread] Starting authentication checks for user:', user.email, 'at', new Date().toISOString())
       
@@ -2218,86 +1952,11 @@ export const tweetRouter = j.router({
       })
 
       if (threadTweets.length === 0) {
-
+        // console.log('[enqueueThread] No tweets found in thread')
         throw new HTTPException(404, { message: 'Thread not found' })
       }
 
-      // CHECK FOR VIDEO URLs AND CREATE VIDEO JOBS IF NEEDED
-      console.log(`[enqueueThread] 🔍 CHECKING FOR VIDEO URLs in ${threadTweets.length} tweets at ${new Date().toISOString()}`)
-      const { extractVideoUrls, createVideoJobForAction } = await import('./utils/video-job-utils')
-      
-      let totalVideoJobsCreated = 0
-      
-      for (const tweet of threadTweets) {
-        console.log(`[enqueueThread] 🔍 Analyzing tweet ${tweet.id} content: "${tweet.content.substring(0, 100)}..."`)
-        const videoUrls = extractVideoUrls(tweet.content)
-        
-        console.log(`[enqueueThread] 🎬 Found ${videoUrls.length} video URLs in tweet ${tweet.id}:`, videoUrls)
-        
-        if (videoUrls.length > 0) {
-          console.log(`[enqueueThread] 🚀 CREATING VIDEO JOBS FOR QUEUE ACTION - Thread: ${threadId}, Tweet: ${tweet.id}`)
-          
-          for (const videoUrl of videoUrls) {
-            console.log(`[enqueueThread] 📝 Creating video job for URL: ${videoUrl}`)
-            console.log(`[enqueueThread] 📝 Video job details:`, {
-              userId: user.id,
-              videoUrl,
-              action: 'queue_thread',
-              threadId: threadId,
-              accountId: dbAccount.id,
-              tweetCount: threadTweets.length,
-              timezone,
-              userNow: userNow.toISOString(),
-            })
-            
-            try {
-              // Create video job for queue action
-              const result = await createVideoJobForAction({
-                userId: user.id,
-                videoUrl,
-                tweetContent: {
-                  action: 'queue_thread',
-                  threadId: threadId,
-                  userId: user.id,
-                  accountId: dbAccount.id,
-                  tweets: threadTweets.map((t, index) => ({
-                    content: t.content,
-                    media: t.media || [],
-                    delayMs: index > 0 ? 1000 : 0,
-                  })),
-                  timezone,
-                  userNow: userNow.toISOString(),
-                },
-                threadId: threadId,
-                tweetId: tweet.id,
-              })
-              
-              totalVideoJobsCreated++
-              console.log(`[enqueueThread] ✅ Video job #${totalVideoJobsCreated} created successfully:`, {
-                jobId: result.jobId,
-                qstashMessageId: result.qstashMessageId,
-                videoUrl,
-                action: 'queue_thread'
-              })
-              
-            } catch (videoJobError) {
-              console.error(`[enqueueThread] ❌ FAILED to create video job for URL ${videoUrl}:`, videoJobError)
-              throw videoJobError // Re-throw to fail the entire operation
-            }
-          }
-        } else {
-          console.log(`[enqueueThread] ℹ️ No video URLs found in tweet ${tweet.id}`)
-        }
-      }
-      
-      console.log(`[enqueueThread] 📊 VIDEO JOB CREATION SUMMARY:`, {
-        totalTweets: threadTweets.length,
-        totalVideoJobsCreated,
-        threadId,
-        timestamp: new Date().toISOString()
-      })
-
-
+      // console.log('[enqueueThread] Found tweets in thread:', threadTweets.length)
 
       // Get all scheduled tweets to check for conflicts
       const scheduledTweets = await db.query.tweets.findMany({
@@ -2364,7 +2023,7 @@ export const tweetRouter = j.router({
         userFrequency 
       })
 
-
+      // console.log('[enqueueThread] Next available slot:', nextSlot)
 
       if (!nextSlot) {
         throw new HTTPException(409, {
@@ -2392,7 +2051,7 @@ export const tweetRouter = j.router({
         messageId = qstashResponse.messageId
       }
 
-
+      // console.log('[enqueueThread] QStash message created:', messageId)
 
       try {
         // Update all tweets in the thread to queued
@@ -2411,7 +2070,7 @@ export const tweetRouter = j.router({
             eq(tweets.userId, user.id),
           ))
 
-
+        // console.log('[enqueueThread] Thread queued successfully')
       } catch (err) {
         // console.error('[enqueueThread] Database error:', err)
         const messages = qstash.messages
@@ -2446,7 +2105,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId } = input
 
-
+      // console.log('[getThread] Fetching thread:', threadId)
 
       const threadTweets = await db.query.tweets.findMany({
         where: and(
@@ -2456,7 +2115,7 @@ export const tweetRouter = j.router({
         orderBy: asc(tweets.position),
       })
 
-
+      // console.log('[getThread] Found tweets:', threadTweets.length)
 
       // Fetch media URLs for each tweet
       const tweetsWithMedia = await Promise.all(
@@ -2478,7 +2137,7 @@ export const tweetRouter = j.router({
   getThreads: privateProcedure.get(async ({ c, ctx }) => {
     const { user } = ctx
 
-
+    // console.log('[getThreads] Fetching all threads for user:', user.id)
 
     // Get all tweets that are thread starts
     const threadStarts = await db.query.tweets.findMany({
@@ -2489,7 +2148,7 @@ export const tweetRouter = j.router({
       orderBy: desc(tweets.createdAt),
     })
 
-
+    // console.log('[getThreads] Found thread starts:', threadStarts.length)
 
     // Get full thread data for each thread
     const threads = await Promise.all(
@@ -2514,7 +2173,7 @@ export const tweetRouter = j.router({
       }),
     )
 
-
+    // console.log('[getThreads] Returning threads:', threads.length)
     return c.json({ threads })
   }),
 
@@ -2528,7 +2187,7 @@ export const tweetRouter = j.router({
       const { user } = ctx
       const { threadId } = input
 
-
+      // console.log('[deleteThread] Deleting thread:', threadId)
 
       // Get all tweets in the thread
       const threadTweets = await db.query.tweets.findMany({

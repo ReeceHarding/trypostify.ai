@@ -15,7 +15,21 @@ import { format } from 'date-fns'
 import { useUser } from '@/hooks/use-tweets'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
-import { useThreadEditorStore, ThreadTweetData, MediaFile } from '@/stores/thread-editor-store'
+
+interface ThreadTweetData {
+  id: string
+  content: string
+  media: Array<{
+    s3Key: string
+    media_id: string
+    isDownloading?: boolean
+    videoUrl?: string
+    platform?: string
+    // NEW: Pending media support
+    isPending?: boolean
+    pendingJobId?: string
+  }>
+}
 
 interface ThreadTweetEditorProps {
   className?: string
@@ -60,8 +74,9 @@ export default function ThreadTweetEditor({
   const { getCharacterLimit } = useUser()
   const characterLimit = getCharacterLimit()
   
-  // Use Zustand store for thread tweets state
-  const { tweets: threadTweets, setTweets: setThreadTweets, addTweet, removeTweet, updateTweet, reset: resetTweets } = useThreadEditorStore()
+  const [threadTweets, setThreadTweets] = useState<ThreadTweetData[]>([
+    { id: 'initial-tweet', content: '', media: [] },
+  ])
   const [hasBeenCleared, setHasBeenCleared] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -79,7 +94,13 @@ export default function ThreadTweetEditor({
   // Refs to focus tweets
   const tweetRefs = useRef<{ [key: string]: { focus: () => void } | null }>({})
 
-  // No longer needed - Zustand store handles proper UUID generation
+  // Generate proper UUID after mount to avoid hydration issues
+  useEffect(() => {
+    if (threadTweets.length === 1 && threadTweets[0]?.id === 'initial-tweet') {
+      console.log('[ThreadTweetEditor] Generating proper UUID after mount to avoid hydration mismatch')
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    }
+  }, [])
 
   // Load thread data if in edit mode
   const { data: threadData, isLoading: loadingThread } = useQuery({
@@ -110,44 +131,29 @@ export default function ThreadTweetEditor({
   // Initialize thread data when loaded
   useEffect(() => {
     if (threadData?.tweets && threadData.tweets.length > 0) {
-      console.log('[ThreadTweetEditor] Loading thread data into store:', threadData.tweets.length, 'tweets')
-      const storeThreadTweets: ThreadTweetData[] = threadData.tweets.map((tweet: any) => ({
+
+      setThreadTweets(threadData.tweets.map((tweet: any) => ({
         id: tweet.id,
         content: tweet.content,
         media: tweet.media?.map((m: any) => ({
-          file: null,
-          url: m.url || '',
-          type: m.type || 'image',
-          uploading: false,
-          uploaded: true,
           s3Key: m.s3Key,
           media_id: m.media_id,
-          // Preserve pending video metadata if present
-          isPending: m.isPending,
-          pendingJobId: m.pendingJobId,
-          videoUrl: m.videoUrl,
-          platform: m.platform,
         })) || [],
-        charCount: tweet.content.length,
-      }))
-      setThreadTweets(storeThreadTweets)
+      })))
     }
-  }, [threadData, setThreadTweets])
+  }, [threadData])
 
 
 
   const handleAddTweet = () => {
-    console.log('[ThreadTweetEditor] Adding new tweet via store')
-    addTweet()
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([...threadTweets, { id: newTweetId, content: '', media: [] }])
     
     // Focus the new tweet after it's added
     setTimeout(() => {
-      const newTweet = threadTweets[threadTweets.length - 1]
-      if (newTweet) {
-        const newTweetRef = tweetRefs.current[newTweet.id]
-        if (newTweetRef) {
-          newTweetRef.focus()
-        }
+      const newTweetRef = tweetRefs.current[newTweetId]
+      if (newTweetRef) {
+        newTweetRef.focus()
       }
     }, 100)
   }
@@ -222,9 +228,9 @@ export default function ThreadTweetEditor({
   useEffect(() => {
     if (!editMode && !editTweetId) {
       console.log('[ThreadTweetEditor] Resetting to create mode')
-      resetTweets()
+      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
     }
-  }, [editMode, editTweetId, resetTweets])
+  }, [editMode, editTweetId])
 
   // Post thread mutation - combines create and post
   const postThreadMutation = useMutation({
@@ -245,10 +251,10 @@ export default function ThreadTweetEditor({
         (t) => (
           <div className="flex items-center gap-2">
             <p>Tweet posted!</p>
-            {'threadUrl' in data && data.threadUrl && (
+            {data.threadUrl && (
               <button
                 onClick={() => {
-                  window.open(data.threadUrl!, '_blank', 'noopener,noreferrer')
+                  window.open(data.threadUrl, '_blank', 'noopener,noreferrer')
                   toast.dismiss(t.id)
                 }}
                 className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors cursor-pointer"
@@ -391,8 +397,7 @@ export default function ThreadTweetEditor({
 
 
   const handleRemoveTweet = (id: string) => {
-    console.log('[ThreadTweetEditor] Removing tweet via store:', id)
-    removeTweet(id)
+    setThreadTweets(threadTweets.filter(tweet => tweet.id !== id))
   }
 
   const handleVideoDownloadStateChange = (tweetId: string, isDownloading: boolean) => {
@@ -408,7 +413,46 @@ export default function ThreadTweetEditor({
     })
   }
 
-  // handleTweetUpdate function removed - tweets now update the store directly
+  const handleTweetUpdate = (
+    id: string,
+    content: string,
+    media: Array<{
+      s3Key: string
+      media_id: string
+      isPending?: boolean
+      pendingJobId?: string
+      videoUrl?: string
+      platform?: string
+      type?: string
+    }>
+  ) => {
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Called for tweet ID:', id)
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Content:', content.substring(0, 50) + '...')
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Media array received:', media)
+    console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Media details:', media.map(m => ({
+      s3Key: m.s3Key,
+      media_id: m.media_id,
+      isPending: (m as any).isPending,
+      pendingJobId: (m as any).pendingJobId,
+      videoUrl: (m as any).videoUrl,
+      platform: (m as any).platform,
+      allKeys: Object.keys(m)
+    })))
+    
+    setThreadTweets(prevTweets => {
+      const newTweets = prevTweets.map(tweet =>
+        tweet.id === id ? { ...tweet, content, media } : tweet
+      )
+      console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - Updated threadTweets for ID', id + ':', newTweets.find(t => t.id === id))
+      console.log('[ThreadTweetEditor] 📝 HANDLE_TWEET_UPDATE - All tweets now:', newTweets.map(t => ({
+        id: t.id,
+        content: t.content.substring(0, 30) + '...',
+        mediaCount: t.media.length,
+        pendingMediaCount: t.media.filter((m: any) => m.isPending).length
+      })))
+      return newTweets
+    })
+  }
 
   const handlePostThread = async () => {
     // Add debugging for validation issue
@@ -443,25 +487,117 @@ export default function ThreadTweetEditor({
       return
     }
 
+    // Check if any tweet has PENDING media
+    console.log('[ThreadTweetEditor] Checking for pending media at:', new Date().toISOString())
+    const hasPendingMedia = threadTweets.some(tweet => 
+      tweet.media.some(m => m.isPending === true)
+    )
+    
     // Store current content for potential rollback
     const currentContent = [...threadTweets]
 
-    console.log('[ThreadTweetEditor] Posting thread - backend will handle any pending media')
+    // SIMPLIFIED FLOW: If pending media exists, ALWAYS queue for background processing
+    if (hasPendingMedia) {
+      console.log('[ThreadTweetEditor] 📎 Pending media detected - queuing entire thread for background processing')
+      
+      try {
+        // Filter out empty tweets before processing
+        const validTweets = currentContent.filter(tweet => tweet.content.trim() || tweet.media.length > 0)
+        
+        console.log('[ThreadTweetEditor] Filtered tweets for video processing:', {
+          original: currentContent.length,
+          filtered: validTweets.length,
+          removed: currentContent.length - validTweets.length
+        })
+        
+        // Create video processing jobs for each pending media
+        const videoJobs = []
+        
+        for (let tweetIndex = 0; tweetIndex < validTweets.length; tweetIndex++) {
+          const tweet = validTweets[tweetIndex]
+          if (!tweet) continue
+          const pendingVideos = tweet.media.filter(m => m.isPending && m.videoUrl)
+          
+          for (const video of pendingVideos) {
+            console.log('[ThreadTweetEditor] Creating video processing job for:', video.videoUrl)
+            
+            // Create video job that will handle the complete posting flow
+            const videoJobResponse = await client.videoJob.createVideoJob.$post({
+              videoUrl: video.videoUrl!,
+              tweetId: '', // Will be created when video is ready
+              threadId: crypto.randomUUID(), // Generate thread ID for the future post
+              platform: video.platform || 'unknown',
+              tweetContent: {
+                tweets: validTweets.map((t, idx) => ({
+                  content: t.content,
+                  media: t.media, // Include ALL media (both pending and completed)
+                  delayMs: idx > 0 ? 1000 : 0,
+                })),
+                pendingVideoJobId: video.pendingJobId, // Track which pending video this job is for
+              }
+            })
+            
+            if (!videoJobResponse.ok) {
+              const errorData = await videoJobResponse.json()
+              console.error('[ThreadTweetEditor] Video job creation failed:', errorData)
+              throw new Error(errorData.error || errorData.message || 'Failed to create video job')
+            }
+            
+            const jobData = await videoJobResponse.json()
+            videoJobs.push(jobData)
+            console.log('[ThreadTweetEditor] Video job created:', jobData)
+          }
+        }
+        
+        // OPTIMISTIC UI UPDATE: Clear content since tweet is queued
+        setHasBeenCleared(true)
+        const newTweetId = crypto.randomUUID()
+        setThreadTweets([{ id: newTweetId, content: '', media: [] }])
+        
+        // AUTO-FOCUS: Focus the new empty tweet for instant typing
+        setTimeout(() => {
+          const firstTweetRef = tweetRefs.current[newTweetId]
+          if (firstTweetRef) {
+            firstTweetRef.focus()
+          }
+        }, 100)
+        
+        // Show queuing message
+        toast.success('Thread queued - will post when video is ready!', {
+          duration: 6000,
+          icon: '⏳',
+        })
+        
+        posthog.capture('thread_queued_for_pending_video', {
+          tweet_count: currentContent.length,
+          video_jobs: videoJobs.length,
+        })
+        
+        return // Exit early - don't post immediately
+        
+      } catch (error) {
+        console.error('[ThreadTweetEditor] Failed to queue tweet for video processing:', error)
+        toast.error(`Failed to queue tweet: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+          duration: 6000,
+        })
+        return
+      }
+    }
+
+    // NO PENDING MEDIA: Post immediately
+    console.log('[ThreadTweetEditor] No pending media - posting immediately')
     posthog.capture('thread_post_started', { tweet_count: threadTweets.length })
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     setHasBeenCleared(true)
-    resetTweets()
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([{ id: newTweetId, content: '', media: [] }])
     
     // AUTO-FOCUS: Focus the new empty tweet for instant typing
     setTimeout(() => {
-      // Get the first tweet from the reset store
-      const firstTweet = threadTweets[0]
-      if (firstTweet) {
-        const firstTweetRef = tweetRefs.current[firstTweet.id]
-        if (firstTweetRef) {
-          firstTweetRef.focus()
-        }
+      const firstTweetRef = tweetRefs.current[newTweetId]
+      if (firstTweetRef) {
+        firstTweetRef.focus()
       }
     }, 100)
 
@@ -544,17 +680,15 @@ export default function ThreadTweetEditor({
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content for schedule at', new Date().toISOString())
     setHasBeenCleared(true)
-    resetTweets()
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([{ id: newTweetId, content: '', media: [] }])
     
     // AUTO-FOCUS: Focus the new empty tweet for instant typing
     setTimeout(() => {
-      const firstTweet = threadTweets[0]
-      if (firstTweet) {
-        const firstTweetRef = tweetRefs.current[firstTweet.id]
-        if (firstTweetRef) {
-          console.log('[ThreadTweetEditor] Auto-focusing new tweet after schedule at', new Date().toISOString())
-          firstTweetRef.focus()
-        }
+      const firstTweetRef = tweetRefs.current[newTweetId]
+      if (firstTweetRef) {
+        console.log('[ThreadTweetEditor] Auto-focusing new tweet after schedule at', new Date().toISOString())
+        firstTweetRef.focus()
       }
     }, 100)
 
@@ -680,17 +814,15 @@ export default function ThreadTweetEditor({
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content for queue at', new Date().toISOString())
     setHasBeenCleared(true)
-    resetTweets()
+    const newTweetId = crypto.randomUUID()
+    setThreadTweets([{ id: newTweetId, content: '', media: [] }])
     
     // AUTO-FOCUS: Focus the new empty tweet for instant typing
     setTimeout(() => {
-      const firstTweet = threadTweets[0]
-      if (firstTweet) {
-        const firstTweetRef = tweetRefs.current[firstTweet.id]
-        if (firstTweetRef) {
-          console.log('[ThreadTweetEditor] Auto-focusing new tweet after queue at', new Date().toISOString())
-          firstTweetRef.focus()
-        }
+      const firstTweetRef = tweetRefs.current[newTweetId]
+      if (firstTweetRef) {
+        console.log('[ThreadTweetEditor] Auto-focusing new tweet after queue at', new Date().toISOString())
+        firstTweetRef.focus()
       }
     }, 100)
 
@@ -873,7 +1005,7 @@ export default function ThreadTweetEditor({
     window.history.pushState({}, '', url.toString())
     
     // Reset the component state
-    resetTweets()
+    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
   }
 
   const isPosting = postThreadMutation.isPending || scheduleThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
@@ -915,7 +1047,6 @@ export default function ThreadTweetEditor({
             
             <ThreadTweet
               key={tweet.id}
-              tweetId={tweet.id}
               ref={(el) => {
                 if (el) {
                   tweetRefs.current[tweet.id] = el
@@ -937,7 +1068,7 @@ export default function ThreadTweetEditor({
               onCancelEdit={editMode ? handleCancelEdit : undefined}
               isPosting={isPosting}
               preScheduleTime={preScheduleTime}
-
+              onUpdate={(content, media) => handleTweetUpdate(tweet.id, content, media)}
               initialContent={editMode ? (tweet.content ?? '') : ''}
               initialMedia={tweet.media?.map((m: any) => ({
                 // Ensure a valid preview URL is always present. If the API didn't
