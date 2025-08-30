@@ -392,15 +392,20 @@ export default function ThreadTweetEditor({
       queryClient.invalidateQueries({ queryKey: ['threads-scheduled-published'] })
       
       toast.success(
-        <div className="flex items-center gap-2">
-          <p>Thread updated!</p>
-          <Link
-            href="/studio/scheduled"
-            className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors"
-          >
-            View here
-          </Link>
-        </div>,
+        (t) => (
+          <div className="flex items-center gap-2">
+            <p>Thread updated!</p>
+            <button
+              onClick={() => {
+                window.location.href = '/studio/scheduled'
+                toast.dismiss(t.id)
+              }}
+              className="text-base text-primary-600 decoration-2 underline-offset-2 flex items-center gap-1 underline shrink-0 bg-white/10 hover:bg-white/20 rounded py-0.5 transition-colors cursor-pointer"
+            >
+              View here
+            </button>
+          </div>
+        ),
         {
           duration: 4000, // Auto-dismiss after 4 seconds
           position: 'top-center',
