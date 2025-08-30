@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { useHotkeyFeedback } from './ui/hotkey-feedback'
+import { useQuery } from '@tanstack/react-query'
+import { client } from '@/lib/client'
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +53,33 @@ export const LeftSidebar = () => {
   
   // Global hotkey feedback
   const { showNavigation } = useHotkeyFeedback()
+
+  // Check for active background processes to show notification bell
+  const { data: activeJobs } = useQuery({
+    queryKey: ['sidebar-background-processes'],
+    queryFn: async () => {
+      try {
+        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'processing' as const, 
+          limit: 10, 
+          offset: 0 
+        })
+        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'pending' as const, 
+          limit: 10, 
+          offset: 0 
+        })
+        return [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+      } catch (error) {
+        return []
+      }
+    },
+    refetchInterval: 5000,
+    retry: false,
+    staleTime: 0,
+  })
+
+  const hasActiveProcesses = (activeJobs?.length || 0) > 0
 
   // Log component mount
   useEffect(() => {
@@ -289,8 +318,13 @@ export const LeftSidebar = () => {
                           'bg-neutral-200 hover:bg-neutral-200 text-accent-foreground',
                       )}
                     >
-                      <div className="size-6 flex items-center justify-center flex-shrink-0">
+                      <div className="size-6 flex items-center justify-center flex-shrink-0 relative">
                         <span aria-hidden="true" className="text-base">🗓️</span>
+                        {hasActiveProcesses && (
+                          <div className="absolute -top-1 -right-1 size-3 bg-primary rounded-full flex items-center justify-center animate-pulse">
+                            <span className="text-[8px]">🔔</span>
+                          </div>
+                        )}
                       </div>
                       <span
                         className={cn(
