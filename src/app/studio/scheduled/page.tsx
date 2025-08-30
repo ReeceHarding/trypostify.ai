@@ -162,9 +162,26 @@ function BackgroundProcessStatus() {
     }
   }, [hasActiveProcesses, processingVideos?.length])
 
-  // Don't show the component if there are no processing videos or if there's an error
-  if (error || (!isLoading && (!processingVideos || processingVideos.length === 0))) {
-    return null
+  // Handle errors gracefully but still show the section
+  if (error) {
+    return (
+      <Card className="border-error-200 bg-error-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="w-5 h-5 text-error-500" />
+            Background Processing
+            <DuolingoBadge variant="error" className="text-xs">
+              Error
+            </DuolingoBadge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-error-600 text-center py-4">
+            Error loading background process status. Please refresh the page.
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (isLoading) {
