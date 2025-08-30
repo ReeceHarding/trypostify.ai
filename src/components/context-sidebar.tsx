@@ -66,19 +66,6 @@ export const LeftSidebar = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
 
-      // Log ALL key presses for debugging navigation shortcuts - NAVIGATION SHORTCUTS LISTENER
-      console.log('[LeftSidebar-NavigationShortcuts] Key pressed:', {
-        key: e.key,
-        metaKey: e.metaKey,
-        ctrlKey: e.ctrlKey,
-        shiftKey: e.shiftKey,
-        altKey: e.altKey,
-        actualMetaKey,
-        isMac,
-        listenerType: 'NAVIGATION_SHORTCUTS',
-        timestamp: new Date().toISOString()
-      })
-
       // Navigation shortcuts: Cmd/Ctrl + 1-5 (cross-platform safe, avoids all browser conflicts)
       if (actualMetaKey && !e.shiftKey && !e.altKey && e.key >= '1' && e.key <= '5') {
         e.preventDefault()

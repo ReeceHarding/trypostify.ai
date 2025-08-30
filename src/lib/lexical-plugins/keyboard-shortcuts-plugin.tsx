@@ -25,28 +25,11 @@ export function KeyboardShortcutsPlugin({
   const [pendingAction, setPendingAction] = useState<'post' | 'queue' | null>(null)
 
   useEffect(() => {
-    console.log('[KeyboardShortcuts] Plugin mounted with handlers:', { 
-      hasOnPost: !!onPost, 
-      hasOnQueue: !!onQueue,
-      hasActionTriggered: !!onActionTriggered,
-      hasActionComplete: !!onActionComplete
-    })
-
     const removeCommand = editor.registerCommand(
       KEY_DOWN_COMMAND,
       (event: KeyboardEvent) => {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
         const metaKey = isMac ? event.metaKey : event.ctrlKey
-
-        console.log('[KeyboardShortcuts] Key pressed:', {
-          key: event.key,
-          metaKey: event.metaKey,
-          ctrlKey: event.ctrlKey,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-          isMac,
-          timestamp: new Date().toISOString()
-        })
 
         // Command/Ctrl + Enter to post
         if (metaKey && event.key === 'Enter' && !event.shiftKey) {
@@ -59,7 +42,6 @@ export function KeyboardShortcutsPlugin({
           onActionTriggered?.('post')
           
           if (onPost) {
-            console.log('[KeyboardShortcuts] Calling onPost handler')
             // Use a microtask to ensure immediate UI update
             Promise.resolve().then(() => {
               onPost()
@@ -70,7 +52,6 @@ export function KeyboardShortcutsPlugin({
               }, 100)
             })
           } else {
-            console.warn('[KeyboardShortcuts] No onPost handler provided')
             setPendingAction(null)
           }
           
@@ -88,7 +69,6 @@ export function KeyboardShortcutsPlugin({
           onActionTriggered?.('queue')
           
           if (onQueue) {
-            console.log('[KeyboardShortcuts] Calling onQueue handler')
             // Use a microtask to ensure immediate UI update
             Promise.resolve().then(() => {
               onQueue()
@@ -99,7 +79,6 @@ export function KeyboardShortcutsPlugin({
               }, 100)
             })
           } else {
-            console.warn('[KeyboardShortcuts] No onQueue handler provided')
             setPendingAction(null)
           }
           
@@ -111,10 +90,7 @@ export function KeyboardShortcutsPlugin({
       COMMAND_PRIORITY_NORMAL
     )
 
-    return () => {
-      console.log('[KeyboardShortcuts] Plugin unmounting, removing command listener')
-      removeCommand()
-    }
+    return removeCommand
   }, [editor, onPost, onQueue, onActionTriggered, onActionComplete])
 
   // Visual feedback is handled by HotkeyFeedbackProvider, no need for duplicate popup

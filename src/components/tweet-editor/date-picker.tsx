@@ -32,13 +32,18 @@ export const Calendar20 = ({
   onOpenChange,
   ...props
 }: CalendarProps) => {
-  const today = new Date()
-  const currentHour = today.getHours()
-  const currentMinute = today.getMinutes()
+  const today = React.useMemo(() => new Date(), [])
+  const currentHour = React.useMemo(() => today.getHours(), [today])
+  const currentMinute = React.useMemo(() => today.getMinutes(), [today])
   
-  console.log('[DatePicker] Current time:', today.toISOString())
-  console.log('[DatePicker] Current local time:', today.toLocaleString())
-  console.log('[DatePicker] Current hour:', currentHour, 'Current minute:', currentMinute)
+  // Only log when component first mounts or when open state changes
+  React.useEffect(() => {
+    if (open) {
+      console.log('[DatePicker] Dialog opened - Current time:', today.toISOString())
+      console.log('[DatePicker] Current local time:', today.toLocaleString())
+      console.log('[DatePicker] Current hour:', currentHour, 'Current minute:', currentMinute)
+    }
+  }, [open, today, currentHour, currentMinute])
 
   // Fetch user's posting window settings
   const { data: postingWindow } = useQuery({
@@ -64,12 +69,9 @@ export const Calendar20 = ({
   }
 
   // Generate time slots using the same preset slots as the queue system
-  const generateTimeSlots = (): string[] => {
+  const timeSlots = React.useMemo(() => {
     // Use the same preset slots as the queue system: 10am, 12pm, 2pm
     const PRESET_SLOTS = [10, 12, 14] // 10am, 12pm (noon), 2pm
-    
-    console.log('[DatePicker] Using preset queue slots:', PRESET_SLOTS)
-    console.log('[DatePicker] postingWindow object (for reference):', postingWindow)
     
     const slots: string[] = []
     
@@ -87,11 +89,17 @@ export const Calendar20 = ({
     // Sort slots by time
     slots.sort()
     
-    console.log('[DatePicker] Generated', slots.length, 'preset time slots:', slots)
     return slots
-  }
-
-  const timeSlots = generateTimeSlots()
+  }, [])
+  
+  // Log time slots only when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      console.log('[DatePicker] Using preset queue slots: [10, 12, 14]')
+      console.log('[DatePicker] postingWindow object (for reference):', postingWindow)
+      console.log('[DatePicker] Generated', timeSlots.length, 'preset time slots:', timeSlots)
+    }
+  }, [open, timeSlots.length, postingWindow])
 
   const getNextAvailableTime = (): string => {
     const currentTime = currentHour * 60 + currentMinute
@@ -148,13 +156,17 @@ export const Calendar20 = ({
     getInitialTime(),
   )
   
-  // Debug logging after state initialization
-  console.log('[DatePicker] Component state - date:', date, 'selectedTime:', selectedTime)
-  console.log('[DatePicker] postingWindow:', postingWindow)
-  console.log('[DatePicker] Current date state:', date)
-  console.log('[DatePicker] Today:', today.toDateString())
-  console.log('[DatePicker] Time slots array length:', timeSlots.length)
-  console.log('[DatePicker] First few time slots:', timeSlots.slice(0, 5))
+  // Debug logging only when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      console.log('[DatePicker] Component state - date:', date, 'selectedTime:', selectedTime)
+      console.log('[DatePicker] postingWindow:', postingWindow)
+      console.log('[DatePicker] Current date state:', date)
+      console.log('[DatePicker] Today:', today.toDateString())
+      console.log('[DatePicker] Time slots array length:', timeSlots.length)
+      console.log('[DatePicker] First few time slots:', timeSlots.slice(0, 5))
+    }
+  }, [open, date, selectedTime, postingWindow, today, timeSlots])
   
   // Fallback: if no time slots are generated, create some default ones using preset slots
   if (timeSlots.length === 0) {

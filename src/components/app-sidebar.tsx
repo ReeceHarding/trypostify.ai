@@ -98,24 +98,10 @@ const ChatInput = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
       
-      // Log ALL key presses for debugging - FILE UPLOAD LISTENER
-      console.log('[AppSidebar-FileUpload] Key pressed:', {
-        key: e.key,
-        metaKey: e.metaKey,
-        ctrlKey: e.ctrlKey,
-        shiftKey: e.shiftKey,
-        altKey: e.altKey,
-        actualMetaKey,
-        isMac,
-        listenerType: 'FILE_UPLOAD',
-        timestamp: new Date().toISOString()
-      })
-      
       // Attach files: Cmd/Ctrl + Shift + A (matches tooltip)
       if (actualMetaKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'a') {
         e.preventDefault()
         console.log('[AppSidebar] File attach shortcut triggered (Cmd+Shift+A) at', new Date().toISOString())
-        console.log('[AppSidebar] fileInputRef.current:', fileInputRef.current)
         if (fileInputRef.current) {
           fileInputRef.current.click()
           console.log('[AppSidebar] File input clicked successfully')
@@ -657,19 +643,6 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const actualMetaKey = isMac ? e.metaKey : e.ctrlKey
-
-      // Log ALL key presses for debugging main shortcuts - MAIN SHORTCUTS LISTENER
-      console.log('[AppSidebar-MainShortcuts] Key pressed:', {
-        key: e.key,
-        metaKey: e.metaKey,
-        ctrlKey: e.ctrlKey,
-        shiftKey: e.shiftKey,
-        altKey: e.altKey,
-        actualMetaKey,
-        isMac,
-        listenerType: 'MAIN_SHORTCUTS',
-        timestamp: new Date().toISOString()
-      })
 
       // New Chat: Cmd/Ctrl + K (command palette standard, truly safe across all platforms)
       if (actualMetaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {

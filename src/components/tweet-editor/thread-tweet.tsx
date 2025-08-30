@@ -1036,16 +1036,16 @@ function ThreadTweetContent({
                       <KeyboardShortcutsPlugin 
                         onPost={handlePostClick}
                         onQueue={onQueueThread}
-                        onActionTriggered={(action) => {
+                        onActionTriggered={useCallback((action: 'post' | 'queue') => {
                           console.log(`[ThreadTweet] Hotkey triggered: ${action} at ${new Date().toISOString()}`)
                           // Immediate optimistic feedback
                           setOptimisticActionState(action)
-                        }}
-                        onActionComplete={() => {
+                        }, [])}
+                        onActionComplete={useCallback(() => {
                           console.log(`[ThreadTweet] Hotkey action completed at ${new Date().toISOString()}`)
                           // Clear optimistic state after brief delay
                           setTimeout(() => setOptimisticActionState(null), 300)
-                        }}
+                        }, [])}
                       />
                     </div>
                   </TooltipTrigger>

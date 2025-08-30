@@ -44,27 +44,33 @@ const SLOTS = [10, 12, 14]
 // Function to enrich media without S3 HEAD calls.
 // Derive URL from s3Key and infer type from extension. This removes 1 network call per item.
 async function fetchMediaFromS3(media: { s3Key: string; media_id: string }[]) {
-  return media.map((m) => {
-    const lower = m.s3Key.toLowerCase()
-    const url = `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${m.s3Key}`
-    let type: 'image' | 'gif' | 'video' = 'image'
-    if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.m4v') || lower.endsWith('.webm')) {
-      type = 'video'
-    } else if (lower.endsWith('.gif')) {
-      type = 'gif'
-    } else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.svg')) {
-      type = 'image'
-    }
-    return {
-      url,
-      type,
-      media_id: m.media_id,
-      s3Key: m.s3Key,
-      uploaded: true,
-      uploading: false,
-      file: null,
-    }
-  })
+  return media
+    .filter((m) => m && m.s3Key && typeof m.s3Key === 'string' && m.s3Key.trim().length > 0)
+    .map((m) => {
+      console.log('[fetchMediaFromS3] Processing media item:', { s3Key: m.s3Key, media_id: m.media_id })
+      
+      const lower = m.s3Key.toLowerCase()
+      const url = `https://${process.env.NEXT_PUBLIC_S3_BUCKET_NAME}.s3.amazonaws.com/${m.s3Key}`
+      let type: 'image' | 'gif' | 'video' = 'image'
+      
+      if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.m4v') || lower.endsWith('.webm')) {
+        type = 'video'
+      } else if (lower.endsWith('.gif')) {
+        type = 'gif'
+      } else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp') || lower.endsWith('.svg')) {
+        type = 'image'
+      }
+      
+      return {
+        url,
+        type,
+        media_id: m.media_id || '',
+        s3Key: m.s3Key,
+        uploaded: true,
+        uploading: false,
+        file: null,
+      }
+    })
 }
 
 // Utility function to group tweets into threads (DRY principle)
