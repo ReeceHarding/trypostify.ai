@@ -22,15 +22,20 @@ export const videoJobRouter = j.router({
       })
     )
     .mutation(async ({ c, input, ctx }) => {
-      console.log('[VideoJobRouter] 🎬 Creating video job at', new Date().toISOString())
-      console.log('[VideoJobRouter] 📋 Input data:', input)
+      console.log('[VideoJobRouter] 🎬 DETAILED CREATION REQUEST:')
       console.log('[VideoJobRouter] 👤 User ID:', ctx.user.id)
+      console.log('[VideoJobRouter] 📧 User email:', ctx.user.email)
+      console.log('[VideoJobRouter] 🎥 Video URL:', input.videoUrl)
+      console.log('[VideoJobRouter] 🏷️ Platform:', input.platform)
+      console.log('[VideoJobRouter] ⏰ Creation timestamp:', new Date().toISOString())
       
       try {
         // Create video job record
         const jobId = uuidv4()
         
-        console.log('[VideoJobRouter] 💾 Inserting video job into database with ID:', jobId)
+        console.log('[VideoJobRouter] 💾 INSERTING VIDEO JOB:')
+        console.log('[VideoJobRouter] 🆔 Job ID:', jobId)
+        console.log('[VideoJobRouter] 👤 Using User ID:', ctx.user.id)
         
         const newJob = await db.insert(videoJob).values({
           id: jobId,
@@ -45,7 +50,14 @@ export const videoJobRouter = j.router({
           updatedAt: new Date(),
         }).returning()
         
-        console.log('[VideoJobRouter] ✅ Video job created successfully:', newJob[0])
+        console.log('[VideoJobRouter] ✅ VIDEO JOB CREATED SUCCESSFULLY:')
+        console.log('[VideoJobRouter] 📋 Job details:', {
+          id: newJob[0]?.id?.substring(0, 8),
+          userId: newJob[0]?.userId,
+          status: newJob[0]?.status,
+          platform: newJob[0]?.platform,
+          createdAt: newJob[0]?.createdAt
+        })
         
         // Enqueue video job processing with QStash for serverless reliability
         console.log('[VideoJobRouter] 🔄 Enqueueing video job with QStash for job ID:', jobId)
@@ -161,14 +173,11 @@ export const videoJobRouter = j.router({
       offset: z.number().min(0).default(0),
     }))
     .mutation(async ({ c, input, ctx }) => {
-      console.log('[VideoJobRouter] 📝 Listing video jobs for user:', ctx.user.id)
-      console.log('[VideoJobRouter] 🔍 Raw input:', JSON.stringify(input))
-      console.log('[VideoJobRouter] 🔍 Input keys:', Object.keys(input))
+      console.log('[VideoJobRouter] 📝 DETAILED LISTING REQUEST:')
+      console.log('[VideoJobRouter] 👤 User ID:', ctx.user.id)
+      console.log('[VideoJobRouter] 📧 User email:', ctx.user.email)
       console.log('[VideoJobRouter] 🔍 Status filter:', input.status)
-      console.log('[VideoJobRouter] 🔍 Status type:', typeof input.status)
-      console.log('[VideoJobRouter] 🔍 Has status filter:', !!input.status)
-      console.log('[VideoJobRouter] 🔍 Request method:', c.req.method)
-      console.log('[VideoJobRouter] 🔍 Request headers:', c.req.headers ? Object.fromEntries(c.req.headers.entries()) : 'No headers')
+      console.log('[VideoJobRouter] ⏰ Request timestamp:', new Date().toISOString())
       
       try {
         const conditions = [eq(videoJob.userId, ctx.user.id)]
@@ -187,8 +196,15 @@ export const videoJobRouter = j.router({
           .limit(input.limit)
           .offset(input.offset)
         
-        console.log('[VideoJobRouter] 📊 Found', jobs.length, 'video jobs')
-        console.log('[VideoJobRouter] 📋 Job statuses:', jobs.map(j => ({ id: j.id.substring(0, 8), status: j.status })))
+        console.log('[VideoJobRouter] 📊 QUERY RESULTS:')
+        console.log('[VideoJobRouter] 📊 Found', jobs.length, 'video jobs for user:', ctx.user.id)
+        console.log('[VideoJobRouter] 📋 Job details:', jobs.map(j => ({ 
+          id: j.id.substring(0, 8), 
+          status: j.status, 
+          userId: j.userId,
+          userMatches: j.userId === ctx.user.id,
+          createdAt: j.createdAt 
+        })))
         
         const mappedJobs = jobs.map(job => ({
           id: job.id,
