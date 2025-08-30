@@ -7,18 +7,41 @@ import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[BackgroundProcessIndicator] Component mounted')
+    return () => {
+      console.log('[BackgroundProcessIndicator] Component unmounted')
+    }
+  }, [])
 
   // Check for background video processing
   const { data: processingVideos } = useQuery({
     queryKey: ['global-background-processes'],
     queryFn: async () => {
       try {
+        console.log('[BackgroundProcessIndicator] 🔍 Fetching video jobs...')
         const res = await client.videoJob.listVideoJobs.mutate({ 
           status: 'processing' as const, 
           limit: 50, 
           offset: 0 
         })
-        return res.jobs || []
+        console.log('[BackgroundProcessIndicator] 📊 Response:', res)
+        console.log('[BackgroundProcessIndicator] 📋 Jobs found:', res.jobs?.length || 0)
+        
+        // Also check for 'pending' status jobs
+        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'pending' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        console.log('[BackgroundProcessIndicator] 📋 Pending jobs found:', pendingRes.jobs?.length || 0)
+        
+        const allActiveJobs = [...(res.jobs || []), ...(pendingRes.jobs || [])]
+        console.log('[BackgroundProcessIndicator] 📊 Total active jobs:', allActiveJobs.length)
+        
+        return allActiveJobs
       } catch (error) {
         console.error('[BackgroundProcessIndicator] Error fetching video jobs:', error)
         return []
@@ -31,6 +54,15 @@ export default function BackgroundProcessIndicator() {
 
   const activeProcessCount = processingVideos?.length || 0
   const hasActiveProcesses = activeProcessCount > 0
+  
+  // Debug logging for process detection
+  useEffect(() => {
+    console.log('[BackgroundProcessIndicator] Process status:', {
+      activeProcessCount,
+      hasActiveProcesses,
+      processingVideos: processingVideos?.map(v => ({ id: v.id?.substring(0, 8), status: v.status }))
+    })
+  }, [activeProcessCount, hasActiveProcesses, processingVideos])
 
   // Show page title indicator when processes are running
   useEffect(() => {
