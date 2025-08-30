@@ -40,7 +40,14 @@ function BackgroundProcessStatus() {
       m.state.status === 'pending' || m.state.status === 'loading'
     ) || []
     
-    activeProcessCount = activeMutations.length
+    // Also check for recently completed video job creations (last 10 seconds)
+    const recentVideoJobs = queryClient?.getMutationCache()?.getAll()?.filter(m => 
+      m.options.mutationKey?.[0] === 'create-video-job' && 
+      m.state.status === 'success' &&
+      Date.now() - (m.state.dataUpdatedAt || 0) < 10000
+    ) || []
+    
+    activeProcessCount = activeMutations.length + recentVideoJobs.length
     hasActiveProcesses = activeProcessCount > 0
   } catch (error) {
     console.warn('[BackgroundProcessStatus] QueryClient not available:', error)

@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
+  const [recentlyStartedProcesses, setRecentlyStartedProcesses] = useState<string[]>([])
   const { tweets } = useThreadEditorStore()
   const queryClient = useQueryClient()
   
@@ -18,10 +19,10 @@ export default function BackgroundProcessIndicator() {
     }
   }, [])
 
-  // Check for ACTUAL background processes, not just pending media
-  // Pending media is just a UI state - real processing starts when user clicks Post/Queue
+  // Check for ACTUAL background processes
+  // 1. Active React Query mutations
+  // 2. Recently started processes (for brief visual feedback)
   
-  // Safely check React Query for active mutations (actual operations)
   let activeMutations = []
   let hasActiveProcesses = false
   let activeProcessCount = 0
@@ -31,18 +32,31 @@ export default function BackgroundProcessIndicator() {
       m.state.status === 'pending' || m.state.status === 'loading'
     ) || []
     
-    hasActiveProcesses = activeMutations.length > 0
-    activeProcessCount = activeMutations.length
+    // Check for recent video job creations by looking at success states
+    const recentVideoJobs = queryClient?.getMutationCache()?.getAll()?.filter(m => 
+      m.options.mutationKey?.[0] === 'create-video-job' && 
+      m.state.status === 'success' &&
+      Date.now() - (m.state.dataUpdatedAt || 0) < 10000 // Last 10 seconds
+    ) || []
+    
+    activeProcessCount = activeMutations.length + recentVideoJobs.length
+    hasActiveProcesses = activeProcessCount > 0
+    
   } catch (error) {
     // Handle cases where queryClient is not available (SSR, etc.)
     console.warn('[BackgroundProcessIndicator] QueryClient not available:', error)
   }
 
-  console.log('[BackgroundProcessIndicator] Active mutation check:', {
+  console.log('[BackgroundProcessIndicator] Process detection:', {
     activeMutationsCount: activeMutations.length,
+    recentVideoJobsCount: (queryClient?.getMutationCache()?.getAll()?.filter(m => 
+      m.options.mutationKey?.[0] === 'create-video-job' && 
+      m.state.status === 'success' &&
+      Date.now() - (m.state.dataUpdatedAt || 0) < 10000
+    ) || []).length,
     hasActiveProcesses,
     activeProcessCount,
-    mutations: activeMutations.map(m => ({
+    activeMutations: activeMutations.map(m => ({
       mutationKey: m.options.mutationKey,
       status: m.state.status
     }))
