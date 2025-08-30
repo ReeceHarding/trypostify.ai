@@ -60,10 +60,12 @@ export default function BackgroundProcessIndicator() {
 
   // Determine process type and status
   const getProcessInfo = () => {
-    if (pendingMediaCount > 0) {
+    const videoProcesses = activeProcesses.filter(p => p.type === 'video-processing')
+    
+    if (videoProcesses.length > 0) {
       return {
         icon: <Video className="w-4 h-4" />,
-        text: pendingMediaCount === 1 ? 'Processing video' : `Processing ${pendingMediaCount} videos`,
+        text: videoProcesses.length === 1 ? 'Processing video' : `Processing ${videoProcesses.length} videos`,
         description: 'Videos will be posted automatically when ready'
       }
     }
