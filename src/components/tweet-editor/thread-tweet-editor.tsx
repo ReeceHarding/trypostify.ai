@@ -12,7 +12,7 @@ import posthog from 'posthog-js'
 import { useConfetti } from '@/hooks/use-confetti'
 import ThreadTweet from './thread-tweet'
 import { format } from 'date-fns'
-import { useUser } from '@/hooks/use-user'
+import { useUser } from '@/hooks/use-tweets'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
 import { useThreadEditorStore, ThreadTweetData, MediaFile } from '@/stores/thread-editor-store'
@@ -218,13 +218,13 @@ export default function ThreadTweetEditor({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isMac, threadTweets])
 
-  // Initialize store with a tweet on client mount to prevent hydration mismatch
+  // Reset state when switching from edit mode to create mode
   useEffect(() => {
-    if (!editMode && !editTweetId && threadTweets.length === 0) {
-      console.log('[ThreadTweetEditor] Initializing store with first tweet on client')
+    if (!editMode && !editTweetId) {
+      console.log('[ThreadTweetEditor] Resetting to create mode')
       resetTweets()
     }
-  }, [editMode, editTweetId, threadTweets.length, resetTweets])
+  }, [editMode, editTweetId, resetTweets])
 
   // Post thread mutation - combines create and post
   const postThreadMutation = useMutation({
@@ -350,12 +350,7 @@ export default function ThreadTweetEditor({
         tweets: tweets.map((tweet, index) => ({
           id: tweet.id.startsWith('new-') ? undefined : tweet.id,
           content: tweet.content,
-          media: tweet.media
-            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-            .map(m => ({
-              media_id: m.media_id!,
-              s3Key: m.s3Key!,
-            })),
+          media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
         })),
       })
@@ -483,12 +478,7 @@ export default function ThreadTweetEditor({
       // Post thread immediately
       const tweetsForPosting = validTweets.map((tweet, index) => ({
         content: tweet.content,
-        media: tweet.media
-          .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-          .map(m => ({
-            media_id: m.media_id!,
-            s3Key: m.s3Key!,
-          })),
+        media: tweet.media,
         delayMs: index > 0 ? 1000 : 0, // 1 second delay between tweets
       }))
       
@@ -583,12 +573,7 @@ export default function ThreadTweetEditor({
       const createResult = await client.tweet.createThread.$post({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
-          media: tweet.media
-            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-            .map(m => ({
-              media_id: m.media_id!,
-              s3Key: m.s3Key!,
-            })),
+          media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
@@ -724,12 +709,7 @@ export default function ThreadTweetEditor({
       const createResult = await client.tweet.createThread.$post({
         tweets: validTweets.map((tweet, index) => ({
           content: tweet.content,
-          media: tweet.media
-            .filter(m => m.uploaded && m.media_id && m.s3Key) // Only include fully uploaded media
-            .map(m => ({
-              media_id: m.media_id!,
-              s3Key: m.s3Key!,
-            })),
+          media: tweet.media,
           delayMs: index > 0 ? 1000 : 0,
         }))
       })
@@ -903,15 +883,6 @@ export default function ThreadTweetEditor({
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-neutral-500">Loading thread...</div>
-      </div>
-    )
-  }
-
-  // Prevent hydration mismatch by not rendering until store is initialized
-  if (threadTweets.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-neutral-500">Initializing editor...</div>
       </div>
     )
   }

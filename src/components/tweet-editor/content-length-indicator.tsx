@@ -1,4 +1,4 @@
-import { useUser } from '@/hooks/use-user'
+import { useUser } from '@/hooks/use-tweets'
 
 interface ContentLengthIndicatorProps {
   length: number // Now required since we removed the hook

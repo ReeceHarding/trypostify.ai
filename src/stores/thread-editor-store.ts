@@ -47,10 +47,8 @@ const createInitialTweet = (): ThreadTweetData => ({
   charCount: 0,
 })
 
-// Initialize with empty array to prevent SSR hydration mismatch
-// The component will initialize with a proper tweet on mount
 export const useThreadEditorStore = create<ThreadEditorState>((set, get) => ({
-  tweets: [],
+  tweets: [createInitialTweet()],
   
   setTweets: (tweets) => {
     console.log('[ThreadEditorStore] setTweets called with:', tweets.length, 'tweets')
