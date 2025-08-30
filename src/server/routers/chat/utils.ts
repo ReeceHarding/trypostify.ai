@@ -323,15 +323,18 @@ export async function publishThreadById({
       if (tweet.media?.length) {
         const ids = tweet.media
           .map((m: any) => m.media_id)
-          .filter((id: any) => typeof id === 'string' && id.trim().length > 0)
+          .filter((id: any) => typeof id === 'string' && id && id.trim().length > 0)
         console.log(`[${logPrefix}] Media processing:`, {
           originalMediaCount: tweet.media.length,
           validMediaIds: ids,
-          mediaData: tweet.media
+          mediaData: tweet.media,
+          filteredOutCount: tweet.media.length - ids.length
         })
-        if (ids.length) {
+        if (ids.length > 0) {
           payload.media = { media_ids: ids as any }
-          console.log(`[${logPrefix}] Added media to payload:`, payload.media)
+          console.log(`[${logPrefix}] Added ${ids.length} valid media IDs to payload:`, payload.media)
+        } else {
+          console.log(`[${logPrefix}] No valid media IDs found, skipping media attachment`)
         }
       }
       

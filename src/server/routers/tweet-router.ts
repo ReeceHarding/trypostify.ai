@@ -550,9 +550,18 @@ export const tweetRouter = j.router({
 
       // Add media if present
       if (tweet.media && tweet.media.length > 0) {
-        tweetPayload.media = {
-          // @ts-expect-error tuple type vs. string[]
-          media_ids: tweet.media.map((media) => media.media_id),
+        const mediaIds = tweet.media
+          .map((media) => media.media_id)
+          .filter((id) => typeof id === 'string' && id && id.trim().length > 0)
+        
+        if (mediaIds.length > 0) {
+          tweetPayload.media = {
+            // @ts-expect-error tuple type vs. string[]
+            media_ids: mediaIds,
+          }
+          console.log('[POST] Added valid media IDs:', mediaIds)
+        } else {
+          console.log('[POST] No valid media IDs found, skipping media attachment')
         }
       }
 
@@ -1855,9 +1864,17 @@ export const tweetRouter = j.router({
 
           // Add media if present
           if (tweet.media && tweet.media.length > 0) {
-            const mediaIds = tweet.media.map((media) => media.media_id)
-            tweetPayload.media = {
-              media_ids: mediaIds as any,
+            const mediaIds = tweet.media
+              .map((media) => media.media_id)
+              .filter((id) => typeof id === 'string' && id && id.trim().length > 0)
+            
+            if (mediaIds.length > 0) {
+              tweetPayload.media = {
+                media_ids: mediaIds as any,
+              }
+              console.log(`[postThreadNow] Added ${mediaIds.length} valid media IDs to tweet ${index + 1}`)
+            } else {
+              console.log(`[postThreadNow] No valid media IDs found for tweet ${index + 1}, skipping media`)
             }
           }
 
