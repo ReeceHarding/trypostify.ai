@@ -22,38 +22,74 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
+import { useThreadEditorStore } from '@/stores/thread-editor-store'
 
 function BackgroundProcessStatus() {
   const queryClient = useQueryClient()
+  const { tweets } = useThreadEditorStore()
   
-  // Simple approach: Check for any pending operations using React Query cache
+  // Use the SAME logic as the global indicator for consistency
+  const pendingMediaCount = tweets.reduce((count, tweet) => {
+    const pendingMedia = tweet.media?.filter(m => m.isPending) || []
+    return count + pendingMedia.length
+  }, 0)
+
+  // Also check React Query mutations
   const isVideoProcessing = queryClient.isMutating({ mutationKey: ['upload-video'] }) > 0
   const isPosting = queryClient.isMutating({ mutationKey: ['post-thread'] }) > 0
   const isQueueing = queryClient.isMutating({ mutationKey: ['queue-thread'] }) > 0
+  const mutationCount = [isVideoProcessing, isPosting, isQueueing].filter(Boolean).length
   
-  const activeProcessCount = [isVideoProcessing, isPosting, isQueueing].filter(Boolean).length
+  const activeProcessCount = pendingMediaCount + mutationCount
   const hasActiveProcesses = activeProcessCount > 0
   
-  console.log('[BackgroundProcessStatus] Simple status check:', {
+  console.log('[BackgroundProcessStatus] Unified status check:', {
+    pendingMediaCount,
+    mutationCount,
     isVideoProcessing,
     isPosting,
     isQueueing,
     activeProcessCount,
     hasActiveProcesses,
-    mutatingQueries: queryClient.getMutationCache().getAll().map(m => ({ 
-      mutationKey: m.options.mutationKey,
-      status: m.state.status 
+    tweetDetails: tweets.map(t => ({
+      id: t.id.substring(0, 8),
+      mediaCount: t.media?.length || 0,
+      pendingMedia: t.media?.filter(m => m.isPending)?.length || 0
     }))
   })
   
-  // Mock data for now - will be replaced with real process detection
-  const processingVideos = hasActiveProcesses ? [
-    {
-      id: 'mock-process-1',
-      content: 'Processing background operation...',
-      status: isVideoProcessing ? 'processing' : isPosting ? 'posting' : 'queueing'
-    }
-  ] : []
+  // Create process data based on what we detect
+  const processingVideos = []
+  
+  // Add pending media processes
+  tweets.forEach(tweet => {
+    const pendingMedia = tweet.media?.filter(m => m.isPending) || []
+    pendingMedia.forEach((media, index) => {
+      processingVideos.push({
+        id: `pending-${tweet.id}-${index}`,
+        content: tweet.content || 'Video processing',
+        status: 'processing',
+        videoUrl: media.videoUrl,
+        pendingJobId: media.pendingJobId
+      })
+    })
+  })
+  
+  // Add mutation-based processes
+  if (isPosting) {
+    processingVideos.push({
+      id: 'posting-operation',
+      content: 'Posting to Twitter',
+      status: 'posting'
+    })
+  }
+  if (isQueueing) {
+    processingVideos.push({
+      id: 'queueing-operation', 
+      content: 'Adding to queue',
+      status: 'queueing'
+    })
+  }
   
   const isLoading = false
   const error = null
