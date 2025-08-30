@@ -127,6 +127,13 @@
       "when": 1756418519352,
       "tag": "0017_watery_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1756568597692,
+      "tag": "0018_petite_rocket_racer",
+      "breakpoints": true
     }
   ]
 }

@@ -36,11 +36,45 @@ export async function createThreadInternal(input: {
     tweetsCount: input.tweets.length,
   })
 
+  // Validate input
+  if (!input.tweets || input.tweets.length === 0) {
+    throw new Error('At least one tweet is required to create a thread')
+  }
+
+  if (!userId || typeof userId !== 'string') {
+    throw new Error('Valid userId is required')
+  }
+
+  // Validate tweet content
+  for (let i = 0; i < input.tweets.length; i++) {
+    const tweet = input.tweets[i]
+    if (!tweet) {
+      throw new Error(`Tweet at position ${i} is null or undefined`)
+    }
+    if (!tweet.content || typeof tweet.content !== 'string') {
+      throw new Error(`Tweet at position ${i} must have valid content`)
+    }
+    if (tweet.content.length > 280) {
+      throw new Error(`Tweet at position ${i} exceeds 280 character limit`)
+    }
+    // Validate that tweet has either content or media
+    if (tweet.content.trim().length === 0 && (!tweet.media || tweet.media.length === 0)) {
+      throw new Error(`Tweet at position ${i} must have either content or media`)
+    }
+  }
+
+  // Get user and account info
+  const userRecord = await db.query.user.findFirst({
+    where: eq(userSchema.id, userId),
+    columns: { email: true }
+  })
+
+  if (!userRecord?.email) {
+    throw new Error('User not found')
+  }
+
   const account = await getAccount({
-    email: (await db.query.user.findFirst({
-      where: eq(userSchema.id, userId),
-      columns: { email: true }
-    }))?.email!,
+    email: userRecord.email,
   })
 
   if (!account?.id) {
@@ -50,38 +84,70 @@ export async function createThreadInternal(input: {
   const threadId = crypto.randomUUID()
   console.log('[createThreadInternal] generated threadId', threadId)
 
-  // Create all thread tweets in the database
+  // Create all thread tweets in the database with transaction-like behavior
   const createdTweets = []
-  for (let i = 0; i < input.tweets.length; i++) {
-    const tweetData = input.tweets[i]!
-    const tweetId = crypto.randomUUID()
+  try {
+    for (let i = 0; i < input.tweets.length; i++) {
+      const tweetData = input.tweets[i]!
+      const tweetId = crypto.randomUUID()
 
-    const newTweet = {
-      id: tweetId,
-      threadId,
-      content: tweetData.content,
-      position: i,
-      isThreadStart: i === 0,
-      media: tweetData.media || [],
-      delayMs: tweetData.delayMs || 0,
-      userId: userId,
-      accountId: account.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isScheduled: false,
-      isPublished: false,
+      // Transform media to match database schema
+      const mediaForDb = (tweetData.media || []).map(m => ({
+        s3Key: m.s3Key,
+        media_id: m.media_id || '', // Will be filled when uploaded to Twitter
+        url: m.url,
+        type: m.type,
+      }))
+
+      const newTweet = {
+        id: tweetId,
+        threadId,
+        content: tweetData.content,
+        position: i,
+        isThreadStart: i === 0,
+        media: mediaForDb,
+        delayMs: tweetData.delayMs || 0,
+        userId: userId,
+        accountId: account.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isScheduled: false,
+        isPublished: false,
+      }
+
+      const [insertedTweet] = await db.insert(tweets).values(newTweet).returning()
+      createdTweets.push(insertedTweet)
+      
+      console.log('[createThreadInternal] Created tweet:', {
+        tweetId,
+        position: i,
+        contentLength: tweetData.content.length,
+        mediaCount: mediaForDb.length
+      })
     }
 
-    const [insertedTweet] = await db.insert(tweets).values(newTweet).returning()
-    createdTweets.push(insertedTweet)
+    console.log('[createThreadInternal] success', {
+      threadId,
+      createdCount: createdTweets.length,
+    })
+
+    return { threadId }
+    
+  } catch (error) {
+    console.error('[createThreadInternal] Error creating tweets:', error)
+    
+    // Cleanup: try to delete any tweets that were created before the error
+    if (createdTweets.length > 0) {
+      try {
+        await db.delete(tweets).where(eq(tweets.threadId, threadId))
+        console.log('[createThreadInternal] Cleaned up partial thread after error')
+      } catch (cleanupError) {
+        console.error('[createThreadInternal] Failed to cleanup partial thread:', cleanupError)
+      }
+    }
+    
+    throw error
   }
-
-  console.log('[createThreadInternal] success', {
-    threadId,
-    createdCount: createdTweets.length,
-  })
-
-  return { threadId }
 }
 
 /**

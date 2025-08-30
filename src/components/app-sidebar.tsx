@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useAttachments } from '@/hooks/use-attachments'
 import { useChatContext } from '@/hooks/use-chat'
-import { useTweets } from '@/hooks/use-tweets'
+
 import { client } from '@/lib/client'
 import { MultipleEditorStorePlugin } from '@/lib/lexical-plugins/multiple-editor-plugin'
 import PlaceholderPlugin from '@/lib/placeholder-plugin'
@@ -74,7 +74,7 @@ const ChatInput = ({
   const { attachments, removeAttachment, addKnowledgeAttachment, hasUploading } =
     useAttachments()
 
-  const { shadowEditor } = useTweets()
+  // Shadow editor functionality removed - was part of legacy improvements system
 
   // File input ref for keyboard shortcut
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -247,11 +247,10 @@ const ChatInput = ({
   }, [isChooserOpen, filteredDocs, activeIndex, commitSelection, showAddOptions])
 
   const handleSubmit = () => {
-    const editorContent = shadowEditor.read(() => $getRoot().getTextContent().trim())
-
     const text = editor.read(() => $getRoot().getTextContent().trim())
-
-    onSubmit(text, editorContent)
+    
+    // Shadow editor removed - using main editor content for both parameters
+    onSubmit(text, text)
 
     editor.update(() => {
       const root = $getRoot()
@@ -280,16 +279,12 @@ const ChatInput = ({
         if (event && !event.shiftKey) {
           event.preventDefault()
 
-          const editorContent = shadowEditor.read(() =>
-            $getRoot().getTextContent().trim(),
-          )
-
           editor.update(() => {
             const root = $getRoot()
             const text = root.getTextContent().trim()
             if (!text) return
 
-            onSubmit(text, editorContent)
+            onSubmit(text, text)
 
             root.clear()
             const paragraph = $createParagraphNode()

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import DuolingoCheckbox from '@/components/ui/duolingo-checkbox'
 import { useConfetti } from '@/hooks/use-confetti'
-import { useTweets } from '@/hooks/use-tweets'
+
 import { useThreadEditorStore, MediaFile } from '@/stores/thread-editor-store'
 import PlaceholderPlugin from '@/lib/placeholder-plugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -15,8 +15,9 @@ import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getRoot, $createParagraphNode, $createTextNode } from 'lexical'
-import { initialConfig } from '@/hooks/use-tweets'
+
 import { KeyboardShortcutsPlugin } from '@/lib/lexical-plugins/keyboard-shortcuts-plugin'
+import { initialConfig } from '@/lib/lexical-config'
 import MediaLibrary from '@/components/media-library'
 import { SelectedMedia } from '@/types/media'
 
@@ -220,7 +221,6 @@ function ThreadTweetContent({
   }, [tweetId, updateTweet, mediaFiles, detectedUrl])
 
   const [editor] = useLexicalComposerContext()
-  const { currentTweet } = useTweets()
   const [isDragging, setIsDragging] = useState(false)
   const [showPostConfirmModal, setShowPostConfirmModal] = useState(false)
   const [skipPostConfirmation, setSkipPostConfirmation] = useState(false)
@@ -322,33 +322,8 @@ function ThreadTweetContent({
     }
   }, [editor, initialContent])
 
-  // Update editor when content is set from AI (only for first tweet)
-  useEffect(() => {
-    if (editor && isFirstTweet && currentTweet.content && !hasBeenCleared) {
-      console.log('[ThreadTweet] AI content sync triggered:', {
-        hasBeenCleared,
-        currentTweetContent: currentTweet.content.substring(0, 50) + '...',
-        timestamp: new Date().toISOString()
-      })
-      
-      // Ensure the visible mentions input reflects AI content
-      setMentionsContent(currentTweet.content)
-
-      editor.update(() => {
-        const root = $getRoot()
-        root.clear()
-        const paragraph = $createParagraphNode()
-        const text = $createTextNode(currentTweet.content)
-        paragraph.append(text)
-        root.append(paragraph)
-      })
-      // Update store with the synced content
-      console.log('[ThreadTweet] 🔄 LEXICAL_SYNC - Syncing content change with store')
-      updateTweet(tweetId, currentTweet.content, mediaFiles)
-    } else if (hasBeenCleared) {
-      console.log('[ThreadTweet] Skipping AI content sync due to hasBeenCleared flag')
-    }
-  }, [editor, isFirstTweet, currentTweet.content, hasBeenCleared, tweetId, updateTweet, mediaFiles])
+  // AI content sync is now handled directly by TweetMockup updating the Zustand store
+  // No need for additional sync logic since the store is the single source of truth
 
   // Reset the hasBeenCleared flag after we've handled it
   useEffect(() => {

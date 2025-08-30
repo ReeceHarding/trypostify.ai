@@ -1,5 +1,5 @@
 import { db } from '@/db'
-import { tweets, user as userSchema } from '@/db/schema'
+import { tweets, account as accountSchema, user as userSchema } from '@/db/schema'
 import { and, eq, asc } from 'drizzle-orm'
 import { tool, UIMessageStreamWriter } from 'ai'
 import { redis } from '../../../../lib/redis'
@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { nanoid } from 'nanoid'
 import { HTTPException } from 'hono/http-exception'
 import { getAccount } from '../../utils/get-account'
+import crypto from 'crypto'
 
 export const createPostNowTool = (
   writer: UIMessageStreamWriter,
@@ -182,12 +183,47 @@ export const createPostNowTool = (
         // Import the shared publisher from chat utils to avoid loading router modules
         const { publishThreadById } = await import('../utils')
         
-        // Import the centralized thread creation function
-        const { createThreadInternal } = await import('../../utils/tweet-utils')
+        // Create thread in database directly
+        const threadId = crypto.randomUUID()
         
-        // Create thread using centralized function
-        console.log('[POST_NOW_TOOL] Creating thread with', tweetsToPost.length, 'tweets using centralized function')
-        const { threadId } = await createThreadInternal({ tweets: tweetsToPost }, userId)
+        // Insert tweets into database
+        for (let i = 0; i < tweetsToPost.length; i++) {
+          const tweet = tweetsToPost[i]
+          if (!tweet) {
+            console.error('[POST_NOW_TOOL] Tweet at index', i, 'is undefined, skipping')
+            continue
+          }
+          
+          console.log('[POST_NOW_TOOL] Inserting tweet into database:', {
+            position: i,
+            contentLength: tweet.content?.length || 0,
+            contentPreview: tweet.content?.substring(0, 100) + '...',
+            mediaCount: tweet.media?.length || 0,
+            threadId: threadId
+          })
+          
+          // Transform media to match database schema
+          const mediaForDb = (tweet.media || []).map(m => ({
+            s3Key: m.s3Key,
+            media_id: '', // Will be filled when uploaded to Twitter
+          }))
+          
+          await db.insert(tweets).values({
+            id: crypto.randomUUID(),
+            threadId: threadId,
+            content: tweet.content,
+            media: mediaForDb,
+            userId: userId,
+            accountId: accountId,
+            position: i,
+            isThreadStart: i === 0,
+            delayMs: tweet.delayMs || 0,
+            isScheduled: false,
+            isPublished: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+        }
         
         console.log('[POST_NOW_TOOL] Thread created with ID:', threadId)
 
