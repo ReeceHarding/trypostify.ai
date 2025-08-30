@@ -28,68 +28,42 @@ function BackgroundProcessStatus() {
   const queryClient = useQueryClient()
   const { tweets } = useThreadEditorStore()
   
-  // Use the SAME logic as the global indicator for consistency
-  const pendingMediaCount = tweets.reduce((count, tweet) => {
-    const pendingMedia = tweet.media?.filter(m => m.isPending) || []
-    return count + pendingMedia.length
-  }, 0)
-
-  // Also check React Query mutations
-  const isVideoProcessing = queryClient.isMutating({ mutationKey: ['upload-video'] }) > 0
-  const isPosting = queryClient.isMutating({ mutationKey: ['post-thread'] }) > 0
-  const isQueueing = queryClient.isMutating({ mutationKey: ['queue-thread'] }) > 0
-  const mutationCount = [isVideoProcessing, isPosting, isQueueing].filter(Boolean).length
+  // Check for ACTUAL background processes (active mutations), not just pending media
+  // Pending media is just UI state - real processing starts when user clicks Post/Queue
   
-  const activeProcessCount = pendingMediaCount + mutationCount
-  const hasActiveProcesses = activeProcessCount > 0
+  let activeMutations = []
+  let activeProcessCount = 0
+  let hasActiveProcesses = false
   
-  console.log('[BackgroundProcessStatus] Unified status check:', {
-    pendingMediaCount,
-    mutationCount,
-    isVideoProcessing,
-    isPosting,
-    isQueueing,
+  try {
+    activeMutations = queryClient?.getMutationCache()?.getAll()?.filter(m => 
+      m.state.status === 'pending' || m.state.status === 'loading'
+    ) || []
+    
+    activeProcessCount = activeMutations.length
+    hasActiveProcesses = activeProcessCount > 0
+  } catch (error) {
+    console.warn('[BackgroundProcessStatus] QueryClient not available:', error)
+  }
+  
+  console.log('[BackgroundProcessStatus] Active mutation check:', {
+    activeMutationsCount: activeMutations.length,
     activeProcessCount,
     hasActiveProcesses,
-    tweetDetails: tweets.map(t => ({
-      id: t.id.substring(0, 8),
-      mediaCount: t.media?.length || 0,
-      pendingMedia: t.media?.filter(m => m.isPending)?.length || 0
+    mutations: activeMutations.map(m => ({
+      mutationKey: m.options.mutationKey,
+      status: m.state.status
     }))
   })
   
-  // Create process data based on what we detect
-  const processingVideos = []
-  
-  // Add pending media processes
-  tweets.forEach(tweet => {
-    const pendingMedia = tweet.media?.filter(m => m.isPending) || []
-    pendingMedia.forEach((media, index) => {
-      processingVideos.push({
-        id: `pending-${tweet.id}-${index}`,
-        content: tweet.content || 'Video processing',
-        status: 'processing',
-        videoUrl: media.videoUrl,
-        pendingJobId: media.pendingJobId
-      })
-    })
-  })
-  
-  // Add mutation-based processes
-  if (isPosting) {
-    processingVideos.push({
-      id: 'posting-operation',
-      content: 'Posting to Twitter',
-      status: 'posting'
-    })
-  }
-  if (isQueueing) {
-    processingVideos.push({
-      id: 'queueing-operation', 
-      content: 'Adding to queue',
-      status: 'queueing'
-    })
-  }
+  // Create process data based on active mutations only
+  const processingVideos = activeMutations.map((mutation, index) => ({
+    id: `active-mutation-${index}`,
+    content: `Processing ${mutation.options.mutationKey?.[0] || 'operation'}...`,
+    status: 'processing',
+    mutationKey: mutation.options.mutationKey,
+    mutationStatus: mutation.state.status
+  }))
   
   const isLoading = false
   const error = null
@@ -310,60 +284,12 @@ function BackgroundProcessStatus() {
         </CardHeader>
       <CardContent className="space-y-3">
         {processingVideos.map((process: any) => {
-          const videoMedia = process.media?.find((media: any) => media.type === 'video')
-          const videoStatus = process.status
-          const pendingUrl = process.videoUrl
-          const errorMessage = process.errorMessage
-          const scheduledTime = process.scheduledFor ? new Date(process.scheduledFor) : null
-          
-          // Determine status and icon
-          const getStatusDisplay = () => {
-            if (errorMessage || videoStatus === 'failed') {
-              return {
-                icon: <AlertCircle className="w-5 h-5 text-error-500" />,
-                text: errorMessage || 'Video processing failed',
-                badge: 'error' as const,
-                badgeText: 'Failed'
-              }
-            }
-            
-            if (videoStatus === 'complete' || videoMedia?.media_id) {
-              return {
-                icon: <CheckCircle className="w-5 h-5 text-success-600" />,
-                text: `Video ready • ${scheduledTime ? `Queued for ${format(scheduledTime, 'MMM d, h:mm a')}` : 'Ready to post'}`,
-                badge: 'success' as const,
-                badgeText: 'Ready'
-              }
-            }
-            
-            if (videoStatus === 'uploading') {
-              return {
-                icon: <Video className="w-5 h-5 animate-pulse text-primary" />,
-                text: 'Uploading video to Twitter...',
-                badge: 'warning' as const,
-                badgeText: 'Uploading'
-              }
-            }
-            
-            if (videoStatus === 'transcoding') {
-              return {
-                icon: <Loader2 className="w-5 h-5 animate-spin text-primary" />,
-                text: 'Converting video for Twitter...',
-                badge: 'warning' as const,
-                badgeText: 'Converting'
-              }
-            }
-            
-            // Default: downloading or no status
-            return {
-              icon: <Loader2 className="w-5 h-5 animate-spin text-primary" />,
-              text: 'Downloading video from source...',
-              badge: 'warning' as const,
-              badgeText: 'Processing'
-            }
+          const status = {
+            icon: <Loader2 className="w-5 h-5 animate-spin text-primary" />,
+            text: `Active operation: ${process.mutationKey?.[0] || 'unknown'}`,
+            badge: 'warning' as const,
+            badgeText: 'Processing'
           }
-          
-          const status = getStatusDisplay()
           
           return (
             <div key={process.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
@@ -374,18 +300,14 @@ function BackgroundProcessStatus() {
                 
                 <div>
                   <div className="font-medium text-neutral-900">
-                    {process.content?.length > 50 
-                      ? `${process.content.substring(0, 50)}...` 
-                      : process.content || 'Background process'}
+                    {process.content}
                   </div>
                   <div className="text-sm text-neutral-600">
                     {status.text}
                   </div>
-                  {pendingUrl && (
-                    <div className="text-xs text-neutral-500 mt-1">
-                      Source: {pendingUrl.substring(0, 40)}...
-                    </div>
-                  )}
+                  <div className="text-xs text-neutral-500 mt-1">
+                    Status: {process.mutationStatus}
+                  </div>
                 </div>
               </div>
               
@@ -393,13 +315,6 @@ function BackgroundProcessStatus() {
                 <DuolingoBadge variant={status.badge} className="text-xs">
                   {status.badgeText}
                 </DuolingoBadge>
-                
-                {scheduledTime && videoStatus === 'complete' && (
-                  <div className="text-xs text-neutral-500 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {format(scheduledTime, 'h:mm a')}
-                  </div>
-                )}
               </div>
             </div>
           )

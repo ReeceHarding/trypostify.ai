@@ -1,12 +1,14 @@
 'use client'
 
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
+import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, Video, Send, Clock } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
   const { tweets } = useThreadEditorStore()
+  const queryClient = useQueryClient()
   
   // Debug logging
   useEffect(() => {
@@ -16,23 +18,33 @@ export default function BackgroundProcessIndicator() {
     }
   }, [])
 
-  // Simple approach: Check frontend state for pending media
-  const pendingMediaCount = tweets.reduce((count, tweet) => {
-    const pendingMedia = tweet.media?.filter(m => m.isPending) || []
-    return count + pendingMedia.length
-  }, 0)
+  // Check for ACTUAL background processes, not just pending media
+  // Pending media is just a UI state - real processing starts when user clicks Post/Queue
+  
+  // Safely check React Query for active mutations (actual operations)
+  let activeMutations = []
+  let hasActiveProcesses = false
+  let activeProcessCount = 0
+  
+  try {
+    activeMutations = queryClient?.getMutationCache()?.getAll()?.filter(m => 
+      m.state.status === 'pending' || m.state.status === 'loading'
+    ) || []
+    
+    hasActiveProcesses = activeMutations.length > 0
+    activeProcessCount = activeMutations.length
+  } catch (error) {
+    // Handle cases where queryClient is not available (SSR, etc.)
+    console.warn('[BackgroundProcessIndicator] QueryClient not available:', error)
+  }
 
-  const hasActiveProcesses = pendingMediaCount > 0
-  const activeProcessCount = pendingMediaCount
-
-  console.log('[BackgroundProcessIndicator] Simple check:', {
-    tweetsCount: tweets.length,
-    pendingMediaCount,
+  console.log('[BackgroundProcessIndicator] Active mutation check:', {
+    activeMutationsCount: activeMutations.length,
     hasActiveProcesses,
-    tweetDetails: tweets.map(t => ({
-      id: t.id.substring(0, 8),
-      mediaCount: t.media?.length || 0,
-      pendingMedia: t.media?.filter(m => m.isPending)?.length || 0
+    activeProcessCount,
+    mutations: activeMutations.map(m => ({
+      mutationKey: m.options.mutationKey,
+      status: m.state.status
     }))
   })
 
