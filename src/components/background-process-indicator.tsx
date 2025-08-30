@@ -30,13 +30,21 @@ export default function BackgroundProcessIndicator() {
         console.log('[BackgroundProcessIndicator] 📊 Response:', res)
         console.log('[BackgroundProcessIndicator] 📋 Jobs found:', res.jobs?.length || 0)
         
-        // Also check for 'pending' status jobs
+        // Also check for other active status types
         const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'pending' as const, 
           limit: 50, 
           offset: 0 
         })
         console.log('[BackgroundProcessIndicator] 📋 Pending jobs found:', pendingRes.jobs?.length || 0)
+        
+        // Check for all jobs to see what statuses exist
+        const allJobsRes = await client.videoJob.listVideoJobs.mutate({ 
+          limit: 50, 
+          offset: 0 
+        })
+        console.log('[BackgroundProcessIndicator] 📋 All jobs found:', allJobsRes.jobs?.length || 0)
+        console.log('[BackgroundProcessIndicator] 📋 All job statuses:', allJobsRes.jobs?.map(j => ({ id: j.id?.substring(0, 8), status: j.status })))
         
         const allActiveJobs = [...(res.jobs || []), ...(pendingRes.jobs || [])]
         console.log('[BackgroundProcessIndicator] 📊 Total active jobs:', allActiveJobs.length)

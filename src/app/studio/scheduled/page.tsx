@@ -186,8 +186,44 @@ function BackgroundProcessStatus() {
     )
   }
 
-  if (!processingVideos || processingVideos.length === 0) {
-    return null // Don't show the section if no videos are processing/queued
+  // Always show the section if there might be background processes
+  // This ensures users can see the status even when jobs complete quickly
+  const shouldShowSection = processingVideos && processingVideos.length > 0
+  
+  if (!shouldShowSection) {
+    // Show a minimal status section when no active processes
+    return (
+      <Card className="border-neutral-200 bg-neutral-50">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Video className="w-5 h-5 text-neutral-400" />
+              Background Processing
+              <DuolingoBadge variant="success" className="text-xs">
+                No active jobs
+              </DuolingoBadge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="duolingo-sm"
+                onClick={() => refreshMutation.mutate()}
+                disabled={refreshMutation.isPending}
+                className="text-xs"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
+                {refreshMutation.isPending ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-neutral-600 text-center py-4">
+            No background processes currently running. Video jobs will appear here when active.
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
