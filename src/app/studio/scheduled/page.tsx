@@ -27,35 +27,56 @@ import { useBackgroundProcessStore } from '@/stores/background-process-store'
 
 function BackgroundProcessStatus() {
   const queryClient = useQueryClient()
-  const { getActiveProcesses } = useBackgroundProcessStore()
   
-  // Simple and reliable: Use the background process store
-  const activeProcesses = getActiveProcesses()
-  const hasActiveProcesses = activeProcesses.length > 0
-  const activeProcessCount = activeProcesses.length
-  
-  console.log('[BackgroundProcessStatus] Store-based detection:', {
-    activeProcessCount,
-    hasActiveProcesses,
-    processes: activeProcesses.map(p => ({
-      id: p.id.substring(0, 8),
-      type: p.type,
-      description: p.description,
-      age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
-    }))
+  // Query actual backend for real video job status
+  const { data: activeJobs, isLoading, error } = useQuery({
+    queryKey: ['background-video-jobs'],
+    queryFn: async () => {
+      try {
+        // Check for processing jobs
+        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'processing' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        
+        // Check for pending jobs  
+        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'pending' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        
+        const allActiveJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        
+        console.log('[BackgroundProcessStatus] Real backend status:', {
+          processingJobs: processingRes.jobs?.length || 0,
+          pendingJobs: pendingRes.jobs?.length || 0,
+          totalActiveJobs: allActiveJobs.length,
+          jobs: allActiveJobs.map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            platform: j.platform,
+            videoUrl: j.videoUrl
+          }))
+        })
+        
+        return allActiveJobs
+      } catch (error) {
+        console.error('[BackgroundProcessStatus] Error fetching backend status:', error)
+        return []
+      }
+    },
+    refetchInterval: 5000, // Check backend every 5 seconds
+    retry: false,
+    staleTime: 0,
   })
   
-  // Create process data based on store processes
-  const processingVideos = activeProcesses.map((process) => ({
-    id: process.id,
-    content: process.description,
-    status: process.type,
-    type: process.type,
-    startedAt: process.startedAt
-  }))
+  const hasActiveProcesses = (activeJobs?.length || 0) > 0
+  const activeProcessCount = activeJobs?.length || 0
   
-  const isLoading = false
-  const error = null
+  // Use real backend data
+  const processingVideos = activeJobs || []
 
   // Cleanup mutation (marks jobs as failed)
   const cleanupMutation = useMutation({
@@ -272,16 +293,20 @@ function BackgroundProcessStatus() {
           </CardTitle>
         </CardHeader>
       <CardContent className="space-y-3">
-        {processingVideos.map((process: any) => {
+        {processingVideos.map((job: any) => {
           const status = {
-            icon: <Loader2 className="w-5 h-5 animate-spin text-primary" />,
-            text: `Active operation: ${process.mutationKey?.[0] || 'unknown'}`,
+            icon: job.status === 'processing' ? 
+              <Loader2 className="w-5 h-5 animate-spin text-primary" /> :
+              <Video className="w-5 h-5 animate-pulse text-primary" />,
+            text: job.status === 'processing' ? 
+              'Video processing in progress...' : 
+              'Video job queued for processing',
             badge: 'warning' as const,
-            badgeText: 'Processing'
+            badgeText: job.status === 'processing' ? 'Processing' : 'Pending'
           }
           
           return (
-            <div key={process.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
+            <div key={job.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
               <div className="flex items-center gap-3">
                 <div className="relative">
                   {status.icon}
@@ -289,13 +314,13 @@ function BackgroundProcessStatus() {
                 
                 <div>
                   <div className="font-medium text-neutral-900">
-                    {process.content}
+                    Video from {job.platform || 'social media'}
                   </div>
                   <div className="text-sm text-neutral-600">
                     {status.text}
                   </div>
                   <div className="text-xs text-neutral-500 mt-1">
-                    Status: {process.mutationStatus}
+                    Job ID: {job.id?.substring(0, 8)}... • Status: {job.status}
                   </div>
                 </div>
               </div>

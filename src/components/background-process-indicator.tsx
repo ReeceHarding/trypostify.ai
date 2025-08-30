@@ -1,41 +1,67 @@
 'use client'
 
-import { useThreadEditorStore } from '@/stores/thread-editor-store'
-import { useBackgroundProcessStore } from '@/stores/background-process-store'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
+import { client } from '@/lib/client'
 import { Loader2, Video, Send, Clock } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
-  const { getActiveProcesses, cleanupOldProcesses } = useBackgroundProcessStore()
   
-  // Debug logging and cleanup
+  // Debug logging
   useEffect(() => {
     console.log('[BackgroundProcessIndicator] Component mounted')
-    // Clean up old processes on mount (in case of page refresh)
-    cleanupOldProcesses()
-    
     return () => {
       console.log('[BackgroundProcessIndicator] Component unmounted')
     }
   }, [])
 
-  // Simple and reliable: Use the background process store
-  const activeProcesses = getActiveProcesses()
-  const hasActiveProcesses = activeProcesses.length > 0
-  const activeProcessCount = activeProcesses.length
-
-  console.log('[BackgroundProcessIndicator] Store-based detection:', {
-    activeProcessCount,
-    hasActiveProcesses,
-    processes: activeProcesses.map(p => ({
-      id: p.id.substring(0, 8),
-      type: p.type,
-      description: p.description,
-      age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
-    }))
+  // Simply query the actual backend for active video jobs
+  const { data: activeJobs, isLoading } = useQuery({
+    queryKey: ['active-video-jobs'],
+    queryFn: async () => {
+      try {
+        // Check for processing jobs
+        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'processing' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        
+        // Check for pending jobs  
+        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'pending' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        
+        const allActiveJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        
+        console.log('[BackgroundProcessIndicator] Real backend status:', {
+          processingJobs: processingRes.jobs?.length || 0,
+          pendingJobs: pendingRes.jobs?.length || 0,
+          totalActiveJobs: allActiveJobs.length,
+          jobs: allActiveJobs.map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            platform: j.platform,
+            createdAt: j.createdAt
+          }))
+        })
+        
+        return allActiveJobs
+      } catch (error) {
+        console.error('[BackgroundProcessIndicator] Error fetching real backend status:', error)
+        return []
+      }
+    },
+    refetchInterval: 3000, // Check backend every 3 seconds
+    retry: false,
+    staleTime: 0,
   })
+
+  const hasActiveProcesses = (activeJobs?.length || 0) > 0
+  const activeProcessCount = activeJobs?.length || 0
 
 
 
@@ -61,14 +87,12 @@ export default function BackgroundProcessIndicator() {
   // Don't render if no active processes
   if (!hasActiveProcesses) return null
 
-  // Determine process type and status
+  // Determine process type and status from real backend data
   const getProcessInfo = () => {
-    const videoProcesses = activeProcesses.filter(p => p.type === 'video-processing')
-    
-    if (videoProcesses.length > 0) {
+    if (activeProcessCount > 0) {
       return {
         icon: <Video className="w-4 h-4" />,
-        text: videoProcesses.length === 1 ? 'Processing video' : `Processing ${videoProcesses.length} videos`,
+        text: activeProcessCount === 1 ? 'Processing video' : `Processing ${activeProcessCount} videos`,
         description: 'Videos will be posted automatically when ready'
       }
     }
