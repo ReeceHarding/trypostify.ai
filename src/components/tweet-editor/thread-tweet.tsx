@@ -145,7 +145,10 @@ function ThreadTweetContent({
   const { getTweetById, updateTweet, updateTweetContent, updateTweetMedia } = useThreadEditorStore()
   const tweetData = getTweetById(tweetId)
   
-  console.log('[ThreadTweet] Rendering with tweetId:', tweetId, 'found in store:', !!tweetData)
+  // Only log rendering for debugging when needed
+  if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+    console.log('[ThreadTweet] Rendering with tweetId:', tweetId, 'found in store:', !!tweetData)
+  }
   // Initialize state from store data or props
   const [mentionsContent, setMentionsContent] = useState(tweetData?.content || initialContent || '')
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>(tweetData?.media || [])
@@ -161,15 +164,24 @@ function ThreadTweetContent({
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [hasPendingVideoDownload, setHasPendingVideoDownload] = useState(false)
   
-  console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
+  // Only log rendering occasionally to reduce noise
+  if (Math.random() < 0.1) {
+    console.log('🎯 ThreadTweetContent rendering with mentionsContent:', mentionsContent)
+  }
 
   // URL detection regex
   const URL_REGEX = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*)/g
 
   // Handler for react-mentions content changes
   const handleMentionsContentChange = useCallback((newContent: string) => {
-    console.log('📝 Mentions content changed:', newContent)
-    console.log('📝 [MENTIONS_CHANGE] Current mediaFiles at start:', mediaFiles.length, mediaFiles.map(f => ({ isPending: f.isPending, s3Key: f.s3Key, pendingJobId: f.pendingJobId })))
+    // Only log significant changes to reduce noise
+    if (newContent.length % 10 === 0 || newContent.length < 10) {
+      console.log('📝 Mentions content changed:', newContent)
+    }
+    // Only log media files on significant changes
+    if (newContent.length % 20 === 0 || newContent.length < 5) {
+      console.log('📝 [MENTIONS_CHANGE] Current mediaFiles at start:', mediaFiles.length, mediaFiles.map(f => ({ isPending: f.isPending, s3Key: f.s3Key, pendingJobId: f.pendingJobId })))
+    }
     setMentionsContent(newContent)
     setCharCount(newContent.length)
     
@@ -216,7 +228,10 @@ function ThreadTweetContent({
     }
     
     // Update store with the new content and media
-    console.log('📝 [MENTIONS_CHANGE] Updating store for tweet:', tweetId)
+    // Only log store updates on significant changes
+    if (newContent.length % 20 === 0 || newContent.length < 5) {
+      console.log('📝 [MENTIONS_CHANGE] Updating store for tweet:', tweetId)
+    }
     updateTweet(tweetId, newContent, mediaFiles)
   }, [tweetId, updateTweet, mediaFiles, detectedUrl])
 
@@ -240,7 +255,12 @@ function ThreadTweetContent({
     
     if (mediaFile.type === 'video') return true
     
-    // Check file extension as fallback
+    // Check file extension as fallback - ensure URL exists and is a string
+    if (!mediaFile.url || typeof mediaFile.url !== 'string') {
+      console.log('[ThreadTweet] URL is undefined or invalid for media file:', mediaFile)
+      return false
+    }
+    
     const url = mediaFile.url.toLowerCase()
     return url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') || 
            url.includes('.webm') || url.includes('.mkv') || url.includes('.m4v')

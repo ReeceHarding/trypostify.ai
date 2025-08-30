@@ -35,7 +35,12 @@ export default function MediaDisplay({
   const isVideoFile = (mediaFile: MediaFile): boolean => {
     if (mediaFile.type === 'video') return true
     
-    // Check file extension as fallback
+    // Check file extension as fallback - ensure URL exists and is a string
+    if (!mediaFile.url || typeof mediaFile.url !== 'string') {
+      console.log('[MediaDisplay] URL is undefined or invalid for media file:', mediaFile)
+      return false
+    }
+    
     const url = mediaFile.url.toLowerCase()
     return url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') || 
            url.includes('.webm') || url.includes('.mkv') || url.includes('.m4v')

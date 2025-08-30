@@ -24,7 +24,10 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
 }, ref) => {
   // Ensure value is always a string to prevent react-mentions from calling .replace() on undefined
   const safeValue = value ?? ''
-  console.log('🎯 ReactMentionsInput rendering with value:', value, 'safeValue:', safeValue)
+  // Only log rendering occasionally to reduce noise
+  if (Math.random() < 0.1) {
+    console.log('🎯 ReactMentionsInput rendering with value:', value, 'safeValue:', safeValue)
+  }
 
   // Fetch users for mentions - now supports multiple results
   const fetchUsers = useCallback(async (query: string, callback: (data: any[]) => void) => {
@@ -224,7 +227,10 @@ const ReactMentionsInput = React.forwardRef<any, ReactMentionsInputProps>(({
     }
     
     const newValue = event.target.value
-    console.log('📝 Value changed:', newValue)
+    // Only log significant changes to reduce noise
+    if (newValue.length % 5 === 0 || newValue.length < 5) {
+      console.log('📝 Value changed:', newValue)
+    }
     onChange(newValue)
   }
 
