@@ -1,15 +1,14 @@
 'use client'
 
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
+import { useBackgroundProcessStore } from '@/stores/background-process-store'
 import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, Video, Send, Clock } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
-  const [recentlyStartedProcesses, setRecentlyStartedProcesses] = useState<string[]>([])
-  const { tweets } = useThreadEditorStore()
-  const queryClient = useQueryClient()
+  const { getActiveProcesses } = useBackgroundProcessStore()
   
   // Debug logging
   useEffect(() => {
@@ -19,46 +18,19 @@ export default function BackgroundProcessIndicator() {
     }
   }, [])
 
-  // Check for ACTUAL background processes
-  // 1. Active React Query mutations
-  // 2. Recently started processes (for brief visual feedback)
-  
-  let activeMutations = []
-  let hasActiveProcesses = false
-  let activeProcessCount = 0
-  
-  try {
-    activeMutations = queryClient?.getMutationCache()?.getAll()?.filter(m => 
-      m.state.status === 'pending' || m.state.status === 'loading'
-    ) || []
-    
-    // Check for recent video job creations by looking at success states
-    const recentVideoJobs = queryClient?.getMutationCache()?.getAll()?.filter(m => 
-      m.options.mutationKey?.[0] === 'create-video-job' && 
-      m.state.status === 'success' &&
-      Date.now() - (m.state.dataUpdatedAt || 0) < 10000 // Last 10 seconds
-    ) || []
-    
-    activeProcessCount = activeMutations.length + recentVideoJobs.length
-    hasActiveProcesses = activeProcessCount > 0
-    
-  } catch (error) {
-    // Handle cases where queryClient is not available (SSR, etc.)
-    console.warn('[BackgroundProcessIndicator] QueryClient not available:', error)
-  }
+  // Simple and reliable: Use the background process store
+  const activeProcesses = getActiveProcesses()
+  const hasActiveProcesses = activeProcesses.length > 0
+  const activeProcessCount = activeProcesses.length
 
-  console.log('[BackgroundProcessIndicator] Process detection:', {
-    activeMutationsCount: activeMutations.length,
-    recentVideoJobsCount: (queryClient?.getMutationCache()?.getAll()?.filter(m => 
-      m.options.mutationKey?.[0] === 'create-video-job' && 
-      m.state.status === 'success' &&
-      Date.now() - (m.state.dataUpdatedAt || 0) < 10000
-    ) || []).length,
-    hasActiveProcesses,
+  console.log('[BackgroundProcessIndicator] Store-based detection:', {
     activeProcessCount,
-    activeMutations: activeMutations.map(m => ({
-      mutationKey: m.options.mutationKey,
-      status: m.state.status
+    hasActiveProcesses,
+    processes: activeProcesses.map(p => ({
+      id: p.id.substring(0, 8),
+      type: p.type,
+      description: p.description,
+      age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
     }))
   })
 

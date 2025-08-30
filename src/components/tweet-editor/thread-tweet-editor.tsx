@@ -16,6 +16,7 @@ import { useUser } from '@/hooks/use-user'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
+import { useBackgroundProcessStore } from '@/stores/background-process-store'
 
 interface ThreadTweetData {
   id: string
@@ -71,6 +72,7 @@ export default function ThreadTweetEditor({
   
   // Use ThreadEditorStore for state management
   const { tweets: storeTweets, setTweets: setStoreTweets, reset: resetStore } = useThreadEditorStore()
+  const { addProcess, removeProcess } = useBackgroundProcessStore()
   
   // Track which tweets have pending video downloads
   const [tweetsWithPendingVideos, setTweetsWithPendingVideos] = useState<Set<string>>(new Set())
@@ -567,24 +569,40 @@ export default function ThreadTweetEditor({
           for (const video of pendingVideos) {
             console.log('[ThreadTweetEditor] Creating video processing job for:', video.videoUrl)
             
-            // Create video job using mutation (this will be tracked by React Query)
-            const jobData = await createVideoJobMutation.mutateAsync({
-              videoUrl: video.videoUrl!,
-              tweetId: '', // Will be created when video is ready
-              threadId: crypto.randomUUID(), // Generate thread ID for the future post
-              platform: video.platform || 'unknown',
-              tweetContent: {
-                tweets: validTweets.map((t, idx) => ({
-                  content: t.content,
-                  media: t.media, // Include ALL media (both pending and completed)
-                  delayMs: idx > 0 ? 1000 : 0,
-                })),
-                pendingVideoJobId: video.pendingJobId, // Track which pending video this job is for
-              }
+            // Add to background process store for immediate tracking
+            const processId = addProcess({
+              type: 'video-processing',
+              description: `Processing video from ${video.videoUrl?.includes('instagram') ? 'Instagram' : video.videoUrl?.includes('tiktok') ? 'TikTok' : 'social media'}`
             })
             
-            videoJobs.push(jobData)
-            console.log('[ThreadTweetEditor] Video job created:', jobData)
+            try {
+              // Create video job using mutation (this will be tracked by React Query)
+              const jobData = await createVideoJobMutation.mutateAsync({
+                videoUrl: video.videoUrl!,
+                tweetId: '', // Will be created when video is ready
+                threadId: crypto.randomUUID(), // Generate thread ID for the future post
+                platform: video.platform || 'unknown',
+                tweetContent: {
+                  tweets: validTweets.map((t, idx) => ({
+                    content: t.content,
+                    media: t.media, // Include ALL media (both pending and completed)
+                    delayMs: idx > 0 ? 1000 : 0,
+                  })),
+                  pendingVideoJobId: video.pendingJobId, // Track which pending video this job is for
+                }
+              })
+              
+              videoJobs.push(jobData)
+              console.log('[ThreadTweetEditor] Video job created:', jobData)
+              
+              // Remove from store after 10 seconds (background processing continues via webhooks)
+              setTimeout(() => removeProcess(processId), 10000)
+              
+            } catch (error) {
+              // Remove immediately on error
+              removeProcess(processId)
+              throw error
+            }
           }
         }
         

@@ -23,53 +23,34 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
+import { useBackgroundProcessStore } from '@/stores/background-process-store'
 
 function BackgroundProcessStatus() {
-  const queryClient = useQueryClient()
-  const { tweets } = useThreadEditorStore()
+  const { getActiveProcesses } = useBackgroundProcessStore()
   
-  // Check for ACTUAL background processes (active mutations), not just pending media
-  // Pending media is just UI state - real processing starts when user clicks Post/Queue
+  // Simple and reliable: Use the background process store
+  const activeProcesses = getActiveProcesses()
+  const hasActiveProcesses = activeProcesses.length > 0
+  const activeProcessCount = activeProcesses.length
   
-  let activeMutations = []
-  let activeProcessCount = 0
-  let hasActiveProcesses = false
-  
-  try {
-    activeMutations = queryClient?.getMutationCache()?.getAll()?.filter(m => 
-      m.state.status === 'pending' || m.state.status === 'loading'
-    ) || []
-    
-    // Also check for recently completed video job creations (last 10 seconds)
-    const recentVideoJobs = queryClient?.getMutationCache()?.getAll()?.filter(m => 
-      m.options.mutationKey?.[0] === 'create-video-job' && 
-      m.state.status === 'success' &&
-      Date.now() - (m.state.dataUpdatedAt || 0) < 10000
-    ) || []
-    
-    activeProcessCount = activeMutations.length + recentVideoJobs.length
-    hasActiveProcesses = activeProcessCount > 0
-  } catch (error) {
-    console.warn('[BackgroundProcessStatus] QueryClient not available:', error)
-  }
-  
-  console.log('[BackgroundProcessStatus] Active mutation check:', {
-    activeMutationsCount: activeMutations.length,
+  console.log('[BackgroundProcessStatus] Store-based detection:', {
     activeProcessCount,
     hasActiveProcesses,
-    mutations: activeMutations.map(m => ({
-      mutationKey: m.options.mutationKey,
-      status: m.state.status
+    processes: activeProcesses.map(p => ({
+      id: p.id.substring(0, 8),
+      type: p.type,
+      description: p.description,
+      age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
     }))
   })
   
-  // Create process data based on active mutations only
-  const processingVideos = activeMutations.map((mutation, index) => ({
-    id: `active-mutation-${index}`,
-    content: `Processing ${mutation.options.mutationKey?.[0] || 'operation'}...`,
-    status: 'processing',
-    mutationKey: mutation.options.mutationKey,
-    mutationStatus: mutation.state.status
+  // Create process data based on store processes
+  const processingVideos = activeProcesses.map((process) => ({
+    id: process.id,
+    content: process.description,
+    status: process.type,
+    type: process.type,
+    startedAt: process.startedAt
   }))
   
   const isLoading = false
