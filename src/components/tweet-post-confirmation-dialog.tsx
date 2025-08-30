@@ -41,9 +41,27 @@ export default function TweetPostConfirmationDialog({
     onConfirm()
   }
 
+  const handleCancel = () => {
+    onOpenChange(false)
+    onCancel?.()
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent 
+        className="sm:max-w-[425px]"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+            e.preventDefault()
+            if (!isPosting) {
+              handleConfirm()
+            }
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            handleCancel()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">Post to Twitter</DialogTitle>
         </DialogHeader>
@@ -62,16 +80,13 @@ export default function TweetPostConfirmationDialog({
           <Button
             variant="duolingo-secondary"
             size="duolingo-sm"
-            onClick={() => {
-              onOpenChange(false)
-              onCancel?.()
-            }}
+            onClick={handleCancel}
           >
-            Cancel
+            Cancel <span className="ml-1 text-xs opacity-60">Esc</span>
           </Button>
           <Button variant="duolingo-primary" size="duolingo-sm" onClick={handleConfirm} disabled={isPosting}>
             <Icons.twitter className="size-4 mr-2" />
-            {isPosting ? 'Posting...' : 'Post'}
+            {isPosting ? 'Posting...' : 'Post'} <span className="ml-1 text-xs opacity-60">Enter</span>
           </Button>
         </div>
       </DialogContent>

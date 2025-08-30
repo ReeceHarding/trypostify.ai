@@ -1549,7 +1549,17 @@ function ThreadTweetContent({
 
       {/* Post confirmation modal */}
       <Dialog open={showPostConfirmModal} onOpenChange={setShowPostConfirmModal}>
-        <DialogContent>
+        <DialogContent
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+              e.preventDefault()
+              handleConfirmPost()
+            } else if (e.key === 'Escape') {
+              e.preventDefault()
+              setShowPostConfirmModal(false)
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Post?</DialogTitle>
             <DialogDescription>
@@ -1576,10 +1586,10 @@ function ThreadTweetContent({
                 variant="duolingo-secondary"
                 onClick={() => setShowPostConfirmModal(false)}
               >
-                Cancel
+                Cancel <span className="ml-1 text-xs opacity-60">Esc</span>
               </Button>
               <Button variant="duolingo-primary" onClick={handleConfirmPost}>
-                Post
+                Post <span className="ml-1 text-xs opacity-60">Enter</span>
               </Button>
             </div>
           </DialogFooter>

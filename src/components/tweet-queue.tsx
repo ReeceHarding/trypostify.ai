@@ -509,7 +509,28 @@ export default function TweetQueue() {
                               </DropdownMenuContent>
                             </DropdownMenu>
 
-                            <DialogContent className="bg-white rounded-2xl p-6">
+                            <DialogContent 
+                              className="bg-white rounded-2xl p-6"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+                                  e.preventDefault()
+                                  if (didTogglePostConfirmation) {
+                                    toggleSkipConfirmation(true)
+                                  }
+                                  
+                                  if (tweet.tweets && tweet.tweets.length > 0) {
+                                    // Post as thread (works for single posts too)
+                                    postThreadNow(tweet.tweets)
+                                  } else {
+                                    // Fallback for legacy single tweet structure
+                                    postImmediateFromQueue({ tweetId: tweet.id })
+                                  }
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault()
+                                  setDidTogglePostConfirmation(false)
+                                }
+                              }}
+                            >
                               <div className="size-12 bg-neutral-100 rounded-full flex items-center justify-center">
                                 <Icons.twitter className="size-6" />
                               </div>
@@ -546,7 +567,7 @@ export default function TweetQueue() {
                                       setDidTogglePostConfirmation(false)
                                     }}
                                   >
-                                    Cancel
+                                    Cancel <span className="ml-1 text-xs opacity-60">Esc</span>
                                   </Button>
                                 </DialogClose>
                                 <Button
@@ -569,7 +590,7 @@ export default function TweetQueue() {
                                   }}
                                 >
                                   <Icons.twitter className="size-4 mr-2" />
-                                  {isPosting || isPostingThread ? 'Posting...' : 'Post'}
+                                  {isPosting || isPostingThread ? 'Posting...' : 'Post'} <span className="ml-1 text-xs opacity-60">Enter</span>
                                 </Button>
                               </DialogFooter>
                             </DialogContent>

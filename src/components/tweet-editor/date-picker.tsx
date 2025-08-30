@@ -328,7 +328,7 @@ export const Calendar20 = ({
             }
           }}
         >
-          {editMode ? 'Reschedule' : 'Schedule'}
+          {editMode ? 'Reschedule' : 'Schedule'} <span className="ml-1 text-xs opacity-60">Enter</span>
         </Button>
       </div>
     </div>
@@ -337,7 +337,22 @@ export const Calendar20 = ({
   // Always use centered dialog popup for both mobile and desktop
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-[90vw] max-h-[90vh] p-0 overflow-hidden flex flex-col">
+      <DialogContent 
+        className="max-w-md w-[90vw] max-h-[90vh] p-0 overflow-hidden flex flex-col"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+            e.preventDefault()
+            if (date && selectedTime && onSchedule && !isPending) {
+              console.log('[DatePicker] Enter key pressed, scheduling')
+              onSchedule(date, selectedTime)
+              onOpenChange(false)
+            }
+          } else if (e.key === 'Escape') {
+            e.preventDefault()
+            onOpenChange(false)
+          }
+        }}
+      >
         <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle className="text-center">
             {editMode ? 'Reschedule Post' : 'Schedule Post'}
