@@ -69,11 +69,13 @@ export const LeftSidebar = () => {
       console.log('[LeftSidebar] 🔍 FETCHING BACKEND JOBS at', new Date().toISOString())
       try {
         console.log('[LeftSidebar] 📤 Querying processing jobs...')
+        const processingStart = Date.now()
         const processingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'processing' as const, 
           limit: 50, 
           offset: 0 
         })
+        console.log('[LeftSidebar] ⏱️ Processing query took:', Date.now() - processingStart, 'ms')
         console.log('[LeftSidebar] 📥 Processing jobs response:', {
           jobCount: processingRes.jobs?.length || 0,
           jobs: processingRes.jobs?.map(j => ({
@@ -85,11 +87,13 @@ export const LeftSidebar = () => {
         })
         
         console.log('[LeftSidebar] 📤 Querying pending jobs...')
+        const pendingStart = Date.now()
         const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'pending' as const, 
           limit: 50, 
           offset: 0 
         })
+        console.log('[LeftSidebar] ⏱️ Pending query took:', Date.now() - pendingStart, 'ms')
         console.log('[LeftSidebar] 📥 Pending jobs response:', {
           jobCount: pendingRes.jobs?.length || 0,
           jobs: pendingRes.jobs?.map(j => ({
@@ -100,11 +104,31 @@ export const LeftSidebar = () => {
           })) || []
         })
         
+        // Also query ALL jobs to see if there's a status mismatch
+        console.log('[LeftSidebar] 📤 Querying ALL jobs (no status filter)...')
+        const allJobsStart = Date.now()
+        const allJobsRes = await client.videoJob.listVideoJobs.mutate({ 
+          limit: 10, 
+          offset: 0 
+        })
+        console.log('[LeftSidebar] ⏱️ All jobs query took:', Date.now() - allJobsStart, 'ms')
+        console.log('[LeftSidebar] 📥 ALL jobs response:', {
+          jobCount: allJobsRes.jobs?.length || 0,
+          jobs: allJobsRes.jobs?.map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            platform: j.platform,
+            createdAt: j.createdAt,
+            userId: j.userId?.substring(0, 8)
+          })) || []
+        })
+        
         const allJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
         console.log('[LeftSidebar] ✅ COMBINED BACKEND JOBS:', {
           totalCount: allJobs.length,
           processingCount: processingRes.jobs?.length || 0,
           pendingCount: pendingRes.jobs?.length || 0,
+          allJobsTotal: allJobsRes.jobs?.length || 0,
           allJobs: allJobs.map(j => ({
             id: j.id?.substring(0, 8),
             status: j.status,
