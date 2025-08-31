@@ -13,6 +13,10 @@ import { useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { useHotkeyFeedback } from './ui/hotkey-feedback'
 import { useBackgroundProcessStore } from '@/stores/background-process-store'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { useQuery } from '@tanstack/react-query'
+import { client } from '@/lib/client'
+import { Loader2, Video, Clock } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -67,6 +71,75 @@ export const LeftSidebar = () => {
       age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
     }))
   })
+
+  // Fetch real backend status for notification popover (same logic as BackgroundProcessIndicator)
+  const { data: activeJobs } = useQuery({
+    queryKey: ['notification-active-jobs'],
+    queryFn: async () => {
+      try {
+        console.log('[LeftSidebar] Fetching backend status for notification bell')
+        // Check for processing jobs
+        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'processing' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        
+        // Check for pending jobs  
+        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'pending' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        
+        const allActiveJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        
+        console.log('[LeftSidebar] Backend status for notification:', {
+          processingJobs: processingRes.jobs?.length || 0,
+          pendingJobs: pendingRes.jobs?.length || 0,
+          totalActiveJobs: allActiveJobs.length,
+          jobs: allActiveJobs.map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            platform: j.platform,
+            createdAt: j.createdAt
+          }))
+        })
+        
+        return allActiveJobs
+      } catch (error) {
+        console.error('[LeftSidebar] Error fetching backend status:', error)
+        return []
+      }
+    },
+    refetchInterval: hasActiveProcesses ? 3000 : false, // Only refetch when there are active processes
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    enabled: hasActiveProcesses, // Only run query when there are active processes
+  })
+
+  // Get process info for popover display
+  const getProcessInfo = () => {
+    const backendJobCount = activeJobs?.length || 0
+    const totalCount = Math.max(activeProcesses.length, backendJobCount)
+    
+    if (totalCount > 0) {
+      return {
+        icon: <Video className="w-4 h-4" />,
+        text: totalCount === 1 ? 'Processing video' : `Processing ${totalCount} videos`,
+        description: 'Videos will be posted automatically when ready',
+        count: totalCount
+      }
+    }
+
+    return {
+      icon: <Loader2 className="w-4 h-4 animate-spin" />,
+      text: 'Background processing',
+      description: 'Operations running in background',
+      count: 0
+    }
+  }
 
   // Log component mount
   useEffect(() => {
@@ -308,9 +381,98 @@ export const LeftSidebar = () => {
                       <div className="size-6 flex items-center justify-center flex-shrink-0 relative">
                         <span aria-hidden="true" className="text-base">🗓️</span>
                         {hasActiveProcesses && (
-                          <div className="absolute -top-1 -right-1 size-3 bg-primary rounded-full flex items-center justify-center animate-pulse">
-                            <span className="text-[8px]">🔔</span>
-                          </div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                className="absolute -top-1 -right-1 size-3 bg-primary rounded-full flex items-center justify-center animate-pulse hover:bg-primary/80 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1"
+                                aria-label="View background processes"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  console.log('[LeftSidebar] Notification bell clicked at', new Date().toISOString())
+                                }}
+                              >
+                                <span className="text-[8px]">🔔</span>
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent 
+                              side="right" 
+                              align="start" 
+                              sideOffset={8}
+                              className="w-80 p-0 max-h-96 overflow-y-auto"
+                              onOpenAutoFocus={(e) => e.preventDefault()}
+                            >
+                              <div className="p-4">
+                                <div className="flex items-start gap-3 mb-4">
+                                  <div className="text-primary animate-pulse flex-shrink-0">
+                                    {getProcessInfo().icon}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-neutral-900 text-sm">
+                                      {getProcessInfo().text}
+                                    </div>
+                                    <div className="text-xs text-neutral-600 mt-1">
+                                      {getProcessInfo().description}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Show active jobs if any */}
+                                {activeJobs && activeJobs.length > 0 && (
+                                  <div className="space-y-2">
+                                    <div className="text-xs font-medium text-neutral-700 mb-2">
+                                      Active Jobs:
+                                    </div>
+                                    {activeJobs.slice(0, 5).map((job, index) => (
+                                      <div key={job.id || index} className="flex items-center gap-2 p-2 bg-neutral-50 rounded-md">
+                                        <Loader2 className="w-3 h-3 animate-spin text-primary flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-xs font-medium text-neutral-800 truncate">
+                                            {job.platform} Video
+                                          </div>
+                                          <div className="text-xs text-neutral-600">
+                                            Status: {job.status}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {activeJobs.length > 5 && (
+                                      <div className="text-xs text-neutral-500 text-center py-1">
+                                        +{activeJobs.length - 5} more jobs
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Show local processes if any */}
+                                {activeProcesses.length > 0 && (
+                                  <div className="space-y-2 mt-4">
+                                    <div className="text-xs font-medium text-neutral-700 mb-2">
+                                      Local Processes:
+                                    </div>
+                                    {activeProcesses.map((process) => (
+                                      <div key={process.id} className="flex items-center gap-2 p-2 bg-neutral-50 rounded-md">
+                                        <Loader2 className="w-3 h-3 animate-spin text-primary flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-xs font-medium text-neutral-800 truncate">
+                                            {process.description}
+                                          </div>
+                                          <div className="text-xs text-neutral-600">
+                                            {Math.round((Date.now() - process.startedAt) / 1000)}s ago
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center gap-1 mt-4 pt-3 border-t border-neutral-200 text-xs text-neutral-500">
+                                  <Clock className="w-3 h-3" />
+                                  Updates every 3 seconds
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
                         )}
                       </div>
                       <span
