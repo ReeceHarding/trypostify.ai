@@ -10,6 +10,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createSerializer, parseAsString } from 'nuqs'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { client } from '@/lib/client'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { useHotkeyFeedback } from './ui/hotkey-feedback'
 import { useBackgroundProcessStore } from '@/stores/background-process-store'
@@ -58,18 +60,69 @@ export const LeftSidebar = () => {
 
   // Use the same store as the other indicators for consistency
   const { getActiveProcesses, removeProcess } = useBackgroundProcessStore()
-  const activeProcesses = getActiveProcesses()
-  const hasActiveProcesses = activeProcesses.length > 0
+  const frontendProcesses = getActiveProcesses()
+  
+  // Also query backend for real video job status (same as Schedule page)
+  const { data: backendJobs } = useQuery({
+    queryKey: ['sidebar-background-jobs'],
+    queryFn: async () => {
+      try {
+        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'processing' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'pending' as const, 
+          limit: 50, 
+          offset: 0 
+        })
+        return [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+      } catch (error) {
+        console.error('[LeftSidebar] Error fetching backend jobs:', error)
+        return []
+      }
+    },
+    refetchInterval: 5000,
+    retry: false,
+    staleTime: 0,
+  })
+  
+  // Combine frontend processes (immediate feedback) with backend jobs (real status)
+  const backendJobsCount = backendJobs?.length || 0
+  const frontendProcessCount = frontendProcesses.length
+  const totalActiveCount = Math.max(backendJobsCount, frontendProcessCount)
+  const hasActiveProcesses = totalActiveCount > 0
+  
+  // Create unified process list for popover
+  const allProcesses = [
+    ...frontendProcesses,
+    ...(backendJobs?.map(job => ({
+      id: `backend-${job.id}`,
+      type: 'video-processing' as const,
+      description: `Processing video from ${job.platform || 'social media'}`,
+      startedAt: new Date(job.createdAt || Date.now()).getTime(),
+      isBackendJob: true,
+      jobId: job.id,
+      status: job.status
+    })) || [])
+  ].filter((process, index, self) => 
+    // Remove duplicates (frontend process might match backend job)
+    index === self.findIndex(p => p.id === process.id)
+  )
 
   // State for notification popover
   const [notificationOpen, setNotificationOpen] = useState(false)
 
   console.log('[LeftSidebar] Notification bell status:', {
-    activeProcessCount: activeProcesses.length,
+    frontendProcessCount,
+    backendJobsCount,
+    totalActiveCount,
     hasActiveProcesses,
-    processes: activeProcesses.map(p => ({
+    processes: allProcesses.map(p => ({
       id: p.id.substring(0, 8),
       type: p.type,
+      isBackend: 'isBackendJob' in p ? p.isBackendJob : false,
       age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
     }))
   })
@@ -178,6 +231,13 @@ export const LeftSidebar = () => {
     e.preventDefault()
     e.stopPropagation()
     console.log('[LeftSidebar] Dismissing process:', processId)
+    
+    // Only allow dismissing frontend processes, not backend jobs
+    if (processId.startsWith('backend-')) {
+      console.log('[LeftSidebar] Cannot dismiss backend job from frontend')
+      return
+    }
+    
     removeProcess(processId)
   }
 
@@ -213,14 +273,14 @@ export const LeftSidebar = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Bell className="w-4 h-4" />
-              Active Processes ({activeProcesses.length})
+              Active Processes ({allProcesses.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 pt-0">
-            {activeProcesses.length === 0 ? (
+            {allProcesses.length === 0 ? (
               <p className="text-sm text-neutral-500">No active processes</p>
             ) : (
-              activeProcesses.map((process) => (
+              allProcesses.map((process) => (
                 <div
                   key={process.id}
                   className="flex items-start gap-3 p-3 rounded-lg bg-neutral-50 border border-neutral-200"
@@ -241,21 +301,23 @@ export const LeftSidebar = () => {
                           Started {formatTimeAgo(process.startedAt)}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-neutral-400 hover:text-neutral-600"
-                        onClick={(e) => handleDismissProcess(process.id, e)}
-                      >
-                        <X className="w-3 h-3" />
-                        <span className="sr-only">Dismiss</span>
-                      </Button>
+                      {!process.id.startsWith('backend-') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-neutral-400 hover:text-neutral-600"
+                          onClick={(e) => handleDismissProcess(process.id, e)}
+                        >
+                          <X className="w-3 h-3" />
+                          <span className="sr-only">Dismiss</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
               ))
             )}
-            {activeProcesses.length > 0 && (
+            {allProcesses.length > 0 && (
               <div className="pt-2 border-t border-neutral-200">
                 <Button
                   variant="outline"
