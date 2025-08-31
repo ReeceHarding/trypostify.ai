@@ -66,20 +66,55 @@ export const LeftSidebar = () => {
   const { data: backendJobs } = useQuery({
     queryKey: ['sidebar-background-jobs'],
     queryFn: async () => {
+      console.log('[LeftSidebar] 🔍 FETCHING BACKEND JOBS at', new Date().toISOString())
       try {
+        console.log('[LeftSidebar] 📤 Querying processing jobs...')
         const processingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'processing' as const, 
           limit: 50, 
           offset: 0 
         })
+        console.log('[LeftSidebar] 📥 Processing jobs response:', {
+          jobCount: processingRes.jobs?.length || 0,
+          jobs: processingRes.jobs?.map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            platform: j.platform,
+            createdAt: j.createdAt
+          })) || []
+        })
+        
+        console.log('[LeftSidebar] 📤 Querying pending jobs...')
         const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'pending' as const, 
           limit: 50, 
           offset: 0 
         })
-        return [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        console.log('[LeftSidebar] 📥 Pending jobs response:', {
+          jobCount: pendingRes.jobs?.length || 0,
+          jobs: pendingRes.jobs?.map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            platform: j.platform,
+            createdAt: j.createdAt
+          })) || []
+        })
+        
+        const allJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        console.log('[LeftSidebar] ✅ COMBINED BACKEND JOBS:', {
+          totalCount: allJobs.length,
+          processingCount: processingRes.jobs?.length || 0,
+          pendingCount: pendingRes.jobs?.length || 0,
+          allJobs: allJobs.map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            platform: j.platform
+          }))
+        })
+        
+        return allJobs
       } catch (error) {
-        console.error('[LeftSidebar] Error fetching backend jobs:', error)
+        console.error('[LeftSidebar] ❌ ERROR fetching backend jobs:', error)
         return []
       }
     },
