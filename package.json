@@ -22,7 +22,11 @@
     "rotate-logs-force": "node scripts/log-rotator.js --force",
     "log-status": "node scripts/log-rotator.js --help && echo '' && echo 'Current log size:' && ls -lh log.txt 2>/dev/null || echo 'No log file found'",
     "view-users": "node scripts/view-users.js",
-    "user-count": "node scripts/view-users.js --count"
+    "user-count": "node scripts/view-users.js --count",
+    "user-post-stats": "node scripts/user-post-stats.js",
+    "user-post-stats-detailed": "node scripts/user-post-stats.js --details",
+    "user-post-stats-pro": "node scripts/user-post-stats.js --plan pro --details",
+    "user-post-stats-free": "node scripts/user-post-stats.js --plan free --details"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
