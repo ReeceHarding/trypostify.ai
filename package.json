@@ -26,7 +26,10 @@
     "user-post-stats": "node scripts/user-post-stats.js",
     "user-post-stats-detailed": "node scripts/user-post-stats.js --details",
     "user-post-stats-pro": "node scripts/user-post-stats.js --plan pro --details",
-    "user-post-stats-free": "node scripts/user-post-stats.js --plan free --details"
+    "user-post-stats-free": "node scripts/user-post-stats.js --plan free --details",
+    "real-user-stats": "node scripts/real-user-stats.js",
+    "real-user-stats-detailed": "node scripts/real-user-stats.js --details",
+    "real-user-stats-pro": "node scripts/real-user-stats.js --plan pro --details"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
