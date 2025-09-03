@@ -73,7 +73,7 @@ export default function ThreadTweetEditor({
   
   // Use ThreadEditorStore for state management
   const { tweets: storeTweets, setTweets: setStoreTweets, reset: resetStore } = useThreadEditorStore()
-  const { addProcess, removeProcess } = useBackgroundProcessStore()
+  // Note: Video processing now handled by React Query, not background process store
   
   // Track which tweets have pending video downloads
   const [tweetsWithPendingVideos, setTweetsWithPendingVideos] = useState<Set<string>>(new Set())
@@ -381,13 +381,10 @@ export default function ThreadTweetEditor({
       return response.json()
     },
     onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] ✅ Video job created, manually updating cache:', data)
-
       // Manually update the cache for immediate UI feedback
       queryClient.setQueryData(['background-video-jobs'], (oldData: any[] | undefined) => {
         if (!data.job) return oldData
         
-        // Construct a job object that matches the list query's structure
         const newJob = {
           id: data.job.id,
           tweetId: data.job.tweetId,
@@ -401,14 +398,11 @@ export default function ThreadTweetEditor({
           errorMessage: data.job.errorMessage,
         }
         
-        const newData = [newJob, ...(oldData || [])]
-        console.log('[ThreadTweetEditor] Manually set new cache data:', newData)
-        return newData
+        return [newJob, ...(oldData || [])]
       })
 
-      // Invalidate after a delay to sync with backend after transaction commits
+      // Sync with backend after transaction commits
       setTimeout(() => {
-        console.log('[ThreadTweetEditor] 🔄 Invalidating caches after transaction delay')
         queryClient.invalidateQueries({ queryKey: ['background-video-jobs'] })
       }, 500)
     },
@@ -602,13 +596,6 @@ export default function ThreadTweetEditor({
           for (const video of pendingVideos) {
             console.log('[ThreadTweetEditor] Creating video processing job for:', video.videoUrl)
             
-            // Add to background process store for immediate tracking
-            const processId = addProcess({
-              type: 'video-processing',
-              description: `Processing video from ${video.videoUrl?.includes('instagram') ? 'Instagram' : video.videoUrl?.includes('tiktok') ? 'TikTok' : 'social media'}`,
-              videoJobId: '' // Will be updated with actual job ID
-            })
-            
             try {
               // Create video job using mutation (this will be tracked by React Query)
               const jobData = await createVideoJobMutation.mutateAsync({
@@ -629,12 +616,8 @@ export default function ThreadTweetEditor({
               videoJobs.push(jobData)
               console.log('[ThreadTweetEditor] Video job created:', jobData)
               
-              // Remove from store after 10 seconds (background processing continues via webhooks)
-              setTimeout(() => removeProcess(processId), 10000)
-              
             } catch (error) {
-              // Remove immediately on error
-              removeProcess(processId)
+              console.error('[ThreadTweetEditor] Failed to create video job:', error)
               throw error
             }
           }

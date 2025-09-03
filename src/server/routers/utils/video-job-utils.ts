@@ -40,7 +40,7 @@ export function extractVideoUrls(content: string): string[] {
 }
 
 /**
- * Determine platform from video URL
+ * Determine platform from video URL (server-side version)
  */
 export function getPlatformFromUrl(videoUrl: string): string {
   if (videoUrl.includes('instagram')) return 'instagram'

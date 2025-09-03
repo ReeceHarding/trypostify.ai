@@ -70,7 +70,7 @@ function BackgroundProcessStatus() {
         return []
       }
     },
-    refetchInterval: 5000, // Check backend every 5 seconds
+    refetchInterval: 10000, // Check backend every 10 seconds for better performance
     retry: false,
     staleTime: 0,
     // CRITICAL: Only run this query when the user is authenticated

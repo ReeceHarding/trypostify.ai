@@ -58,105 +58,26 @@ export const LeftSidebar = () => {
   // Global hotkey feedback
   const { showNavigation } = useHotkeyFeedback()
 
-  // Use the same store as the other indicators for consistency
-  const { getActiveProcesses, removeProcess } = useBackgroundProcessStore()
-  const frontendProcesses = getActiveProcesses()
+  // Video processing now handled entirely by React Query
   
   // Also query backend for real video job status (same as Schedule page)
   const { data: backendJobs } = useQuery({
     queryKey: ['background-video-jobs'], // SAME KEY as Schedule page for consistency
     queryFn: async () => {
-      console.log('[LeftSidebar] 🔍 FETCHING BACKEND JOBS at', new Date().toISOString())
       try {
-        console.log('[LeftSidebar] 📤 Querying processing jobs...')
-        const processingStart = Date.now()
         const processingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'processing' as const, 
           limit: 50, 
           offset: 0 
         })
-        console.log('[LeftSidebar] ⏱️ Processing query took:', Date.now() - processingStart, 'ms')
-        console.log('[LeftSidebar] 📥 Processing jobs response:', {
-          jobCount: processingRes.jobs?.length || 0,
-          jobs: processingRes.jobs?.map(j => ({
-            id: j.id?.substring(0, 8),
-            status: j.status,
-            platform: j.platform,
-            createdAt: j.createdAt
-          })) || []
-        })
         
-        console.log('[LeftSidebar] 📤 Querying pending jobs...')
-        const pendingStart = Date.now()
         const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'pending' as const, 
           limit: 50, 
           offset: 0 
         })
-        console.log('[LeftSidebar] ⏱️ Pending query took:', Date.now() - pendingStart, 'ms')
-        console.log('[LeftSidebar] 📥 Pending jobs response:', {
-          jobCount: pendingRes.jobs?.length || 0,
-          jobs: pendingRes.jobs?.map(j => ({
-            id: j.id?.substring(0, 8),
-            status: j.status,
-            platform: j.platform,
-            createdAt: j.createdAt
-          })) || []
-        })
-        
-        // Also query ALL jobs to see if there's a status mismatch
-        console.log('[LeftSidebar] 📤 Querying ALL jobs (no status filter)...')
-        const allJobsStart = Date.now()
-        const allJobsRes = await client.videoJob.listVideoJobs.mutate({ 
-          limit: 10, 
-          offset: 0 
-        })
-        console.log('[LeftSidebar] ⏱️ All jobs query took:', Date.now() - allJobsStart, 'ms')
-        console.log('[LeftSidebar] 📥 ALL jobs response:', {
-          jobCount: allJobsRes.jobs?.length || 0,
-          jobs: allJobsRes.jobs?.map(j => ({
-            id: j.id?.substring(0, 8),
-            status: j.status,
-            platform: j.platform,
-            createdAt: j.createdAt,
-            userId: j.userId?.substring(0, 8)
-          })) || []
-        })
-        
-        // CRITICAL DEBUG: Check if the API call structure is correct
-        console.log('[LeftSidebar] 🔬 API RESPONSE STRUCTURE CHECK:', {
-          processingRes: {
-            hasJobs: !!processingRes.jobs,
-            jobsType: typeof processingRes.jobs,
-            jobsLength: processingRes.jobs?.length,
-            fullResponse: Object.keys(processingRes)
-          },
-          pendingRes: {
-            hasJobs: !!pendingRes.jobs,
-            jobsType: typeof pendingRes.jobs,
-            jobsLength: pendingRes.jobs?.length,
-            fullResponse: Object.keys(pendingRes)
-          },
-          allJobsRes: {
-            hasJobs: !!allJobsRes.jobs,
-            jobsType: typeof allJobsRes.jobs,
-            jobsLength: allJobsRes.jobs?.length,
-            fullResponse: Object.keys(allJobsRes)
-          }
-        })
         
         const allJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
-        console.log('[LeftSidebar] ✅ COMBINED BACKEND JOBS:', {
-          totalCount: allJobs.length,
-          processingCount: processingRes.jobs?.length || 0,
-          pendingCount: pendingRes.jobs?.length || 0,
-          allJobsTotal: allJobsRes.jobs?.length || 0,
-          allJobs: allJobs.map(j => ({
-            id: j.id?.substring(0, 8),
-            status: j.status,
-            platform: j.platform
-          }))
-        })
         
         return allJobs
       } catch (error) {
@@ -164,7 +85,7 @@ export const LeftSidebar = () => {
         return []
       }
     },
-    refetchInterval: 2000, // More frequent updates
+    refetchInterval: 10000, // Check every 10 seconds for better performance
     retry: false,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -175,52 +96,30 @@ export const LeftSidebar = () => {
     enabled: session.status === 'authenticated',
   })
   
-  // Combine frontend processes (immediate feedback) with backend jobs (real status)
+  // Use backend jobs as single source of truth
   const backendJobsCount = backendJobs?.length || 0
-  const frontendProcessCount = frontendProcesses.length
-  const totalActiveCount = Math.max(backendJobsCount, frontendProcessCount)
+  const totalActiveCount = backendJobsCount
   const hasActiveProcesses = totalActiveCount > 0
   
-  // Create unified process list for popover
-  const allProcesses = [
-    ...frontendProcesses,
-    ...(backendJobs?.map(job => ({
-      id: `backend-${job.id}`,
-      type: 'video-processing' as const,
-      description: `Processing video from ${job.platform || 'social media'}`,
-      startedAt: new Date(job.createdAt || Date.now()).getTime(),
-      isBackendJob: true,
-      jobId: job.id,
-      status: job.status
-    })) || [])
-  ].filter((process, index, self) => 
-    // Remove duplicates (frontend process might match backend job)
-    index === self.findIndex(p => p.id === process.id)
-  )
+  // Transform backend jobs for popover display
+  const allProcesses = backendJobs?.map(job => ({
+    id: job.id,
+    type: 'video-processing' as const,
+    description: `Processing video from ${job.platform || 'social media'}`,
+    startedAt: new Date(job.createdAt || Date.now()).getTime(),
+    isBackendJob: true,
+    jobId: job.id,
+    status: job.status
+  })) || []
 
   // State for notification popover
   const [notificationOpen, setNotificationOpen] = useState(false)
 
-  console.log('[LeftSidebar] Notification bell status:', {
-    frontendProcessCount,
-    backendJobsCount,
-    totalActiveCount,
-    hasActiveProcesses,
-    processes: allProcesses.map(p => ({
-      id: p.id.substring(0, 8),
-      type: p.type,
-      isBackend: 'isBackendJob' in p ? p.isBackendJob : false,
-      age: Math.round((Date.now() - p.startedAt) / 1000) + 's'
-    }))
-  })
+  // Notification status: ${hasActiveProcesses ? totalActiveCount + ' active' : 'none'}
 
-  // Log component mount
+  // Component lifecycle tracking
   useEffect(() => {
-    console.log('[LeftSidebar] Component mounted at', new Date().toISOString())
-    console.log('[LeftSidebar] State:', { state, isCollapsed, isMac, metaKey })
-    return () => {
-      console.log('[LeftSidebar] Component unmounting at', new Date().toISOString())
-    }
+    // Component mounted - keyboard shortcuts initialized
   }, [])
 
   // Keyboard shortcuts for navigation and custom event listener for right sidebar toggle
@@ -313,19 +212,11 @@ export const LeftSidebar = () => {
     }
   }
 
-  // Handle process dismissal
+  // Backend jobs cannot be dismissed from frontend
   const handleDismissProcess = (processId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('[LeftSidebar] Dismissing process:', processId)
-    
-    // Only allow dismissing frontend processes, not backend jobs
-    if (processId.startsWith('backend-')) {
-      console.log('[LeftSidebar] Cannot dismiss backend job from frontend')
-      return
-    }
-    
-    removeProcess(processId)
+    console.log('[LeftSidebar] Backend jobs cannot be dismissed from frontend:', processId)
   }
 
   // Notification Popover Component
@@ -390,17 +281,7 @@ export const LeftSidebar = () => {
                           Started {formatTimeAgo(process.startedAt)}
                         </p>
                       </div>
-                      {!process.id.startsWith('backend-') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-neutral-400 hover:text-neutral-600"
-                          onClick={(e) => handleDismissProcess(process.id, e)}
-                        >
-                          <X className="w-3 h-3" />
-                          <span className="sr-only">Dismiss</span>
-                        </Button>
-                      )}
+                      {/* Backend jobs cannot be dismissed from frontend */}
                     </div>
                   </div>
                 </div>

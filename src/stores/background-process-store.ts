@@ -3,10 +3,9 @@ import { persist } from 'zustand/middleware'
 
 interface BackgroundProcess {
   id: string
-  type: 'video-processing' | 'posting' | 'queueing'
+  type: 'posting' | 'queueing'
   description: string
   startedAt: number
-  videoJobId?: string // Track actual video job ID for persistence
 }
 
 interface BackgroundProcessStore {
@@ -72,9 +71,9 @@ export const useBackgroundProcessStore = create<BackgroundProcessStore>()(
 }),
 {
   name: 'background-processes',
-  // Only persist video processing jobs, not short-term operations
+  // Only persist posting/queueing jobs, not video processing (handled by React Query)
   partialize: (state) => ({
-    processes: state.processes.filter(p => p.type === 'video-processing')
+    processes: state.processes.filter(p => p.type !== 'video-processing')
   })
 }
 ))
