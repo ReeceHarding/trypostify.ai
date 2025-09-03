@@ -308,8 +308,8 @@ export const LeftSidebar = () => {
           variant="ghost"
           size="sm"
           className={cn(
-            "h-6 w-6 p-0 rounded-full relative",
-            hasActiveProcesses ? "bg-primary hover:bg-primary/90 text-white" : "opacity-0 pointer-events-none"
+            "h-4 w-4 p-0 rounded-full relative bg-primary hover:bg-primary/90 text-white shadow-lg border border-white",
+            hasActiveProcesses ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
           onClick={(e) => {
             e.preventDefault()
@@ -318,7 +318,7 @@ export const LeftSidebar = () => {
             setNotificationOpen(!notificationOpen)
           }}
         >
-          <Bell className="w-3 h-3" />
+          <Bell className="w-2.5 h-2.5" />
           <span className="sr-only">View active processes</span>
         </Button>
       </PopoverTrigger>
@@ -564,7 +564,7 @@ export const LeftSidebar = () => {
                       <div className="size-6 flex items-center justify-center flex-shrink-0 relative">
                         <span aria-hidden="true" className="text-base">🗓️</span>
                         {hasActiveProcesses && (
-                          <div className="absolute -top-1 -right-1">
+                          <div className="absolute -top-1 -right-1 z-10">
                             <NotificationPopover />
                           </div>
                         )}
