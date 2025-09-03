@@ -1,5 +1,3 @@
-// src/lib/utils.ts
-
 /**
  * Supported video platform patterns for URL detection
  */
@@ -11,7 +9,7 @@ const VIDEO_PATTERNS = [
 ]
 
 /**
- * Determine platform from video URL
+ * Determine platform from video URL - SAFE FOR CLIENT-SIDE USE
  */
 export function getPlatformFromUrl(videoUrl: string): string {
   if (videoUrl.includes('instagram')) return 'instagram'
