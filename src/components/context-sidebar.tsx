@@ -123,6 +123,28 @@ export const LeftSidebar = () => {
           })) || []
         })
         
+        // CRITICAL DEBUG: Check if the API call structure is correct
+        console.log('[LeftSidebar] 🔬 API RESPONSE STRUCTURE CHECK:', {
+          processingRes: {
+            hasJobs: !!processingRes.jobs,
+            jobsType: typeof processingRes.jobs,
+            jobsLength: processingRes.jobs?.length,
+            fullResponse: Object.keys(processingRes)
+          },
+          pendingRes: {
+            hasJobs: !!pendingRes.jobs,
+            jobsType: typeof pendingRes.jobs,
+            jobsLength: pendingRes.jobs?.length,
+            fullResponse: Object.keys(pendingRes)
+          },
+          allJobsRes: {
+            hasJobs: !!allJobsRes.jobs,
+            jobsType: typeof allJobsRes.jobs,
+            jobsLength: allJobsRes.jobs?.length,
+            fullResponse: Object.keys(allJobsRes)
+          }
+        })
+        
         const allJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
         console.log('[LeftSidebar] ✅ COMBINED BACKEND JOBS:', {
           totalCount: allJobs.length,

@@ -379,12 +379,24 @@ export default function ThreadTweetEditor({
       }
       return response.json()
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       console.log('[ThreadTweetEditor] ✅ Video job created successfully, invalidating background job caches')
-      // Invalidate all background job queries to force fresh data
-      queryClient.invalidateQueries({ queryKey: ['background-video-jobs'] })
-      queryClient.invalidateQueries({ queryKey: ['active-video-jobs'] })
-      queryClient.invalidateQueries({ queryKey: ['sidebar-background-jobs'] })
+      console.log('[ThreadTweetEditor] 📋 Video job creation response:', {
+        success: data?.success,
+        jobId: data?.jobId?.substring(0, 8),
+        status: data?.status,
+        message: data?.message,
+        fullResponse: Object.keys(data || {})
+      })
+      
+      // Add small delay to ensure database transaction is committed
+      setTimeout(() => {
+        console.log('[ThreadTweetEditor] 🔄 Invalidating caches after transaction delay')
+        // Invalidate all background job queries to force fresh data
+        queryClient.invalidateQueries({ queryKey: ['background-video-jobs'] })
+        queryClient.invalidateQueries({ queryKey: ['active-video-jobs'] })
+        queryClient.invalidateQueries({ queryKey: ['sidebar-background-jobs'] })
+      }, 100) // 100ms delay for transaction commit
     },
   })
 
