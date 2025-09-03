@@ -64,7 +64,7 @@ export const LeftSidebar = () => {
   
   // Also query backend for real video job status (same as Schedule page)
   const { data: backendJobs } = useQuery({
-    queryKey: ['sidebar-background-jobs'],
+    queryKey: ['background-video-jobs'], // SAME KEY as Schedule page for consistency
     queryFn: async () => {
       console.log('[LeftSidebar] 🔍 FETCHING BACKEND JOBS at', new Date().toISOString())
       try {
@@ -142,9 +142,13 @@ export const LeftSidebar = () => {
         return []
       }
     },
-    refetchInterval: 5000,
+    refetchInterval: 2000, // More frequent updates
     retry: false,
     staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    // Cache busting to ensure fresh data
+    gcTime: 0, // Don't cache results
   })
   
   // Combine frontend processes (immediate feedback) with backend jobs (real status)

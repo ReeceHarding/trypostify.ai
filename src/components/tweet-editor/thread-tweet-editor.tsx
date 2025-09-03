@@ -379,6 +379,13 @@ export default function ThreadTweetEditor({
       }
       return response.json()
     },
+    onSuccess: () => {
+      console.log('[ThreadTweetEditor] ✅ Video job created successfully, invalidating background job caches')
+      // Invalidate all background job queries to force fresh data
+      queryClient.invalidateQueries({ queryKey: ['background-video-jobs'] })
+      queryClient.invalidateQueries({ queryKey: ['active-video-jobs'] })
+      queryClient.invalidateQueries({ queryKey: ['sidebar-background-jobs'] })
+    },
   })
 
   // Update thread mutation (for edit mode)
