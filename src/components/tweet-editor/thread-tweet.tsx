@@ -65,6 +65,9 @@ import { Calendar20 } from './date-picker'
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeyFeedback } from '../ui/hotkey-feedback'
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import { getOgData } from '@/lib/og-fetch'
+import { getPlatformFromUrl } from '@/lib/client-utils'
 
 interface ThreadTweetProps {
   tweetId: string // ID to identify this tweet in the store
@@ -498,7 +501,7 @@ function ThreadTweetContent({
       const res = await client.videoJob.createVideoJob.$post({
         videoUrl: url,
         threadId: 'temp-thread-id', // TODO: Pass threadId as prop when available
-        platform: 'instagram', // TODO: detect platform from URL
+        platform: getPlatformFromUrl(url),
       })
 
       if (!res.ok) {

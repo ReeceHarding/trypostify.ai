@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Clock } from 'lucide-react'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
 import { useBackgroundProcessStore } from '@/stores/background-process-store'
+import { getPlatformFromUrl } from '@/lib/client-utils'
 
 interface ThreadTweetData {
   id: string
@@ -614,7 +615,7 @@ export default function ThreadTweetEditor({
                 videoUrl: video.videoUrl!,
                 tweetId: '', // Will be created when video is ready
                 threadId: crypto.randomUUID(), // Generate thread ID for the future post
-                platform: video.platform || 'unknown',
+                platform: getPlatformFromUrl(video.videoUrl!),
                 tweetContent: {
                   tweets: validTweets.map((t, idx) => ({
                     content: t.content,
