@@ -336,7 +336,7 @@ export const LeftSidebar = () => {
           variant="ghost"
           size="sm"
           className={cn(
-            "h-4 w-4 p-0 rounded-full relative bg-primary hover:bg-primary/90 text-white shadow-lg border border-white",
+            "h-3 w-3 p-0 rounded-full relative bg-error-500 hover:bg-error-600 text-white shadow-lg border border-white text-[8px] font-bold flex items-center justify-center",
             hasActiveProcesses ? "opacity-100" : "opacity-0 pointer-events-none"
           )}
           onClick={(e) => {
@@ -346,7 +346,9 @@ export const LeftSidebar = () => {
             setNotificationOpen(!notificationOpen)
           }}
         >
-          <Bell className="w-2.5 h-2.5" />
+          <span className="text-[8px] font-bold leading-none">
+            {totalActiveCount > 9 ? '9+' : totalActiveCount}
+          </span>
           <span className="sr-only">View active processes</span>
         </Button>
       </PopoverTrigger>
