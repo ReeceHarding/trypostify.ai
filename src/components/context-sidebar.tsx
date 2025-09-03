@@ -66,6 +66,7 @@ export const LeftSidebar = () => {
     queryFn: async () => {
       console.log('[LeftSidebar] 🔍 Fetching active jobs from database...')
       try {
+        // Query for ALL job statuses to see what's actually happening
         const processingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'processing' as const, 
           limit: 50, 
@@ -78,10 +79,38 @@ export const LeftSidebar = () => {
           offset: 0 
         })
         
-        const allJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
-        console.log('[LeftSidebar] ✅ Found active jobs:', allJobs.length)
+        // ALSO check completed/failed jobs from last 5 minutes to see what happened
+        const completedRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'completed' as const, 
+          limit: 10, 
+          offset: 0 
+        })
         
-        return allJobs
+        const failedRes = await client.videoJob.listVideoJobs.mutate({ 
+          status: 'failed' as const, 
+          limit: 10, 
+          offset: 0 
+        })
+        
+        const activeJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        const recentJobs = [...(completedRes.jobs || []), ...(failedRes.jobs || [])]
+        
+        console.log('[LeftSidebar] 📊 COMPLETE JOB STATUS BREAKDOWN:', {
+          processing: processingRes.jobs?.length || 0,
+          pending: pendingRes.jobs?.length || 0,
+          completed: completedRes.jobs?.length || 0,
+          failed: failedRes.jobs?.length || 0,
+          activeJobs: activeJobs.length,
+          recentCompletedJobs: recentJobs.slice(0, 3).map(j => ({
+            id: j.id?.substring(0, 8),
+            status: j.status,
+            createdAt: j.createdAt,
+            completedAt: j.completedAt,
+            platform: j.platform
+          }))
+        })
+        
+        return activeJobs
       } catch (error) {
         console.error('[LeftSidebar] ❌ ERROR fetching backend jobs:', error)
         return []
