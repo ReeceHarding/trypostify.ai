@@ -31,10 +31,11 @@ function BackgroundProcessStatus() {
   const queryClient = useQueryClient()
   const session = authClient.useSession()
   
-  // Query actual backend for real video job status
+  // Query actual backend for real video job status - PERSISTENT across page refreshes
   const { data: activeJobs, isLoading, error, refetch } = useQuery({
     queryKey: ['background-video-jobs'],
     queryFn: async () => {
+      console.log('[BackgroundProcessStatus] 🔍 Checking database for active video jobs...')
       try {
         // Check for processing jobs
         const processingRes = await client.videoJob.listVideoJobs.mutate({ 
@@ -52,7 +53,7 @@ function BackgroundProcessStatus() {
         
         const allActiveJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
         
-        console.log('[BackgroundProcessStatus] Real backend status:', {
+        console.log('[BackgroundProcessStatus] ✅ Database query result:', {
           processingJobs: processingRes.jobs?.length || 0,
           pendingJobs: pendingRes.jobs?.length || 0,
           totalActiveJobs: allActiveJobs.length,
@@ -66,15 +67,17 @@ function BackgroundProcessStatus() {
         
         return allActiveJobs
       } catch (error) {
-        console.error('[BackgroundProcessStatus] Error fetching backend status:', error)
+        console.error('[BackgroundProcessStatus] ❌ Database query failed:', error)
         return []
       }
     },
-    refetchInterval: 10000, // Check backend every 10 seconds for better performance
-    retry: false,
-    staleTime: 0,
-    // CRITICAL: Only run this query when the user is authenticated
-    enabled: session.status === 'authenticated',
+    refetchInterval: 5000, // Check every 5 seconds to catch job completion quickly
+    retry: 3, // Retry failed requests  
+    staleTime: 0, // Always fetch fresh data from database
+    refetchOnMount: 'always', // Always fetch when page loads
+    refetchOnWindowFocus: true, // Fetch when user returns to tab
+    // CRITICAL: Enable immediately, don't wait for auth (will show real database state)
+    enabled: true,
   })
   
   const hasActiveProcesses = (activeJobs?.length || 0) > 0

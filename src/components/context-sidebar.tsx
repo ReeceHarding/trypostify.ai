@@ -60,10 +60,11 @@ export const LeftSidebar = () => {
 
   // Video processing now handled entirely by React Query
   
-  // Also query backend for real video job status (same as Schedule page)
-  const { data: backendJobs } = useQuery({
+  // Query backend for real video job status - PERSISTENT across page refreshes
+  const { data: backendJobs, isLoading: jobsLoading } = useQuery({
     queryKey: ['background-video-jobs'], // SAME KEY as Schedule page for consistency
     queryFn: async () => {
+      console.log('[LeftSidebar] 🔍 Fetching active jobs from database...')
       try {
         const processingRes = await client.videoJob.listVideoJobs.mutate({ 
           status: 'processing' as const, 
@@ -78,6 +79,7 @@ export const LeftSidebar = () => {
         })
         
         const allJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        console.log('[LeftSidebar] ✅ Found active jobs:', allJobs.length)
         
         return allJobs
       } catch (error) {
@@ -85,21 +87,22 @@ export const LeftSidebar = () => {
         return []
       }
     },
-    refetchInterval: 10000, // Check every 10 seconds for better performance
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    // Cache busting to ensure fresh data
-    gcTime: 0, // Don't cache results
-    // CRITICAL: Only run this query when the user is authenticated
-    enabled: session.status === 'authenticated',
+    refetchInterval: 5000, // Check every 5 seconds to catch job completion quickly
+    retry: 3, // Retry failed requests
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always', // Always fetch when component mounts
+    refetchOnWindowFocus: true, // Fetch when user returns to tab
+    // CRITICAL: Enable immediately, don't wait for auth (will fail gracefully if not authenticated)
+    enabled: true,
   })
   
   // Use backend jobs as single source of truth
   const backendJobsCount = backendJobs?.length || 0
   const totalActiveCount = backendJobsCount
   const hasActiveProcesses = totalActiveCount > 0
+  
+  // Show loading state when checking database after page refresh
+  const isCheckingDatabase = jobsLoading && !backendJobs
   
   // Transform backend jobs for popover display
   const allProcesses = backendJobs?.map(job => ({
@@ -111,6 +114,13 @@ export const LeftSidebar = () => {
     jobId: job.id,
     status: job.status
   })) || []
+
+  console.log('[LeftSidebar] 🔔 Notification status:', {
+    hasActiveProcesses,
+    totalActiveCount,
+    isCheckingDatabase,
+    jobsFromDatabase: backendJobsCount
+  })
 
   // State for notification popover
   const [notificationOpen, setNotificationOpen] = useState(false)
