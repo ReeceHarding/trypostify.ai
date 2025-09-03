@@ -24,12 +24,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
 import { useBackgroundProcessStore } from '@/stores/background-process-store'
+import { authClient } from '@/lib/auth-client'
+import { cn } from '@/lib/utils'
 
 function BackgroundProcessStatus() {
   const queryClient = useQueryClient()
+  const session = authClient.useSession()
   
   // Query actual backend for real video job status
-  const { data: activeJobs, isLoading, error } = useQuery({
+  const { data: activeJobs, isLoading, error, refetch } = useQuery({
     queryKey: ['background-video-jobs'],
     queryFn: async () => {
       try {
@@ -70,6 +73,8 @@ function BackgroundProcessStatus() {
     refetchInterval: 5000, // Check backend every 5 seconds
     retry: false,
     staleTime: 0,
+    // CRITICAL: Only run this query when the user is authenticated
+    enabled: session.status === 'authenticated',
   })
   
   const hasActiveProcesses = (activeJobs?.length || 0) > 0
@@ -205,20 +210,21 @@ function BackgroundProcessStatus() {
             <div className="flex items-center gap-2">
               <Video className="w-5 h-5 text-neutral-400" />
               Background Processing
-              <DuolingoBadge variant="success" className="text-xs">
-                No active jobs
-              </DuolingoBadge>
+              <span className="font-semibold inline-flex items-center justify-center relative h-7 min-w-7 px-1.5 rounded-full text-xs">No active jobs</span>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
-                size="duolingo-sm"
-                onClick={() => refreshMutation.mutate()}
-                disabled={refreshMutation.isPending}
+                size="sm"
+                onClick={() => {
+                  console.log('[BackgroundProcessStatus] Manual refresh triggered')
+                  refetch()
+                }}
+                disabled={isLoading}
                 className="text-xs"
               >
-                <RefreshCw className={`w-3 h-3 mr-1 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
-                {refreshMutation.isPending ? 'Refreshing...' : 'Refresh'}
+                <RefreshCw className={cn("w-3 h-3 mr-1", isLoading && "animate-spin")} />
+                Refresh
               </Button>
             </div>
           </CardTitle>
@@ -263,13 +269,16 @@ function BackgroundProcessStatus() {
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
-                size="duolingo-sm"
-                onClick={() => refreshMutation.mutate()}
-                disabled={refreshMutation.isPending}
+                size="sm"
+                onClick={() => {
+                  console.log('[BackgroundProcessStatus] Manual refresh triggered')
+                  refetch()
+                }}
+                disabled={isLoading}
                 className="text-xs"
               >
-                <RefreshCw className={`w-3 h-3 mr-1 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
-                {refreshMutation.isPending ? 'Refreshing...' : 'Refresh'}
+                <RefreshCw className={cn("w-3 h-3 mr-1", isLoading && "animate-spin")} />
+                Refresh
               </Button>
               <Button
                 variant="duolingo-secondary"

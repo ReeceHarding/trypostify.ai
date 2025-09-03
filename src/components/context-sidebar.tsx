@@ -2,7 +2,6 @@
 
 import { buttonVariants } from '@/components/ui/button'
 import { useChatContext } from '@/hooks/use-chat'
-import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 import { ArrowLeftFromLine, ArrowRightFromLine, PanelLeft, Settings, Crown, Bell, Video, Clock, X } from 'lucide-react'
 import Link from 'next/link'
@@ -39,7 +38,7 @@ const serialize = createSerializer(searchParams)
 
 export const LeftSidebar = () => {
   const { state } = useSidebar()
-  const { data } = authClient.useSession()
+  const session = authClient.useSession()
 
   const pathname = usePathname()
 
@@ -171,6 +170,8 @@ export const LeftSidebar = () => {
     refetchOnWindowFocus: true,
     // Cache busting to ensure fresh data
     gcTime: 0, // Don't cache results
+    // CRITICAL: Only run this query when the user is authenticated
+    enabled: session.status === 'authenticated',
   })
   
   // Combine frontend processes (immediate feedback) with backend jobs (real status)
@@ -717,7 +718,7 @@ export const LeftSidebar = () => {
           )}
         >
           <div className="flex flex-col gap-2">
-            {data?.user ? (
+            {session.data?.user ? (
               <Link
                 href={{
                   pathname: `/studio/settings`,
@@ -733,14 +734,14 @@ export const LeftSidebar = () => {
               >
                 <Avatar className="size-9 border-2 border-white shadow-md">
                   <AvatarImage
-                    src={data.user.image || undefined}
-                    alt={data.user.name ?? 'Profile'}
+                    src={session.data.user.image || undefined}
+                    alt={session.data.user.name ?? 'Profile'}
                   />
-                  <AvatarFallback>{data.user.name?.charAt(0) ?? null}</AvatarFallback>
+                  <AvatarFallback>{session.data.user.name?.charAt(0) ?? null}</AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col items-start min-w-0">
                   <span className="truncate text-sm font-medium text-neutral-800">
-                    {data.user.name ?? 'Account'}
+                    {session.data.user.name ?? 'Account'}
                   </span>
 
                   <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
