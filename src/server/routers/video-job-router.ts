@@ -103,8 +103,7 @@ export const videoJobRouter = j.router({
         
         return c.json({
           success: true,
-          jobId: newJob[0]?.id,
-          status: newJob[0]?.status,
+          job: newJob[0], // Return the full job object
           message: 'Video job created successfully. Processing will begin shortly.',
         })
         

@@ -380,23 +380,36 @@ export default function ThreadTweetEditor({
       return response.json()
     },
     onSuccess: (data) => {
-      console.log('[ThreadTweetEditor] ✅ Video job created successfully, invalidating background job caches')
-      console.log('[ThreadTweetEditor] 📋 Video job creation response:', {
-        success: data?.success,
-        jobId: data?.jobId?.substring(0, 8),
-        status: data?.status,
-        message: data?.message,
-        fullResponse: Object.keys(data || {})
+      console.log('[ThreadTweetEditor] ✅ Video job created, manually updating cache:', data)
+
+      // Manually update the cache for immediate UI feedback
+      queryClient.setQueryData(['background-video-jobs'], (oldData: any[] | undefined) => {
+        if (!data.job) return oldData
+        
+        // Construct a job object that matches the list query's structure
+        const newJob = {
+          id: data.job.id,
+          tweetId: data.job.tweetId,
+          threadId: data.job.threadId,
+          videoUrl: data.job.videoUrl,
+          platform: data.job.platform,
+          status: data.job.status,
+          createdAt: data.job.createdAt,
+          updatedAt: data.job.updatedAt,
+          completedAt: data.job.completedAt,
+          errorMessage: data.job.errorMessage,
+        }
+        
+        const newData = [newJob, ...(oldData || [])]
+        console.log('[ThreadTweetEditor] Manually set new cache data:', newData)
+        return newData
       })
-      
-      // Add small delay to ensure database transaction is committed
+
+      // Invalidate after a delay to sync with backend after transaction commits
       setTimeout(() => {
         console.log('[ThreadTweetEditor] 🔄 Invalidating caches after transaction delay')
-        // Invalidate all background job queries to force fresh data
         queryClient.invalidateQueries({ queryKey: ['background-video-jobs'] })
-        queryClient.invalidateQueries({ queryKey: ['active-video-jobs'] })
-        queryClient.invalidateQueries({ queryKey: ['sidebar-background-jobs'] })
-      }, 100) // 100ms delay for transaction commit
+      }, 500)
     },
   })
 
