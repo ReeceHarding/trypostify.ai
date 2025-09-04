@@ -40,15 +40,18 @@ interface ThreadEditorState {
   getTweetIndex: (id: string) => number
 }
 
-const createInitialTweet = (): ThreadTweetData => ({
-  id: crypto.randomUUID(),
+// Use a stable SSR-safe default so server and client render the same initial HTML
+const SSR_SAFE_TWEET_ID = 'tweet-ssr-default';
+
+const createInitialTweet = (id?: string): ThreadTweetData => ({
+  id: id || crypto.randomUUID(),
   content: '',
   media: [],
   charCount: 0,
 })
 
 export const useThreadEditorStore = create<ThreadEditorState>((set, get) => ({
-  tweets: [createInitialTweet()],
+  tweets: [createInitialTweet(SSR_SAFE_TWEET_ID)],
   
   setTweets: (tweets) => {
     console.log('[ThreadEditorStore] setTweets called with:', tweets.length, 'tweets')
@@ -117,7 +120,7 @@ export const useThreadEditorStore = create<ThreadEditorState>((set, get) => ({
   
   reset: () => {
     console.log('[ThreadEditorStore] reset called')
-    const initialTweet = createInitialTweet()
+    const initialTweet = createInitialTweet(SSR_SAFE_TWEET_ID)
     set({ tweets: [initialTweet] })
     console.log('[ThreadEditorStore] Reset to single tweet:', initialTweet.id)
   },

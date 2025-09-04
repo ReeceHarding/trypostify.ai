@@ -113,6 +113,18 @@ export default function ThreadTweetEditor({
     }
   }, [editMode, resetStore])
 
+  // Replace SSR-safe tweet ID with real UUID after hydration to prevent hydration mismatch
+  useEffect(() => {
+    if (!editMode && threadTweets.length === 1 && threadTweets[0].id === 'tweet-ssr-default') {
+      console.log('[ThreadTweetEditor] Replacing SSR-safe tweet ID with real UUID after hydration')
+      // Defer to next tick to avoid interfering with hydration
+      Promise.resolve().then(() => {
+        const newTweetId = crypto.randomUUID()
+        setThreadTweets([{ ...threadTweets[0], id: newTweetId }])
+      })
+    }
+  }, [editMode, threadTweets, setThreadTweets])
+
   // Load thread data if in edit mode
   const { data: threadData, isLoading: loadingThread } = useQuery({
     queryKey: ['thread', editTweetId],
@@ -246,7 +258,7 @@ export default function ThreadTweetEditor({
   useEffect(() => {
     if (!editMode && !editTweetId) {
       console.log('[ThreadTweetEditor] Resetting to create mode')
-      setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+      setThreadTweets([{ id: 'tweet-ssr-default', content: '', media: [] }])
     }
   }, [editMode, editTweetId])
 
@@ -625,7 +637,7 @@ export default function ThreadTweetEditor({
         
         // OPTIMISTIC UI UPDATE: Clear content since tweet is queued
         setHasBeenCleared(true)
-        const newTweetId = crypto.randomUUID()
+        const newTweetId = 'tweet-ssr-default'
         setThreadTweets([{ id: newTweetId, content: '', media: [] }])
         
         // AUTO-FOCUS: Focus the new empty tweet for instant typing
@@ -664,7 +676,7 @@ export default function ThreadTweetEditor({
     
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     setHasBeenCleared(true)
-    const newTweetId = crypto.randomUUID()
+    const newTweetId = 'tweet-ssr-default'
     setThreadTweets([{ id: newTweetId, content: '', media: [] }])
     
     // AUTO-FOCUS: Focus the new empty tweet for instant typing
@@ -754,7 +766,7 @@ export default function ThreadTweetEditor({
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content for schedule at', new Date().toISOString())
     setHasBeenCleared(true)
-    const newTweetId = crypto.randomUUID()
+    const newTweetId = 'tweet-ssr-default'
     setThreadTweets([{ id: newTweetId, content: '', media: [] }])
     
     // AUTO-FOCUS: Focus the new empty tweet for instant typing
@@ -888,7 +900,7 @@ export default function ThreadTweetEditor({
     // OPTIMISTIC UI UPDATE: Clear content immediately for instant feedback
     console.log('[ThreadTweetEditor] Optimistically clearing UI content for queue at', new Date().toISOString())
     setHasBeenCleared(true)
-    const newTweetId = crypto.randomUUID()
+    const newTweetId = 'tweet-ssr-default'
     setThreadTweets([{ id: newTweetId, content: '', media: [] }])
     
     // AUTO-FOCUS: Focus the new empty tweet for instant typing
@@ -1079,7 +1091,7 @@ export default function ThreadTweetEditor({
     window.history.pushState({}, '', url.toString())
     
     // Reset the component state
-    setThreadTweets([{ id: crypto.randomUUID(), content: '', media: [] }])
+    setThreadTweets([{ id: 'tweet-ssr-default', content: '', media: [] }])
   }
 
   const isPosting = postThreadMutation.isPending || scheduleThreadMutation.isPending || enqueueThreadMutation.isPending || updateThreadMutation.isPending
