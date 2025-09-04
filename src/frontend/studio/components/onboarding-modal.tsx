@@ -238,7 +238,7 @@ export const OnboardingModal = ({
         <DialogTitle className="sr-only">title</DialogTitle>
         <DialogContent
           noClose
-          className="border-none max-w-md p-8"
+          className="border-none w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl p-4 sm:p-6 lg:p-8"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
@@ -277,12 +277,12 @@ export const OnboardingModal = ({
               modules={[EffectCreative]}
               initialSlide={oauthOnboarding ? SLIDES.COMPLETED_SLIDE : 0}
             >
-              <SwiperSlide className="relative space-y-6">
+              <SwiperSlide className="relative space-y-4 sm:space-y-6">
                 <div className="flex flex-col items-center gap-1 text-center">
-                  <div className="text-2xl font-semibold text-neutral-900">
+                  <div className="text-xl sm:text-2xl font-semibold text-neutral-900">
                     <div className="flex items-center gap-2">
                       Welcome to Postify
-                      <Sparkles className="size-6 text-yellow-500" />
+                      <Sparkles className="size-5 sm:size-6 text-yellow-500" />
                     </div>
                   </div>
                   <p className="text-neutral-600 text-balance">
@@ -291,7 +291,7 @@ export const OnboardingModal = ({
                     before we write your first tweet!
                   </p>
                 </div>
-                <div className="aspect-video w-full overflow-hidden rounded-lg bg-neutral-100">
+                <div className="aspect-video w-full max-w-xs sm:max-w-sm lg:max-w-md mx-auto overflow-hidden rounded-lg bg-neutral-100">
                   <img
                     className="h-full w-full object-cover"
                     src="https://media.giphy.com/media/UtzyBJ9trryNO4R3Ee/giphy.gif"
@@ -300,7 +300,7 @@ export const OnboardingModal = ({
               </SwiperSlide>
 
               <SwiperSlide>
-                <div className="flex flex-col gap-6 w-full">
+                <div className="flex flex-col gap-4 sm:gap-6 w-full">
                   <div className="flex w-full items-center">
                     <Button
                       variant="duolingo-secondary"
@@ -314,7 +314,7 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-xl sm:text-2xl font-semibold text-neutral-900">
                       What brings you here?
                     </div>
                   </div>
@@ -331,7 +331,7 @@ export const OnboardingModal = ({
               </SwiperSlide>
 
               <SwiperSlide>
-                <div className="flex flex-col gap-6 w-full">
+                <div className="flex flex-col gap-4 sm:gap-6 w-full">
                   <div className="flex w-full items-center">
                     <Button
                       variant="duolingo-secondary"
@@ -345,7 +345,7 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-xl sm:text-2xl font-semibold text-neutral-900">
                       What's your daily posting goal?
                     </div>
                   </div>
@@ -362,7 +362,7 @@ export const OnboardingModal = ({
               </SwiperSlide>
 
               <SwiperSlide>
-                <div className="flex flex-col gap-6 w-full">
+                <div className="flex flex-col gap-4 sm:gap-6 w-full">
                   <div className="flex w-full items-center">
                     <Button
                       variant="duolingo-secondary"
@@ -376,7 +376,7 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-xl sm:text-2xl font-semibold text-neutral-900">
                       Do you have X Premium?
                     </div>
                     <p className="text-neutral-600 text-balance">
@@ -414,7 +414,7 @@ export const OnboardingModal = ({
               </SwiperSlide>
 
               <SwiperSlide className="px-1">
-                <div className="flex w-full space-y-6 flex-col items-center justify-center">
+                <div className="flex w-full space-y-4 sm:space-y-6 flex-col items-center justify-center">
                   <div className="flex w-full items-center">
                     <Button
                       variant="duolingo-secondary"
@@ -428,7 +428,7 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <div className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-xl sm:text-2xl font-semibold text-neutral-900">
                       Let's connect your Twitter
                     </div>
                     <p className="text-center text-neutral-600">
@@ -449,11 +449,11 @@ export const OnboardingModal = ({
               </SwiperSlide>
 
               <SwiperSlide>
-                <div className="flex w-full space-y-6 flex-col items-center justify-center">
+                <div className="flex w-full space-y-4 sm:space-y-6 flex-col items-center justify-center">
                   <div className="flex w-full flex-col items-center gap-1 text-center">
-                    <div className="text-2xl font-semibold text-neutral-900 flex items-center gap-2">
+                    <div className="text-xl sm:text-2xl font-semibold text-neutral-900 flex items-center gap-2">
                       You're in!
-                      <Sparkles className="size-6 text-yellow-500" />
+                      <Sparkles className="size-5 sm:size-6 text-yellow-500" />
                     </div>
                     <p className="text-neutral-600">
                       We've analyzed your{' '}
@@ -463,7 +463,7 @@ export const OnboardingModal = ({
                       - Postify is already learning your style.
                     </p>
                   </div>
-                  <div className="relative w-full aspect-video overflow-hidden rounded-lg bg-neutral-100">
+                  <div className="relative w-full max-w-xs sm:max-w-sm lg:max-w-md mx-auto aspect-video overflow-hidden rounded-lg bg-neutral-100">
                     <img
                       className="h-full w-full object-cover object-top"
                       src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExbW9udHE4eHg3eng0M3R1Y3kzcndqMjhnc3Jza2FzN2g1NGV1NHk4dCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/DhstvI3zZ598Nb1rFf/giphy.gif"
@@ -474,7 +474,7 @@ export const OnboardingModal = ({
               </SwiperSlide>
             </Swiper>
           )}
-          <div className="mt-8 flex flex-col gap-6">
+          <div className="mt-4 sm:mt-6 lg:mt-8 flex flex-col gap-4 sm:gap-6">
             <div className="w-full">
               <Button variant="duolingo-primary" onClick={handleNext} disabled={isButtonDisabled()}>
                 {swiperRef?.activeIndex === 0
