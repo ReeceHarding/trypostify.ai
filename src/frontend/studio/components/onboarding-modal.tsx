@@ -279,12 +279,12 @@ export const OnboardingModal = ({
             >
               <SwiperSlide className="relative space-y-6">
                 <div className="flex flex-col items-center gap-1 text-center">
-                  <p className="text-2xl font-semibold text-neutral-900">
+                  <div className="text-2xl font-semibold text-neutral-900">
                     <div className="flex items-center gap-2">
                       Welcome to Postify
                       <Sparkles className="size-6 text-yellow-500" />
                     </div>
-                  </p>
+                  </div>
                   <p className="text-neutral-600 text-balance">
                     Just{' '}
                     <span className="font-medium text-neutral-800">3 quick questions</span>{' '}
@@ -314,9 +314,9 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-2xl font-semibold text-neutral-900">
                       What brings you here?
-                    </p>
+                    </div>
                   </div>
 
                   <div className="w-full">
@@ -345,9 +345,9 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-2xl font-semibold text-neutral-900">
                       What's your daily posting goal?
-                    </p>
+                    </div>
                   </div>
 
                   <div className="w-full">
@@ -376,9 +376,9 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-2xl font-semibold text-neutral-900">
                       Do you have X Premium?
-                    </p>
+                    </div>
                     <p className="text-neutral-600 text-balance">
                       This helps us optimize your tweet length
                     </p>
@@ -428,9 +428,9 @@ export const OnboardingModal = ({
                   </div>
 
                   <div className="flex flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-neutral-900">
+                    <div className="text-2xl font-semibold text-neutral-900">
                       Let's connect your Twitter
-                    </p>
+                    </div>
                     <p className="text-center text-neutral-600">
                       This allows you to schedule posts, publish directly, and helps us
                       learn your style.
@@ -451,10 +451,10 @@ export const OnboardingModal = ({
               <SwiperSlide>
                 <div className="flex w-full space-y-6 flex-col items-center justify-center">
                   <div className="flex w-full flex-col items-center gap-1 text-center">
-                    <p className="text-2xl font-semibold text-neutral-900 flex items-center gap-2">
+                    <div className="text-2xl font-semibold text-neutral-900 flex items-center gap-2">
                       You're in!
                       <Sparkles className="size-6 text-yellow-500" />
-                    </p>
+                    </div>
                     <p className="text-neutral-600">
                       We've analyzed your{' '}
                       <span className="font-medium text-neutral-800">

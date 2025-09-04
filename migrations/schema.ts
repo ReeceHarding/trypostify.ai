@@ -95,7 +95,7 @@ export const knowledgeTags = pgTable("knowledge_tags", {
 
 export const tweets = pgTable("tweets", {
 	id: text().primaryKey().notNull(),
-	content: text().default(').notNull(),
+	content: text().default('').notNull(),
 	editorState: json("editor_state").default(null),
 	media: json().default([]),
 	mediaIds: json("media_ids").default([]),
