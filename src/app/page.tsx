@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth'
 import MuxPlayer from '@mux/mux-player-react'
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import Script from 'next/script'
 import { redirect } from 'next/navigation'
 import { HOMEPAGE_VIDEO, HOMEPAGE_CONTENT } from '@/constants/homepage'
 import { client } from '@/lib/client'
@@ -171,19 +170,6 @@ const Page = async () => {
                 />
               </div>
 
-              <>
-                <Script
-                  src="https://widget.senja.io/widget/01600cf0-5fa6-455a-9364-d3f7bf7b7ef9/platform.js"
-                  type="text/javascript"
-                  async
-                ></Script>
-                <div
-                  className="senja-embed block w-full mt-20"
-                  data-id="01600cf0-5fa6-455a-9364-d3f7bf7b7ef9"
-                  data-mode="shadow"
-                  data-lazyload="false"
-                ></div>
-              </>
             </div>
           </div>
           <div
