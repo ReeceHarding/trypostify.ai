@@ -133,7 +133,7 @@ export const LeftSidebar = () => {
       // Retry other errors up to 3 times
       return failureCount < 3
     },
-    enabled: true, // Always enabled - will show real database state
+    enabled: !!user && !isUserLoading, // Only enabled when user is authenticated
   })
   
   // Use database state only - no client-side optimistic updates

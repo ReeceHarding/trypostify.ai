@@ -222,8 +222,15 @@ export function AccountName({
   animate?: boolean
 }) {
   const { account, isLoading } = useAccount()
-
-  if (isLoading || !account) {
+  const [isClient, setIsClient] = useState(false)
+  
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+  
+  // Always show skeleton during SSR and initial client render to avoid hydration mismatch
+  if (!isClient || isLoading || !account) {
     return <Skeleton className={cn('h-4 w-24 rounded', className)} />
   }
 

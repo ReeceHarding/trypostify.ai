@@ -4,9 +4,11 @@ import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
 import { Loader2, Video, Clock } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { useUser } from '@/hooks/use-user'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
+  const { user, isLoading: userLoading } = useUser()
   
   // Debug logging
   useEffect(() => {
@@ -89,7 +91,7 @@ export default function BackgroundProcessIndicator() {
       // Retry other errors up to 3 times
       return failureCount < 3
     },
-    enabled: true, // Always enabled - will show real database state
+    enabled: !!user && !userLoading, // Only enabled when user is authenticated
   })
 
   // Use database state only - no client-side optimistic updates
@@ -102,7 +104,10 @@ export default function BackgroundProcessIndicator() {
     isLoading,
     hasError: !!error,
     errorMessage: error?.message,
-    isUnauthorized: error?.message?.includes('Unauthorized') || error?.message?.includes('401')
+    isUnauthorized: error?.message?.includes('Unauthorized') || error?.message?.includes('401'),
+    userAuthenticated: !!user,
+    userLoading,
+    queryEnabled: !!user && !userLoading
   })
 
 

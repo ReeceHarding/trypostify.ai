@@ -25,9 +25,12 @@ import DuolingoBadge from '@/components/ui/duolingo-badge'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
 import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
+import { useUser } from '@/hooks/use-user'
 
 // Unified hook for fetching active video jobs - SINGLE SOURCE OF TRUTH
 function useActiveVideoJobs() {
+  const { user, isLoading: userLoading } = useUser()
+  
   return useQuery({
     queryKey: ['active-video-jobs'], // Unified key used by all components
     queryFn: async () => {
@@ -100,7 +103,7 @@ function useActiveVideoJobs() {
       // Retry other errors up to 3 times
       return failureCount < 3
     },
-    enabled: true, // Always enabled - will show real database state
+    enabled: !!user && !userLoading, // Only enabled when user is authenticated
   })
 }
 
