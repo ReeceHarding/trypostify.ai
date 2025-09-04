@@ -20,6 +20,7 @@ import Image from 'next/image'
 const AccountContext = createContext<{
   account: Account | null
   isLoading: boolean
+  refreshAccount: () => void
 } | null>(null)
 
 export function mapToConnectedAccount(raw: Account): Account {
@@ -82,7 +83,7 @@ const initialAccount: Account | null =
         })()
       : shouldSkipAuth ? mockAccount : null
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, refetch } = useQuery({
     queryKey: ['get-active-account'],
     queryFn: async () => {
       // Skip API call and return mock account in development mode
@@ -128,20 +129,27 @@ const initialAccount: Account | null =
 
       return mapped
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes - account data rarely changes
-    gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes in memory
-    refetchOnWindowFocus: false, // Avoid jarring refreshes when tab changes
-    refetchOnMount: false, // Use cached data if available, only fetch if no cache
+    staleTime: Infinity, // Account data virtually never changes - cache forever
+    gcTime: 1000 * 60 * 60 * 24, // Keep in cache for 24 hours in memory
+    refetchOnWindowFocus: false, // Never refetch on focus
+    refetchOnMount: false, // Never refetch on mount - use cache
+    refetchOnReconnect: false, // Don't refetch when internet reconnects
     retry: 1, // Reduce retry attempts for faster failure
     retryDelay: 500, // Faster retry
     enabled: !shouldSkipAuth, // Disable query when auth is bypassed
     initialData: initialAccount, // Use localStorage cache as initial data
   })
 
+  const refreshAccount = () => {
+    console.log(`[AccountProvider ${ts()}] Manual account refresh triggered`)
+    refetch()
+  }
+
   return (
     <AccountContext.Provider value={{ 
       account: shouldSkipAuth ? mockAccount : (data ?? initialAccount), 
-      isLoading: shouldSkipAuth ? false : isPending 
+      isLoading: shouldSkipAuth ? false : isPending,
+      refreshAccount
     }}>
       {children}
     </AccountContext.Provider>
