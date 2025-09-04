@@ -257,9 +257,6 @@ const Page = () => {
         <Separator className="my-6" />
         <div className="bg-white border border-neutral-200 rounded-xl p-4">
           <div className="flex items-start gap-4">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Clock className="size-5 text-primary" />
-            </div>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-4">
                 <div>

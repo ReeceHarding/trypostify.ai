@@ -128,13 +128,14 @@ const initialAccount: Account | null =
 
       return mapped
     },
-    staleTime: 1000 * 30, // Shorter stale time for faster updates
-    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes in memory
+    staleTime: 1000 * 60 * 5, // 5 minutes - account data rarely changes
+    gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes in memory
     refetchOnWindowFocus: false, // Avoid jarring refreshes when tab changes
-    refetchOnMount: 'always', // Ensure we always verify server state after mount
+    refetchOnMount: false, // Use cached data if available, only fetch if no cache
     retry: 1, // Reduce retry attempts for faster failure
     retryDelay: 500, // Faster retry
     enabled: !shouldSkipAuth, // Disable query when auth is bypassed
+    initialData: initialAccount, // Use localStorage cache as initial data
   })
 
   return (
