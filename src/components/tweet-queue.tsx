@@ -427,7 +427,7 @@ export default function TweetQueue() {
                     </div>
 
                     {/* Actions - only show for tweets */}
-                    <div className="flex items-center w-[40px] flex-shrink-0">
+                    <div className="hidden sm:flex items-center w-[40px] flex-shrink-0">
                       {tweet && (
                         <Dialog
                             open={pendingPostId === tweet.id}

@@ -187,7 +187,7 @@ export function AccountAvatar({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn('relative overflow-hidden rounded-full', className)}>
+    <div className={cn('relative overflow-hidden rounded-full hidden sm:block', className)}>
       <Image
         src={account.profile_image_url}
         alt={account.username}
