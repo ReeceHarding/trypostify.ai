@@ -111,7 +111,7 @@ const Page = async () => {
                       )}
                     </div>
 
-                    <div className="mt-2 flex items-center justify-center gap-4">
+                    <div className="mt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
                       <div className="flex -space-x-2">
                         <img
                           className="h-10 w-10 rounded-full ring-2 ring-white"
@@ -139,7 +139,7 @@ const Page = async () => {
                           alt="User testimonial"
                         />
                       </div>
-                      <div className="flex flex-col items-start">
+                      <div className="flex flex-col items-center sm:items-start">
                         <div className="flex mb-1">
                           {[...Array(5)].map((_, i) => (
                             <svg
