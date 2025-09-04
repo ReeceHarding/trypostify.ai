@@ -393,7 +393,7 @@ const ChatInput = ({
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Focus chat input</p>
-                      <p className="text-xs text-neutral-400">{metaKey} + /</p>
+                      {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + /</p>}
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -413,7 +413,7 @@ const ChatInput = ({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Attach files</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + Shift + A</p>
+                          {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + A</p>}
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -733,7 +733,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Start a new conversation</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + K</p>
+                          {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + K</p>}
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -757,7 +757,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Open chat history</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + Shift + H</p>
+                          {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + H</p>}
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -776,7 +776,7 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Close sidebar</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + J</p>
+                          {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + J</p>}
                         </div>
                       </TooltipContent>
                     </Tooltip>

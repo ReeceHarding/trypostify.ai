@@ -66,6 +66,7 @@ import { Calendar20 } from './date-picker'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeyFeedback } from '../ui/hotkey-feedback'
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { getOgData } from '@/lib/og-fetch'
 import { getPlatformFromUrl } from '@/lib/client-utils'
 
@@ -872,6 +873,9 @@ function ThreadTweetContent({
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const metaKey = isMac ? 'Cmd' : 'Ctrl'
+  
+  // Mobile detection to hide keyboard shortcuts
+  const isMobile = useIsMobile()
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1111,7 +1115,7 @@ function ThreadTweetContent({
                     <TooltipContent>
                       <div className="space-y-1">
                         <p>Focus input</p>
-                        <p className="text-xs text-neutral-400">{focusShortcut}</p>
+                        {!isMobile && <p className="text-xs text-neutral-400">{focusShortcut}</p>}
                       </div>
                     </TooltipContent>
                   )}
@@ -1264,7 +1268,7 @@ function ThreadTweetContent({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Upload media</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + Shift + U</p>
+                          {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + U</p>}
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -1300,7 +1304,7 @@ function ThreadTweetContent({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>Choose from library</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + M</p>
+                          {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + {isMac ? 'Option' : 'Alt'} + M</p>}
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -1346,7 +1350,7 @@ function ThreadTweetContent({
                       <TooltipContent>
                         <div className="space-y-1">
                           <p>{canDelete ? 'Remove from thread' : 'Clear post'}</p>
-                          <p className="text-xs text-neutral-400">{metaKey} + Shift + D</p>
+                          {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + D</p>}
                         </div>
                       </TooltipContent>
                     </Tooltip>
@@ -1379,7 +1383,7 @@ function ThreadTweetContent({
                               <TooltipContent>
                                 <div className="space-y-1">
                                   <p>Cancel editing</p>
-                                  <p className="text-xs text-neutral-400">{metaKey} + Delete</p>
+                                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Delete</p>}
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -1402,7 +1406,7 @@ function ThreadTweetContent({
                               <TooltipContent>
                                 <div className="space-y-1">
                                   <p>Save changes</p>
-                                  <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
+                                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Enter</p>}
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -1434,7 +1438,7 @@ function ThreadTweetContent({
                                       ? 'The tweet will be posted immediately'
                                       : 'A confirmation modal will open'}
                                   </p>
-                                  <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
+                                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Enter</p>}
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -1467,7 +1471,7 @@ function ThreadTweetContent({
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Add to next queue slot</p>
-                                    <p className="text-xs text-neutral-400">{metaKey} + E</p>
+                                    {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + E</p>}
                                   </div>
                                 </TooltipContent>
                               </Tooltip>
@@ -1492,7 +1496,7 @@ function ThreadTweetContent({
                                 <TooltipContent>
                                   <div className="space-y-1">
                                     <p>Schedule manually</p>
-                                    <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>
+                                    {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + S</p>}
                                   </div>
                                 </TooltipContent>
                               </Tooltip>

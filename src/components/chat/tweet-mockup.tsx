@@ -146,9 +146,11 @@ export const TweetMockup = memo(
                   <TooltipContent>
                     <div className="space-y-1">
                       <p>Apply AI-generated content</p>
-                      <p className="text-xs text-neutral-400">
-                        {metaKey} + Shift + E
-                      </p>
+                      {!isMobile && (
+                        <p className="text-xs text-neutral-400">
+                          {metaKey} + Shift + E
+                        </p>
+                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>

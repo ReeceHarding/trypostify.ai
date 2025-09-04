@@ -13,6 +13,7 @@ import posthog from 'posthog-js'
 import { useCallback, useState, useEffect, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface UploadState {
   file: File
@@ -45,6 +46,9 @@ export default function NewKnowledgePage() {
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const metaKey = isMac ? 'Cmd' : 'Ctrl'
+  
+  // Mobile detection to hide keyboard shortcuts
+  const isMobile = useIsMobile()
 
   // Helper function to extract clean title from filename
   const extractTitleFromFilename = (filename: string): string => {
@@ -595,7 +599,7 @@ export default function NewKnowledgePage() {
                     <TooltipContent>
                       <div className="space-y-1">
                         <p>Browse files</p>
-                        <p className="text-xs text-neutral-400">{metaKey} + Shift + U</p>
+                        {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + U</p>}
                       </div>
                     </TooltipContent>
                   </Tooltip>
@@ -712,7 +716,7 @@ export default function NewKnowledgePage() {
               <TooltipContent>
                 <div className="space-y-1">
                   <p>Submit knowledge</p>
-                  <p className="text-xs text-neutral-400">{metaKey} + Enter</p>
+                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Enter</p>}
                 </div>
               </TooltipContent>
             </Tooltip>

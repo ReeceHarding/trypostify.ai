@@ -16,6 +16,7 @@ import { useUser } from '@/hooks/use-user'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { getPlatformFromUrl } from '@/lib/client-utils'
 
 interface ThreadTweetData {
@@ -100,6 +101,9 @@ export default function ThreadTweetEditor({
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const metaKey = isMac ? 'Cmd' : 'Ctrl'
+  
+  // Mobile detection to hide keyboard shortcuts
+  const isMobile = useIsMobile()
   
   // Refs to focus tweets
   const tweetRefs = useRef<{ [key: string]: { focus: () => void } | null }>({})
@@ -1195,7 +1199,7 @@ export default function ThreadTweetEditor({
               <TooltipContent>
                 <div className="space-y-1">
                   <p>Add new tweet to thread</p>
-                  <p className="text-xs text-neutral-400">{metaKey} + Shift + Enter</p>
+                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + Enter</p>}
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -1217,7 +1221,7 @@ export default function ThreadTweetEditor({
               <TooltipContent>
                 <div className="space-y-1">
                   <p>Add new tweet to thread</p>
-                  <p className="text-xs text-neutral-400">{metaKey} + Shift + Enter</p>
+                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + Shift + Enter</p>}
                 </div>
               </TooltipContent>
             </Tooltip>

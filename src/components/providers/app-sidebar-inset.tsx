@@ -193,7 +193,7 @@ export function AppSidebarInset({ children }: { children: React.ReactNode }) {
               <TooltipContent side="bottom">
                 <div className="space-y-1">
                   <p>Toggle Assistant</p>
-                  <p className="text-xs text-neutral-400">{metaKey} + \</p>
+                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + \</p>}
                 </div>
               </TooltipContent>
             </Tooltip>

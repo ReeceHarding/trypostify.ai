@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { useHotkeyFeedback } from './ui/hotkey-feedback'
+import { useIsMobile } from '@/hooks/use-mobile'
 import {
   Sidebar,
   SidebarContent,
@@ -54,6 +55,9 @@ export const LeftSidebar = () => {
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const metaKey = isMac ? 'Cmd' : 'Ctrl'
+  
+  // Mobile detection to hide keyboard shortcuts
+  const isMobile = useIsMobile()
   
   const router = useRouter()
   
@@ -386,7 +390,7 @@ export const LeftSidebar = () => {
               <TooltipContent side="right">
                 <div className="space-y-1">
                   <p>Toggle navigation</p>
-                  <p className="text-xs text-neutral-400">{metaKey} + \</p>
+                  {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + \</p>}
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -448,7 +452,7 @@ export const LeftSidebar = () => {
                 <TooltipContent side="right">
                   <div className="space-y-1">
                     <p>Studio</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + 1</p>
+                    {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + 1</p>}
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -499,10 +503,10 @@ export const LeftSidebar = () => {
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                                      <div className="space-y-1">
-                    <p>Knowledge Base</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + 2</p>
-                  </div>
+                    <div className="space-y-1">
+                      <p>Knowledge Base</p>
+                      {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + 2</p>}
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -543,10 +547,10 @@ export const LeftSidebar = () => {
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                                      <div className="space-y-1">
-                    <p>Schedule</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + 3</p>
-                  </div>
+                    <div className="space-y-1">
+                      <p>Schedule</p>
+                      {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + 3</p>}
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -582,10 +586,10 @@ export const LeftSidebar = () => {
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                                      <div className="space-y-1">
-                    <p>Posted</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + 4</p>
-                  </div>
+                    <div className="space-y-1">
+                      <p>Posted</p>
+                      {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + 4</p>}
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -637,7 +641,7 @@ export const LeftSidebar = () => {
                 <TooltipContent side="right">
                   <div className="space-y-1">
                     <p>Accounts</p>
-                    <p className="text-xs text-neutral-400">{metaKey} + 5</p>
+                    {!isMobile && <p className="text-xs text-neutral-400">{metaKey} + 5</p>}
                   </div>
                 </TooltipContent>
               </Tooltip>
