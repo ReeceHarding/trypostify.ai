@@ -23,67 +23,72 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
-import { useBackgroundProcessStore } from '@/stores/background-process-store'
 import { authClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
 
-function BackgroundProcessStatus() {
-  const queryClient = useQueryClient()
-  const session = authClient.useSession()
-  
-  // Query actual backend for real video job status - PERSISTENT across page refreshes
-  const { data: activeJobs, isLoading, error, refetch } = useQuery({
-    queryKey: ['background-video-jobs'],
+// Unified hook for fetching active video jobs - SINGLE SOURCE OF TRUTH
+function useActiveVideoJobs() {
+  return useQuery({
+    queryKey: ['active-video-jobs'], // Unified key used by all components
     queryFn: async () => {
-      console.log('[BackgroundProcessStatus] 🔍 Checking database for active video jobs...')
+      console.log('[useActiveVideoJobs] 🔍 Fetching active jobs from database...')
       try {
         // Check for processing jobs
-        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+        const processingRes = await client.videoJob.listVideoJobs.$post({ 
           status: 'processing' as const, 
           limit: 50, 
           offset: 0 
         })
         
         // Check for pending jobs  
-        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+        const pendingRes = await client.videoJob.listVideoJobs.$post({ 
           status: 'pending' as const, 
           limit: 50, 
           offset: 0 
         })
         
-        const allActiveJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        const processingData = await processingRes.json()
+        const pendingData = await pendingRes.json()
         
-        console.log('[BackgroundProcessStatus] ✅ Database query result:', {
-          processingJobs: processingRes.jobs?.length || 0,
-          pendingJobs: pendingRes.jobs?.length || 0,
-          totalActiveJobs: allActiveJobs.length,
+        const allActiveJobs = [...(processingData.jobs || []), ...(pendingData.jobs || [])]
+        
+        console.log('[useActiveVideoJobs] ✅ Found', allActiveJobs.length, 'active jobs:', {
+          processingJobs: processingData.jobs?.length || 0,
+          pendingJobs: pendingData.jobs?.length || 0,
           jobs: allActiveJobs.map(j => ({
             id: j.id?.substring(0, 8),
             status: j.status,
             platform: j.platform,
-            videoUrl: j.videoUrl
+            createdAt: j.createdAt
           }))
         })
         
         return allActiveJobs
       } catch (error) {
-        console.error('[BackgroundProcessStatus] ❌ Database query failed:', error)
+        console.error('[useActiveVideoJobs] ❌ Error fetching jobs:', error)
         return []
       }
     },
-    refetchInterval: 5000, // Check every 5 seconds to catch job completion quickly
-    retry: 3, // Retry failed requests  
-    staleTime: 0, // Always fetch fresh data from database
-    refetchOnMount: 'always', // Always fetch when page loads
+    refetchInterval: (data) => {
+      // Poll every 5 seconds if there are active jobs, otherwise stop polling
+      return data && data.length > 0 ? 5000 : false
+    },
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always', // Always fetch when component mounts
     refetchOnWindowFocus: true, // Fetch when user returns to tab
-    // CRITICAL: Enable immediately, don't wait for auth (will show real database state)
-    enabled: true,
+    retry: 3, // Retry failed requests
+    enabled: true, // Always enabled - will show real database state
   })
-  
-  const hasActiveProcesses = (activeJobs?.length || 0) > 0
+}
+
+function BackgroundProcessStatus() {
+  const queryClient = useQueryClient()
+  const { data: activeJobs, isLoading, error, refetch } = useActiveVideoJobs()
+
+  const hasActiveProcesses = activeJobs && activeJobs.length > 0
   const activeProcessCount = activeJobs?.length || 0
   
-  // Use real backend data
+  // Use real backend data only
   const processingVideos = activeJobs || []
 
   // Cleanup mutation (marks jobs as failed)
@@ -93,18 +98,13 @@ function BackgroundProcessStatus() {
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[VideoProcessingStatus] ✅ Cleanup completed:', data)
+      console.log('[BackgroundProcessStatus] ✅ Cleanup completed:', data)
       toast.success(`Cleaned up ${data.cleanedUp} stuck video jobs`, { duration: 3000 })
-      // Aggressively clear cache and refetch
-              queryClient.removeQueries({ queryKey: ['video-processing-status'] })
-        queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
-        queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
-        queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
-        queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
-        queryClient.refetchQueries({ queryKey: ['video-processing-status-v2'] })
+      // Invalidate the unified query key to refresh all components
+      queryClient.invalidateQueries({ queryKey: ['active-video-jobs'] })
     },
     onError: (error) => {
-      console.error('Failed to cleanup stuck jobs:', error)
+      console.error('[BackgroundProcessStatus] ❌ Failed to cleanup stuck jobs:', error)
       toast.error('Failed to cleanup stuck jobs')
     },
   })
@@ -116,18 +116,13 @@ function BackgroundProcessStatus() {
       return res.json()
     },
     onSuccess: (data) => {
-      console.log('[VideoProcessingStatus] ✅ Delete completed:', data)
+      console.log('[BackgroundProcessStatus] ✅ Delete completed:', data)
       toast.success(`Deleted ${data.deleted} stuck video jobs`, { duration: 3000 })
-      // Aggressively clear cache and refetch
-              queryClient.removeQueries({ queryKey: ['video-processing-status'] })
-        queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
-        queryClient.invalidateQueries({ queryKey: ['video-processing-status'] })
-        queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
-        queryClient.refetchQueries({ queryKey: ['video-processing-status'] })
-        queryClient.refetchQueries({ queryKey: ['video-processing-status-v2'] })
+      // Invalidate the unified query key to refresh all components
+      queryClient.invalidateQueries({ queryKey: ['active-video-jobs'] })
     },
     onError: (error) => {
-      console.error('Failed to delete stuck jobs:', error)
+      console.error('[BackgroundProcessStatus] ❌ Failed to delete stuck jobs:', error)
       toast.error('Failed to delete stuck jobs')
     },
   })
@@ -135,24 +130,20 @@ function BackgroundProcessStatus() {
   // Manual refresh mutation
   const refreshMutation = useMutation({
     mutationFn: async () => {
-      console.log('[VideoProcessingStatus] 🔄 Force refreshing - clearing all cache entries')
+      console.log('[BackgroundProcessStatus] 🔄 Force refreshing active video jobs...')
       
-      // Aggressively clear all video processing cache entries
-      queryClient.removeQueries({ queryKey: ['video-processing-status'] })
-      queryClient.removeQueries({ queryKey: ['video-processing-status-v2'] })
-      queryClient.invalidateQueries({ queryKey: ['video-processing-status-v2'] })
+      // Clear and refetch the unified query
+      queryClient.removeQueries({ queryKey: ['active-video-jobs'] })
+      await queryClient.refetchQueries({ queryKey: ['active-video-jobs'] })
       
-      // Force a fresh fetch by refetching
-      await queryClient.refetchQueries({ queryKey: ['video-processing-status-v2'] })
-      
-      return { message: 'Cache cleared and refreshed' }
+      return { message: 'Active video jobs refreshed' }
     },
     onSuccess: () => {
-      console.log('[VideoProcessingStatus] ✅ Successfully refreshed and cleared cache')
+      console.log('[BackgroundProcessStatus] ✅ Successfully refreshed active video jobs')
       toast.success('Refreshed video processing status', { duration: 2000 })
     },
     onError: (error) => {
-      console.error('[VideoProcessingStatus] ❌ Failed to refresh:', error)
+      console.error('[BackgroundProcessStatus] ❌ Failed to refresh:', error)
       toast.error('Failed to refresh status')
     },
   })
@@ -167,7 +158,7 @@ function BackgroundProcessStatus() {
           <CardTitle className="flex items-center gap-2">
             <Video className="w-5 h-5 text-error-500" />
             Background Processing
-            <DuolingoBadge variant="error" className="text-xs">
+            <DuolingoBadge variant="notification" className="text-xs">
               Error
             </DuolingoBadge>
           </CardTitle>
@@ -265,7 +256,7 @@ function BackgroundProcessStatus() {
                   <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                 </div>
               </div>
-              <DuolingoBadge variant="warning" className="text-xs animate-pulse">
+              <DuolingoBadge variant="amber" className="text-xs animate-pulse">
                 {activeProcessCount} active
               </DuolingoBadge>
             </div>
@@ -338,7 +329,7 @@ function BackgroundProcessStatus() {
               </div>
               
               <div className="flex items-center gap-2">
-                <DuolingoBadge variant={status.badge} className="text-xs">
+                <DuolingoBadge variant="amber" className="text-xs">
                   {status.badgeText}
                 </DuolingoBadge>
               </div>

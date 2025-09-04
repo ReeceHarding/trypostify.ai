@@ -2,12 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
-import { Loader2, Video, Send, Clock } from 'lucide-react'
+import { Loader2, Video, Clock } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 export default function BackgroundProcessIndicator() {
   const [isVisible, setIsVisible] = useState(false)
-  const [recentJobCreated, setRecentJobCreated] = useState(false)
   
   // Debug logging
   useEffect(() => {
@@ -17,61 +16,34 @@ export default function BackgroundProcessIndicator() {
     }
   }, [])
 
-  // Listen for video job creation events via React Query mutation success
-  const { data: recentMutations } = useQuery({
-    queryKey: ['recent-video-mutations'],
-    queryFn: () => {
-      // This is just to trigger re-renders, the actual logic is below
-      return Date.now()
-    },
-    refetchInterval: 1000, // Check every second for recent mutations
-    retry: false,
-    staleTime: 0,
-  })
-
-  // Check for recent successful video job mutations
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.queryClient) {
-      const queryClient = window.queryClient
-      const recentVideoJobMutations = queryClient.getMutationCache().getAll().filter(m => 
-        m.options.mutationKey?.[0] === 'create-video-job' && 
-        m.state.status === 'success' &&
-        Date.now() - (m.state.dataUpdatedAt || 0) < 15000 // Last 15 seconds
-      )
-      
-      const hasRecentMutation = recentVideoJobMutations.length > 0
-      if (hasRecentMutation !== recentJobCreated) {
-        console.log('[BackgroundProcessIndicator] Recent mutation state changed:', hasRecentMutation)
-        setRecentJobCreated(hasRecentMutation)
-      }
-    }
-  }, [recentMutations, recentJobCreated])
-
-  // Simply query the actual backend for active video jobs
+  // Use the same unified query as all other components - SINGLE SOURCE OF TRUTH
   const { data: activeJobs, isLoading } = useQuery({
-    queryKey: ['active-video-jobs'],
+    queryKey: ['active-video-jobs'], // Same key as other components
     queryFn: async () => {
+      console.log('[BackgroundProcessIndicator] 🔍 Fetching active jobs from database...')
       try {
         // Check for processing jobs
-        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+        const processingRes = await client.videoJob.listVideoJobs.$post({ 
           status: 'processing' as const, 
           limit: 50, 
           offset: 0 
         })
         
         // Check for pending jobs  
-        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+        const pendingRes = await client.videoJob.listVideoJobs.$post({ 
           status: 'pending' as const, 
           limit: 50, 
           offset: 0 
         })
         
-        const allActiveJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
+        const processingData = await processingRes.json()
+        const pendingData = await pendingRes.json()
         
-        console.log('[BackgroundProcessIndicator] Real backend status:', {
-          processingJobs: processingRes.jobs?.length || 0,
-          pendingJobs: pendingRes.jobs?.length || 0,
-          totalActiveJobs: allActiveJobs.length,
+        const allActiveJobs = [...(processingData.jobs || []), ...(pendingData.jobs || [])]
+        
+        console.log('[BackgroundProcessIndicator] ✅ Found', allActiveJobs.length, 'active jobs:', {
+          processingJobs: processingData.jobs?.length || 0,
+          pendingJobs: pendingData.jobs?.length || 0,
           jobs: allActiveJobs.map(j => ({
             id: j.id?.substring(0, 8),
             status: j.status,
@@ -82,31 +54,29 @@ export default function BackgroundProcessIndicator() {
         
         return allActiveJobs
       } catch (error) {
-        console.error('[BackgroundProcessIndicator] Error fetching real backend status:', error)
+        console.error('[BackgroundProcessIndicator] ❌ Error fetching jobs:', error)
         return []
       }
     },
-    refetchInterval: 3000, // Check backend every 3 seconds
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: 'always',
-    // Add small delay on first fetch to ensure DB transactions are committed
-    refetchOnWindowFocus: true,
+    refetchInterval: (data) => {
+      // Poll every 5 seconds if there are active jobs, otherwise stop polling
+      return data && data.length > 0 ? 5000 : false
+    },
+    staleTime: 0, // Always fetch fresh data
+    refetchOnMount: 'always', // Always fetch when component mounts
+    refetchOnWindowFocus: true, // Fetch when user returns to tab
+    retry: 3, // Retry failed requests
+    enabled: true, // Always enabled - will show real database state
   })
 
-  // Combine backend jobs + recent job creation for immediate feedback
-  const backendJobCount = activeJobs?.length || 0
-  const recentJobCount = recentJobCreated ? 1 : 0
-  const totalActiveCount = backendJobCount + recentJobCount
-  
-  const hasActiveProcesses = totalActiveCount > 0
-  const activeProcessCount = totalActiveCount
+  // Use database state only - no client-side optimistic updates
+  const hasActiveProcesses = activeJobs && activeJobs.length > 0
+  const activeProcessCount = activeJobs?.length || 0
 
-  console.log('[BackgroundProcessIndicator] Combined status:', {
-    backendJobCount,
-    recentJobCreated,
-    totalActiveCount,
-    hasActiveProcesses
+  console.log('[BackgroundProcessIndicator] Database-only status:', {
+    activeJobsCount: activeProcessCount,
+    hasActiveProcesses,
+    isLoading
   })
 
 
@@ -133,7 +103,7 @@ export default function BackgroundProcessIndicator() {
   // Don't render if no active processes
   if (!hasActiveProcesses) return null
 
-  // Determine process type and status from real backend data
+  // Determine process type and status from database data
   const getProcessInfo = () => {
     if (activeProcessCount > 0) {
       return {
@@ -176,7 +146,7 @@ export default function BackgroundProcessIndicator() {
               </div>
               <div className="flex items-center gap-1 mt-2 text-xs text-neutral-500">
                 <Clock className="w-3 h-3" />
-                Updates every 3 seconds
+                Updates every 5 seconds
               </div>
             </div>
             <button

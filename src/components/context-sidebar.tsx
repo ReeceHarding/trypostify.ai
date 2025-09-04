@@ -13,7 +13,6 @@ import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 import { useHotkeyFeedback } from './ui/hotkey-feedback'
-import { useBackgroundProcessStore } from '@/stores/background-process-store'
 import {
   Sidebar,
   SidebarContent,
@@ -58,83 +57,68 @@ export const LeftSidebar = () => {
   // Global hotkey feedback
   const { showNavigation } = useHotkeyFeedback()
 
-  // Video processing now handled entirely by React Query
-  
-  // Query backend for real video job status - PERSISTENT across page refreshes
-  const { data: backendJobs, isLoading: jobsLoading } = useQuery({
-    queryKey: ['background-video-jobs'], // SAME KEY as Schedule page for consistency
+  // Use the same unified query as all other components - SINGLE SOURCE OF TRUTH
+  const { data: activeJobs, isLoading: jobsLoading } = useQuery({
+    queryKey: ['active-video-jobs'], // Same key as other components for data sharing
     queryFn: async () => {
       console.log('[LeftSidebar] 🔍 Fetching active jobs from database...')
       try {
-        // Query for ALL job statuses to see what's actually happening
-        const processingRes = await client.videoJob.listVideoJobs.mutate({ 
+        // Check for processing jobs
+        const processingRes = await client.videoJob.listVideoJobs.$post({ 
           status: 'processing' as const, 
           limit: 50, 
           offset: 0 
         })
         
-        const pendingRes = await client.videoJob.listVideoJobs.mutate({ 
+        // Check for pending jobs  
+        const pendingRes = await client.videoJob.listVideoJobs.$post({ 
           status: 'pending' as const, 
           limit: 50, 
           offset: 0 
         })
         
-        // ALSO check completed/failed jobs from last 5 minutes to see what happened
-        const completedRes = await client.videoJob.listVideoJobs.mutate({ 
-          status: 'completed' as const, 
-          limit: 10, 
-          offset: 0 
-        })
+        const processingData = await processingRes.json()
+        const pendingData = await pendingRes.json()
         
-        const failedRes = await client.videoJob.listVideoJobs.mutate({ 
-          status: 'failed' as const, 
-          limit: 10, 
-          offset: 0 
-        })
+        const allActiveJobs = [...(processingData.jobs || []), ...(pendingData.jobs || [])]
         
-        const activeJobs = [...(processingRes.jobs || []), ...(pendingRes.jobs || [])]
-        const recentJobs = [...(completedRes.jobs || []), ...(failedRes.jobs || [])]
-        
-        console.log('[LeftSidebar] 📊 COMPLETE JOB STATUS BREAKDOWN:', {
-          processing: processingRes.jobs?.length || 0,
-          pending: pendingRes.jobs?.length || 0,
-          completed: completedRes.jobs?.length || 0,
-          failed: failedRes.jobs?.length || 0,
-          activeJobs: activeJobs.length,
-          recentCompletedJobs: recentJobs.slice(0, 3).map(j => ({
+        console.log('[LeftSidebar] ✅ Found', allActiveJobs.length, 'active jobs:', {
+          processingJobs: processingData.jobs?.length || 0,
+          pendingJobs: pendingData.jobs?.length || 0,
+          jobs: allActiveJobs.map(j => ({
             id: j.id?.substring(0, 8),
             status: j.status,
-            createdAt: j.createdAt,
-            completedAt: j.completedAt,
-            platform: j.platform
+            platform: j.platform,
+            createdAt: j.createdAt
           }))
         })
         
-        return activeJobs
+        return allActiveJobs
       } catch (error) {
-        console.error('[LeftSidebar] ❌ ERROR fetching backend jobs:', error)
+        console.error('[LeftSidebar] ❌ Error fetching jobs:', error)
         return []
       }
     },
-    refetchInterval: 5000, // Check every 5 seconds to catch job completion quickly
-    retry: 3, // Retry failed requests
+    refetchInterval: (data) => {
+      // Poll every 5 seconds if there are active jobs, otherwise stop polling
+      return data && data.length > 0 ? 5000 : false
+    },
     staleTime: 0, // Always fetch fresh data
     refetchOnMount: 'always', // Always fetch when component mounts
     refetchOnWindowFocus: true, // Fetch when user returns to tab
-    // CRITICAL: Enable immediately, don't wait for auth (will fail gracefully if not authenticated)
-    enabled: true,
+    retry: 3, // Retry failed requests
+    enabled: true, // Always enabled - will show real database state
   })
   
-  // Use backend jobs as single source of truth
-  const backendJobsCount = backendJobs?.length || 0
-  const totalActiveCount = backendJobsCount
-  const hasActiveProcesses = totalActiveCount > 0
+  // Use database state only - no client-side optimistic updates
+  const hasActiveProcesses = activeJobs && activeJobs.length > 0
+  const totalActiveCount = activeJobs?.length || 0
   
   // Show loading state when checking database after page refresh
-  const isCheckingDatabase = jobsLoading && !backendJobs
+  const isCheckingDatabase = jobsLoading && !activeJobs
   
-  // Transform backend jobs for popover display
-  const allProcesses = backendJobs?.map(job => ({
+  // Transform active jobs for popover display
+  const allProcesses = activeJobs?.map(job => ({
     id: job.id,
     type: 'video-processing' as const,
     description: `Processing video from ${job.platform || 'social media'}`,
@@ -148,7 +132,7 @@ export const LeftSidebar = () => {
     hasActiveProcesses,
     totalActiveCount,
     isCheckingDatabase,
-    jobsFromDatabase: backendJobsCount
+    jobsFromDatabase: totalActiveCount
   })
 
   // State for notification popover

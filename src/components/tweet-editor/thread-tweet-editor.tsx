@@ -16,7 +16,6 @@ import { useUser } from '@/hooks/use-user'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock } from 'lucide-react'
 import { useThreadEditorStore } from '@/stores/thread-editor-store'
-import { useBackgroundProcessStore } from '@/stores/background-process-store'
 import { getPlatformFromUrl } from '@/lib/client-utils'
 
 interface ThreadTweetData {
@@ -415,7 +414,7 @@ export default function ThreadTweetEditor({
 
       // Sync with backend after transaction commits
       setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['background-video-jobs'] })
+        queryClient.invalidateQueries({ queryKey: ['active-video-jobs'] })
       }, 500)
     },
   })
