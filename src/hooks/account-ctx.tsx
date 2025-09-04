@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/lib/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -165,8 +165,15 @@ export function useAccount() {
 export function AccountAvatar({ className }: { className?: string }) {
   const { account, isLoading } = useAccount()
   const [imageError, setImageError] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   
-  if (isLoading || !account) {
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+  
+  // Always show skeleton during SSR and initial client render to avoid hydration mismatch
+  if (!isClient || isLoading || !account) {
     return <Skeleton className={cn('h-10 w-10 rounded-full', className)} />
   }
   
