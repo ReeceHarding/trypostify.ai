@@ -14,6 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "stripe:webhook:dev": "node scripts/stripe-webhook-dev.js",
+    "stripe:webhook:test": "node scripts/test-stripe-webhooks.js",
     "postinstall": "node scripts/install-ffmpeg.js",
     "clear-logs": "echo '' > log.txt && echo 'Log file cleared' || echo 'No log file to clear'",
     "view-logs": "tail -f log.txt",
