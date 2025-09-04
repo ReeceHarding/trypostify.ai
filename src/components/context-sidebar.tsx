@@ -61,7 +61,7 @@ export const LeftSidebar = () => {
   const { showNavigation } = useHotkeyFeedback()
 
   // Use the same unified query as all other components - SINGLE SOURCE OF TRUTH
-  const { data: activeJobs, isLoading: jobsLoading } = useQuery({
+  const { data: activeJobs, isLoading: jobsLoading, error: jobsError } = useQuery({
     queryKey: ['active-video-jobs'], // Same key as other components for data sharing
     queryFn: async () => {
       console.log('[LeftSidebar] 🔍 Fetching active jobs from database...')
@@ -99,17 +99,40 @@ export const LeftSidebar = () => {
         return allActiveJobs
       } catch (error) {
         console.error('[LeftSidebar] ❌ Error fetching jobs:', error)
+        
+        // If unauthorized, user is not logged in - return empty array silently
+        if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('401'))) {
+          console.log('[LeftSidebar] 🔒 User not authenticated - skipping video job polling')
+          return []
+        }
+        
+        // For other errors, still return empty array to prevent crash
         return []
       }
     },
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
+      // Don't poll if there was an auth error
+      if (query.state.error && query.state.error.message?.includes('Unauthorized')) {
+        console.log('[LeftSidebar] 🔒 Stopping polling due to auth error')
+        return false
+      }
+      
       // Poll every 5 seconds if there are active jobs, otherwise stop polling
-      return data && data.length > 0 ? 5000 : false
+      const data = query.state.data
+      return data && Array.isArray(data) && data.length > 0 ? 5000 : false
     },
     staleTime: 0, // Always fetch fresh data
     refetchOnMount: 'always', // Always fetch when component mounts
     refetchOnWindowFocus: true, // Fetch when user returns to tab
-    retry: 3, // Retry failed requests
+    retry: (failureCount, error) => {
+      // Don't retry unauthorized errors
+      if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('401'))) {
+        console.log('[LeftSidebar] 🔒 Not retrying unauthorized error')
+        return false
+      }
+      // Retry other errors up to 3 times
+      return failureCount < 3
+    },
     enabled: true, // Always enabled - will show real database state
   })
   
@@ -178,7 +201,10 @@ export const LeftSidebar = () => {
           console.log(`[LeftSidebar] Navigation shortcut triggered: ${pathNames[index]} (${metaKey}+${e.key}) at ${new Date().toISOString()}`)
           
           // Immediate visual feedback
-          showNavigation(pathNames[index])
+          const pathName = pathNames[index]
+          if (pathName) {
+            showNavigation(pathName)
+          }
           
           const searchString = id ? serialize({ chatId: id }) : ''
           const url = searchString ? `${paths[index]}?${searchString}` : paths[index]

@@ -66,17 +66,40 @@ function useActiveVideoJobs() {
         return allActiveJobs
       } catch (error) {
         console.error('[useActiveVideoJobs] ❌ Error fetching jobs:', error)
+        
+        // If unauthorized, user is not logged in - return empty array silently
+        if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('401'))) {
+          console.log('[useActiveVideoJobs] 🔒 User not authenticated - skipping video job polling')
+          return []
+        }
+        
+        // For other errors, still return empty array to prevent crash
         return []
       }
     },
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
+      // Don't poll if there was an auth error
+      if (query.state.error && query.state.error.message?.includes('Unauthorized')) {
+        console.log('[useActiveVideoJobs] 🔒 Stopping polling due to auth error')
+        return false
+      }
+      
       // Poll every 5 seconds if there are active jobs, otherwise stop polling
-      return data && data.length > 0 ? 5000 : false
+      const data = query.state.data
+      return data && Array.isArray(data) && data.length > 0 ? 5000 : false
     },
     staleTime: 0, // Always fetch fresh data
     refetchOnMount: 'always', // Always fetch when component mounts
     refetchOnWindowFocus: true, // Fetch when user returns to tab
-    retry: 3, // Retry failed requests
+    retry: (failureCount, error) => {
+      // Don't retry unauthorized errors
+      if (error instanceof Error && (error.message.includes('Unauthorized') || error.message.includes('401'))) {
+        console.log('[useActiveVideoJobs] 🔒 Not retrying unauthorized error')
+        return false
+      }
+      // Retry other errors up to 3 times
+      return failureCount < 3
+    },
     enabled: true, // Always enabled - will show real database state
   })
 }
