@@ -165,25 +165,24 @@ export function AccountAvatar({ className }: { className?: string }) {
   const sizeMatch = className?.match(/(?:size|h|w)-(\d+)/)
   const size = sizeMatch ? parseInt(sizeMatch[1] || '10') * 4 : 40 // Default 40px (h-10)
   
+  // Only render if we have a profile image - hide placeholder fallback
+  if (!account.profile_image_url || imageError) {
+    return null
+  }
+
   return (
     <div className={cn('relative overflow-hidden rounded-full', className)}>
-      {account.profile_image_url && !imageError ? (
-        <Image
-          src={account.profile_image_url}
-          alt={account.username}
-          width={size}
-          height={size}
-          className="size-full object-cover"
-          loading="eager" // Load immediately for avatars
-          priority // High priority for above-the-fold content
-          unoptimized // Skip Next.js optimization for external images
-          onError={() => setImageError(true)}
-        />
-      ) : (
-        <div className="flex size-full items-center justify-center bg-neutral-200 text-neutral-600 font-semibold">
-          {(account?.name?.[0] || account?.username?.[0] || '?').toUpperCase()}
-        </div>
-      )}
+      <Image
+        src={account.profile_image_url}
+        alt={account.username}
+        width={size}
+        height={size}
+        className="size-full object-cover"
+        loading="eager" // Load immediately for avatars
+        priority // High priority for above-the-fold content
+        unoptimized // Skip Next.js optimization for external images
+        onError={() => setImageError(true)}
+      />
     </div>
   )
 }

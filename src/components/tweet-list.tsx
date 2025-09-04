@@ -309,8 +309,8 @@ export default function TweetList({
           <div className="rounded-2xl overflow-hidden">
             {sortedDateEntries.map(([date, items]) => (
               <div key={date}>
-                <div className="px-6 py-4 border-b border-neutral-200 bg-neutral-50/50">
-                  <h2 className="text-[19px] font-bold text-neutral-900">
+                <div className="py-4 border-b border-neutral-200 bg-neutral-50/50">
+                  <h2 className="text-[19px] font-bold text-neutral-900 px-6">
                     {(() => {
                       const relativeLabel = getDateLabel(date)
                       const absoluteDate = format(new Date(date), 'MMMM d')
@@ -346,15 +346,15 @@ export default function TweetList({
                                           {tweet.postedAt ? format(new Date(tweet.postedAt), 'MMM d') : ''}
                                         </time>
                                       </div>
-                                      <div className="flex items-center -mr-2">
+                                      <div className="flex items-center -mr-2 sm:flex">
                                         {tweet.twitterId && account?.username && (
                                           <Link
-                                            className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
+                                            className="p-2 rounded-full hover:bg-neutral-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                                             href={`https://x.com/${account.username}/status/${tweet.twitterId}`}
                                             target="_blank"
                                             onClick={(e) => e.stopPropagation()}
                                           >
-                                            <ExternalLink className="size-4 text-neutral-500" />
+                                            <ExternalLink className="size-5 sm:size-4 text-neutral-500" />
                                           </Link>
                                         )}
                                       </div>
@@ -433,26 +433,26 @@ export default function TweetList({
                                         {tweet.postedAt ? format(new Date(tweet.postedAt), 'MMM d') : ''}
                                       </time>
                                     </div>
-                                    <div className="flex items-center -mr-2">
+                                    <div className="flex items-center -mr-2 sm:flex">
                                       {tweet.twitterId && account?.username && (
                                         <Link
-                                          className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
+                                          className="p-2 rounded-full hover:bg-neutral-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                                           href={`https://x.com/${account.username}/status/${tweet.twitterId}`}
                                           target="_blank"
                                           onClick={(e) => e.stopPropagation()}
                                         >
-                                          <ExternalLink className="size-4 text-neutral-500" />
+                                          <ExternalLink className="size-5 sm:size-4 text-neutral-500" />
                                         </Link>
                                       )}
                                       <button
-                                        className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
+                                        className="p-2 rounded-full hover:bg-neutral-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                                         onClick={(e) => {
                                           e.stopPropagation()
                                           fetchMetrics({ tweetIds: [tweet.id] })
                                         }}
                                         disabled={isFetchingMetrics}
                                       >
-                                        <RefreshCw className={cn('size-4 text-neutral-500', isFetchingMetrics && 'animate-spin')} />
+                                        <RefreshCw className={cn('size-5 sm:size-4 text-neutral-500', isFetchingMetrics && 'animate-spin')} />
                                       </button>
                                     </div>
                                   </div>
