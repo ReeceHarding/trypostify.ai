@@ -18,7 +18,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import type Stripe from 'stripe'
-import { Button } from './ui/button'
 import dynamic from 'next/dynamic'
 
 const SenjaWidgetDynamic = dynamic(

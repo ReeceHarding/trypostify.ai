@@ -14,11 +14,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Loader2, Trash2, Clock } from 'lucide-react'
+import { useUser } from '@/hooks/use-user'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const Page = () => {
   const router = useRouter()
   const { data } = authClient.useSession()
   const queryClient = useQueryClient()
+  const { user, isLoading: isUserLoading } = useUser()
 
   const searchParams = useSearchParams()
   const status = searchParams.get('s')
@@ -55,6 +58,15 @@ const Page = () => {
       return 2500
     },
     enabled: status === 'processing',
+  })
+
+  const { data: limit, isLoading: isLimitLoading } = useQuery({
+    queryKey: ['chat-limit'],
+    queryFn: async () => {
+      const res = await client.settings.limit.$get()
+      return res.json()
+    },
+    enabled: !isUserLoading && user?.plan !== 'pro',
   })
 
   useEffect(() => {
@@ -200,47 +212,47 @@ const Page = () => {
               <p className="text-2xl font-semibold text-neutral-900">{data?.user.name}</p>
               <p className="text-sm text-neutral-500">{data?.user.email}</p>
             </div>
-            <DuolingoBadge className="mb-6 px-3">
-              Pro Plan
-            </DuolingoBadge>
+            {isUserLoading ? (
+              <Skeleton className="h-6 w-20 mb-6" />
+            ) : user?.plan === 'pro' ? (
+              <DuolingoBadge className="mb-6 px-3">Pro Plan</DuolingoBadge>
+            ) : (
+              <DuolingoBadge variant="gray" className="mb-6 px-3">Free Plan</DuolingoBadge>
+            )}
           </div>
 
           {/* usage card */}
           <div className="bg-white shadow-sm rounded-xl p-3 w-full">
-            {/* <div className="flex flex-col justify-between text-sm mb-3">
-              <span className="font-medium text-neutral-900">Message Usage</span>
-              <span className="text-xs text-neutral-400 mt-1">
-                {limit?.reset ? formatResetTime(Number(limit.reset)) : 'Loading...'}
-              </span>
-            </div>
-
-            <div className="w-full mb-3">
-              <Progress
-                value={
-                  typeof limit?.remaining === 'number'
-                    ? ((20 - limit.remaining) / 20) * 100
-                    : 0
-                }
-              />
-            </div>
-            <div className="text-xs text-neutral-400">
-              {typeof limit?.remaining === 'number'
-                ? `${limit.remaining}/20 messages remaining`
-                : '- messages remaining'}
-            </div> */}
-            <div className="flex flex-col items-center justify-center gap-2">
-              {/* <Separator className="my-4" /> */}
-              <p className="text-sm opacity-60">
-                You have unlimited access to all features!
-              </p>
-              <Button
-                variant="duolingo-primary"
-                onClick={() => createBillingPortalUrl()}
-                loading={isCreatingBillingPortalUrl}
-              >
-                Manage plan
-              </Button>
-            </div>
+            {isUserLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : user?.plan === 'pro' ? (
+              <div className="flex flex-col items-center justify-center gap-2">
+                <p className="text-sm opacity-60">
+                  You have unlimited access to all features!
+                </p>
+                <Button
+                  variant="duolingo-primary"
+                  onClick={() => createBillingPortalUrl()}
+                  loading={isCreatingBillingPortalUrl}
+                >
+                  Manage plan
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-4">
+                <div className="w-full text-center">
+                  <p className="font-medium text-neutral-900">Daily Message Limit</p>
+                  {isLimitLoading ? (
+                    <Skeleton className="h-4 w-24 mx-auto mt-1" />
+                  ) : (
+                    <p className="text-sm text-neutral-600">
+                      {limit?.remaining ?? 20}/20 remaining
+                    </p>
+                  )}
+                </div>
+                <UpgradeDrawer />
+              </div>
+            )}
           </div>
         </div>
 

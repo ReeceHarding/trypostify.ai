@@ -181,7 +181,43 @@ export const stripeRouter = j.router({
   ),
 
   subscription: privateProcedure.query(async ({ c, ctx }) => {
-    // All users are now pro, so always return active status
-    return c.json({ status: 'active' })
+    const { user } = ctx
+    const { stripeId } = user
+
+    console.log(`[STRIPE_ROUTER] Checking subscription status for user: ${user.email}, stripeId: ${stripeId}`)
+
+    if (!stripeId || !stripe) {
+      console.log(`[STRIPE_ROUTER] No stripeId or stripe client, returning free status`)
+      return c.json({ status: 'free' })
+    }
+
+    try {
+      console.log(`[STRIPE_ROUTER] Fetching subscriptions from Stripe for customer: ${stripeId}`)
+      const subscriptions = await stripe.subscriptions.list({
+        customer: stripeId,
+        limit: 1,
+        status: 'all',
+      })
+
+      const sub = subscriptions.data[0]
+      const status = sub?.status ?? 'free'
+
+      console.log(`[STRIPE_ROUTER] Stripe subscription status: ${status}`)
+
+      // Sync our database with Stripe's status
+      const newPlan = (status === 'active' || status === 'trialing') ? 'pro' : 'free'
+      console.log(`[STRIPE_ROUTER] Updating user plan to: ${newPlan}`)
+      
+      await db.update(user).set({ plan: newPlan }).where(eq(user.stripeId, stripeId))
+
+      return c.json({ status })
+    } catch (error) {
+      console.error('[STRIPE_ROUTER] Error fetching subscription status:', error)
+      // If Stripe fails, trust our DB for a moment but default to free if unsure
+      const dbUser = await db.query.user.findFirst({ where: eq(user.stripeId, stripeId) })
+      const fallbackStatus = dbUser?.plan ?? 'free'
+      console.log(`[STRIPE_ROUTER] Using fallback status from database: ${fallbackStatus}`)
+      return c.json({ status: fallbackStatus })
+    }
   }),
 })

@@ -70,6 +70,25 @@ export const authRouter = j.router({
         },
       }))
 
+      // Plan-based account connection limits: Free users can connect 1 account, Pro users unlimited
+      if (input.action === 'add-account' && ctx.user.plan !== 'pro') {
+        console.log(`[AUTH_ROUTER:createTwitterLinkV2] Checking account limits for free user: ${ctx.user.email}`)
+        
+        const existingAccounts = await db
+          .select({ id: account.id })
+          .from(account)
+          .where(and(eq(account.userId, ctx.user.id), eq(account.providerId, 'twitter')))
+
+        console.log(`[AUTH_ROUTER:createTwitterLinkV2] User ${ctx.user.email} has ${existingAccounts.length} existing accounts`)
+        
+        if (existingAccounts.length >= 1) {
+          console.log(`[AUTH_ROUTER:createTwitterLinkV2] Blocking additional account connection for free user: ${ctx.user.email}`)
+          throw new HTTPException(402, { // 402 Payment Required
+            message: 'Upgrade to Pro to connect multiple Twitter accounts.',
+          })
+        }
+      }
+
       if (!clientId || !clientSecret) {
         console.error('[AUTH_ROUTER:createTwitterLinkV2]', JSON.stringify({
           timestamp: ts,
@@ -162,9 +181,25 @@ export const authRouter = j.router({
         throw new HTTPException(400, { message: 'Failed to create Twitter link' })
       }
 
-      // All users can now connect unlimited accounts
-      if (input.action === 'add-account') {
-        // Log account connection attempt for monitoring
+      // Plan-based account connection limits: Free users can connect 1 account, Pro users unlimited
+      if (input.action === 'add-account' && ctx.user.plan !== 'pro') {
+        console.log(`[AUTH_ROUTER] Checking account limits for free user: ${ctx.user.email}`)
+        
+        const existingAccounts = await db
+          .select({ id: account.id })
+          .from(account)
+          .where(and(eq(account.userId, ctx.user.id), eq(account.providerId, 'twitter')))
+
+        console.log(`[AUTH_ROUTER] User ${ctx.user.email} has ${existingAccounts.length} existing accounts`)
+        
+        if (existingAccounts.length >= 1) {
+          console.log(`[AUTH_ROUTER] Blocking additional account connection for free user: ${ctx.user.email}`)
+          throw new HTTPException(402, { // 402 Payment Required
+            message: 'Upgrade to Pro to connect multiple Twitter accounts.',
+          })
+        }
+      } else if (input.action === 'add-account') {
+        // Log pro user account connection for monitoring
         const existing = await db
           .select({ id: account.id })
           .from(account)
@@ -172,7 +207,7 @@ export const authRouter = j.router({
           .limit(1)
 
         const hasAtLeastOne = existing.length > 0
-        console.log(`[AUTH_ROUTER] User ${ctx.user.email} connecting additional account (has existing: ${hasAtLeastOne})`)
+        console.log(`[AUTH_ROUTER] Pro user ${ctx.user.email} connecting additional account (has existing: ${hasAtLeastOne})`)
       }
 
       try {

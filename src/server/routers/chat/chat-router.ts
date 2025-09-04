@@ -235,8 +235,13 @@ export const chatRouter = j.router({
       const { user } = ctx
       const { id, message } = input as { message: MyUIMessage; id: string }
 
-      // All users now have pro-level rate limiting
-      const limiter = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(80, '4h') })
+      // Plan-based rate limiting: Free users get 20 messages/day, Pro users get 80 messages/4 hours
+      const isPro = user.plan === 'pro'
+      console.log(`[CHAT_ROUTER] User plan: ${user.plan}, isPro: ${isPro}`)
+
+      const limiter = isPro
+        ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(80, '4h') }) // Pro Plan
+        : new Ratelimit({ redis, limiter: Ratelimit.fixedWindow(20, '1d') })  // Free Plan
 
       const [account, history, parsedAttachments, limitResult] = await Promise.all([
         getAccount({ email: user.email }),

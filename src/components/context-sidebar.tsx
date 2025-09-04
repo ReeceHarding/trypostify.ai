@@ -28,6 +28,8 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { authClient } from '@/lib/auth-client'
+import { useUser } from '@/hooks/use-user'
+import { UpgradeDrawer } from '@/components/upgrade-drawer'
 
 const searchParams = {
   tweetId: parseAsString,
@@ -39,6 +41,7 @@ const serialize = createSerializer(searchParams)
 export const LeftSidebar = () => {
   const { state } = useSidebar()
   const session = authClient.useSession()
+  const { user, isLoading: isUserLoading } = useUser()
 
   const pathname = usePathname()
 
@@ -625,6 +628,13 @@ export const LeftSidebar = () => {
           )}
         >
           <div className="flex flex-col gap-2">
+            {/* Upgrade button for free users */}
+            {!isUserLoading && user?.plan !== 'pro' && (
+              <div className="mb-2">
+                <UpgradeDrawer />
+              </div>
+            )}
+            
             {session.data?.user ? (
               <Link
                 href={{
@@ -653,7 +663,7 @@ export const LeftSidebar = () => {
 
                   <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
                     <Crown className="size-3" />
-                    Pro
+                    {isUserLoading ? 'Loading...' : user?.plan === 'pro' ? 'Pro' : 'Free'}
                   </span>
                 </div>
               </Link>
