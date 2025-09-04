@@ -11,7 +11,7 @@ export const user = pgTable('user', {
   updatedAt: timestamp('updated_at').notNull(),
   plan: text('plan', { enum: ['free', 'pro'] })
     .notNull()
-    .default('pro'),
+    .default('free'),
   stripeId: text('stripe_id').unique(),
   hadTrial: boolean('had_trial').default(false),
   goals: json('goals').$type<string[]>().default([]),

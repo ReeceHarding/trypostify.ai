@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              video_url: job.videoUrl,
+              video_urls: [job.videoUrl], // Fix: Apify expects array of URLs
               quality: 'high',
             }),
           },

@@ -134,6 +134,13 @@
       "when": 1756568597692,
       "tag": "0018_petite_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1757010552962,
+      "tag": "0019_nostalgic_exiles",
+      "breakpoints": true
     }
   ]
 }
