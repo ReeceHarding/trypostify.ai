@@ -58,7 +58,7 @@ const Page = () => {
 
       return 2500
     },
-    enabled: status === 'processing',
+    enabled: !isUserLoading,
   })
 
   const { data: limit, isLoading: isLimitLoading } = useQuery({
