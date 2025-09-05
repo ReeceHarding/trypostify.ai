@@ -230,6 +230,25 @@ const Page = () => {
                 <p className="text-sm opacity-60">
                   You have unlimited access to all features!
                 </p>
+                
+                {/* Show cancellation info if subscription is set to cancel */}
+                {subscription?.subscription?.cancel_at_period_end && subscription?.subscription?.current_period_end && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 w-full mb-2">
+                    <div className="flex items-center gap-2 text-yellow-800">
+                      <Clock className="size-4" />
+                      <div className="text-sm">
+                        <p className="font-medium">Subscription Ending</p>
+                        <p>
+                          Your Pro plan will end on{' '}
+                          <span className="font-semibold">
+                            {format(new Date(subscription.subscription.current_period_end * 1000), 'MMMM d, yyyy')}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <Button
                   variant="duolingo-primary"
                   onClick={() => createBillingPortalUrl()}

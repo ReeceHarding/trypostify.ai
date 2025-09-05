@@ -215,6 +215,17 @@ export const stripeRouter = j.router({
       const status = sub?.status ?? 'free'
 
       console.log(`[STRIPE_ROUTER] Stripe subscription status: ${status}`)
+      
+      // Log detailed subscription info for debugging
+      if (sub) {
+        console.log(`[STRIPE_ROUTER] Subscription details:`, {
+          id: sub.id,
+          status: sub.status,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          current_period_end: (sub as any).current_period_end,
+          canceled_at: sub.canceled_at,
+        })
+      }
 
       // Sync our database with Stripe's status
       const newPlan = (status === 'active' || status === 'trialing') ? 'pro' : 'free'
@@ -222,7 +233,18 @@ export const stripeRouter = j.router({
       
       await db.update(user).set({ plan: newPlan }).where(eq(user.stripeId, stripeId))
 
-      return c.json({ status })
+      // Return detailed subscription information
+      return c.json({ 
+        status,
+        subscription: sub ? {
+          id: sub.id,
+          status: sub.status,
+          cancel_at_period_end: sub.cancel_at_period_end,
+          current_period_end: (sub as any).current_period_end,
+          canceled_at: sub.canceled_at,
+          current_period_start: (sub as any).current_period_start,
+        } : null
+      })
     } catch (error) {
       console.error('[STRIPE_ROUTER] Error fetching subscription status:', error)
       // If Stripe fails, trust our DB for a moment but default to free if unsure
