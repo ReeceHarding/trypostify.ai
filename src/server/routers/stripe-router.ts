@@ -251,7 +251,11 @@ export const stripeRouter = j.router({
       const dbUser = await db.query.user.findFirst({ where: eq(user.stripeId, stripeId) })
       const fallbackStatus = dbUser?.plan ?? 'free'
       console.log(`[STRIPE_ROUTER] Using fallback status from database: ${fallbackStatus}`)
-      return c.json({ status: fallbackStatus })
+      return c.json({ 
+        status: fallbackStatus,
+        subscription: null,
+        error: 'Failed to fetch from Stripe, using database fallback'
+      })
     }
   }),
 })

@@ -48,6 +48,7 @@ const Page = () => {
     queryFn: async () => {
       const res = await client.stripe.subscription.$get()
       const data = await res.json()
+      console.log('[SETTINGS] Subscription data received:', JSON.stringify(data, null, 2))
       return data
     },
     refetchInterval(query) {
@@ -232,7 +233,16 @@ const Page = () => {
                 </p>
                 
                 {/* Show cancellation info if subscription is set to cancel */}
-                {subscription?.subscription?.cancel_at_period_end && subscription?.subscription?.current_period_end && (
+                {(() => {
+                  console.log('[SETTINGS] Checking cancellation conditions:', {
+                    'subscription': subscription,
+                    'subscription.subscription': subscription?.subscription,
+                    'cancel_at_period_end': subscription?.subscription?.cancel_at_period_end,
+                    'current_period_end': subscription?.subscription?.current_period_end,
+                    'should_show_warning': subscription?.subscription?.cancel_at_period_end && subscription?.subscription?.current_period_end
+                  })
+                  return subscription?.subscription?.cancel_at_period_end && subscription?.subscription?.current_period_end
+                })() && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 w-full mb-2">
                     <div className="flex items-center gap-2 text-yellow-800">
                       <Clock className="size-4" />
