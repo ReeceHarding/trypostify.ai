@@ -30,7 +30,7 @@ import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { authClient } from '@/lib/auth-client'
 import { useUser } from '@/hooks/use-user'
-import { UpgradeDrawer } from '@/components/upgrade-drawer'
+import { UpgradeDialog } from '@/components/upgrade-drawer'
 
 const searchParams = {
   tweetId: parseAsString,
@@ -661,7 +661,7 @@ export const LeftSidebar = () => {
             {/* Upgrade button for free users */}
             {!isUserLoading && user?.plan !== 'pro' && (
               <div className="mb-2">
-                <UpgradeDrawer />
+                <UpgradeDialog />
               </div>
             )}
             

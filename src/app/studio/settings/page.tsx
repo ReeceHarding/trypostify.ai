@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import DuolingoBadge from '@/components/ui/duolingo-badge'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
-import { UpgradeDrawer } from '@/components/upgrade-drawer'
+import { UpgradeDialog } from '@/components/upgrade-drawer'
 import { authClient } from '@/lib/auth-client'
 import { client } from '@/lib/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -250,7 +250,7 @@ const Page = () => {
                     </p>
                   )}
                 </div>
-                <UpgradeDrawer />
+                <UpgradeDialog />
               </div>
             )}
           </div>

@@ -2,15 +2,15 @@
 
 import { Button } from '@/components/ui/button'
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from '@/components/ui/drawer'
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { client } from '@/lib/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRight, Dot, Gem, Loader } from 'lucide-react'
@@ -27,7 +27,7 @@ type Subscription = {
   enableTrial: boolean
 }
 
-export const UpgradeDrawer = () => {
+export const UpgradeDialog = () => {
   const router = useRouter()
 
   const [subscription, setSubscription] = useState<Subscription | undefined>(undefined)
@@ -77,89 +77,76 @@ export const UpgradeDrawer = () => {
           <Loader className="animate-spin size-4" /> Loading
         </Button>
       ) : subscription ? (
-        <Drawer>
-          <DrawerTrigger asChild>
+        <Dialog>
+          <DialogTrigger asChild>
             <Button variant="duolingo-primary" size="duolingo-sm" className="w-full gap-1.5">
               Get Pro
             </Button>
-          </DrawerTrigger>
-          <DrawerContent>
-            <DrawerClose />
-            <div className="mx-auto w-full max-w-lg p-4">
-              <DrawerHeader className="flex flex-col">
-                <DrawerTitle className="text-2xl trackint-tight">
-                  Postify Pro
-                </DrawerTitle>
-                <DrawerDescription className="text-base text-pretty">
-                  Join 400+ technical founders growing their business with Postify
-                </DrawerDescription>
-              </DrawerHeader>
-              <div className="flex flex-col px-4 gap-6">
-                <div className="flex flex-col gap-2">
-                  <ul>
-                    {subscription.features.length > 0 ? (
-                      subscription.features.map((feature, i) => (
-                        <li key={i} className="flex items-center justify-start gap-1.5">
-                          <svg
-                            width="12"
-                            height="12"
-                            viewBox="0 0 12 12"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="text-primary-500"
-                          >
-                            <circle cx="4" cy="4" r="4" fill="currentColor" />
-                          </svg>
-                          <p className='text-neutral-700'>{feature.name}</p>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-muted-foreground text-sm">No features</li>
-                    )}
-                  </ul>
-                </div>
-
-                <div className="flex gap-x-2">
-                  <h2 className="text-3xl flex gap-x-8 text-text-primary">
-                    {subscription.price?.currency === 'usd' ? '$' : null}
-                    {subscription.price?.unit_amount ? (subscription.price.unit_amount / 100).toFixed(0) : '0'}
-                  </h2>
-                  <div className="gap-y-2 flex flex-col justify-center">
-                    <h3 className="text-xs leading-[0.7] opacity-60">
-                      {subscription.price?.recurring?.interval === 'year' ? 'per year' : 'per month'}
-                    </h3>
-                    <h3 className="text-xs leading-[0.7] opacity-60">
-                      {subscription.price?.recurring?.interval === 'year' ? 'billed yearly' : 'billed monthly'}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* <div className="flex gap-0 justify-end items-end">
-                  <span className="text-xl">
-                    {subscription.price?.currency === 'usd' ? '$' : null}
-                    {subscription.price?.unit_amount ? (subscription.price.unit_amount / 100).toFixed(0) : '0'}/
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {subscription.price?.recurring?.interval === 'year' ? 'year' : 'month'}
-                  </span>
-                </div> */}
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-semibold">
+                Postify Pro
+              </DialogTitle>
+              <DialogDescription className="text-base text-pretty">
+                Join 400+ technical founders growing their business with Postify
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex flex-col gap-6 py-4">
+              <div className="flex flex-col gap-2">
+                <ul>
+                  {subscription.features.length > 0 ? (
+                    subscription.features.map((feature, i) => (
+                      <li key={i} className="flex items-center justify-start gap-1.5">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="text-primary-500"
+                        >
+                          <circle cx="4" cy="4" r="4" fill="currentColor" />
+                        </svg>
+                        <p className='text-neutral-700'>{feature.name}</p>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-muted-foreground text-sm">No features</li>
+                  )}
+                </ul>
               </div>
-              <DrawerFooter>
-                <div className="flex gap-2 items-center justify-between">
-                  <Button
-                    variant="duolingo-primary"
-                    size="duolingo-sm"
-                    className="h-12"
-                    loading={isPending}
-                    onClick={() => handleSubscribe()}
-                  >
-                    Get Pro
-                  </Button>
+
+              <div className="flex gap-x-2">
+                <h2 className="text-3xl flex gap-x-8 text-text-primary">
+                  {subscription.price?.currency === 'usd' ? '$' : null}
+                  {subscription.price?.unit_amount ? (subscription.price.unit_amount / 100).toFixed(0) : '0'}
+                </h2>
+                <div className="gap-y-2 flex flex-col justify-center">
+                  <h3 className="text-xs leading-[0.7] opacity-60">
+                    {subscription.price?.recurring?.interval === 'year' ? 'per year' : 'per month'}
+                  </h3>
+                  <h3 className="text-xs leading-[0.7] opacity-60">
+                    {subscription.price?.recurring?.interval === 'year' ? 'billed yearly' : 'billed monthly'}
+                  </h3>
                 </div>
-              </DrawerFooter>
+              </div>
             </div>
-          </DrawerContent>
-        </Drawer>
+
+            <DialogFooter>
+              <Button
+                variant="duolingo-primary"
+                size="duolingo-sm"
+                className="h-12 w-full"
+                loading={isPending}
+                onClick={() => handleSubscribe()}
+              >
+                Get Pro
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : (
         <Button disabled>
           <Gem className="size-4" /> Upgrade
