@@ -271,17 +271,35 @@ export function AccountName({
 
 export function AccountHandle({ className }: { className?: string }) {
   const { account, isLoading } = useAccount()
-  if (isLoading || !account) {
+  const [isClient, setIsClient] = useState(false)
+  
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+  
+  // Always show skeleton during SSR and initial client render to avoid hydration mismatch
+  if (!isClient || isLoading || !account) {
     return <Skeleton className={cn('h-4 w-16 rounded', className)} />
   }
+  
   return <span className={cn('text-neutral-400', className)}>@{account.username}</span>
 }
 
 export function AccountVerifiedBadge({ className }: { className?: string }) {
   const { account, isLoading } = useAccount()
-  if (isLoading || !account) {
+  const [isClient, setIsClient] = useState(false)
+  
+  // Ensure consistent rendering between server and client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+  
+  // Always show skeleton during SSR and initial client render to avoid hydration mismatch
+  if (!isClient || isLoading || !account) {
     return <Skeleton className={cn('inline-block h-4 w-4 rounded', className)} />
   }
+  
   if (!account.verified) return null
   return <Icons.verificationBadge className={cn('h-4 w-4', className)} />
 }

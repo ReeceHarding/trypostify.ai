@@ -70,6 +70,9 @@ const ChatInput = ({
   // Detect OS for keyboard shortcuts
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
   const metaKey = isMac ? 'Cmd' : 'Ctrl'
+  
+  // Mobile detection to hide keyboard shortcuts
+  const isMobile = useIsMobile()
 
   const { attachments, removeAttachment, addKnowledgeAttachment, hasUploading } =
     useAttachments()
