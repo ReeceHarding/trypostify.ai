@@ -18,12 +18,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import type Stripe from 'stripe'
-import dynamic from 'next/dynamic'
-
-const SenjaWidgetDynamic = dynamic(
-  () => import('@/components/senja-widget').then((mod) => ({ default: mod.SenjaWidget })),
-  { ssr: false },
-)
 
 type Subscription = {
   name: string
@@ -99,8 +93,6 @@ export const UpgradeDrawer = () => {
                 <DrawerDescription className="text-base text-pretty">
                   Join 400+ technical founders growing their business with Postify
                 </DrawerDescription>
-
-                <SenjaWidgetDynamic className="mt-2" />
               </DrawerHeader>
               <div className="flex flex-col px-4 gap-6">
                 <div className="flex flex-col gap-2">
