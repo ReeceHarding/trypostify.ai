@@ -129,21 +129,27 @@ export const UpgradeDrawer = () => {
 
                 <div className="flex gap-x-2">
                   <h2 className="text-3xl flex gap-x-8 text-text-primary">
-                    {subscription.price.currency === 'usd' ? '$' : null}
-                    {(subscription.price.unit_amount! / 100).toFixed(0)}
+                    {subscription.price?.currency === 'usd' ? '$' : null}
+                    {subscription.price?.unit_amount ? (subscription.price.unit_amount / 100).toFixed(0) : '0'}
                   </h2>
                   <div className="gap-y-2 flex flex-col justify-center">
-                    <h3 className="text-xs leading-[0.7] opacity-60">per month</h3>
-                    <h3 className="text-xs leading-[0.7] opacity-60">billed monthly</h3>
+                    <h3 className="text-xs leading-[0.7] opacity-60">
+                      {subscription.price?.recurring?.interval === 'year' ? 'per year' : 'per month'}
+                    </h3>
+                    <h3 className="text-xs leading-[0.7] opacity-60">
+                      {subscription.price?.recurring?.interval === 'year' ? 'billed yearly' : 'billed monthly'}
+                    </h3>
                   </div>
                 </div>
 
                 {/* <div className="flex gap-0 justify-end items-end">
                   <span className="text-xl">
-                    {subscription.price.currency === 'usd' ? '$' : null}
-                    {(subscription.price.unit_amount! / 100).toFixed(0)}/
+                    {subscription.price?.currency === 'usd' ? '$' : null}
+                    {subscription.price?.unit_amount ? (subscription.price.unit_amount / 100).toFixed(0) : '0'}/
                   </span>
-                  <span className="text-sm text-muted-foreground">month</span>
+                  <span className="text-sm text-muted-foreground">
+                    {subscription.price?.recurring?.interval === 'year' ? 'year' : 'month'}
+                  </span>
                 </div> */}
               </div>
               <DrawerFooter>

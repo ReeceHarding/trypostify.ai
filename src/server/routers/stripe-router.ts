@@ -160,6 +160,18 @@ export const stripeRouter = j.router({
           return c.json({ error: 'No subscription available' })
         }
 
+        // Get price - use default_price if available, otherwise use configured priceId
+        let price: Stripe.Price | null = product.default_price as Stripe.Price
+        if (!price && STRIPE_SUBSCRIPTION_DATA.priceId) {
+          console.log('[STRIPE_ROUTER] No default price found, fetching configured price:', STRIPE_SUBSCRIPTION_DATA.priceId)
+          price = await stripe.prices.retrieve(STRIPE_SUBSCRIPTION_DATA.priceId)
+        }
+
+        if (!price) {
+          console.error('[STRIPE_ROUTER] No price found for product:', product.id)
+          return c.json({ error: 'No pricing available for subscription' })
+        }
+
         const offerTrial = true
         const enableTrial: boolean = offerTrial && !hadTrial
 
@@ -168,7 +180,7 @@ export const stripeRouter = j.router({
             name: product.name,
             description: product.description,
             features: product.marketing_features,
-            price: product.default_price as Stripe.Price,
+            price: price,
             enableTrial,
           },
         })
