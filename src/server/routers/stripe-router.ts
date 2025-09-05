@@ -12,7 +12,7 @@
 
 import { STRIPE_SUBSCRIPTION_DATA } from '@/constants/stripe-subscription'
 import { db } from '@/db'
-import { user } from '@/db/schema/auth'
+import { user } from '@/db/schema'
 import { stripe } from '@/lib/stripe/client'
 import { eq } from 'drizzle-orm'
 import type Stripe from 'stripe'
@@ -209,6 +209,7 @@ export const stripeRouter = j.router({
         customer: stripeId,
         limit: 1,
         status: 'all',
+        expand: ['data.items.data.price.product'],
       })
 
       const sub = subscriptions.data[0]
@@ -218,11 +219,13 @@ export const stripeRouter = j.router({
       
       // Log detailed subscription info for debugging
       if (sub) {
+        const periodEnd = sub.cancel_at || sub.items?.data?.[0]?.current_period_end
         console.log(`[STRIPE_ROUTER] Subscription details:`, {
           id: sub.id,
           status: sub.status,
           cancel_at_period_end: sub.cancel_at_period_end,
-          current_period_end: (sub as any).current_period_end,
+          cancel_at: sub.cancel_at,
+          current_period_end: periodEnd,
           canceled_at: sub.canceled_at,
         })
       }
@@ -234,21 +237,24 @@ export const stripeRouter = j.router({
       await db.update(user).set({ plan: newPlan }).where(eq(user.stripeId, stripeId))
 
       // Return detailed subscription information
+      const periodEnd = sub?.cancel_at || sub?.items?.data?.[0]?.current_period_end
+      const periodStart = sub?.items?.data?.[0]?.current_period_start
+      
       return c.json({ 
         status,
         subscription: sub ? {
           id: sub.id,
           status: sub.status,
           cancel_at_period_end: sub.cancel_at_period_end,
-          current_period_end: (sub as any).current_period_end,
+          current_period_end: periodEnd,
           canceled_at: sub.canceled_at,
-          current_period_start: (sub as any).current_period_start,
+          current_period_start: periodStart,
         } : null
       })
     } catch (error) {
       console.error('[STRIPE_ROUTER] Error fetching subscription status:', error)
       // If Stripe fails, trust our DB for a moment but default to free if unsure
-      const dbUser = await db.query.user.findFirst({ where: eq(user.stripeId, stripeId) })
+      const dbUser = await db.select().from(user).where(eq(user.stripeId, stripeId)).limit(1).then(rows => rows[0])
       const fallbackStatus = dbUser?.plan ?? 'free'
       console.log(`[STRIPE_ROUTER] Using fallback status from database: ${fallbackStatus}`)
       return c.json({ 
