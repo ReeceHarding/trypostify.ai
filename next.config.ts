@@ -3,6 +3,20 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   serverExternalPackages: ['pdf-parse'],
   devIndicators: false,
+  // Improve hot reload stability
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
+  // Reduce memory usage during development
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      }
+    }
+    return config
+  },
   eslint: {
     // Prevent ESLint errors from failing the production build deployment
     ignoreDuringBuilds: true,
