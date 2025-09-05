@@ -12,7 +12,7 @@
 
 import { STRIPE_SUBSCRIPTION_DATA } from '@/constants/stripe-subscription'
 import { db } from '@/db'
-import { user } from '@/db/schema'
+import { user } from '@/db/schema/auth'
 import { stripe } from '@/lib/stripe/client'
 import { eq } from 'drizzle-orm'
 import type Stripe from 'stripe'
